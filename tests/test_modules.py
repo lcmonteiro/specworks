@@ -170,3 +170,58 @@ def test_invalid_module_entries_rejected(workspace, modules):
     )
     code, data = run_json("context")
     assert code == 1
+
+
+@pytest.mark.parametrize("folder", ["spec", "docs", "context", "specworks"])
+def test_modules_use_the_top_level_folder_name(tmp_path, monkeypatch, folder):
+    monkeypatch.chdir(tmp_path)
+    run("init", "--dir", folder)
+    run("module", "add", "services/billing")
+    run("init", "libs/auth")
+    for module in ("services/billing", "libs/auth"):
+        assert f"dir: {folder}\n" in (tmp_path / module / "specworks.yaml").read_text()
+        assert (tmp_path / module / folder / "changes/archive").is_dir()
+    code, data = run_json("module", "list")
+    assert [m["dir"] for m in data["modules"]] == [folder, f"services/billing/{folder}", f"libs/auth/{folder}"]
+
+
+def test_nested_module_uses_the_top_level_folder_name(workspace):
+    assert (workspace / "services/billing/tax/spec/changes").is_dir()
+    code, data = run_json("new", "add-vat", "--module", "billing/tax")
+    assert data["path"] == "services/billing/tax/spec/changes/add-vat"
+
+
+def test_module_without_dir_inherits_it(workspace):
+    cfg = workspace / "services/billing/specworks.yaml"
+    cfg.write_text(cfg.read_text().replace("dir: spec\n", ""))
+    code, data = run_json("new", "add-refunds", "--module", "billing")
+    assert code == 0 and data["path"] == "services/billing/spec/changes/add-refunds"
+
+
+def test_module_with_different_dir_is_an_error(workspace):
+    cfg = workspace / "services/billing/specworks.yaml"
+    cfg.write_text(cfg.read_text().replace("dir: spec\n", "dir: docs\n"))
+    code, data = run_json("context")
+    assert code == 1
+    assert "module 'billing' sets dir: docs" in data["error"] and "uses dir: spec" in data["error"]
+
+
+def test_init_module_with_different_dir_is_rejected(workspace):
+    result = runner.invoke(app, ["init", "libs/auth", "--dir", "docs"])
+    assert result.exit_code == 1
+    assert not (workspace / "libs/auth/specworks.yaml").exists()
+    assert "auth: libs/auth" not in (workspace / "specworks.yaml").read_text()
+
+
+def test_init_no_link_may_use_another_dir(workspace):
+    run("init", "tools/other", "--dir", "docs", "--no-link", "--no-skills")
+    assert (workspace / "tools/other/docs/changes").is_dir()
+
+
+def test_module_add_rejects_existing_config_with_other_dir(workspace):
+    other = workspace / "libs/legacy"
+    other.mkdir(parents=True)
+    (other / "specworks.yaml").write_text("dir: docs\n")
+    code, data = run_json("module", "add", "libs/legacy")
+    assert code == 1 and "uses dir: spec" in data["error"]
+    assert "legacy: libs/legacy" not in (workspace / "specworks.yaml").read_text()

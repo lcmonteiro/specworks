@@ -54,6 +54,8 @@ repo/
 ```
 
 - `specworks module add <path>` (or `specworks init <path>` under a project) creates and links a module.
+- Every module uses the **same folder name** as the top level (`dir`, set once by `specworks init --dir ...`).
+  A module may leave `dir` out; setting a different one is an error.
 - Commands act on the **nearest** module; `--all` shows the whole workspace.
 - Context is **inherited**: top-level context first, then each module down to the current one.
 - Capabilities and changes of other modules are named `module:name` (`billing:invoices`, `billing/tax:add-vat`).

@@ -50,6 +50,7 @@ class Config:
     root: Path
     context: str = ""
     dir: str = DEFAULT_DIR
+    dir_set: bool = False  # True when specworks.yaml sets `dir` explicitly
     docs_dir: str = DEFAULT_DOCS_DIR
     capabilities: dict[str, Capability] = field(default_factory=dict)
     modules: dict[str, str] = field(default_factory=dict)
@@ -137,6 +138,7 @@ def load_config(root: Path) -> Config:
         root=root,
         context=context,
         dir=validate_dir(raw.get("dir", DEFAULT_DIR)),
+        dir_set="dir" in raw,
         docs_dir=raw.get("docs_dir", DEFAULT_DOCS_DIR),
         capabilities=capabilities,
         modules=modules,
@@ -154,6 +156,8 @@ context: |
 
 # Workflow folder (relative to this file), e.g. specworks, spec, docs, context.
 # In-flight changes live in <dir>/changes/, finished ones in <dir>/changes/archive/.
+# The top-level project sets it for the whole workspace: every module uses the
+# same folder name (a module may omit it, but cannot set a different one).
 dir: {dir}
 
 # Name of the folder, inside each capability's code path, that holds its
@@ -205,10 +209,15 @@ def add_module_entry(root: Path, name: str, path: str) -> None:
     lines = config_file.read_text(encoding="utf-8").splitlines()
     entry = f"  {name}: {path}"
     for i, line in enumerate(lines):
-        match = re.match(r"^modules:\s*(\{\s*\})?\s*(#.*)?$", line)
-        if match:
+        if re.match(r"^modules:\s*(\{\s*\})?\s*(#.*)?$", line):
             lines[i] = "modules:"
-            lines.insert(i + 1, entry)
+            # Append after the last indented entry of the block, keeping the order of addition.
+            end = i + 1
+            while end < len(lines) and (lines[end].startswith((" ", "\t")) or not lines[end].strip()):
+                end += 1
+            while end > i + 1 and not lines[end - 1].strip():
+                end -= 1
+            lines.insert(end, entry)
             break
     else:
         lines += ["", "modules:", entry]

@@ -5,6 +5,8 @@ Like git submodules, the parent lists each module explicitly in its
 project with its own config. Commands act on the *current* module, the one
 nearest to the working directory, but see the whole tree:
 
+- the workflow folder name (``dir``) is set by the top level and shared by
+  every module, so all modules keep their specs under the same folder name;
 - context is inherited: top-level context first, then each module down to the
   current one;
 - capabilities and changes of other modules are addressed as ``module:name``,
@@ -120,7 +122,19 @@ def _links_to(parent: Config, child_root: Path) -> str | None:
     return None
 
 
+def check_module_dir(config: Config, name: str, workspace_dir: str) -> None:
+    """A module uses the top level's folder name; it may omit `dir` but not set another one."""
+    if config.dir_set and config.dir != workspace_dir:
+        raise ConfigError(
+            f"module '{name}' sets dir: {config.dir} in {config.root / CONFIG_FILE}, but the workspace "
+            f"uses dir: {workspace_dir}; set it to {workspace_dir} or remove it"
+        )
+    config.dir = workspace_dir
+
+
 def _load_tree(config: Config, name: str, parent: Module | None, missing: list[MissingModule]) -> Module:
+    if parent is not None:
+        check_module_dir(config, name, parent.config.dir)
     module = Module(name=name, config=config, parent=parent)
     for child_name, child_path in config.modules.items():
         child_root = (config.root / child_path).resolve()
