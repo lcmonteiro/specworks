@@ -20,11 +20,15 @@ refine -> propose -> tests -> code -> review -> verify -> done
 ## Layout
 
 ```
-specworks.yaml                     # context, capabilities -> code paths
-specworks/changes/<name>/          # in-flight change artifacts
-specworks/changes/archive/         # finished changes
-<capability-path>/docs/            # living docs, next to the code
+specworks.yaml                     # dir, context, capabilities -> code paths
+<dir>/changes/<name>/              # in-flight change artifacts
+<dir>/changes/archive/             # finished changes
+<capability-path>/<docs_dir>/      # living docs, next to the code
 ```
+
+`<dir>` defaults to `specworks`. Pick another name with `specworks init --dir spec`
+(or `docs`, `context`, `docs/spec`, ...), or change `dir:` in `specworks.yaml` later.
+`<docs_dir>` defaults to `docs`.
 
 ## Install
 

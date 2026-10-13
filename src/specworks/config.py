@@ -3,12 +3,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 import yaml
 
 CONFIG_FILE = "specworks.yaml"
-DEFAULT_CHANGES_DIR = "specworks/changes"
+DEFAULT_DIR = "specworks"
 DEFAULT_DOCS_DIR = "docs"
 MAX_CONTEXT_BYTES = 50 * 1024
 
@@ -47,11 +47,15 @@ class Capability:
 class Config:
     root: Path
     context: str = ""
-    changes_dir: str = DEFAULT_CHANGES_DIR
+    dir: str = DEFAULT_DIR
     docs_dir: str = DEFAULT_DOCS_DIR
     capabilities: dict[str, Capability] = field(default_factory=dict)
     test_globs: list[str] = field(default_factory=list)
     source_globs: list[str] = field(default_factory=list)
+
+    @property
+    def changes_dir(self) -> str:
+        return f"{self.dir}/changes"
 
     @property
     def changes_path(self) -> Path:
@@ -69,6 +73,16 @@ def find_root(start: Path | None = None) -> Path | None:
         if (directory / CONFIG_FILE).is_file():
             return directory
     return None
+
+
+def validate_dir(value: object) -> str:
+    """The workflow folder must be a plain relative path inside the project."""
+    if not isinstance(value, str) or not value.strip():
+        raise ConfigError("'dir' must be a non-empty folder name")
+    path = PurePosixPath(value.strip().replace("\\", "/"))
+    if path.is_absolute() or ".." in path.parts or str(path) == ".":
+        raise ConfigError(f"'dir' must be a relative folder inside the project, got '{value}'")
+    return str(path)
 
 
 def load_config(root: Path) -> Config:
@@ -101,7 +115,7 @@ def load_config(root: Path) -> Config:
     return Config(
         root=root,
         context=context,
-        changes_dir=raw.get("changes_dir", DEFAULT_CHANGES_DIR),
+        dir=validate_dir(raw.get("dir", DEFAULT_DIR)),
         docs_dir=raw.get("docs_dir", DEFAULT_DOCS_DIR),
         capabilities=capabilities,
         test_globs=list(raw.get("test_globs") or []),
@@ -109,15 +123,16 @@ def load_config(root: Path) -> Config:
     )
 
 
-DEFAULT_CONFIG = """\
+DEFAULT_CONFIG_TEMPLATE = """\
 # specworks configuration
 #
 # context: free text the agent reads before every phase (stack, conventions,
 # constraints). Keep it short; it is guidance, not documentation.
 context: |
 
-# Where in-flight changes live (relative to this file).
-changes_dir: specworks/changes
+# Workflow folder (relative to this file), e.g. specworks, spec, docs, context.
+# In-flight changes live in <dir>/changes/, finished ones in <dir>/changes/archive/.
+dir: {dir}
 
 # Name of the folder, inside each capability's code path, that holds its
 # living docs (spec.md, requirements.md, design.md, architecture.md).
@@ -132,7 +147,11 @@ docs_dir: docs
 capabilities: {}
 
 # Globs used by `specworks trace` to find tests and source files. Empty means
-# "scan everything tracked that is not in changes_dir".
+# "scan everything that is not in the workflow folder".
 test_globs: []
 source_globs: []
 """
+
+
+def default_config(dir: str = DEFAULT_DIR) -> str:
+    return DEFAULT_CONFIG_TEMPLATE.replace("{dir}", validate_dir(dir))

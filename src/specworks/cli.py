@@ -15,7 +15,7 @@ import typer
 
 from . import __version__
 from .changes import PHASES, ChangeError, create_change, list_changes, load_change, set_phase
-from .config import CONFIG_FILE, DEFAULT_CONFIG, Config, ConfigError, find_root, load_config
+from .config import CONFIG_FILE, DEFAULT_DIR, Config, ConfigError, default_config, find_root, load_config
 from .skills import install_skills
 from .workflow import WorkflowError, artifact_states, instructions
 
@@ -60,6 +60,7 @@ def version() -> None:
 @app.command()
 def init(
     path: Path = typer.Argument(Path("."), help="Project root."),
+    dir: str | None = typer.Option(None, "--dir", help=f"Workflow folder, e.g. spec, docs, context (default: {DEFAULT_DIR})."),
     skills_dir: Path = typer.Option(Path(".claude/skills"), help="Where to install agent skills, relative to root."),
     no_skills: bool = typer.Option(False, "--no-skills", help="Do not install agent skills."),
 ) -> None:
@@ -67,9 +68,17 @@ def init(
     root = path.resolve()
     config_file = root / CONFIG_FILE
     if not config_file.exists():
-        config_file.write_text(DEFAULT_CONFIG, encoding="utf-8")
+        try:
+            config_file.write_text(default_config(DEFAULT_DIR if dir is None else dir), encoding="utf-8")
+        except ConfigError as exc:
+            fail(str(exc), False)
         typer.echo(f"created {CONFIG_FILE}")
-    cfg = load_config(root)
+    try:
+        cfg = load_config(root)
+    except ConfigError as exc:
+        fail(str(exc), False)
+    if dir is not None and cfg.dir != dir:
+        typer.echo(f"note    {CONFIG_FILE} already exists with dir: {cfg.dir}; edit it to change the folder")
     cfg.archive_path.mkdir(parents=True, exist_ok=True)
     typer.echo(f"ready   {cfg.changes_dir}/")
     if not no_skills:
@@ -84,6 +93,7 @@ def context(as_json: bool = JsonOpt) -> None:
     data = {
         "root": str(cfg.root),
         "context": cfg.context,
+        "dir": cfg.dir,
         "changesDir": cfg.changes_dir,
         "docsDir": cfg.docs_dir,
         "capabilities": [c.to_dict(cfg.root, cfg.docs_dir) for c in cfg.capabilities.values()],

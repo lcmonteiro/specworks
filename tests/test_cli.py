@@ -89,3 +89,37 @@ def test_phase_moves_and_validates(project):
     assert code == 0 and data["phase"] == "propose"
     code, data = run_json("phase", "add-login", "shipping")
     assert code == 1
+
+
+@pytest.mark.parametrize("folder", ["spec", "docs", "context", "docs/spec"])
+def test_init_with_custom_dir(tmp_path, monkeypatch, folder):
+    monkeypatch.chdir(tmp_path)
+    assert runner.invoke(app, ["init", "--dir", folder]).exit_code == 0
+    assert f"dir: {folder}\n" in (tmp_path / "specworks.yaml").read_text()
+    assert (tmp_path / folder / "changes/archive").is_dir()
+    assert not (tmp_path / "specworks").exists()
+    code, data = run_json("new", "add-login")
+    assert data["path"] == f"{folder}/changes/add-login"
+    code, data = run_json("context")
+    assert data["dir"] == folder and data["changesDir"] == f"{folder}/changes"
+
+
+def test_dir_edited_in_config_is_used(project):
+    text = (project / "specworks.yaml").read_text().replace("dir: specworks", "dir: context")
+    (project / "specworks.yaml").write_text(text)
+    code, data = run_json("new", "add-login")
+    assert data["path"] == "context/changes/add-login"
+
+
+@pytest.mark.parametrize("folder", ["/abs", "../outside", ".", ""])
+def test_init_rejects_bad_dir(tmp_path, monkeypatch, folder):
+    monkeypatch.chdir(tmp_path)
+    result = runner.invoke(app, ["init", "--dir", folder])
+    assert result.exit_code == 1
+    assert not (tmp_path / "specworks.yaml").exists()
+
+
+def test_bad_dir_in_config_is_reported(project):
+    (project / "specworks.yaml").write_text("dir: ../elsewhere\n")
+    code, data = run_json("context")
+    assert code == 1 and "'dir'" in data["error"]
