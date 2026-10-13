@@ -1,0 +1,39 @@
+# Artifacts of a specworks change, in workflow order. Each phase skill asks
+# `specworks instructions <artifact>` for the template and rules below.
+name: specworks
+version: 1
+artifacts:
+  - id: refinement
+    phase: refine
+    generates: refinement.md
+    template: refinement.md
+    requires: []
+    optional: false
+    instruction: |
+      Capture the shared understanding of the problem BEFORE committing to a solution.
+      This is the input for the proposal; it is not a plan.
+
+      Sections:
+      - **Problem**: 2-4 sentences. What hurts, for whom, and why now. Quote the
+        user's words where they matter.
+      - **Context**: What exists today that this touches. Cite concrete files,
+        modules, capabilities (from `specworks context`) and their living docs.
+        Separate what you OBSERVED in the code from what you ASSUME.
+      - **Constraints**: Technical, compatibility, performance, security,
+        organisational limits. Mark each as hard (must) or soft (prefer).
+      - **Options**: 2-3 genuinely different solutions. For each: a one-line
+        summary, how it works at a high level, pros, cons, rough effort (S/M/L),
+        and the capabilities it would touch. Include "do nothing / minimal" when
+        it is a real option.
+      - **Recommendation**: The option you recommend and why, in a few lines.
+        Leave it as "Pending" if the user has not agreed yet.
+      - **Open Questions**: Questions that must be answered before proposing.
+        Each one says who can answer it. Remove questions once answered and
+        record the answer in the relevant section.
+      - **Candidate Capabilities**: Capabilities likely to be added or modified,
+        using existing capability names from `specworks context` when they fit.
+        Qualify capabilities of other modules as `module:capability`, and for a
+        new capability say which module should own it.
+
+      Keep it to 1-2 pages. No requirements, no tasks, no code: those belong to
+      the propose phase.
