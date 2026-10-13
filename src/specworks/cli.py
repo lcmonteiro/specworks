@@ -34,7 +34,7 @@ from .skills import install_skills
 from .workflow import WorkflowError, artifact_states, instructions
 from .workspace import Module, Workspace, load_module_config, load_workspace
 
-app = typer.Typer(help="Spec-driven development: refine → propose → tests → code → review → verify → done.")
+app = typer.Typer(help="Spec-driven development: refine → propose → test → implement → review → verify → close.")
 module_app = typer.Typer(help="Manage modules (sub-projects linked to this one, like git submodules).")
 app.add_typer(module_app, name="module")
 

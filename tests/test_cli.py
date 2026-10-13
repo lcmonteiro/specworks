@@ -31,7 +31,7 @@ def test_context_without_project_reports_null_root(tmp_path, monkeypatch):
 def test_init_creates_config_changes_and_skills(project):
     assert (project / "specworks.yml").is_file()
     assert (project / "specworks/changes/archive").is_dir()
-    assert (project / ".claude/skills/sw-refine/SKILL.md").is_file()
+    assert (project / ".claude/skills/specworks-refine/SKILL.md").is_file()
 
 
 def test_new_change_starts_in_refine_phase(project):
@@ -136,3 +136,19 @@ def test_init_rejects_bad_dir(tmp_path, monkeypatch, folder):
     result = runner.invoke(app, ["init", "--dir", folder])
     assert result.exit_code == 1
     assert list(tmp_path.glob("*.yml")) == []
+
+
+def test_phases_follow_the_workflow(project):
+    run_json("new", "add-login")
+    code, data = run_json("status", "--change", "add-login")
+    assert data["phases"] == ["refine", "propose", "test", "implement", "review", "verify", "close", "done"]
+    for phase in ("implement", "propose", "done"):  # moving back is allowed
+        code, data = run_json("phase", "add-login", phase)
+        assert code == 0 and data["phase"] == phase
+
+
+def test_skills_are_installed_with_specworks_prefix(project):
+    skills = sorted(p.name for p in (project / ".claude/skills").iterdir())
+    assert skills and all(name.startswith("specworks-") for name in skills)
+    text = (project / ".claude/skills/specworks-refine/SKILL.md").read_text()
+    assert "name: specworks-refine" in text and "sw-" not in text

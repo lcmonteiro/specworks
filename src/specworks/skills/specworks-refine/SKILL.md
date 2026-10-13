@@ -1,16 +1,16 @@
 ---
-name: sw-refine
-description: Refinement phase of spec-driven development - explore a problem with the user, ground it in the codebase and existing capability docs, compare 2-3 solution options, and record the result in refinement.md. Use when the user wants to start a new feature/fix/change, think through a problem before proposing, or says "refine", "refinement" or "sw-refine".
+name: specworks-refine
+description: Refinement phase of spec-driven development - explore a problem with the user, ground it in the codebase and existing capability docs, compare 2-3 solution options, and record the result in refinement.md. Use when the user wants to start a new feature/fix/change, think through a problem before proposing, or says "refine", "refinement" or "specworks refine".
 allowed-tools: Bash(specworks:*), Bash(uv run specworks:*), Read, Grep, Glob, Write, Edit
 ---
 
 Refinement phase: build a shared understanding of the problem and its possible
 solutions, then record it in `refinement.md`. This is the first phase of
-`refine → propose → tests → code → review → verify → done`.
+`refine → propose → test → implement → review → verify → close`.
 
 **Phase boundary**: this phase writes `refinement.md` only. Do not write
 requirements, tasks, tests or code, even if the user asks to "build" something.
-When refinement is done, stop and suggest `/sw-propose`.
+When refinement is done, stop and suggest `/specworks-propose`.
 
 **Running the CLI**: use `specworks <cmd>`. If it is not on PATH, use
 `uv run specworks <cmd>` (inside the specworks repo) or
@@ -108,7 +108,7 @@ When refinement is done, stop and suggest `/sw-propose`.
 
    Summarize: the problem in one line, the options, the recommendation (or
    "pending"), and the open questions that still block the proposal.
-   End with: "When you are ready, run `/sw-propose <ref>`."
+   End with: "When you are ready, run `/specworks-propose <ref>`."
 
 ---
 
@@ -117,5 +117,5 @@ When refinement is done, stop and suggest `/sw-propose`.
 - Write only `refinement.md` in the change folder. Never edit project code here.
 - Never run `specworks init` unless the user asks for it.
 - Do not invent product intent, priorities or constraints. Ask when only the user can answer.
-- Keep refinement to 1-2 pages. Requirements, acceptance criteria, design and tasks belong to `/sw-propose`.
+- Keep refinement to 1-2 pages. Requirements, acceptance criteria, design and tasks belong to `/specworks-propose`.
 - Use existing capability names from `specworks context` when they fit, qualified with their module (`billing:invoices`); propose new names only for genuinely new behaviour, and say which module should own each one.

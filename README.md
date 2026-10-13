@@ -4,18 +4,22 @@ Spec-driven development for AI coding agents, inspired by
 [OpenSpec](https://github.com/Fission-AI/OpenSpec) and written in Python (managed with `uv`).
 
 ```
-refine -> propose -> tests -> code -> review -> verify -> done
+refine -> propose -> test -> implement -> review -> verify -> close
 ```
 
-| Phase   | Skill         | Output |
-|---------|---------------|--------|
-| refine  | `/sw-refine`  | `refinement.md`: problem, context, constraints, options, recommendation |
-| propose | `/sw-propose` | proposal, requirements + acceptance criteria, design, tasks, traceability *(planned)* |
-| tests   | `/sw-tests`   | failing tests per acceptance criterion + API stubs *(planned)* |
-| code    | `/sw-code`    | implementation driven by tasks and specs *(planned)* |
-| review  | `/sw-review`  | code <-> spec drift fixed *(planned)* |
-| verify  | `/sw-verify`  | completeness / correctness / traceability report *(planned)* |
-| done    | `/sw-done`    | living docs merged into `<capability-path>/docs/` *(planned)* |
+| Phase     | Skill                  | Output |
+|-----------|------------------------|--------|
+| refine    | `/specworks-refine`    | `refinement.md`: problem, context, constraints, options, recommendation |
+| propose   | `/specworks-propose`   | proposal, requirements + acceptance criteria, design, tasks, traceability *(planned)* |
+| test      | `/specworks-test`      | failing tests per acceptance criterion + API stubs *(planned)* |
+| implement | `/specworks-implement` | implementation driven by tasks and specs *(planned)* |
+| review    | `/specworks-review`    | fixes code <-> spec drift; **may edit** code and spec deltas *(planned)* |
+| verify    | `/specworks-verify`    | pass/fail report (completeness, correctness, traceability); **read-only** gate before close *(planned)* |
+| close     | `/specworks-close`     | living docs merged into `<capability-path>/docs/`, change archived (phase `done`) *(planned)* |
+
+The flow is not strictly linear: `review` can send a change back to `propose`
+(missing requirement) and a failing `verify` sends it back to `implement`.
+`specworks phase <change> <phase>` moves a change to any phase.
 
 ## Layout
 
@@ -70,7 +74,7 @@ repo/
 
 ```bash
 uv tool install git+https://github.com/lcmonteiro/specworks
-cd your-project && specworks init --dir spec   # writes spec.yml, spec/ and .claude/skills/sw-*
+cd your-project && specworks init --dir spec   # writes spec.yml, spec/ and .claude/skills/specworks-*
 ```
 
 ## Development
