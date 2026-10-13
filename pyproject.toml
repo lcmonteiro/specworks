@@ -1,0 +1,28 @@
+[project]
+name = "specworks"
+version = "0.1.0"
+description = "Spec-driven development workflow (refine → propose → tests → code → review → verify → done) for AI coding agents"
+readme = "README.md"
+authors = [
+    { name = "lcmonteiro", email = "monteiro.lcm@gmail.com" }
+]
+requires-python = ">=3.11"
+dependencies = [
+    "pyyaml>=6.0.3",
+    "typer>=0.27.3",
+]
+
+[project.scripts]
+specworks = "specworks.cli:main"
+
+[build-system]
+requires = ["uv_build>=0.11.32,<0.12.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
