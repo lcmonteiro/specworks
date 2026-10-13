@@ -81,11 +81,15 @@ good on GitHub, and every diagram shares one theme set in the top-level config:
 
 ```yaml
 diagrams:
-  theme: 0          # `d2 themes` lists them (8 Colorblind Clear, 303 C4, ...)
-  dark_theme: 200   # used in dark mode
-  layout: elk       # or dagre
-  sketch: false     # true for a hand-drawn look
+  theme: neutral-default   # by name or number: c4, colorblind-clear, cool-classics, origami, ...
+  dark_theme: dark-mauve   # used in dark mode; dark-flagship-terrastruct, or none
+  layout: elk              # or dagre
+  sketch: false            # true for a hand-drawn look
 ```
+
+`specworks diagrams --themes` lists every theme and the one in use, and
+`specworks init --diagram-theme c4` sets it when creating the project. Changing
+the theme marks every SVG as outdated until `specworks diagrams` re-renders it.
 
 Each SVG is stamped with a hash of its source and these settings, so
 `specworks validate` (and `diagrams --check`, e.g. in CI) can tell when one is

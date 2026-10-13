@@ -20,6 +20,9 @@ import typer
 from . import __version__
 from .changes import PHASES, Change, ChangeError, create_change, list_changes, load_change, set_phase
 from .config import (
+    DARK_THEMES,
+    THEMES,
+    theme_name,
     CONFIG_EXT,
     DEFAULT_DIR,
     Config,
@@ -191,6 +194,9 @@ def init(
         None, "--dir", help=f"Workflow folder name, also the config name: --dir spec -> spec.yml + spec/ (default: {DEFAULT_DIR})."
     ),
     name: str | None = typer.Option(None, "--name", help="Module name when linking to a parent project (default: folder name)."),
+    diagram_theme: str | None = typer.Option(
+        None, "--diagram-theme", help="Diagram theme for the workspace, by name or number (see `specworks diagrams --themes`)."
+    ),
     no_link: bool = typer.Option(False, "--no-link", help="Do not register as a module of a parent specworks project."),
     tools: str = ToolsOpt,
     no_skills: bool = typer.Option(False, "--no-skills", help="Do not install agent skills."),
@@ -216,7 +222,7 @@ def init(
             existing = find_config(root)
             if existing is None:
                 root.mkdir(parents=True, exist_ok=True)
-                write_default_config(root, DEFAULT_DIR if dir is None else dir)
+                write_default_config(root, DEFAULT_DIR if dir is None else dir, diagram_theme)
             elif dir is not None and existing.stem != dir:
                 typer.echo(f"note    {existing.name} already exists; rename it (and its {existing.stem}/ folder) to change the name")
             cfg, created = load_config(root), existing is None
@@ -413,18 +419,28 @@ def trace(
 
 @app.command()
 def diagrams(
-    change: str = typer.Option(..., "--change", "-c", help="Change name or module:name."),
+    change: str | None = typer.Option(None, "--change", "-c", help="Change name or module:name."),
+    themes: bool = typer.Option(False, "--themes", help="List the diagram themes and the one in use."),
     check: bool = typer.Option(False, "--check", help="Only report missing or outdated SVGs (exit 1 if any); no d2 needed."),
     force: bool = typer.Option(False, "--force", help="Re-render every diagram, even up-to-date ones."),
     as_json: bool = JsonOpt,
 ) -> None:
     """Render the change's D2 diagrams (diagrams/*.d2) to SVG with the workspace's diagram settings."""
     ws = workspace(as_json)
+    settings = ws.top.config.diagrams
+    if themes:
+        rows = [{"name": n, "id": i, "dark": n in DARK_THEMES} for n, i in THEMES.items()]
+        data = {"theme": theme_name(settings.theme), "darkTheme": theme_name(settings.dark_theme), "themes": rows}
+        lines = [f"in use: theme {data['theme']}, dark_theme {data['darkTheme']}  ({ws.rel(ws.top.config.config_path)})"]
+        lines += [f"  {r['id']:>4}  {r['name']}{'  (dark)' if r['dark'] else ''}" for r in rows]
+        emit(data, as_json, "\n".join(lines))
+        return
+    if change is None:
+        fail("give --change <ref> (or --themes)", as_json)
     try:
         mod, ch = resolve_change(ws, change)
     except (ChangeError, ConfigError) as exc:
         fail(str(exc), as_json)
-    settings = ws.top.config.diagrams
     results, failed = [], False
     for diagram in diagrams_in(ch.path):
         status = state(diagram, settings)

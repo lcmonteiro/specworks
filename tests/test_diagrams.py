@@ -138,3 +138,68 @@ def test_real_d2_render(change):
     assert code == 0, data
     svg = (change / "diagrams/reset-flow.svg").read_text()
     assert "<!-- specworks:d2 sha256=" in svg and "</svg>" in svg and "Auth API" in svg
+
+
+def set_diagrams(change, block):
+    cfg = change.parents[2] / "spec.yml"
+    text = cfg.read_text()
+    cfg.write_text(text[: text.index("\ndiagrams:\n") + 1] + block)
+
+
+@pytest.mark.parametrize(
+    "theme, dark, expected",
+    [
+        ("c4", "none", "--theme=303 --layout=elk --pad=24 --omit-version"),
+        ("Colorblind Clear", "dark-flagship-terrastruct", "--theme=8 --layout=elk --pad=24 --omit-version --dark-theme=201"),
+        ("4", "200", "--theme=4 --layout=elk --pad=24 --omit-version --dark-theme=200"),
+        ("999", "null", "--theme=999 --layout=elk --pad=24 --omit-version"),
+    ],
+)
+def test_theme_by_name_or_number(change, fake_d2, theme, dark, expected):
+    set_diagrams(change, f"diagrams:\n  theme: {theme}\n  dark_theme: {dark}\n")
+    code, data = run_json("diagrams", "--change", CHANGE)
+    assert code == 0, data
+    svg = (change / "diagrams/reset-flow.svg").read_text()
+    assert expected + "</svg>" in svg
+
+
+def test_renaming_a_theme_to_its_number_keeps_svgs_up_to_date(change, fake_d2):
+    set_diagrams(change, "diagrams:\n  theme: c4\n")
+    run_json("diagrams", "--change", CHANGE)
+    set_diagrams(change, "diagrams:\n  theme: 303\n")
+    code, data = run_json("diagrams", "--change", CHANGE, "--check")
+    assert code == 0 and data["diagrams"][0]["status"] == "ok"
+
+
+def test_unknown_theme_name_lists_the_names(change):
+    set_diagrams(change, "diagrams:\n  theme: rainbow\n")
+    code, data = run_json("context")
+    assert code == 1 and "unknown theme 'rainbow'" in data["error"] and "colorblind-clear" in data["error"]
+
+
+def test_list_themes_shows_the_one_in_use(change):
+    set_diagrams(change, "diagrams:\n  theme: origami\n  dark_theme: none\n")
+    code, data = run_json("diagrams", "--themes")
+    assert code == 0 and data["theme"] == "origami" and data["darkTheme"] == "none"
+    assert {"name": "c4", "id": 303, "dark": False} in data["themes"]
+    assert {"name": "dark-mauve", "id": 200, "dark": True} in data["themes"]
+
+
+def test_diagrams_needs_change_or_themes(change):
+    code, data = run_json("diagrams")
+    assert code == 1 and "--change" in data["error"]
+
+
+def test_init_sets_the_diagram_theme(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    assert runner.invoke(app, ["init", "--no-skills", "--diagram-theme", "Cool Classics"]).exit_code == 0
+    assert "  theme: cool-classics\n" in (tmp_path / "specworks.yml").read_text()
+    code, data = run_json("diagrams", "--themes")
+    assert data["theme"] == "cool-classics"
+
+
+def test_init_rejects_unknown_diagram_theme(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    result = runner.invoke(app, ["init", "--no-skills", "--diagram-theme", "rainbow"])
+    assert result.exit_code == 1 and "unknown theme" in result.output
+    assert not list(tmp_path.glob("*.yml"))

@@ -56,6 +56,55 @@ class Capability:
         }
 
 
+# D2's built-in themes (`d2 themes`), by name. Any other number is passed to d2 as is.
+LIGHT_THEMES = {
+    "neutral-default": 0,
+    "neutral-grey": 1,
+    "flagship-terrastruct": 3,
+    "cool-classics": 4,
+    "mixed-berry-blue": 5,
+    "grape-soda": 6,
+    "aubergine": 7,
+    "colorblind-clear": 8,
+    "vanilla-nitro-cola": 100,
+    "orange-creamsicle": 101,
+    "shirley-temple": 102,
+    "earth-tones": 103,
+    "everglade-green": 104,
+    "buttered-toast": 105,
+    "terminal": 300,
+    "terminal-grayscale": 301,
+    "origami": 302,
+    "c4": 303,
+}
+DARK_THEMES = {"dark-mauve": 200, "dark-flagship-terrastruct": 201}
+THEMES = {**LIGHT_THEMES, **DARK_THEMES}
+
+
+def theme_id(value: object, key: str, allow_none: bool = False) -> int | None:
+    """A theme given by name (``c4``, ``Colorblind Clear``) or number -> its D2 number."""
+    if allow_none and (value is None or (isinstance(value, str) and value.strip().lower() in ("none", "same"))):
+        return None
+    if isinstance(value, int) and not isinstance(value, bool) and value >= 0:
+        return value
+    if isinstance(value, str):
+        name = value.strip().lower().replace(" ", "-").replace("_", "-")
+        if name.isdigit():
+            return int(name)
+        if name in THEMES:
+            return THEMES[name]
+    raise ConfigError(
+        f"'{key}': unknown theme {value!r}; use a name ({', '.join(THEMES)}) or a number from `d2 themes`"
+        + (", or none to use the light theme in dark mode too" if allow_none else "")
+    )
+
+
+def theme_name(number: int | None) -> str:
+    if number is None:
+        return "none"
+    return next((name for name, n in THEMES.items() if n == number), str(number))
+
+
 @dataclass
 class DiagramSettings:
     """How `specworks diagrams` renders D2 sources; set once at the top level for one shared look."""
@@ -76,8 +125,8 @@ def load_diagram_settings(raw: object) -> DiagramSettings:
     if unknown:
         raise ConfigError(f"'diagrams' has unknown keys: {', '.join(sorted(unknown))}")
     settings = DiagramSettings(**raw)
-    if not isinstance(settings.theme, int) or not (settings.dark_theme is None or isinstance(settings.dark_theme, int)):
-        raise ConfigError("'diagrams.theme' and 'diagrams.dark_theme' are D2 theme numbers (see `d2 themes`)")
+    settings.theme = theme_id(raw.get("theme", 0), "diagrams.theme")
+    settings.dark_theme = theme_id(raw.get("dark_theme", 200), "diagrams.dark_theme", allow_none=True)
     if settings.layout not in ("elk", "dagre"):
         raise ConfigError("'diagrams.layout' must be elk or dagre")
     if not isinstance(settings.sketch, bool) or not isinstance(settings.pad, int) or settings.pad < 0:
@@ -277,20 +326,26 @@ test_globs: []
 source_globs: []
 
 # Design diagrams are written in D2 (https://d2lang.com) and rendered to SVG
-# by `specworks diagrams`. The top-level settings apply to the whole workspace.
-# Themes: `d2 themes` (0 Neutral Default, 1 Neutral Grey, 4 Cool Classics,
-# 8 Colorblind Clear, 303 C4; dark: 200 Dark Mauve, 201 Dark Flagship).
+# by `specworks diagrams`. Only the top-level settings are used, so every
+# diagram in the workspace shares one look (modules ignore theirs).
+# Themes by name or number - `specworks diagrams --themes` lists them, e.g.
+# neutral-default, neutral-grey, cool-classics, colorblind-clear, c4, origami;
+# dark mode: dark-mauve, dark-flagship-terrastruct, or none (same as theme).
 diagrams:
-  theme: 0
-  dark_theme: 200
-  layout: elk
-  sketch: false
+  theme: neutral-default
+  dark_theme: dark-mauve
+  layout: elk           # elk or dagre
+  sketch: false         # true for a hand-drawn look
 """
 
 
-def write_default_config(root: Path, dir: str) -> Path:
+def write_default_config(root: Path, dir: str, diagram_theme: str | None = None) -> Path:
     path = root / config_name(validate_dir(dir))
-    path.write_text(DEFAULT_CONFIG, encoding="utf-8")
+    text = DEFAULT_CONFIG
+    if diagram_theme is not None:
+        theme = theme_name(theme_id(diagram_theme, "--diagram-theme"))
+        text = text.replace("  theme: neutral-default\n", f"  theme: {theme}\n", 1)
+    path.write_text(text, encoding="utf-8")
     return path
 
 
