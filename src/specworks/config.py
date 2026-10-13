@@ -57,6 +57,35 @@ class Capability:
 
 
 @dataclass
+class DiagramSettings:
+    """How `specworks diagrams` renders D2 sources; set once at the top level for one shared look."""
+
+    theme: int = 0  # D2 theme ID (`d2 themes`): 0 Neutral Default
+    dark_theme: int | None = 200  # used when the viewer is in dark mode; None = same as theme
+    layout: str = "elk"  # elk (clean orthogonal routing) or dagre
+    sketch: bool = False  # hand-drawn look
+    pad: int = 24
+
+
+def load_diagram_settings(raw: object) -> DiagramSettings:
+    if raw is None:
+        return DiagramSettings()
+    if not isinstance(raw, dict):
+        raise ConfigError("'diagrams' must be a mapping (theme, dark_theme, layout, sketch, pad)")
+    unknown = set(raw) - {"theme", "dark_theme", "layout", "sketch", "pad"}
+    if unknown:
+        raise ConfigError(f"'diagrams' has unknown keys: {', '.join(sorted(unknown))}")
+    settings = DiagramSettings(**raw)
+    if not isinstance(settings.theme, int) or not (settings.dark_theme is None or isinstance(settings.dark_theme, int)):
+        raise ConfigError("'diagrams.theme' and 'diagrams.dark_theme' are D2 theme numbers (see `d2 themes`)")
+    if settings.layout not in ("elk", "dagre"):
+        raise ConfigError("'diagrams.layout' must be elk or dagre")
+    if not isinstance(settings.sketch, bool) or not isinstance(settings.pad, int) or settings.pad < 0:
+        raise ConfigError("'diagrams.sketch' must be true/false and 'diagrams.pad' a non-negative number")
+    return settings
+
+
+@dataclass
 class Config:
     root: Path
     context: str = ""
@@ -66,6 +95,7 @@ class Config:
     modules: dict[str, str] = field(default_factory=dict)
     test_globs: list[str] = field(default_factory=list)
     source_globs: list[str] = field(default_factory=list)
+    diagrams: DiagramSettings = field(default_factory=DiagramSettings)
 
     @property
     def config_path(self) -> Path:
@@ -205,6 +235,7 @@ def load_config(root: Path, dir: str | None = None) -> Config:
         modules=modules,
         test_globs=list(raw.get("test_globs") or []),
         source_globs=list(raw.get("source_globs") or []),
+        diagrams=load_diagram_settings(raw.get("diagrams")),
     )
 
 
@@ -244,6 +275,16 @@ modules: {}
 # "scan everything that is not in the workflow folder".
 test_globs: []
 source_globs: []
+
+# Design diagrams are written in D2 (https://d2lang.com) and rendered to SVG
+# by `specworks diagrams`. The top-level settings apply to the whole workspace.
+# Themes: `d2 themes` (0 Neutral Default, 1 Neutral Grey, 4 Cool Classics,
+# 8 Colorblind Clear, 303 C4; dark: 200 Dark Mauve, 201 Dark Flagship).
+diagrams:
+  theme: 0
+  dark_theme: 200
+  layout: elk
+  sketch: false
 """
 
 

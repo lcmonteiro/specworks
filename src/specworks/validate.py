@@ -8,6 +8,7 @@ from pathlib import Path
 
 from .changes import Change, list_changes
 from .config import ConfigError
+from .diagrams import diagrams_in, referenced_images, state
 from .specfile import DELTA_SECTIONS, LIVING_SECTION, NORMATIVE_RE, Requirement, SpecDoc, ac_parent, find_ids
 from .specs import CapabilityRef, delta_files, read_spec, resolve_delta
 from .workspace import Workspace
@@ -233,6 +234,25 @@ def _check_tasks(ws: Workspace, change: Change, specs: ChangeSpecs, issues: list
             issues.append(Issue("warning", file, 0, f"{req.id} is REMOVED but no task removes its code and tests"))
 
 
+def _check_diagrams(ws: Workspace, change: Change, issues: list[Issue]) -> None:
+    settings = ws.top.config.diagrams
+    design = change.path / "design.md"
+    images = referenced_images(design.read_text(encoding="utf-8")) if design.is_file() else []
+    for ref in images:
+        if not (change.path / ref).is_file():
+            issues.append(Issue("error", ws.rel(design), 0, f"image {ref} does not exist"))
+    for diagram in diagrams_in(change.path):
+        rel = diagram.svg.relative_to(change.path).as_posix()
+        status = state(diagram, settings)
+        if status != "ok":
+            what = "has no SVG" if status == "missing" else "has an outdated SVG"
+            issues.append(
+                Issue("warning", ws.rel(diagram.source), 0, f"{what}; run `specworks diagrams --change <ref>`")
+            )
+        if rel not in images:
+            issues.append(Issue("warning", ws.rel(diagram.source), 0, f"not shown in design.md; add ![caption]({rel})"))
+
+
 def validate_change(ws: Workspace, change: Change) -> tuple[ChangeSpecs, list[Issue]]:
     specs = collect(ws, change)
     issues = list(specs.issues)
@@ -254,4 +274,5 @@ def validate_change(ws: Workspace, change: Change) -> tuple[ChangeSpecs, list[Is
     for delta in specs.deltas:
         _check_delta(ws, change, delta, seen, issues)
     _check_tasks(ws, change, specs, issues)
+    _check_diagrams(ws, change, issues)
     return specs, issues

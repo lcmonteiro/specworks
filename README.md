@@ -69,7 +69,30 @@ The system SHALL email a single-use reset link valid for 30 minutes.
 |---|---|
 | `specworks spec list` / `spec show <ref>` | capabilities, their requirements, ID prefix, next free ID and delta path |
 | `specworks validate --change <ref>` | checks proposal, delta specs (IDs, SHALL/MUST, scenarios, MODIFIED/REMOVED targets, ID clashes with other changes) and tasks (format, every AC covered) |
+| `specworks diagrams --change <ref> [--check]` | renders the change's `diagrams/*.d2` to SVG with the workspace theme; `--check` reports missing/outdated SVGs without rendering |
 | `specworks trace --change <ref> [--write]` | REQ -> AC -> tasks -> tests (`@ac`) -> code (`@req`) matrix and its gaps; `--write` saves `traceability.md` |
+
+## Diagrams
+
+Designs use [D2](https://d2lang.com) for diagrams: the agent writes a short
+text file (`diagrams/<name>.d2`) and `specworks diagrams` renders it to SVG,
+which `design.md` embeds. The source stays reviewable in diffs, the SVG looks
+good on GitHub, and every diagram shares one theme set in the top-level config:
+
+```yaml
+diagrams:
+  theme: 0          # `d2 themes` lists them (8 Colorblind Clear, 303 C4, ...)
+  dark_theme: 200   # used in dark mode
+  layout: elk       # or dagre
+  sketch: false     # true for a hand-drawn look
+```
+
+Each SVG is stamped with a hash of its source and these settings, so
+`specworks validate` (and `diagrams --check`, e.g. in CI) can tell when one is
+outdated. Rendering needs the `d2` program
+([install](https://d2lang.com/tour/install): `brew install d2`, the install
+script, or `go install oss.terrastruct.com/d2@latest`); everything else works
+without it.
 
 ## Modules (sub-projects)
 

@@ -22,6 +22,12 @@
 
 <!-- Public APIs, data shapes, events, CLI surfaces the tests will target -->
 
+## Diagrams
+
+<!-- Optional. Write diagrams/<name>.d2, run `specworks diagrams --change <ref>`, then embed:
+![Password reset flow (REQ-AUTH-003)](diagrams/reset-flow.svg)
+-->
+
 ## Risks / Trade-offs
 
 - <!-- [risk] -> mitigation -->

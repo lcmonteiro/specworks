@@ -129,6 +129,16 @@ When the artifacts are done, stop and suggest `/specworks-test`.
    interfaces (APIs, data shapes, CLI surfaces) the test phase will target,
    and resolve open questions that would change the tasks with the user now.
 
+   Diagrams, when they help: write `diagrams/<name>.d2` in the change folder
+   following the D2 rules in `instruction` (no colours or styles; the theme
+   handles the look), then render and embed them:
+   ```bash
+   specworks diagrams --change "<ref>"
+   ```
+   Fix any D2 error it reports (often an unquoted label with `{` or `:`).
+   If it says d2 is not installed, keep the `.d2` files, pass the install
+   hint to the user, and continue; `validate` will remind you later.
+
 7. **Write `tasks.md`**
 
    ```bash

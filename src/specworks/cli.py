@@ -31,6 +31,7 @@ from .config import (
     write_default_config,
 )
 from .skills import TOOLS, ToolError, install_skills, parse_tools
+from .diagrams import DiagramError, diagrams_in, find_d2, render, state
 from .specs import capability_ref, describe, resolve_ref, workspace_capabilities
 from .trace import build_matrix, gaps, scan_tags, to_markdown, unknown_tags, write_traceability
 from .validate import validate_change
@@ -408,6 +409,39 @@ def trace(
     }
     text = markdown + (f"\nwrote {written}" if written else "")
     emit(data, as_json, text)
+
+
+@app.command()
+def diagrams(
+    change: str = typer.Option(..., "--change", "-c", help="Change name or module:name."),
+    check: bool = typer.Option(False, "--check", help="Only report missing or outdated SVGs (exit 1 if any); no d2 needed."),
+    force: bool = typer.Option(False, "--force", help="Re-render every diagram, even up-to-date ones."),
+    as_json: bool = JsonOpt,
+) -> None:
+    """Render the change's D2 diagrams (diagrams/*.d2) to SVG with the workspace's diagram settings."""
+    ws = workspace(as_json)
+    try:
+        mod, ch = resolve_change(ws, change)
+    except (ChangeError, ConfigError) as exc:
+        fail(str(exc), as_json)
+    settings = ws.top.config.diagrams
+    results, failed = [], False
+    for diagram in diagrams_in(ch.path):
+        status = state(diagram, settings)
+        entry = {"source": ws.rel(diagram.source), "svg": ws.rel(diagram.svg), "status": status}
+        if not check and (force or status != "ok"):
+            try:
+                render(diagram, settings)
+                entry["status"] = "rendered"
+            except DiagramError as exc:
+                entry.update(status="error", error=str(exc))
+        failed |= entry["status"] in ("missing", "stale", "error")
+        results.append(entry)
+    data = {**change_dict(ws, mod, ch), "d2": find_d2(), "diagrams": results}
+    lines = [f"{r['status']:<9} {r['svg']}" + (f"\n          {r['error']}" if "error" in r else "") for r in results]
+    emit(data, as_json, "\n".join(lines) or "no diagrams (add diagrams/<name>.d2 to the change)")
+    if failed:
+        raise typer.Exit(1)
 
 
 @spec_app.command("show")

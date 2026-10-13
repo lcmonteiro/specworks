@@ -131,6 +131,28 @@ artifacts:
         Reference requirement IDs a decision serves.
       - **Interfaces**: public APIs, data shapes, events or CLI surfaces that
         tests will be written against in the test phase. Name them precisely.
+      - **Diagrams**: only where a picture explains what text cannot - a
+        sequence diagram for a new flow, a state diagram for a lifecycle, a
+        component diagram for a change across modules or services, a data
+        model for new tables. Usually 0-3 per design.
+
+      Diagrams are D2 (https://d2lang.com), rendered to SVG by the CLI:
+      - Write `diagrams/<name>.d2` in the change folder (kebab-case name), run
+        `specworks diagrams --change <ref>`, and embed the result in
+        design.md as `![<caption> (REQ-...)](diagrams/<name>.svg)` with the
+        requirement IDs it illustrates.
+      - One idea per diagram, about 12 shapes at most; give every shape a
+        readable label (`api: Auth API`) and label every connection with what
+        flows (`api -> mail: reset link`).
+      - Flows: `shape: sequence_diagram`. Components: nest containers
+        (`auth: Auth service { api: API; db: Users DB {shape: cylinder} }`).
+        States: shapes as states, connections labelled with events. Tables:
+        `shape: sql_table`. Add `direction: right` for wide diagrams.
+      - Do not set colours, fonts or styles: the workspace theme gives every
+        diagram the same look. Quote labels containing `{ } : ; # | "`.
+      - Never edit the SVG by hand; change the .d2 and re-render. If d2 is
+        not installed, keep the .d2, tell the user how to install it, and
+        continue.
       - **Risks / Trade-offs**: `[risk] -> mitigation`.
       - **Migration / Rollback**: when deployment or data needs steps.
       - **Open Questions**: only ones that do not change specs, approach or
