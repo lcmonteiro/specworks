@@ -1,0 +1,63 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Tests (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync --locked
+
+      - name: Run tests
+        run: uv run pytest -v
+
+  package:
+    name: Build and smoke-test the wheel
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      - name: Build
+        run: uv build
+
+      # The CLI reads schema.yaml, templates/ and skills/ from the installed
+      # package, so check they made it into the wheel.
+      - name: Run the installed CLI
+        run: |
+          project="$(mktemp -d)"
+          cd "$project"
+          uv tool run --from "$(ls "$GITHUB_WORKSPACE"/dist/*.whl)" specworks init --dir spec --tools all
+          uv tool run --from "$(ls "$GITHUB_WORKSPACE"/dist/*.whl)" specworks new add-example
+          uv tool run --from "$(ls "$GITHUB_WORKSPACE"/dist/*.whl)" specworks instructions refinement --change add-example --json > /dev/null
+          test -f spec.yml
+          test -f .claude/skills/specworks-refine/SKILL.md
+          test -f .github/skills/specworks-refine/SKILL.md
+          test -f .github/prompts/specworks-refine.prompt.md

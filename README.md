@@ -1,5 +1,7 @@
 # specworks
 
+[![CI](https://github.com/lcmonteiro/specworks/actions/workflows/ci.yml/badge.svg)](https://github.com/lcmonteiro/specworks/actions/workflows/ci.yml)
+
 Spec-driven development for AI coding agents, inspired by
 [OpenSpec](https://github.com/Fission-AI/OpenSpec) and written in Python (managed with `uv`).
 
