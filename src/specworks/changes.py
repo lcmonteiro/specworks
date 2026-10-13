@@ -28,15 +28,6 @@ class Change:
     created: str = ""
     skip_specs: bool = False
 
-    def to_dict(self, root: Path) -> dict:
-        return {
-            "name": self.name,
-            "path": str(self.path.relative_to(root)),
-            "phase": self.phase,
-            "created": self.created,
-            "skipSpecs": self.skip_specs,
-        }
-
     def save(self) -> None:
         data = {"name": self.name, "created": self.created, "phase": self.phase}
         if self.skip_specs:

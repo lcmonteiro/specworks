@@ -1,0 +1,172 @@
+import json
+
+import pytest
+from typer.testing import CliRunner
+
+from specworks.cli import app
+
+runner = CliRunner()
+
+
+def run(*args):
+    result = runner.invoke(app, list(args))
+    assert result.exit_code == 0, result.output
+    return result.output
+
+
+def run_json(*args):
+    result = runner.invoke(app, [*args, "--json"])
+    return result.exit_code, json.loads(result.output)
+
+
+@pytest.fixture
+def workspace(tmp_path, monkeypatch):
+    """Top-level project with module billing (services/billing) and nested module billing/tax."""
+    monkeypatch.chdir(tmp_path)
+    run("init", "--dir", "spec")
+    (tmp_path / "specworks.yaml").write_text(
+        (tmp_path / "specworks.yaml").read_text().replace("context: |\n", "context: |\n  Company-wide: Python 3.12\n")
+    )
+    run("module", "add", "services/billing")
+    billing = tmp_path / "services/billing"
+    (billing / "specworks.yaml").write_text(
+        (billing / "specworks.yaml").read_text()
+        .replace("context: |\n", "context: |\n  Billing: money is Decimal\n")
+        .replace("capabilities: {}", "capabilities:\n  invoices:\n    path: src/invoices")
+    )
+    monkeypatch.chdir(billing)
+    run("module", "add", "tax")
+    monkeypatch.chdir(tmp_path)
+    return tmp_path
+
+
+def test_module_add_links_parent_and_creates_module(workspace):
+    assert "  billing: services/billing\n" in (workspace / "specworks.yaml").read_text()
+    assert "  tax: tax\n" in (workspace / "services/billing/specworks.yaml").read_text()
+    assert (workspace / "services/billing/spec/changes/archive").is_dir()
+    assert "dir: spec" in (workspace / "services/billing/specworks.yaml").read_text()
+
+
+def test_module_add_keeps_comments(workspace):
+    assert "# Modules: sub-projects" in (workspace / "specworks.yaml").read_text()
+
+
+def test_module_list_shows_tree(workspace):
+    code, data = run_json("module", "list")
+    assert [m["name"] for m in data["modules"]] == ["(top)", "billing", "billing/tax"]
+    assert data["modules"][0]["current"] is True
+
+
+def test_context_inside_module_inherits_and_sees_whole_workspace(workspace, monkeypatch):
+    monkeypatch.chdir(workspace / "services/billing/tax")
+    code, data = run_json("context")
+    assert code == 0
+    assert data["root"] == str(workspace)
+    assert data["module"] == "billing/tax"
+    assert [c["module"] for c in data["contextChain"]] == ["(top)", "billing"]
+    assert data["context"].index("Company-wide") < data["context"].index("Billing")
+    assert data["capabilities"] == [
+        {
+            "name": "billing:invoices",
+            "module": "billing",
+            "path": "services/billing/src/invoices",
+            "description": "",
+            "docsPath": "services/billing/src/invoices/docs",
+            "hasSpec": False,
+        }
+    ]
+
+
+def test_new_goes_to_nearest_module(workspace, monkeypatch):
+    (workspace / "services/billing/src").mkdir()
+    monkeypatch.chdir(workspace / "services/billing/src")
+    code, data = run_json("new", "add-refunds")
+    assert data["path"] == "services/billing/spec/changes/add-refunds"
+    assert data["ref"] == "billing:add-refunds"
+
+
+def test_new_with_module_option(workspace):
+    code, data = run_json("new", "add-vat", "--module", "billing/tax")
+    assert data["path"] == "services/billing/tax/spec/changes/add-vat"
+    code, data = run_json("new", "x", "--module", "nope")
+    assert code == 1 and "unknown module" in data["error"]
+
+
+def test_bare_change_name_resolves_across_modules(workspace):
+    run_json("new", "add-vat", "--module", "billing/tax")
+    code, data = run_json("status", "--change", "add-vat")
+    assert code == 0 and data["ref"] == "billing/tax:add-vat"
+
+
+def test_ambiguous_change_name_needs_module_prefix(workspace, monkeypatch):
+    run_json("new", "cleanup", "--module", "billing")
+    run_json("new", "cleanup", "--module", "billing/tax")
+    code, data = run_json("status", "--change", "cleanup")
+    assert code == 1 and "billing:cleanup" in data["error"] and "billing/tax:cleanup" in data["error"]
+    code, data = run_json("status", "--change", "billing/tax:cleanup")
+    assert code == 0 and data["module"] == "billing/tax"
+
+
+def test_current_module_wins_for_bare_name(workspace, monkeypatch):
+    run_json("new", "cleanup")
+    run_json("new", "cleanup", "--module", "billing")
+    code, data = run_json("status", "--change", "cleanup")
+    assert data["module"] == "(top)"
+
+
+def test_list_all_includes_every_module(workspace):
+    run_json("new", "top-change")
+    run_json("new", "bill-change", "--module", "billing")
+    code, data = run_json("list")
+    assert [c["ref"] for c in data["changes"]] == ["top-change"]
+    code, data = run_json("list", "--all")
+    assert [c["ref"] for c in data["changes"]] == ["top-change", "billing:bill-change"]
+
+
+def test_instructions_in_module_use_inherited_context(workspace):
+    run_json("new", "add-refunds", "--module", "billing")
+    code, data = run_json("instructions", "refinement", "--change", "billing:add-refunds")
+    assert data["outputPath"] == "services/billing/spec/changes/add-refunds/refinement.md"
+    assert "Company-wide" in data["context"] and "Billing" in data["context"]
+
+
+def test_init_in_subfolder_links_to_parent(workspace):
+    run("init", "libs/auth", "--name", "auth")
+    assert "  auth: libs/auth\n" in (workspace / "specworks.yaml").read_text()
+    assert not (workspace / "libs/auth/.claude").exists()  # skills stay at the workspace root
+    code, data = run_json("module", "list")
+    assert "auth" in [m["name"] for m in data["modules"]]
+
+
+def test_init_no_link_keeps_project_independent(workspace, monkeypatch):
+    run("init", "tools/other", "--no-link", "--no-skills")
+    assert "tools/other" not in (workspace / "specworks.yaml").read_text()
+    monkeypatch.chdir(workspace / "tools/other")
+    code, data = run_json("context")
+    assert data["root"] == str(workspace / "tools/other")
+    assert data["module"] == "(top)"
+
+
+def test_missing_module_is_reported_not_fatal(workspace):
+    (workspace / "specworks.yaml").write_text(
+        (workspace / "specworks.yaml").read_text().replace("\nmodules:\n", "\nmodules:\n  ghost: vendor/ghost\n")
+    )
+    code, data = run_json("context")
+    assert code == 0
+    assert data["missingModules"] == [{"name": "ghost", "path": "vendor/ghost"}]
+
+
+def test_duplicate_module_rejected(workspace):
+    code, data = run_json("module", "add", "services/billing", "--name", "billing2")
+    assert code == 1 and "already linked" in data["error"]
+    code, data = run_json("module", "add", "other", "--name", "billing")
+    assert code == 1 and "already exists" in data["error"]
+
+
+@pytest.mark.parametrize("modules", ["  bad: ../x\n", "  Bad_Name: x\n"])
+def test_invalid_module_entries_rejected(workspace, modules):
+    (workspace / "specworks.yaml").write_text(
+        (workspace / "specworks.yaml").read_text().replace("\nmodules:\n", "\nmodules:\n" + modules)
+    )
+    code, data = run_json("context")
+    assert code == 1

@@ -9,7 +9,7 @@ from importlib import resources
 import yaml
 
 from .changes import Change
-from .config import Config
+from .workspace import Module, Workspace
 
 
 @dataclass
@@ -66,7 +66,7 @@ def artifact_states(change: Change) -> list[dict]:
     return states
 
 
-def instructions(cfg: Config, change: Change, artifact_id: str) -> dict:
+def instructions(ws: Workspace, module: Module, change: Change, artifact_id: str) -> dict:
     artifacts = load_artifacts()
     if artifact_id not in artifacts:
         raise WorkflowError(f"unknown artifact '{artifact_id}'; expected one of {', '.join(artifacts)}")
@@ -74,18 +74,20 @@ def instructions(cfg: Config, change: Change, artifact_id: str) -> dict:
     return {
         "artifact": art.id,
         "phase": art.phase,
-        "change": change.name,
-        "changeDir": str(change.path.relative_to(cfg.root)),
-        "outputPath": str((change.path / art.generates).relative_to(cfg.root)),
+        "change": module.qualify(change.name),
+        "module": module.label,
+        "root": str(ws.root),
+        "changeDir": ws.rel(change.path),
+        "outputPath": f"{ws.rel(change.path)}/{art.generates}",
         "exists": art.exists(change),
         "optional": art.optional,
-        "context": cfg.context,
+        "context": ws.merged_context(module),
         "instruction": art.instruction,
         "template": read_template(art.template),
         "dependencies": [
             {
                 "id": dep,
-                "path": str((change.path / artifacts[dep].generates).relative_to(cfg.root)),
+                "path": f"{ws.rel(change.path)}/{artifacts[dep].generates}",
                 "done": artifacts[dep].exists(change),
             }
             for dep in art.requires
