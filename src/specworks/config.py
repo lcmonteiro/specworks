@@ -22,6 +22,7 @@ DIR_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]*$")
 DEFAULT_DOCS_DIR = "docs"
 MAX_CONTEXT_BYTES = 50 * 1024
 MODULE_NAME_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
+PREFIX_RE = re.compile(r"^[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)*$")
 
 
 class ConfigError(Exception):
@@ -39,6 +40,7 @@ class Capability:
     name: str
     path: str
     description: str = ""
+    prefix: str = ""  # requirement ID prefix (REQ-<prefix>-001); derived from the name when empty
 
     def docs_path(self, root: Path, docs_dir: str) -> Path:
         return root / self.path / docs_dir
@@ -170,14 +172,20 @@ def load_config(root: Path, dir: str | None = None) -> Config:
 
     capabilities = {}
     for name, value in (raw.get("capabilities") or {}).items():
+        if not isinstance(name, str) or not MODULE_NAME_RE.match(name):
+            raise ConfigError(f"capability name '{name}' must be kebab-case (e.g. user-auth)")
         if isinstance(value, str):
             value = {"path": value}
         if not isinstance(value, dict) or "path" not in value:
             raise ConfigError(f"capability '{name}' needs a 'path'")
+        prefix = str(value.get("prefix", "") or "")
+        if prefix and not PREFIX_RE.match(prefix):
+            raise ConfigError(f"capability '{name}': prefix '{prefix}' must be upper-case letters/digits (e.g. AUTH)")
         capabilities[name] = Capability(
             name=name,
-            path=str(value["path"]).rstrip("/"),
+            path=validate_relative(str(value["path"]).rstrip("/"), f"capability '{name}' path"),
             description=str(value.get("description", "")),
+            prefix=prefix,
         )
 
     raw_modules = raw.get("modules") or {}
@@ -215,11 +223,14 @@ context: |
 docs_dir: docs
 
 # Capabilities: durable behaviours of the system and the code folder that owns
-# each one. `done` writes the capability's living docs into <path>/<docs_dir>/.
+# each one. `close` writes the capability's living docs into <path>/<docs_dir>/.
+# Requirement IDs are REQ-<prefix>-NNN; the prefix defaults to the capability
+# name in upper case (with the module name in front inside a module).
 # capabilities:
 #   user-auth:
 #     path: src/auth
 #     description: Login, sessions and password reset
+#     prefix: AUTH          # optional: REQ-AUTH-001 instead of REQ-USER-AUTH-001
 capabilities: {}
 
 # Modules: sub-projects with their own config (same file name as this one),

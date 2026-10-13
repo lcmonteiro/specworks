@@ -12,7 +12,7 @@ refine -> propose -> test -> implement -> review -> verify -> close
 | Phase     | Skill                  | Output |
 |-----------|------------------------|--------|
 | refine    | `/specworks-refine`    | `refinement.md`: problem, context, constraints, options, recommendation |
-| propose   | `/specworks-propose`   | proposal, requirements + acceptance criteria, design, tasks, traceability *(planned)* |
+| propose   | `/specworks-propose`   | `proposal.md`, delta specs (requirements + acceptance criteria), `design.md`, `tasks.md`, `traceability.md` |
 | test      | `/specworks-test`      | failing tests per acceptance criterion + API stubs *(planned)* |
 | implement | `/specworks-implement` | implementation driven by tasks and specs *(planned)* |
 | review    | `/specworks-review`    | fixes code <-> spec drift; **may edit** code and spec deltas *(planned)* |
@@ -38,6 +38,38 @@ creates `spec.yml` and `spec/` (or `docs.yml` + `docs/`, `context.yml` + `contex
 The file starts with `specworks: 1`, which marks it as a specworks config (so an
 unrelated `docs.yml` is never mistaken for one).
 `<docs_dir>` defaults to `docs`.
+
+## Specs, IDs and traceability
+
+A change describes behaviour changes as **delta specs**, one per capability, at
+`<dir>/changes/<change>/specs/[<module>/]<capability>/spec.md`:
+
+```markdown
+## ADDED Requirements
+
+### Requirement: REQ-AUTH-003 Password reset
+The system SHALL email a single-use reset link valid for 30 minutes.
+
+#### Scenario: AC-AUTH-003.1 Request reset
+- **WHEN** a user asks for a reset with a known email
+- **THEN** a reset link is emailed
+```
+
+- Requirements are `REQ-<prefix>-NNN`; their acceptance criteria are
+  `AC-<prefix>-NNN.<n>`. The prefix is the capability name in upper case
+  (`billing:invoices` -> `BILLING-INVOICES`) or the capability's `prefix:` in the config.
+- `## MODIFIED Requirements` repeats a whole existing block (same ID);
+  `## REMOVED Requirements` needs **Reason** and **Migration**. IDs are never reused.
+- `close` merges the deltas into the living spec next to the code
+  (`<capability path>/<docs_dir>/spec.md`).
+- Tests and code point back with comment tags in any language:
+  `# @ac AC-AUTH-003.1` in a test, `// @req REQ-AUTH-003` in code.
+
+| Command | What it does |
+|---|---|
+| `specworks spec list` / `spec show <ref>` | capabilities, their requirements, ID prefix, next free ID and delta path |
+| `specworks validate --change <ref>` | checks proposal, delta specs (IDs, SHALL/MUST, scenarios, MODIFIED/REMOVED targets, ID clashes with other changes) and tasks (format, every AC covered) |
+| `specworks trace --change <ref> [--write]` | REQ -> AC -> tasks -> tests (`@ac`) -> code (`@req`) matrix and its gaps; `--write` saves `traceability.md` |
 
 ## Modules (sub-projects)
 

@@ -31,12 +31,17 @@ from .config import (
     write_default_config,
 )
 from .skills import TOOLS, ToolError, install_skills, parse_tools
+from .specs import capability_ref, describe, resolve_ref, workspace_capabilities
+from .trace import build_matrix, gaps, scan_tags, to_markdown, unknown_tags, write_traceability
+from .validate import validate_change
 from .workflow import WorkflowError, artifact_states, instructions
 from .workspace import Module, Workspace, load_module_config, load_workspace
 
 app = typer.Typer(help="Spec-driven development: refine → propose → test → implement → review → verify → close.")
 module_app = typer.Typer(help="Manage modules (sub-projects linked to this one, like git submodules).")
 app.add_typer(module_app, name="module")
+spec_app = typer.Typer(help="Read capabilities and their living specs.")
+app.add_typer(spec_app, name="spec")
 
 JsonOpt = typer.Option(False, "--json", help="Machine-readable output.")
 AllOpt = typer.Option(False, "--all", help="Include every module of the workspace.")
@@ -241,14 +246,17 @@ def context(as_json: bool = JsonOpt, all_modules: bool = AllOpt) -> None:
     capabilities = []
     for mod, cap in ws.capabilities():
         docs = cap.docs_path(mod.root, mod.config.docs_dir)
+        ref = capability_ref(mod, cap.name)
         capabilities.append(
             {
-                "name": mod.qualify(cap.name),
+                "name": ref.ref,
                 "module": mod.label,
                 "path": ws.rel(mod.root / cap.path),
                 "description": cap.description,
                 "docsPath": ws.rel(docs),
                 "hasSpec": (docs / "spec.md").is_file(),
+                "prefix": ref.prefix,
+                "deltaPath": ref.delta_path,
             }
         )
     changes = changes_of(ws, all_modules)
@@ -342,6 +350,98 @@ def instructions_cmd(
         fail(str(exc), as_json)
     text = f"# {data['artifact']} → {data['outputPath']}\n\n{data['instruction']}\n---\n{data['template']}"
     emit(data, as_json, text)
+
+
+@app.command()
+def validate(
+    change: str = typer.Option(..., "--change", "-c", help="Change name or module:name."),
+    strict: bool = typer.Option(False, "--strict", help="Treat warnings as errors."),
+    as_json: bool = JsonOpt,
+) -> None:
+    """Check a change's proposal, delta specs and tasks (IDs, SHALL/MUST, scenarios, coverage)."""
+    ws = workspace(as_json)
+    try:
+        mod, ch = resolve_change(ws, change)
+    except (ChangeError, ConfigError) as exc:
+        fail(str(exc), as_json)
+    _, issues = validate_change(ws, ch)
+    errors = [i for i in issues if i.level == "error" or strict]
+    data = {
+        **change_dict(ws, mod, ch),
+        "valid": not errors,
+        "errors": sum(i.level == "error" for i in issues),
+        "warnings": sum(i.level == "warning" for i in issues),
+        "issues": [i.to_dict() for i in issues],
+    }
+    verdict = "valid" if not errors else "INVALID"
+    text = "\n".join([*(str(i) for i in issues), f"{mod.qualify(ch.name)}: {verdict} ({data['errors']} errors, {data['warnings']} warnings)"])
+    emit(data, as_json, text)
+    if errors:
+        raise typer.Exit(1)
+
+
+@app.command()
+def trace(
+    change: str = typer.Option(..., "--change", "-c", help="Change name or module:name."),
+    write: bool = typer.Option(False, "--write", help="Write traceability.md in the change folder."),
+    as_json: bool = JsonOpt,
+) -> None:
+    """Requirement -> acceptance criterion -> task -> test (@ac) -> code (@req) matrix of a change."""
+    ws = workspace(as_json)
+    try:
+        mod, ch = resolve_change(ws, change)
+    except (ChangeError, ConfigError) as exc:
+        fail(str(exc), as_json)
+    specs, issues = validate_change(ws, ch)
+    tags = scan_tags(ws)
+    rows = build_matrix(specs, tags)
+    found = gaps(rows)
+    markdown = to_markdown(mod.qualify(ch.name), rows, found)
+    written = ws.rel(write_traceability(ch, markdown)) if write else None
+    data = {
+        **change_dict(ws, mod, ch),
+        "rows": [vars(r) for r in rows],
+        "gaps": found,
+        "unknownTags": [{"id": t.id, "where": t.where} for t in unknown_tags(specs, tags)],
+        "specErrors": sum(i.level == "error" for i in issues),
+        "written": written,
+    }
+    text = markdown + (f"\nwrote {written}" if written else "")
+    emit(data, as_json, text)
+
+
+@spec_app.command("show")
+def spec_show(
+    ref: str = typer.Argument(..., help="Capability name, or module:name for another module."),
+    no_scenarios: bool = typer.Option(False, "--no-scenarios", help="Only requirement IDs and titles."),
+    as_json: bool = JsonOpt,
+) -> None:
+    """A capability's living spec, ID prefix, next free ID and delta path (also for a new capability)."""
+    ws = workspace(as_json)
+    try:
+        cap = resolve_ref(ws, ref)
+    except ConfigError as exc:
+        fail(str(exc), as_json)
+    data = describe(ws, cap, with_scenarios=not no_scenarios)
+    lines = [
+        f"{data['ref']}{'  (new)' if data['new'] else ''}",
+        f"  prefix:    REQ-{data['prefix']}-  next: {data['nextId']}",
+        f"  delta:     {data['deltaPath']}",
+        f"  living:    {data['livingSpec'] or '-'}",
+    ]
+    lines += [f"  {r['id']}  {r['title']}" for r in data["requirements"]]
+    emit(data, as_json, "\n".join(lines))
+
+
+@spec_app.command("list")
+def spec_list(as_json: bool = JsonOpt) -> None:
+    """Every capability of the workspace with its prefix and living spec."""
+    ws = workspace(as_json)
+    caps = [describe(ws, c, with_scenarios=False) for c in workspace_capabilities(ws)]
+    for c in caps:
+        c["requirements"] = len(c["requirements"])
+    text = "\n".join(f"{c['ref']:<28} REQ-{c['prefix']}-  {c['requirements']} req  {c['livingSpec']}" for c in caps)
+    emit({"root": str(ws.root), "capabilities": caps}, as_json, text or "no capabilities")
 
 
 @module_app.command("add")

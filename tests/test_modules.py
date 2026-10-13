@@ -74,6 +74,8 @@ def test_context_inside_module_inherits_and_sees_whole_workspace(workspace, monk
             "description": "",
             "docsPath": "services/billing/src/invoices/docs",
             "hasSpec": False,
+            "prefix": "BILLING-INVOICES",
+            "deltaPath": "specs/billing/invoices/spec.md",
         }
     ]
 
