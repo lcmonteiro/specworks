@@ -1,12 +1,13 @@
 """Workspace: a top-level project and the modules (sub-projects) linked to it.
 
-Like git submodules, the parent lists each module explicitly in its
-``specworks.yaml`` (``modules: {name: path}``) and every module is a complete
-project with its own config. Commands act on the *current* module, the one
+Like git submodules, the parent lists each module explicitly in its config
+(``modules: {name: path}``) and every module is a complete project with its
+own config. Commands act on the *current* module, the one
 nearest to the working directory, but see the whole tree:
 
-- the workflow folder name (``dir``) is set by the top level and shared by
-  every module, so all modules keep their specs under the same folder name;
+- the workflow folder name is set by the top level's config file name
+  (``spec.yml`` -> ``spec/``) and shared by every module: each module has a
+  ``spec.yml`` and a ``spec/`` folder too;
 - context is inherited: top-level context first, then each module down to the
   current one;
 - capabilities and changes of other modules are addressed as ``module:name``,
@@ -19,7 +20,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Iterator
 
-from .config import CONFIG_FILE, Capability, Config, ConfigError, find_root, load_config
+from .config import Capability, Config, ConfigError, config_name, find_config, find_root, load_config
 
 SEP = ":"
 
@@ -59,7 +60,7 @@ class Module:
 
 @dataclass
 class MissingModule:
-    """A module listed by its parent whose folder has no specworks.yaml (e.g. a submodule not checked out)."""
+    """A module listed by its parent whose folder has no config (e.g. a submodule not checked out)."""
 
     name: str
     path: Path
@@ -122,32 +123,35 @@ def _links_to(parent: Config, child_root: Path) -> str | None:
     return None
 
 
-def check_module_dir(config: Config, name: str, workspace_dir: str) -> None:
-    """A module uses the top level's folder name; it may omit `dir` but not set another one."""
-    if config.dir_set and config.dir != workspace_dir:
+def load_module_config(root: Path, name: str, workspace_dir: str) -> Config | None:
+    """Config of a module, which must use the workspace's file name (<dir>.yml); None if it has none."""
+    found = find_config(root)
+    if found is None:
+        return None
+    if found.name != config_name(workspace_dir):
         raise ConfigError(
-            f"module '{name}' sets dir: {config.dir} in {config.root / CONFIG_FILE}, but the workspace "
-            f"uses dir: {workspace_dir}; set it to {workspace_dir} or remove it"
+            f"module '{name}' uses {found.name} ({found.stem}/), but the workspace uses "
+            f"{config_name(workspace_dir)} ({workspace_dir}/); rename {found} to {config_name(workspace_dir)} "
+            f"and its {found.stem}/ folder to {workspace_dir}/"
         )
-    config.dir = workspace_dir
+    return load_config(root, workspace_dir)
 
 
 def _load_tree(config: Config, name: str, parent: Module | None, missing: list[MissingModule]) -> Module:
-    if parent is not None:
-        check_module_dir(config, name, parent.config.dir)
     module = Module(name=name, config=config, parent=parent)
     for child_name, child_path in config.modules.items():
         child_root = (config.root / child_path).resolve()
         full_name = f"{name}/{child_name}" if name else child_name
-        if not (child_root / CONFIG_FILE).is_file():
+        child_config = load_module_config(child_root, full_name, config.dir)
+        if child_config is None:
             missing.append(MissingModule(name=full_name, path=child_root))
             continue
-        module.children.append(_load_tree(load_config(child_root), full_name, module, missing))
+        module.children.append(_load_tree(child_config, full_name, module, missing))
     return module
 
 
 def load_workspace(start: Path | None = None) -> Workspace | None:
-    """Load the workspace containing ``start``; None when there is no specworks.yaml above it.
+    """Load the workspace containing ``start``; None when there is no specworks config above it.
 
     The nearest config is the current module. Walking up, each ancestor that
     lists the current top as a module becomes the new top; the first ancestor
@@ -158,7 +162,7 @@ def load_workspace(start: Path | None = None) -> Workspace | None:
         return None
     top_root = nearest
     for ancestor in nearest.parents:
-        if not (ancestor / CONFIG_FILE).is_file():
+        if find_config(ancestor) is None:
             continue
         if _links_to(load_config(ancestor), top_root) is None:
             break

@@ -29,7 +29,7 @@ def test_context_without_project_reports_null_root(tmp_path, monkeypatch):
 
 
 def test_init_creates_config_changes_and_skills(project):
-    assert (project / "specworks.yaml").is_file()
+    assert (project / "specworks.yml").is_file()
     assert (project / "specworks/changes/archive").is_dir()
     assert (project / ".claude/skills/sw-refine/SKILL.md").is_file()
 
@@ -73,8 +73,8 @@ def test_status_marks_refinement_done_once_written(project):
 
 
 def test_context_lists_capabilities_with_docs_path(project):
-    (project / "specworks.yaml").write_text(
-        "context: Python 3.12 service\ncapabilities:\n  user-auth:\n    path: src/auth\n"
+    (project / "specworks.yml").write_text(
+        "specworks: 1\ncontext: Python 3.12 service\ncapabilities:\n  user-auth:\n    path: src/auth\n"
     )
     code, data = run_json("context")
     assert code == 0
@@ -91,35 +91,48 @@ def test_phase_moves_and_validates(project):
     assert code == 1
 
 
-@pytest.mark.parametrize("folder", ["spec", "docs", "context", "docs/spec"])
-def test_init_with_custom_dir(tmp_path, monkeypatch, folder):
+@pytest.mark.parametrize("folder", ["spec", "docs", "context", "specworks"])
+def test_init_with_custom_dir_names_config_after_folder(tmp_path, monkeypatch, folder):
     monkeypatch.chdir(tmp_path)
     assert runner.invoke(app, ["init", "--dir", folder]).exit_code == 0
-    assert f"dir: {folder}\n" in (tmp_path / "specworks.yaml").read_text()
+    assert (tmp_path / f"{folder}.yml").read_text().startswith("specworks: 1\n")
+    assert sorted(p.name for p in tmp_path.glob("*.yml")) == [f"{folder}.yml"]
     assert (tmp_path / folder / "changes/archive").is_dir()
-    assert not (tmp_path / "specworks").exists()
     code, data = run_json("new", "add-login")
     assert data["path"] == f"{folder}/changes/add-login"
     code, data = run_json("context")
     assert data["dir"] == folder and data["changesDir"] == f"{folder}/changes"
 
 
-def test_dir_edited_in_config_is_used(project):
-    text = (project / "specworks.yaml").read_text().replace("dir: specworks", "dir: context")
-    (project / "specworks.yaml").write_text(text)
+def test_renaming_config_renames_folder(project):
+    (project / "specworks.yml").rename(project / "context.yml")
     code, data = run_json("new", "add-login")
     assert data["path"] == "context/changes/add-login"
 
 
-@pytest.mark.parametrize("folder", ["/abs", "../outside", ".", ""])
+def test_unrelated_yml_is_not_a_project(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "docs.yml").write_text("site_name: my docs\n")
+    code, data = run_json("context")
+    assert code == 1 and data["root"] is None
+
+
+def test_two_configs_in_one_folder_is_an_error(project):
+    (project / "spec.yml").write_text("specworks: 1\n")
+    code, data = run_json("context")
+    assert code == 1 and "several specworks configs" in data["error"]
+
+
+def test_old_dir_key_is_rejected(project):
+    cfg = project / "specworks.yml"
+    cfg.write_text(cfg.read_text() + "dir: spec\n")
+    code, data = run_json("context")
+    assert code == 1 and "'dir' is no longer a setting" in data["error"]
+
+
+@pytest.mark.parametrize("folder", ["/abs", "../outside", ".", "", "docs/spec", ".hidden"])
 def test_init_rejects_bad_dir(tmp_path, monkeypatch, folder):
     monkeypatch.chdir(tmp_path)
     result = runner.invoke(app, ["init", "--dir", folder])
     assert result.exit_code == 1
-    assert not (tmp_path / "specworks.yaml").exists()
-
-
-def test_bad_dir_in_config_is_reported(project):
-    (project / "specworks.yaml").write_text("dir: ../elsewhere\n")
-    code, data = run_json("context")
-    assert code == 1 and "'dir'" in data["error"]
+    assert list(tmp_path.glob("*.yml")) == []

@@ -20,16 +20,19 @@ import typer
 from . import __version__
 from .changes import PHASES, Change, ChangeError, create_change, list_changes, load_change, set_phase
 from .config import (
-    CONFIG_FILE,
+    CONFIG_EXT,
     DEFAULT_DIR,
+    Config,
     ConfigError,
     add_module_entry,
-    default_config,
+    config_name,
+    find_config,
     load_config,
+    write_default_config,
 )
 from .skills import install_skills
 from .workflow import WorkflowError, artifact_states, instructions
-from .workspace import Module, Workspace, check_module_dir, load_workspace
+from .workspace import Module, Workspace, load_module_config, load_workspace
 
 app = typer.Typer(help="Spec-driven development: refine → propose → tests → code → review → verify → done.")
 module_app = typer.Typer(help="Manage modules (sub-projects linked to this one, like git submodules).")
@@ -58,7 +61,7 @@ def workspace(as_json: bool) -> Workspace:
         fail(str(exc), as_json)
     if ws is None:
         fail(
-            f"no {CONFIG_FILE} found in this directory or its parents",
+            f"no specworks config (<dir>{CONFIG_EXT}, e.g. {config_name(DEFAULT_DIR)}) found in this directory or its parents",
             as_json,
             root=None,
             fix="run `specworks init` at the repository root",
@@ -124,6 +127,21 @@ def default_module_name(path: Path) -> str:
     return re.sub(r"[^a-z0-9]+", "-", path.name.lower()).strip("-") or "module"
 
 
+def ensure_module_config(root: Path, name: str, workspace_dir: str) -> tuple[Config, bool]:
+    """Load the module's <workspace_dir>.yml, creating it (and its changes folder) when missing.
+
+    Fails before writing anything if the folder already has a config under another name.
+    """
+    cfg = load_module_config(root, name, workspace_dir)
+    created = cfg is None
+    if created:
+        root.mkdir(parents=True, exist_ok=True)
+        write_default_config(root, workspace_dir)
+        cfg = load_config(root, workspace_dir)
+    cfg.archive_path.mkdir(parents=True, exist_ok=True)
+    return cfg, created
+
+
 def link_to_parent(root: Path, name: str | None) -> str | None:
     """Register ``root`` as a module of the nearest specworks project above it; return the name used."""
     parent = load_workspace(root.parent)
@@ -147,36 +165,38 @@ def version() -> None:
 @app.command()
 def init(
     path: Path = typer.Argument(Path("."), help="Project (or module) root."),
-    dir: str | None = typer.Option(None, "--dir", help=f"Workflow folder, e.g. spec, docs, context (default: {DEFAULT_DIR})."),
+    dir: str | None = typer.Option(
+        None, "--dir", help=f"Workflow folder name, also the config name: --dir spec -> spec.yml + spec/ (default: {DEFAULT_DIR})."
+    ),
     name: str | None = typer.Option(None, "--name", help="Module name when linking to a parent project (default: folder name)."),
     no_link: bool = typer.Option(False, "--no-link", help="Do not register as a module of a parent specworks project."),
     skills_dir: Path = typer.Option(Path(".claude/skills"), help="Where to install agent skills, relative to the workspace root."),
     no_skills: bool = typer.Option(False, "--no-skills", help="Do not install agent skills."),
 ) -> None:
-    """Create specworks.yaml and the changes folder, link to a parent project, and install the agent skills."""
+    """Create <dir>.yml and <dir>/changes/, link to a parent project, and install the agent skills."""
     root = path.resolve()
-    config_file = root / CONFIG_FILE
     try:
         parent = None if no_link else load_workspace(root.parent)
         if parent is not None:
-            # A module shares the workspace's folder name.
+            # A module shares the workspace's folder (and config file) name.
             workspace_dir = parent.top.config.dir
             if dir is not None and dir != workspace_dir:
                 raise ConfigError(
-                    f"this folder is inside the workspace at {parent.root}, which uses dir: {workspace_dir}; "
-                    f"modules use the same folder (drop --dir, or use --no-link for an independent project)"
+                    f"this folder is inside the workspace at {parent.root}, which uses {config_name(workspace_dir)}; "
+                    f"modules use the same name (drop --dir, or use --no-link for an independent project)"
                 )
-            dir = workspace_dir
-        root.mkdir(parents=True, exist_ok=True)
-        if not config_file.exists():
-            config_file.write_text(default_config(DEFAULT_DIR if dir is None else dir), encoding="utf-8")
-            typer.echo(f"created {config_file}")
-        cfg = load_config(root)
-        if parent is not None:
-            check_module_dir(cfg, default_module_name(root) if name is None else name, parent.top.config.dir)
-        elif dir is not None and cfg.dir != dir:
-            typer.echo(f"note    {CONFIG_FILE} already exists with dir: {cfg.dir}; edit it to change the folder")
-        cfg.archive_path.mkdir(parents=True, exist_ok=True)
+            cfg, created = ensure_module_config(root, name or default_module_name(root), workspace_dir)
+        else:
+            existing = find_config(root)
+            if existing is None:
+                root.mkdir(parents=True, exist_ok=True)
+                write_default_config(root, DEFAULT_DIR if dir is None else dir)
+            elif dir is not None and existing.stem != dir:
+                typer.echo(f"note    {existing.name} already exists; rename it (and its {existing.stem}/ folder) to change the name")
+            cfg, created = load_config(root), existing is None
+            cfg.archive_path.mkdir(parents=True, exist_ok=True)
+        if created:
+            typer.echo(f"created {cfg.config_path}")
         typer.echo(f"ready   {cfg.changes_path}/")
         if parent is not None:
             linked = link_to_parent(root, name)
@@ -305,9 +325,9 @@ def module_add(
     name: str | None = typer.Option(None, "--name", help="Module name (default: folder name)."),
     as_json: bool = JsonOpt,
 ) -> None:
-    """Link a folder as a module of the current project, creating its specworks.yaml if needed.
+    """Link a folder as a module of the current project, creating its config if needed.
 
-    The module uses the workspace's folder name (the top-level `dir`).
+    The module uses the workspace's config file and folder name (e.g. spec.yml and spec/).
     """
     ws = workspace(as_json)
     root = path.resolve()
@@ -316,15 +336,7 @@ def module_add(
         fail(f"{path} must be a folder inside {owner.root}", as_json)
     try:
         module_name = name or default_module_name(root)
-        workspace_dir = ws.top.config.dir
-        if (root / CONFIG_FILE).exists():
-            check_module_dir(load_config(root), module_name, workspace_dir)
-        root.mkdir(parents=True, exist_ok=True)
-        if not (root / CONFIG_FILE).exists():
-            (root / CONFIG_FILE).write_text(default_config(workspace_dir), encoding="utf-8")
-        cfg = load_config(root)
-        check_module_dir(cfg, module_name, workspace_dir)
-        cfg.archive_path.mkdir(parents=True, exist_ok=True)
+        ensure_module_config(root, module_name, ws.top.config.dir)
         add_module_entry(owner.root, module_name, root.relative_to(owner.root).as_posix())
         ws = load_workspace(root)
     except ConfigError as exc:
