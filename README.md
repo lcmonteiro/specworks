@@ -74,8 +74,27 @@ repo/
 
 ```bash
 uv tool install git+https://github.com/lcmonteiro/specworks
-cd your-project && specworks init --dir spec   # writes spec.yml, spec/ and .claude/skills/specworks-*
+cd your-project && specworks init --dir spec   # writes spec.yml, spec/ and the agent skills
 ```
+
+## AI tools
+
+The skills use the open [Agent Skills](https://agentskills.io) format, so the same
+files work in several tools:
+
+| Tool | Installed files | How to run a phase |
+|------|-----------------|--------------------|
+| Claude Code | `.claude/skills/specworks-*/SKILL.md` | `/specworks-refine` or just ask ("let's refine ...") |
+| GitHub Copilot | `.github/skills/specworks-*/SKILL.md` and `.github/prompts/specworks-*.prompt.md` | `/specworks-refine` in Copilot Chat (agent mode), or just ask |
+
+`specworks init --tools auto` (the default) installs for the tools the project
+already uses (`.claude/`, `CLAUDE.md`, `.github/copilot-instructions.md`,
+`.github/prompts/`, ...) and for all of them when none is found. Use
+`--tools copilot`, `--tools claude,copilot` or `--tools all` to choose.
+`specworks skills` re-installs them, e.g. after upgrading specworks.
+
+The skills call the `specworks` CLI from the terminal, so the agent needs
+terminal access (Copilot agent mode, Claude Code).
 
 ## Development
 

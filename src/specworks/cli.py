@@ -30,7 +30,7 @@ from .config import (
     load_config,
     write_default_config,
 )
-from .skills import install_skills
+from .skills import TOOLS, ToolError, install_skills, parse_tools
 from .workflow import WorkflowError, artifact_states, instructions
 from .workspace import Module, Workspace, load_module_config, load_workspace
 
@@ -40,6 +40,11 @@ app.add_typer(module_app, name="module")
 
 JsonOpt = typer.Option(False, "--json", help="Machine-readable output.")
 AllOpt = typer.Option(False, "--all", help="Include every module of the workspace.")
+ToolsOpt = typer.Option(
+    "auto",
+    "--tools",
+    help=f"AI tools to install skills for: auto (detected; all if none), all, or a list of {', '.join(TOOLS)}.",
+)
 
 
 def emit(data: dict, as_json: bool, text: str) -> None:
@@ -127,6 +132,17 @@ def default_module_name(path: Path) -> str:
     return re.sub(r"[^a-z0-9]+", "-", path.name.lower()).strip("-") or "module"
 
 
+def write_skills(ws: Workspace, tools: str) -> None:
+    """Install the skills at the workspace root (shared by every module)."""
+    try:
+        selected = parse_tools(tools, ws.root)
+    except ToolError as exc:
+        fail(str(exc), False)
+    typer.echo(f"tools   {', '.join(t.label for t in selected)}")
+    for written in install_skills(ws.root, selected):
+        typer.echo(f"skill   {ws.rel(written)}")
+
+
 def ensure_module_config(root: Path, name: str, workspace_dir: str) -> tuple[Config, bool]:
     """Load the module's <workspace_dir>.yml, creating it (and its changes folder) when missing.
 
@@ -170,11 +186,15 @@ def init(
     ),
     name: str | None = typer.Option(None, "--name", help="Module name when linking to a parent project (default: folder name)."),
     no_link: bool = typer.Option(False, "--no-link", help="Do not register as a module of a parent specworks project."),
-    skills_dir: Path = typer.Option(Path(".claude/skills"), help="Where to install agent skills, relative to the workspace root."),
+    tools: str = ToolsOpt,
     no_skills: bool = typer.Option(False, "--no-skills", help="Do not install agent skills."),
 ) -> None:
     """Create <dir>.yml and <dir>/changes/, link to a parent project, and install the agent skills."""
     root = path.resolve()
+    try:
+        parse_tools(tools, root)  # reject a bad --tools before writing anything
+    except ToolError as exc:
+        fail(str(exc), False)
     try:
         parent = None if no_link else load_workspace(root.parent)
         if parent is not None:
@@ -205,8 +225,13 @@ def init(
     except ConfigError as exc:
         fail(str(exc), False)
     if not no_skills:
-        for written in install_skills(ws.root / skills_dir):
-            typer.echo(f"skill   {ws.rel(written)}")
+        write_skills(ws, tools)
+
+
+@app.command()
+def skills(tools: str = ToolsOpt) -> None:
+    """Install or refresh the agent skills (e.g. after upgrading specworks)."""
+    write_skills(workspace(False), tools)
 
 
 @app.command()
