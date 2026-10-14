@@ -14,7 +14,7 @@ from .config import Config
 META_FILE = ".change.yaml"
 # Each phase is driven by the skill of the same name (specworks-<phase>); `close`
 # writes the living docs and archives the change, which then reads `done`.
-PHASES = ("refine", "propose", "test", "implement", "review", "verify", "close", "done")
+PHASES = ("refine", "propose", "interface", "test", "implement", "review", "verify", "close", "done")
 NAME_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 
 

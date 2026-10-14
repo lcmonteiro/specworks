@@ -9,7 +9,7 @@ always teaches something the plan did not know; this phase decides, for each
 difference, whether the code or the spec is right, fixes the other one, and
 records the decision in `review.md`.
 
-It is the fifth phase of `refine → propose → test → implement → review → verify → close`.
+It is the sixth phase of `refine → propose → interface → test → implement → review → verify → close`.
 
 **Phase boundary**: this phase may change code, tests and the change's delta
 specs, but only to remove drift. New features are out of scope: note them for a

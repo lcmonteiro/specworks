@@ -6,20 +6,22 @@ Spec-driven development for AI coding agents, inspired by
 [OpenSpec](https://github.com/Fission-AI/OpenSpec) and written in Python (managed with `uv`).
 
 ```
-refine -> propose -> test -> implement -> review -> verify -> close
+refine -> propose -> interface -> test -> implement -> review -> verify -> close
 ```
 
 | Phase     | Skill                  | Output |
 |-----------|------------------------|--------|
 | refine    | `/specworks-refine`    | `refinement.md`: problem, context, constraints, options, recommendation |
 | propose   | `/specworks-propose`   | `proposal.md`, delta specs (requirements + acceptance criteria), `design.md`, `tasks.md`, `traceability.md` |
-| test      | `/specworks-test`      | API stubs from the design's interfaces + failing tests tagged `@ac` for every acceptance criterion |
+| interface | `/specworks-interface` | the API decided with you (new and extended classes, functions, signatures, errors), recorded under Interfaces in `design.md` and created as empty stubs that build |
+| test      | `/specworks-test`      | failing tests tagged `@ac` for every acceptance criterion, written against those stubs |
 | implement | `/specworks-implement` | works through `tasks.md`: real code replacing the stubs, `@req` tags, tests green |
 | review    | `/specworks-review`    | finds code <-> spec drift both ways, fixes code or spec deltas with you, records every decision in `review.md` |
 | verify    | `/specworks-verify`    | **read-only** PASS/FAIL report (completeness, correctness, coherence); every failure names the phase that fixes it |
 | close     | `/specworks-close`     | deltas merged into the living `spec.md`, `requirements.md` regenerated, design / architecture / diagrams updated in `<capability-path>/docs/`, change archived (phase `done`) |
 
-The flow is not strictly linear: `review` can send a change back to `propose`
+The flow is not strictly linear: `test` goes back to `interface` when a test
+needs an API that was not agreed, `review` can send a change back to `propose`
 (missing requirement) and a failing `verify` sends it back to `implement`.
 `specworks phase <change> <phase>` moves a change to any phase.
 

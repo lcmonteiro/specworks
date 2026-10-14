@@ -13,11 +13,11 @@ test or code is written. It produces, inside the change folder:
 - `tasks.md`: ordered checklist, every task naming the IDs it serves
 - `traceability.md`: generated matrix REQ → AC → tasks (→ tests → code later)
 
-It is the second phase of `refine → propose → test → implement → review → verify → close`.
+It is the second phase of `refine → propose → interface → test → implement → review → verify → close`.
 
 **Phase boundary**: planning only. Do not write tests or code and do not edit
 files outside the change folder, even if the request says "build" or "fix".
-When the artifacts are done, stop and suggest `/specworks-test`.
+When the artifacts are done, stop and suggest `/specworks-interface`.
 
 **Running the CLI**: use `specworks <cmd>`. If it is not on PATH, use
 `uv run specworks <cmd>` (inside the specworks repo) or
@@ -159,7 +159,7 @@ When the artifacts are done, stop and suggest `/specworks-test`.
 
    Fix every validation error (warnings: fix or explain). `trace` writes
    `traceability.md`; at this phase the test and code columns are empty.
-   `gate propose` must pass: it is what `/specworks-test` checks first.
+   `gate propose` must pass: it is what `/specworks-interface` checks first.
 
 9. **Show the result and stop**
 
@@ -170,16 +170,16 @@ When the artifacts are done, stop and suggest `/specworks-test`.
    Summarize: change and location; each artifact in one line (and design
    skipped, if so); the number of requirements and acceptance criteria per
    capability; assumptions made. End with: "The plan is ready for review.
-   When you are ready, run `/specworks-test <ref>` to write the failing tests
-   and API stubs."
+   When you are ready, run `/specworks-interface <ref>` to decide the API and
+   create it as stubs."
 
 ---
 
 ## Guardrails
 
 - Planning only: write inside the change folder, nothing else. A request to
-  implement does not carry over; wait for `/specworks-test` or
-  `/specworks-implement`.
+  implement does not carry over; wait for `/specworks-interface`,
+  `/specworks-test` and `/specworks-implement`.
 - IDs, prefixes and delta paths come from the CLI (`nextId`, `prefix`,
   `deltaPath`). Never renumber or reuse an existing ID; a removed requirement's
   ID is retired.

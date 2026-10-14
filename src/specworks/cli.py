@@ -46,7 +46,7 @@ from .validate import validate_change
 from .workflow import WorkflowError, artifact_states, instructions
 from .workspace import Module, Workspace, load_module_config, load_workspace
 
-app = typer.Typer(help="Spec-driven development: refine → propose → test → implement → review → verify → close.")
+app = typer.Typer(help="Spec-driven development: refine → propose → interface → test → implement → review → verify → close.")
 module_app = typer.Typer(help="Manage modules (sub-projects linked to this one, like git submodules).")
 app.add_typer(module_app, name="module")
 spec_app = typer.Typer(help="Read capabilities and their living specs.")
@@ -493,7 +493,7 @@ def diagrams(
 def gate(
     phase: str = typer.Argument(..., help=f"Phase to check: {', '.join(GATES)}."),
     change: str = typer.Option(..., "--change", "-c", help="Change name or module:name."),
-    no_run: bool = typer.Option(False, "--no-run", help="implement/review: do not run commands.test (reported as a warning)."),
+    no_run: bool = typer.Option(False, "--no-run", help="interface/implement/review: do not run the project's commands (reported as a warning)."),
     base: str | None = typer.Option(None, "--base", help="review: branch to diff against (default: origin's default branch)."),
     as_json: bool = JsonOpt,
 ) -> None:

@@ -73,6 +73,8 @@ jobs:
           test -f .github/skills/specworks-refine/SKILL.md
           test -f .github/prompts/specworks-refine.prompt.md
           test -f .github/skills/specworks-propose/SKILL.md
+          test -f .github/skills/specworks-interface/SKILL.md
+          test -f .github/prompts/specworks-interface.prompt.md
           test -f .github/skills/specworks-test/SKILL.md
           test -f .github/prompts/specworks-test.prompt.md
           test -f .github/skills/specworks-implement/SKILL.md

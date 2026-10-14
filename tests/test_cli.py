@@ -141,7 +141,7 @@ def test_init_rejects_bad_dir(tmp_path, monkeypatch, folder):
 def test_phases_follow_the_workflow(project):
     run_json("new", "add-login")
     code, data = run_json("status", "--change", "add-login")
-    assert data["phases"] == ["refine", "propose", "test", "implement", "review", "verify", "close", "done"]
+    assert data["phases"] == ["refine", "propose", "interface", "test", "implement", "review", "verify", "close", "done"]
     for phase in ("implement", "propose", "done"):  # moving back is allowed
         code, data = run_json("phase", "add-login", phase)
         assert code == 0 and data["phase"] == phase

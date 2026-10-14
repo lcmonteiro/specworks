@@ -8,6 +8,7 @@ that new tests fail for the right reason).
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 
 from .changes import Change
@@ -17,7 +18,7 @@ from .trace import Tag, build_matrix, gaps, scan_tags, unknown_tags
 from .validate import validate_change
 from .workspace import Module, Workspace
 
-GATES = ("propose", "test", "implement", "review", "verify")
+GATES = ("propose", "interface", "test", "implement", "review", "verify")
 
 
 class GateError(Exception):
@@ -62,6 +63,58 @@ def _propose(ws: Workspace, change: Change) -> list[Check]:
         rows = build_matrix(specs, [])
         missing = gaps(rows)["acWithoutTasks"]
         checks.append(Check("every acceptance criterion has a task", not missing, missing))
+    return checks
+
+
+INTERFACES_RE = re.compile(r"^## Interfaces[ \t]*\n(?P<body>.*?)(?=^## |\Z)", re.MULTILINE | re.DOTALL)
+CODE_SPAN_RE = re.compile(r"`([^`\s]+)`")
+
+
+def interfaces_section(change: Change) -> str | None:
+    """The text of design.md's Interfaces section without HTML comments, or None if there is none."""
+    design = change.path / "design.md"
+    if not design.is_file():
+        return None
+    match = INTERFACES_RE.search(design.read_text(encoding="utf-8"))
+    return re.sub(r"<!--.*?-->", "", match.group("body"), flags=re.DOTALL).strip() if match else None
+
+
+def interface_files(section: str) -> list[str]:
+    """File paths named in code spans (`src/auth/reset.py`, `src/auth/reset.py:ResetService`)."""
+    paths = []
+    for span in CODE_SPAN_RE.findall(section):
+        path = re.split(r"[:#(]", span, maxsplit=1)[0]
+        if "/" in path and "." in path.rsplit("/", 1)[-1] and path not in paths:
+            paths.append(path)
+    return paths
+
+
+def _interface(ws: Workspace, module: Module, change: Change, run_tests: bool) -> list[Check]:
+    _, checks = _spec_checks(ws, change)
+    section = interfaces_section(change)
+    checks.append(
+        Check(
+            'design.md has an Interfaces section (write "None" when the API does not change)',
+            bool(section),
+            [] if section else ["write the agreed API under ## Interfaces in design.md (specworks instructions design)"],
+        )
+    )
+    files = interface_files(section or "")
+    missing = [path for path in files if not (module.root / path).exists() and not (ws.root / path).exists()]
+    checks.append(Check("every file named under Interfaces exists", not missing, missing))
+    if section and not files and not re.match(r"none\b", section, re.IGNORECASE):
+        checks.append(
+            Check(
+                "Interfaces names the file of each interface (`src/auth/reset.py`)",
+                False,
+                ["no file paths found, so the gate cannot check that the stubs exist"],
+                blocking=False,
+            )
+        )
+    for key in ("build", "typecheck"):
+        if ws.commands(module).get(key):
+            checks.append(_command_passes(ws, module, key, f"the stubs build (commands.{key})", run_tests))
+    checks.append(_command_passes(ws, module, "test", "the existing tests still pass with the stubs (commands.test)", run_tests))
     return checks
 
 
@@ -156,11 +209,14 @@ def _review(ws: Workspace, module: Module, change: Change, run_tests: bool, base
 
 
 def _tests_pass(ws: Workspace, module: Module, run_tests: bool) -> Check:
-    name = "the test suite passes (commands.test)"
+    return _command_passes(ws, module, "test", "the test suite passes (commands.test)", run_tests)
+
+
+def _command_passes(ws: Workspace, module: Module, key: str, name: str, run_tests: bool) -> Check:
     if not run_tests:
-        return Check(name, False, ["not run (--no-run); run `specworks run test`"], blocking=False)
+        return Check(name, False, [f"not run (--no-run); run `specworks run {key}`"], blocking=False)
     try:
-        result = run_command(ws, module, "test")
+        result = run_command(ws, module, key)
     except CommandError as exc:
         return Check(name, False, [str(exc)])
     details = [f"$ {result.command}  (in {result.cwd}, exit {result.exit_code})"]
@@ -192,6 +248,8 @@ def run_gate(
         checks = _review(ws, module, change, run_tests, base)
     elif phase == "implement":
         checks = _implement(ws, module, change, run_tests)
+    elif phase == "interface":
+        checks = _interface(ws, module, change, run_tests)
     else:
         checks = {"propose": _propose, "test": _test}[phase](ws, change)
     return all(c.ok for c in checks if c.blocking), checks

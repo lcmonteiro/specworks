@@ -20,7 +20,9 @@
 
 ## Interfaces
 
-<!-- Public APIs, data shapes, events, CLI surfaces the tests will target -->
+<!-- Public APIs, data shapes, events, CLI surfaces added or extended, each with its file:
+- `src/auth/reset.py`: `ResetService.request_reset(email: str) -> None` (REQ-...)
+Settled in the interface phase; "None" when the API does not change. -->
 
 ## Diagrams
 

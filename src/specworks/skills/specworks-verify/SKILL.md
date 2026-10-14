@@ -9,7 +9,7 @@ to close. The CLI checks what can be measured; you check what needs reading.
 The result is a clear PASS or FAIL, and every failure says which phase fixes
 it.
 
-It is the sixth phase of `refine → propose → test → implement → review → verify → close`.
+It is the seventh phase of `refine → propose → interface → test → implement → review → verify → close`.
 
 **Phase boundary**: read-only. Do not edit code, tests, specs, tasks, design or
 review.md, and do not fix what you find, even when it is a one-line fix: report

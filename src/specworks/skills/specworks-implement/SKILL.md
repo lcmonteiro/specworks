@@ -8,7 +8,7 @@ Implement phase: make the failing tests from the test phase pass by writing
 the code the tasks describe, and nothing more. Every requirement ends up with
 code tagged `@req <REQ-ID>`, every task ticked, and the whole test suite green.
 
-It is the fourth phase of `refine → propose → test → implement → review → verify → close`.
+It is the fifth phase of `refine → propose → interface → test → implement → review → verify → close`.
 
 **Phase boundary**: implement what the specs and tasks say. The specs, the
 acceptance criteria and the tests from the test phase are the contract: do not

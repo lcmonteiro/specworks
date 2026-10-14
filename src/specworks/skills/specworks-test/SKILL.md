@@ -1,21 +1,22 @@
 ---
 name: specworks-test
-description: Test phase of spec-driven development - turn a change's acceptance criteria into failing tests (tagged @ac) and define the public API as stubs, before any implementation. Use when a change has been proposed and the user wants to write the tests first, define the interfaces/APIs, or says "test", "write the tests", "TDD" or "specworks test".
+description: Test phase of spec-driven development - turn a change's acceptance criteria into failing tests (tagged @ac) written against the API agreed in the interface phase, before any implementation. Use when a change has its interfaces and the user wants to write the tests first, or says "test", "write the tests", "TDD" or "specworks test".
 allowed-tools: Bash(specworks:*), Bash(uv run specworks:*), Bash(uvx:*), Read, Grep, Glob, Write, Edit
 ---
 
-Test phase: write the tests that prove each acceptance criterion, and the API
-stubs they call, so the implement phase has a precise, executable target.
+Test phase: write the tests that prove each acceptance criterion, through the
+API stubs created in the interface phase, so the implement phase has a
+precise, executable target.
 At the end every acceptance criterion has at least one test tagged
 `@ac <AC-ID>`, and those tests **fail for the right reason** (not implemented
 yet), not because they cannot compile or import.
 
-It is the third phase of `refine → propose → test → implement → review → verify → close`.
+It is the fourth phase of `refine → propose → interface → test → implement → review → verify → close`.
 
-**Phase boundary**: write tests and API stubs only. A stub has the real public
-signature (names, parameters, types, docs) and a body that only signals "not
-implemented". No behaviour, no partial logic, even if it looks easy. When the
-gate passes, stop and suggest `/specworks-implement`.
+**Phase boundary**: write tests only, against the interfaces recorded in
+design.md. Do not add or change public interfaces here: if a test needs one,
+go back to `/specworks-interface`. No behaviour, no partial logic, even if it
+looks easy. When the gate passes, stop and suggest `/specworks-implement`.
 
 **Running the CLI**: use `specworks <cmd>`. If it is not on PATH, use
 `uv run specworks <cmd>` (inside the specworks repo) or
@@ -25,18 +26,18 @@ gate passes, stop and suggest `/specworks-implement`.
 
 ## Steps
 
-1. **Pick the change and check the plan is ready**
+1. **Pick the change and check the interfaces are ready**
 
    ```bash
    specworks context --json
-   specworks gate propose --change "<ref>"
+   specworks gate interface --change "<ref>"
    ```
 
    - Select the change as in `/specworks-propose` (named by the user, or the
      single active one; ask if ambiguous). Announce `Using change: <ref>`.
-   - If `gate propose` fails, stop: show the failing checks and suggest
-     `/specworks-propose <ref>` to finish the plan. Tests built on a broken plan
-     test the wrong thing.
+   - If `gate interface` fails, stop: show the failing checks and suggest
+     `/specworks-interface <ref>` (or `/specworks-propose <ref>` when the specs
+     themselves fail). Tests built on an undecided API test the wrong thing.
    - Otherwise move the change to this phase:
      ```bash
      specworks phase "<ref>" test
@@ -51,8 +52,8 @@ gate passes, stop and suggest `/specworks-implement`.
    Re-read from disk:
    - the delta specs (`specs/**/spec.md`): every ADDED and MODIFIED requirement
      and its acceptance criteria, and every REMOVED requirement;
-   - `design.md`, above all **Interfaces**: the public APIs, data shapes and
-     CLI surfaces to stub and test against;
+   - `design.md`, above all **Interfaces**: the agreed public APIs, data
+     shapes and CLI surfaces, and the files whose stubs the tests call;
    - the pending tasks: `specworks task list --change "<ref>" --pending`.
 
    Then study the existing tests next to the code each capability owns
@@ -66,22 +67,13 @@ gate passes, stop and suggest `/specworks-implement`.
    ```
    (rows with `tests` for those IDs).
 
-3. **Define the API stubs**
+3. **Check the API covers every criterion**
 
-   For each interface in design.md that does not exist yet, create it in the
-   owning capability's code path, in the project's language and style:
-   - real names, parameters, return and error types, and doc comments that
-     cite the requirement IDs they serve (`Implements REQ-AUTH-003.`);
-   - a body that only signals "not implemented" in the language's idiom
-     (`raise NotImplementedError`, `throw new Error("not implemented")`,
-     `panic("not implemented")`, `todo!()`, `= delete`/`assert(false)`...);
-   - the minimum wiring for tests to reach it (exports, module registration,
-     route declarations), nothing more.
-
-   Do not add `@req` tags to stubs: `@req` marks implemented code and is added
-   in the implement phase. If an interface in design.md is ambiguous enough to
-   change what the tests assert, ask the user, and record the answer in
-   design.md.
+   For each ADDED or MODIFIED acceptance criterion, find the interface in
+   design.md (and its stub in the code) that a test will call. If one is
+   missing or cannot express the WHEN/THEN (a missing parameter, error type
+   or return field), stop and go back to `/specworks-interface <ref>` to
+   decide and stub it with the user; do not add it here.
 
 4. **Write the tests, one acceptance criterion at a time**
 
@@ -149,8 +141,8 @@ gate passes, stop and suggest `/specworks-implement`.
    AC-AUTH-003.2   tests/test_reset.py::test_ac_auth_003_2_expired   fails: NotImplementedError
    ```
 
-   plus the stubs created (file and signature), tests updated or deleted for
-   MODIFIED/REMOVED criteria, and anything you had to decide. Mention that the
+   plus tests updated or deleted for MODIFIED/REMOVED criteria, and anything
+   you had to decide. Mention that the
    test suite is red on purpose until the implement phase. End with: "When
    you are ready, run `/specworks-implement <ref>` to make these tests pass."
 
@@ -158,8 +150,9 @@ gate passes, stop and suggest `/specworks-implement`.
 
 ## Guardrails
 
-- No implementation: stubs only signal "not implemented". Behaviour belongs to
-  `/specworks-implement`.
+- No implementation and no new interfaces: tests call the stubs from the
+  interface phase. Behaviour belongs to `/specworks-implement`, API changes to
+  `/specworks-interface`.
 - Tests verify the acceptance criteria as written. If a criterion is wrong,
   ambiguous or untestable, stop and suggest `/specworks-propose <ref>` to fix
   the spec instead of testing your own interpretation.

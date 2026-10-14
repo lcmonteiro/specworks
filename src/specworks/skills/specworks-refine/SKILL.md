@@ -6,7 +6,7 @@ allowed-tools: Bash(specworks:*), Bash(uv run specworks:*), Read, Grep, Glob, Wr
 
 Refinement phase: build a shared understanding of the problem and its possible
 solutions, then record it in `refinement.md`. This is the first phase of
-`refine → propose → test → implement → review → verify → close`.
+`refine → propose → interface → test → implement → review → verify → close`.
 
 **Phase boundary**: this phase writes `refinement.md` only. Do not write
 requirements, tasks, tests or code, even if the user asks to "build" something.
