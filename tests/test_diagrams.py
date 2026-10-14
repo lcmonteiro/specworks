@@ -129,9 +129,22 @@ def test_bundled_d2_is_the_pinned_release():
     assert out == d2_bin.D2_VERSION
 
 
-def test_without_d2_bin_falls_back_to_path(tmp_path, monkeypatch):
-    monkeypatch.setitem(sys.modules, "d2_bin", None)  # import d2_bin raises ImportError
+def test_without_the_d2_bin_binary_falls_back(monkeypatch):
+    def missing():
+        raise FileNotFoundError("no binary")
+
+    monkeypatch.setattr(diagrams_module.d2_bin, "executable", missing)
     assert diagrams_module.bundled_d2() is None
+
+
+def test_render_args_are_stable():
+    """The stamp hashes these flags: changing them would mark every committed SVG stale."""
+    from specworks.config import DiagramSettings
+
+    assert diagrams_module.d2_args(DiagramSettings()) == [
+        "--theme=0", "--layout=elk", "--pad=24", "--omit-version", "--dark-theme=200"
+    ]
+    assert diagrams_module.d2_args(DiagramSettings(dark_theme=None, sketch=True))[-1] == "--sketch"
 
 
 def test_d2_errors_are_reported(change, fake_d2):

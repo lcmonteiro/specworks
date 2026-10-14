@@ -10,9 +10,10 @@ generated SVG carries a stamp with the hash of its source and render settings,
 so a stale or hand-edited SVG is detected without relying on file times (which
 git does not preserve).
 
-Rendering uses the ``d2`` program (https://d2lang.com). specworks depends on
-``d2-bin``, which ships the pinned official release as platform wheels, so it is
-normally already there; checking needs no d2.
+Rendering goes through ``d2-bin`` (its pinned official D2 release and its
+``render_file``); this module adds what is specific to specworks: the settings
+from the config file, the stamp, and the ``SPECWORKS_D2`` override. Checking
+needs no d2.
 """
 
 from __future__ import annotations
@@ -21,9 +22,10 @@ import hashlib
 import os
 import re
 import shutil
-import subprocess
 from dataclasses import dataclass
 from pathlib import Path
+
+import d2_bin
 
 from .config import DiagramSettings
 
@@ -51,10 +53,8 @@ class Diagram:
 def bundled_d2() -> str | None:
     """The d2 binary installed by the d2-bin dependency, if it is there."""
     try:
-        import d2_bin
-
         return d2_bin.executable()
-    except (ImportError, FileNotFoundError):
+    except FileNotFoundError:
         return None
 
 
@@ -75,12 +75,7 @@ def diagrams_in(folder: Path) -> list[Diagram]:
 
 
 def d2_args(settings: DiagramSettings) -> list[str]:
-    args = [f"--theme={settings.theme}", f"--layout={settings.layout}", f"--pad={settings.pad}", "--omit-version"]
-    if settings.dark_theme is not None:
-        args.append(f"--dark-theme={settings.dark_theme}")
-    if settings.sketch:
-        args.append("--sketch")
-    return args
+    return settings.options().args()
 
 
 def source_hash(diagram: Diagram, settings: DiagramSettings) -> str:
@@ -110,15 +105,12 @@ def render(diagram: Diagram, settings: DiagramSettings, d2: str | None = None) -
     d2 = d2 or find_d2()[0]
     if d2 is None:
         raise DiagramError(f"cannot render {diagram.source.name}: d2 is not installed; {INSTALL_HINT}")
-    proc = subprocess.run(
-        [d2, *d2_args(settings), str(diagram.source), str(diagram.svg)],
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    if proc.returncode != 0 or not diagram.svg.is_file():
-        message = (proc.stderr or proc.stdout).strip().splitlines()
-        raise DiagramError(f"d2 failed on {diagram.source.name}: {message[-1] if message else 'no output'}")
+    try:
+        d2_bin.render_file(diagram.source, diagram.svg, settings.options(), d2=d2)
+    except d2_bin.D2Error as exc:
+        raise DiagramError(str(exc)) from exc
+    except OSError as exc:  # SPECWORKS_D2 points at something that does not run
+        raise DiagramError(f"cannot run d2 ({d2}) on {diagram.source.name}: {exc}") from exc
     diagram.svg.write_text(stamp(diagram.svg.read_text(encoding="utf-8"), source_hash(diagram, settings)), encoding="utf-8")
 
 
