@@ -506,6 +506,40 @@ def gate(
 
 
 @app.command()
+def verify(
+    change: str = typer.Option(..., "--change", "-c", help="Change name or module:name."),
+    base: str | None = typer.Option(None, "--base", help="Branch to diff against (default: origin's default branch)."),
+    no_run: bool = typer.Option(False, "--no-run", help="Do not run test/lint/typecheck (reported as warnings)."),
+    as_json: bool = JsonOpt,
+) -> None:
+    """Final read-only check before close: completeness, correctness, coherence (exit 1 on FAIL)."""
+    from .verify import GROUPS, summary, verify_change
+
+    ws = workspace(as_json)
+    try:
+        mod, ch = resolve_change(ws, change)
+    except (ChangeError, ConfigError) as exc:
+        fail(str(exc), as_json)
+    checks = verify_change(ws, mod, ch, run=not no_run, base=base)
+    result = summary(checks)
+    data = {**change_dict(ws, mod, ch), **result, "checks": [c.to_dict() for c in checks]}
+    lines = []
+    for group in GROUPS:
+        counts = result["groups"][group]
+        lines.append(f"{group.capitalize()} ({counts['passed']}/{counts['total']})")
+        for c in (c for c in checks if c.group == group):
+            mark = "ok  " if c.ok else ("FAIL" if c.blocking else "warn")
+            lines.append(f"  [{mark}] {c.name}" + ("" if c.ok else f"  -> {c.fix}"))
+            lines += [f"           {d}" for d in c.details if not c.ok or d.startswith("$ ")]
+    lines.append(f"{mod.qualify(ch.name)}: {result['verdict']} ({result['critical']} critical, {result['warnings']} warnings)")
+    if result["goBackTo"]:
+        lines.append(f"go back to: {', '.join(result['goBackTo'])}")
+    emit(data, as_json, "\n".join(lines))
+    if result["verdict"] != "PASS":
+        raise typer.Exit(1)
+
+
+@app.command()
 def review(
     change: str = typer.Option(..., "--change", "-c", help="Change name or module:name."),
     base: str | None = typer.Option(None, "--base", help="Branch to diff against (default: origin's default branch)."),
