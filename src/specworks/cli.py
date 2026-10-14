@@ -430,8 +430,18 @@ def diagrams(
     settings = ws.top.config.diagrams
     if themes:
         rows = [{"name": n, "id": i, "dark": n in DARK_THEMES} for n, i in THEMES.items()]
-        data = {"theme": theme_name(settings.theme), "darkTheme": theme_name(settings.dark_theme), "themes": rows}
-        lines = [f"in use: theme {data['theme']}, dark_theme {data['darkTheme']}  ({ws.rel(ws.top.config.config_path)})"]
+        d2_path, d2_from = find_d2()
+        data = {
+            "theme": theme_name(settings.theme),
+            "darkTheme": theme_name(settings.dark_theme),
+            "d2": d2_path,
+            "d2From": d2_from,
+            "themes": rows,
+        }
+        lines = [
+            f"in use: theme {data['theme']}, dark_theme {data['darkTheme']}  ({ws.rel(ws.top.config.config_path)})",
+            f"d2:     {d2_path or 'not found'} ({d2_from})",
+        ]
         lines += [f"  {r['id']:>4}  {r['name']}{'  (dark)' if r['dark'] else ''}" for r in rows]
         emit(data, as_json, "\n".join(lines))
         return
@@ -453,7 +463,8 @@ def diagrams(
                 entry.update(status="error", error=str(exc))
         failed |= entry["status"] in ("missing", "stale", "error")
         results.append(entry)
-    data = {**change_dict(ws, mod, ch), "d2": find_d2(), "diagrams": results}
+    d2_path, d2_from = find_d2()
+    data = {**change_dict(ws, mod, ch), "d2": d2_path, "d2From": d2_from, "diagrams": results}
     lines = [f"{r['status']:<9} {r['svg']}" + (f"\n          {r['error']}" if "error" in r else "") for r in results]
     emit(data, as_json, "\n".join(lines) or "no diagrams (add diagrams/<name>.d2 to the change)")
     if failed:

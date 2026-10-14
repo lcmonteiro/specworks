@@ -29,38 +29,15 @@ jobs:
           python-version: ${{ matrix.python-version }}
           enable-cache: true
 
+      # The build hook (hatch_build.py) bundles the pinned D2 release into the
+      # editable install, so the diagram tests render with the real d2.
       - name: Install dependencies
         run: uv sync --locked
 
       - name: Run tests
-        run: uv run pytest -v
-
-  diagrams:
-    name: Diagrams (real d2)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-go@v5
-        with:
-          go-version: "1.23"
-          cache: false
-
-      - name: Install d2
-        run: |
-          go install oss.terrastruct.com/d2@v0.7.1
-          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
-
-      - uses: astral-sh/setup-uv@v6
-        with:
-          enable-cache: true
-
-      - name: Run diagram tests against d2
         env:
           SPECWORKS_REQUIRE_D2: "1"
-        run: |
-          d2 --version
-          uv run pytest tests/test_diagrams.py -v
+        run: uv run pytest -v
 
   package:
     name: Build and smoke-test the wheel
@@ -75,18 +52,33 @@ jobs:
       - name: Build
         run: uv build
 
-      # The CLI reads schema.yaml, templates/ and skills/ from the installed
-      # package, so check they made it into the wheel.
+      - name: Wheel carries the bundled d2
+        run: |
+          wheel="$(ls dist/*.whl)"
+          echo "$wheel"
+          case "$wheel" in *-py3-none-linux_x86_64.whl) ;; *) echo "unexpected wheel tag"; exit 1 ;; esac
+          unzip -l "$wheel" | grep -q 'specworks/bin/d2$'
+          ! tar tzf dist/*.tar.gz | grep -q 'specworks/bin/'
+
+      # The CLI reads schema.yaml, templates/, skills/ and bin/d2 from the
+      # installed package, so check they all made it into the wheel.
       - name: Run the installed CLI
         run: |
+          wheel="$(ls "$GITHUB_WORKSPACE"/dist/*.whl)"
+          sw() { uv tool run --isolated --from "$wheel" specworks "$@"; }
           project="$(mktemp -d)"
           cd "$project"
-          uv tool run --from "$(ls "$GITHUB_WORKSPACE"/dist/*.whl)" specworks init --dir spec --tools all
-          uv tool run --from "$(ls "$GITHUB_WORKSPACE"/dist/*.whl)" specworks new add-example
-          uv tool run --from "$(ls "$GITHUB_WORKSPACE"/dist/*.whl)" specworks instructions refinement --change add-example --json > /dev/null
-          uv tool run --from "$(ls "$GITHUB_WORKSPACE"/dist/*.whl)" specworks instructions tasks --change add-example --json > /dev/null
+          sw init --dir spec --tools all
+          sw new add-example
+          sw instructions refinement --change add-example --json > /dev/null
+          sw instructions tasks --change add-example --json > /dev/null
           test -f spec.yml
           test -f .claude/skills/specworks-refine/SKILL.md
           test -f .github/skills/specworks-refine/SKILL.md
           test -f .github/prompts/specworks-refine.prompt.md
           test -f .github/skills/specworks-propose/SKILL.md
+          mkdir -p spec/changes/add-example/diagrams
+          printf 'shape: sequence_diagram\nuser -> api: "POST /reset {email}"\n' > spec/changes/add-example/diagrams/flow.d2
+          sw diagrams --themes | grep -q '(bundled)'
+          sw diagrams --change add-example
+          grep -q 'specworks:d2 sha256=' spec/changes/add-example/diagrams/flow.svg
