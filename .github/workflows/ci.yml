@@ -29,14 +29,11 @@ jobs:
           python-version: ${{ matrix.python-version }}
           enable-cache: true
 
-      # The build hook (hatch_build.py) bundles the pinned D2 release into the
-      # editable install, so the diagram tests render with the real d2.
+      # pyd2 brings the pinned D2 release, so the diagram tests render with the real d2.
       - name: Install dependencies
         run: uv sync --locked
 
       - name: Run tests
-        env:
-          SPECWORKS_REQUIRE_D2: "1"
         run: uv run pytest -v
 
   package:
@@ -52,13 +49,12 @@ jobs:
       - name: Build
         run: uv build
 
-      - name: Wheel carries the bundled d2
+      - name: Wheel is pure Python and requires pyd2
         run: |
           wheel="$(ls dist/*.whl)"
           echo "$wheel"
-          case "$wheel" in *-py3-none-linux_x86_64.whl) ;; *) echo "unexpected wheel tag"; exit 1 ;; esac
-          unzip -l "$wheel" | grep -q 'specworks/bin/d2$'
-          ! tar tzf dist/*.tar.gz | grep -q 'specworks/bin/'
+          case "$wheel" in *-py3-none-any.whl) ;; *) echo "unexpected wheel tag"; exit 1 ;; esac
+          unzip -p "$wheel" '*/METADATA' | grep -qx 'Requires-Dist: pyd2 @ git+https://github.com/lcmonteiro/pyd2@main'
 
       # The CLI reads schema.yaml, templates/, skills/ and bin/d2 from the
       # installed package, so check they all made it into the wheel.
@@ -85,6 +81,6 @@ jobs:
           test -f .github/skills/specworks-close/SKILL.md
           mkdir -p spec/changes/add-example/diagrams
           printf 'shape: sequence_diagram\nuser -> api: "POST /reset {email}"\n' > spec/changes/add-example/diagrams/flow.d2
-          sw diagrams --themes | grep -q '(bundled)'
+          sw diagrams --themes | grep -q '(pyd2)'
           sw diagrams --change add-example
           grep -q 'specworks:d2 sha256=' spec/changes/add-example/diagrams/flow.svg

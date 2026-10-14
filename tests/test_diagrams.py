@@ -1,10 +1,9 @@
 import json
-import os
 import stat
 import subprocess
 import sys
-from importlib import resources
 
+import pyd2
 import pytest
 from typer.testing import CliRunner
 
@@ -89,10 +88,14 @@ def test_hand_edited_svg_is_stale(change, fake_d2):
 
 @pytest.fixture
 def no_d2(monkeypatch):
-    """No d2 anywhere: not configured, not bundled, not on PATH."""
-    monkeypatch.setenv("SPECWORKS_D2", "")
-    monkeypatch.setenv("PATH", "")
-    monkeypatch.setattr(diagrams_module, "bundled_d2", lambda: None)
+    """pyd2 has no binary (a broken install) and SPECWORKS_D2 is not set."""
+
+    def missing():
+        raise FileNotFoundError("the d2 binary is missing; reinstall pyd2")
+
+    monkeypatch.delenv("SPECWORKS_D2", raising=False)
+    monkeypatch.setattr(pyd2, "executable", missing)
+    monkeypatch.setattr(sys.modules["pyd2.render"], "executable", missing)
 
 
 def test_check_does_not_need_d2(change, no_d2):
@@ -101,36 +104,40 @@ def test_check_does_not_need_d2(change, no_d2):
     assert not (change / "diagrams/reset-flow.svg").exists()
 
 
-def test_missing_d2_explains_how_to_install(change, no_d2):
+def test_missing_d2_reports_pyd2s_error(change, no_d2):
     code, data = run_json("diagrams", "--change", CHANGE)
-    assert code == 1 and data["d2From"] == "missing"
-    error = data["diagrams"][0]["error"]
-    assert "d2 is not installed" in error and "uv tool install --reinstall specworks" in error
+    assert code == 1 and data["d2From"] == "missing" and data["d2"] is None
+    assert data["diagrams"][0]["error"] == "cannot render reset-flow.d2: the d2 binary is missing; reinstall pyd2"
 
 
-def test_bundled_d2_wins_over_path(tmp_path, monkeypatch):
+def test_specworks_d2_overrides_pyd2(monkeypatch):
     monkeypatch.delenv("SPECWORKS_D2", raising=False)
-    (tmp_path / "d2").write_text("")
-    (tmp_path / "d2").chmod(0o755)
-    monkeypatch.setenv("PATH", str(tmp_path))
-    monkeypatch.setattr(diagrams_module, "bundled_d2", lambda: "/pkg/specworks/bin/d2")
-    assert diagrams_module.find_d2() == ("/pkg/specworks/bin/d2", "bundled")
-    monkeypatch.setattr(diagrams_module, "bundled_d2", lambda: None)
-    assert diagrams_module.find_d2() == (str(tmp_path / "d2"), "PATH")
+    assert diagrams_module.find_d2() == (pyd2.executable(), "pyd2")
     monkeypatch.setenv("SPECWORKS_D2", "/opt/d2")
     assert diagrams_module.find_d2() == ("/opt/d2", "SPECWORKS_D2")
 
 
-def test_bundled_d2_is_the_pinned_release():
-    """The build hook ships the version pinned in d2_release.json (skipped in a build without D2)."""
-    bundled = diagrams_module.bundled_d2()
-    if bundled is None:
-        if os.environ.get("SPECWORKS_REQUIRE_D2"):
-            pytest.fail("SPECWORKS_REQUIRE_D2 is set but this specworks build has no bundled d2")
-        pytest.skip("this specworks build has no bundled d2")
-    pinned = json.loads(resources.files("specworks").joinpath("d2_release.json").read_text())["version"]
-    out = subprocess.run([bundled, "--version"], capture_output=True, text=True, check=True).stdout.strip()
-    assert out == pinned
+def test_d2_that_does_not_run(change, monkeypatch):
+    monkeypatch.setenv("SPECWORKS_D2", str(change / "no-such-d2"))
+    code, data = run_json("diagrams", "--change", CHANGE)
+    assert code == 1 and data["diagrams"][0]["error"].startswith("cannot render reset-flow.d2: ")
+
+
+def test_pyd2_provides_the_pinned_release(monkeypatch):
+    monkeypatch.delenv("SPECWORKS_D2", raising=False)
+    path, where = diagrams_module.find_d2()
+    out = subprocess.run([path, "--version"], capture_output=True, text=True, check=True).stdout.strip()
+    assert where == "pyd2" and out == pyd2.D2_VERSION
+
+
+def test_render_args_are_stable():
+    """The stamp hashes these flags: changing them would mark every committed SVG stale."""
+    from specworks.config import DiagramSettings
+
+    assert DiagramSettings().options().args() == [
+        "--theme=0", "--layout=elk", "--pad=24", "--omit-version", "--dark-theme=200"
+    ]
+    assert DiagramSettings(dark_theme=None, sketch=True).options().args()[-1] == "--sketch"
 
 
 def test_d2_errors_are_reported(change, fake_d2):
@@ -162,10 +169,6 @@ def test_invalid_diagram_settings(change, block, message):
 
 
 def test_real_d2_render(change):
-    if diagrams_module.find_d2()[0] is None:
-        if os.environ.get("SPECWORKS_REQUIRE_D2"):
-            pytest.fail("SPECWORKS_REQUIRE_D2 is set but d2 is not installed")
-        pytest.skip("d2 is not installed")
     code, data = run_json("diagrams", "--change", CHANGE)
     assert code == 0, data
     svg = (change / "diagrams/reset-flow.svg").read_text()

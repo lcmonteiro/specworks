@@ -136,8 +136,8 @@ When the artifacts are done, stop and suggest `/specworks-test`.
    specworks diagrams --change "<ref>"
    ```
    Fix any D2 error it reports (often an unquoted label with `{` or `:`).
-   If it says d2 is not installed, keep the `.d2` files, pass the install
-   hint to the user, and continue; `validate` will remind you later.
+   If it says d2 cannot run (a broken pyd2 install), keep the `.d2` files,
+   pass the error to the user, and continue; `validate` will remind you later.
 
 7. **Write `tasks.md`**
 

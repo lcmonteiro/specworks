@@ -13,7 +13,9 @@ import re
 from dataclasses import dataclass, field
 from pathlib import Path, PurePosixPath
 
+import pyd2
 import yaml
+from pyd2 import DARK_THEMES, LAYOUTS, LIGHT_THEMES, THEMES  # noqa: F401  (re-exported)
 
 CONFIG_EXT = ".yml"
 CONFIG_VERSION = 1
@@ -57,53 +59,21 @@ class Capability:
         }
 
 
-# D2's built-in themes (`d2 themes`), by name. Any other number is passed to d2 as is.
-LIGHT_THEMES = {
-    "neutral-default": 0,
-    "neutral-grey": 1,
-    "flagship-terrastruct": 3,
-    "cool-classics": 4,
-    "mixed-berry-blue": 5,
-    "grape-soda": 6,
-    "aubergine": 7,
-    "colorblind-clear": 8,
-    "vanilla-nitro-cola": 100,
-    "orange-creamsicle": 101,
-    "shirley-temple": 102,
-    "earth-tones": 103,
-    "everglade-green": 104,
-    "buttered-toast": 105,
-    "terminal": 300,
-    "terminal-grayscale": 301,
-    "origami": 302,
-    "c4": 303,
-}
-DARK_THEMES = {"dark-mauve": 200, "dark-flagship-terrastruct": 201}
-THEMES = {**LIGHT_THEMES, **DARK_THEMES}
-
-
 def theme_id(value: object, key: str, allow_none: bool = False) -> int | None:
     """A theme given by name (``c4``, ``Colorblind Clear``) or number -> its D2 number."""
     if allow_none and (value is None or (isinstance(value, str) and value.strip().lower() in ("none", "same"))):
         return None
-    if isinstance(value, int) and not isinstance(value, bool) and value >= 0:
-        return value
-    if isinstance(value, str):
-        name = value.strip().lower().replace(" ", "-").replace("_", "-")
-        if name.isdigit():
-            return int(name)
-        if name in THEMES:
-            return THEMES[name]
-    raise ConfigError(
-        f"'{key}': unknown theme {value!r}; use a name ({', '.join(THEMES)}) or a number from `d2 themes`"
-        + (", or none to use the light theme in dark mode too" if allow_none else "")
-    )
+    try:
+        return pyd2.theme_id(value)
+    except ValueError:
+        raise ConfigError(
+            f"'{key}': unknown theme {value!r}; use a name ({', '.join(THEMES)}) or a number from `d2 themes`"
+            + (", or none to use the light theme in dark mode too" if allow_none else "")
+        ) from None
 
 
 def theme_name(number: int | None) -> str:
-    if number is None:
-        return "none"
-    return next((name for name, n in THEMES.items() if n == number), str(number))
+    return "none" if number is None else pyd2.theme_name(number)
 
 
 @dataclass
@@ -115,6 +85,10 @@ class DiagramSettings:
     layout: str = "elk"  # elk (clean orthogonal routing) or dagre
     sketch: bool = False  # hand-drawn look
     pad: int = 24
+
+    def options(self) -> pyd2.Options:
+        """The pyd2 render options for these settings (version left out of the SVG)."""
+        return pyd2.Options(self.theme, self.dark_theme, self.layout, self.sketch, self.pad, omit_version=True)
 
 
 COMMAND_KEYS = ("test", "lint", "typecheck", "build", "format")
@@ -150,7 +124,7 @@ def load_diagram_settings(raw: object) -> DiagramSettings:
     settings = DiagramSettings(**raw)
     settings.theme = theme_id(raw.get("theme", 0), "diagrams.theme")
     settings.dark_theme = theme_id(raw.get("dark_theme", 200), "diagrams.dark_theme", allow_none=True)
-    if settings.layout not in ("elk", "dagre"):
+    if settings.layout not in LAYOUTS:
         raise ConfigError("'diagrams.layout' must be elk or dagre")
     if not isinstance(settings.sketch, bool) or not isinstance(settings.pad, int) or settings.pad < 0:
         raise ConfigError("'diagrams.sketch' must be true/false and 'diagrams.pad' a non-negative number")
