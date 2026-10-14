@@ -59,14 +59,10 @@ def diagrams_in(folder: Path) -> list[Diagram]:
     return [Diagram(p) for p in sorted(root.glob("*.d2"))] if root.is_dir() else []
 
 
-def d2_args(settings: DiagramSettings) -> list[str]:
-    return settings.options().args()
-
-
 def source_hash(diagram: Diagram, settings: DiagramSettings) -> str:
     """Hash of the source text and the render settings: either changing makes the SVG stale."""
     digest = hashlib.sha256(diagram.source.read_bytes())
-    digest.update("\0".join(d2_args(settings)).encode())
+    digest.update("\0".join(settings.options().args()).encode())
     return digest.hexdigest()
 
 

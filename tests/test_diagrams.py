@@ -134,10 +134,10 @@ def test_render_args_are_stable():
     """The stamp hashes these flags: changing them would mark every committed SVG stale."""
     from specworks.config import DiagramSettings
 
-    assert diagrams_module.d2_args(DiagramSettings()) == [
+    assert DiagramSettings().options().args() == [
         "--theme=0", "--layout=elk", "--pad=24", "--omit-version", "--dark-theme=200"
     ]
-    assert diagrams_module.d2_args(DiagramSettings(dark_theme=None, sketch=True))[-1] == "--sketch"
+    assert DiagramSettings(dark_theme=None, sketch=True).options().args()[-1] == "--sketch"
 
 
 def test_d2_errors_are_reported(change, fake_d2):
