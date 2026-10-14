@@ -203,6 +203,7 @@ def test_status_after_planning(change):
         "design": "ready",
         "tasks": "done",
         "traceability": "ready",
+        "review": "ready",
     }
 
 
