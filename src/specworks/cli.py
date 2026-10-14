@@ -630,6 +630,34 @@ def review(
 
 
 @app.command()
+def cycle(
+    change: str = typer.Option(..., "--change", "-c", help="Change name or module:name."),
+    as_json: bool = JsonOpt,
+) -> None:
+    """After a review: where the next design → test → code → review cycle starts, from review.md's open findings."""
+    from .cycle import next_cycle
+
+    ws = workspace(as_json)
+    try:
+        mod, ch = resolve_change(ws, change)
+    except (ChangeError, ConfigError) as exc:
+        fail(str(exc), as_json)
+    result = next_cycle(ch)
+    data = {**change_dict(ws, mod, ch), **result}
+    if not result["reviewed"]:
+        lines = ["not reviewed yet: no review.md (run /specworks-review)"]
+    elif not result["open"]:
+        lines = ["no open findings: the build is done; next is /specworks-validate"]
+    else:
+        lines = [f"{f['id']} {f['type'] or '?'} -> {f['phase']}" for f in result["open"]]
+        if result["handOver"]:
+            lines.append(f"a spec finding: stop the build and run {result['handOver']} {mod.qualify(ch.name)}")
+        else:
+            lines.append(f"next cycle: {' -> '.join(result['phases'])}")
+    emit(data, as_json, "\n".join(lines))
+
+
+@app.command()
 def run(
     key: str = typer.Argument(..., help="Command to run: test, lint, typecheck, build or format."),
     change: str | None = typer.Option(None, "--change", "-c", help="Run in the module owning this change."),

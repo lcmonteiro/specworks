@@ -230,8 +230,10 @@ artifacts:
       `code fixed`, `spec updated (ADDED/MODIFIED REQ-...)`,
       `design updated (<interface or decision>)`, or `accepted: <reason>`
       (only with the user's agreement). A finding sent back to an earlier
-      phase stays open (`- [ ]`) with `back to <specify|design|code>: <the
-      agreed proposal>` until the change returns to review and it is done.
+      phase stays open (`- [ ]`) with `back to <specify|design|test|code>:
+      <the agreed proposal>` until the change returns to review and it is
+      done; `specworks cycle` reads these to pick where the next build cycle
+      starts.
 
       "Changed files without tags" accounts for every file `specworks review`
       lists under untracedSource / untracedTests: why it needs no tag, or the

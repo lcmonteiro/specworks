@@ -21,6 +21,11 @@ change. Every spec, design or API change and every accepted difference is
 agreed with the user. When the gate passes, stop and suggest
 `/specworks-validate`.
 
+**Inside `/specworks-build`**: do not apply fixes here. Record every finding
+that needs work as open, with the agreed proposal as `back to
+<specify|design|test|code>: ...`; the build starts the next cycle from the
+earliest of those phases (`specworks cycle --change "<ref>"`).
+
 **Running the CLI**: use `specworks <cmd>`. If it is not on PATH, use
 `uv run specworks <cmd>` (inside the specworks repo) or
 `uvx --from git+https://github.com/lcmonteiro/specworks specworks <cmd>`.
@@ -102,7 +107,7 @@ agreed with the user. When the gate passes, stop and suggest
 
    To send it back: record the finding as open with the agreed proposal, then
    ```bash
-   specworks phase "<ref>" <specify|design|code>
+   specworks phase "<ref>" <specify|design|test|code>
    ```
    and suggest the matching skill. When the change comes back to review,
    check that the proposal was carried out and close the finding.
