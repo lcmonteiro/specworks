@@ -36,6 +36,7 @@ from .config import (
 from .skills import TOOLS, ToolError, install_skills, parse_tools
 from .diagrams import DiagramError, diagrams_in, find_d2, render, state
 from .gate import GATES, GateError, run_gate
+from .runner import CommandError, run_command
 from .specs import capability_ref, describe, resolve_ref, workspace_capabilities
 from .tasks import TaskError, read_tasks, set_done
 from .trace import build_matrix, gaps, scan_tags, to_markdown, unknown_tags, write_traceability
@@ -480,13 +481,14 @@ def diagrams(
 def gate(
     phase: str = typer.Argument(..., help=f"Phase to check: {', '.join(GATES)}."),
     change: str = typer.Option(..., "--change", "-c", help="Change name or module:name."),
+    no_run: bool = typer.Option(False, "--no-run", help="implement: do not run commands.test (reported as a warning)."),
     as_json: bool = JsonOpt,
 ) -> None:
     """Check whether a change has finished a phase (exit 1 if a blocking check fails)."""
     ws = workspace(as_json)
     try:
         mod, ch = resolve_change(ws, change)
-        passed, checks = run_gate(ws, ch, phase)
+        passed, checks = run_gate(ws, mod, ch, phase, run_tests=not no_run)
     except (ChangeError, ConfigError, GateError) as exc:
         fail(str(exc), as_json)
     data = {**change_dict(ws, mod, ch), "gate": phase, "passed": passed, "checks": [c.to_dict() for c in checks]}
@@ -499,6 +501,29 @@ def gate(
     emit(data, as_json, "\n".join(lines))
     if not passed:
         raise typer.Exit(1)
+
+
+@app.command()
+def run(
+    key: str = typer.Argument(..., help="Command to run: test, lint, typecheck, build or format."),
+    change: str | None = typer.Option(None, "--change", "-c", help="Run in the module owning this change."),
+    as_json: bool = JsonOpt,
+) -> None:
+    """Run one of the project's configured commands in the right module folder (exit code passes through)."""
+    ws = workspace(as_json)
+    try:
+        mod = resolve_change(ws, change)[0] if change else ws.current
+        result = run_command(ws, mod, key, capture=as_json)
+    except (ChangeError, ConfigError, CommandError) as exc:
+        fail(str(exc), as_json)
+    if as_json:
+        typer.echo(
+            json.dumps(
+                {"key": key, "command": result.command, "cwd": result.cwd, "exitCode": result.exit_code, "ok": result.ok, "tail": result.tail()},
+                indent=2,
+            )
+        )
+    raise typer.Exit(result.exit_code)
 
 
 def _task_change(as_json: bool, change: str):

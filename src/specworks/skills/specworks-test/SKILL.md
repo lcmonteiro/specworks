@@ -112,8 +112,11 @@ gate passes, stop and suggest `/specworks-implement`.
 
 5. **Run the tests and confirm they fail for the right reason**
 
-   Run `commands.test` (narrow it to the new tests when the suite is slow).
-   Expected:
+   ```bash
+   specworks run test --change "<ref>"
+   ```
+   (runs `commands.test` in the change's module; run the test tool directly
+   to narrow it to the new tests when the suite is slow). Expected:
    - every new or updated test **fails**, because the stub is not implemented
      or the assertion does not hold yet;
    - **no** syntax, compile, import or collection errors: fix those now, they
