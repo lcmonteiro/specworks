@@ -9,6 +9,8 @@ from importlib import resources
 import yaml
 
 from .changes import Change
+from .config import ConfigError
+from .specs import delta_files, describe, resolve_delta, workspace_capabilities
 from .workspace import Module, Workspace
 
 
@@ -17,8 +19,8 @@ class Artifact:
     id: str
     phase: str
     generates: str
-    template: str
     instruction: str
+    template: str = ""
     requires: list[str] = field(default_factory=list)
     optional: bool = False
 
@@ -40,6 +42,8 @@ def load_artifacts() -> dict[str, Artifact]:
 
 
 def read_template(name: str) -> str:
+    if not name:
+        return ""
     return resources.files("specworks").joinpath("templates", name).read_text(encoding="utf-8")
 
 
@@ -71,7 +75,7 @@ def instructions(ws: Workspace, module: Module, change: Change, artifact_id: str
     if artifact_id not in artifacts:
         raise WorkflowError(f"unknown artifact '{artifact_id}'; expected one of {', '.join(artifacts)}")
     art = artifacts[artifact_id]
-    return {
+    data = {
         "artifact": art.id,
         "phase": art.phase,
         "change": module.qualify(change.name),
@@ -93,3 +97,14 @@ def instructions(ws: Workspace, module: Module, change: Change, artifact_id: str
             for dep in art.requires
         ],
     }
+    if art.id == "specs":
+        # Where each delta goes and which IDs to use; new capabilities: `specworks spec show <ref>`.
+        touched = []
+        for path in delta_files(change):
+            try:
+                touched.append(resolve_delta(ws, change, path).ref)
+            except ConfigError:  # reported by `specworks validate`
+                continue
+        data["capabilities"] = [describe(ws, cap, with_scenarios=False) for cap in workspace_capabilities(ws)]
+        data["writtenDeltas"] = touched
+    return data

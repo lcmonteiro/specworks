@@ -22,6 +22,7 @@ DIR_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]*$")
 DEFAULT_DOCS_DIR = "docs"
 MAX_CONTEXT_BYTES = 50 * 1024
 MODULE_NAME_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
+PREFIX_RE = re.compile(r"^[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)*$")
 
 
 class ConfigError(Exception):
@@ -39,6 +40,7 @@ class Capability:
     name: str
     path: str
     description: str = ""
+    prefix: str = ""  # requirement ID prefix (REQ-<prefix>-001); derived from the name when empty
 
     def docs_path(self, root: Path, docs_dir: str) -> Path:
         return root / self.path / docs_dir
@@ -54,6 +56,84 @@ class Capability:
         }
 
 
+# D2's built-in themes (`d2 themes`), by name. Any other number is passed to d2 as is.
+LIGHT_THEMES = {
+    "neutral-default": 0,
+    "neutral-grey": 1,
+    "flagship-terrastruct": 3,
+    "cool-classics": 4,
+    "mixed-berry-blue": 5,
+    "grape-soda": 6,
+    "aubergine": 7,
+    "colorblind-clear": 8,
+    "vanilla-nitro-cola": 100,
+    "orange-creamsicle": 101,
+    "shirley-temple": 102,
+    "earth-tones": 103,
+    "everglade-green": 104,
+    "buttered-toast": 105,
+    "terminal": 300,
+    "terminal-grayscale": 301,
+    "origami": 302,
+    "c4": 303,
+}
+DARK_THEMES = {"dark-mauve": 200, "dark-flagship-terrastruct": 201}
+THEMES = {**LIGHT_THEMES, **DARK_THEMES}
+
+
+def theme_id(value: object, key: str, allow_none: bool = False) -> int | None:
+    """A theme given by name (``c4``, ``Colorblind Clear``) or number -> its D2 number."""
+    if allow_none and (value is None or (isinstance(value, str) and value.strip().lower() in ("none", "same"))):
+        return None
+    if isinstance(value, int) and not isinstance(value, bool) and value >= 0:
+        return value
+    if isinstance(value, str):
+        name = value.strip().lower().replace(" ", "-").replace("_", "-")
+        if name.isdigit():
+            return int(name)
+        if name in THEMES:
+            return THEMES[name]
+    raise ConfigError(
+        f"'{key}': unknown theme {value!r}; use a name ({', '.join(THEMES)}) or a number from `d2 themes`"
+        + (", or none to use the light theme in dark mode too" if allow_none else "")
+    )
+
+
+def theme_name(number: int | None) -> str:
+    if number is None:
+        return "none"
+    return next((name for name, n in THEMES.items() if n == number), str(number))
+
+
+@dataclass
+class DiagramSettings:
+    """How `specworks diagrams` renders D2 sources; set once at the top level for one shared look."""
+
+    theme: int = 0  # D2 theme ID (`d2 themes`): 0 Neutral Default
+    dark_theme: int | None = 200  # used when the viewer is in dark mode; None = same as theme
+    layout: str = "elk"  # elk (clean orthogonal routing) or dagre
+    sketch: bool = False  # hand-drawn look
+    pad: int = 24
+
+
+def load_diagram_settings(raw: object) -> DiagramSettings:
+    if raw is None:
+        return DiagramSettings()
+    if not isinstance(raw, dict):
+        raise ConfigError("'diagrams' must be a mapping (theme, dark_theme, layout, sketch, pad)")
+    unknown = set(raw) - {"theme", "dark_theme", "layout", "sketch", "pad"}
+    if unknown:
+        raise ConfigError(f"'diagrams' has unknown keys: {', '.join(sorted(unknown))}")
+    settings = DiagramSettings(**raw)
+    settings.theme = theme_id(raw.get("theme", 0), "diagrams.theme")
+    settings.dark_theme = theme_id(raw.get("dark_theme", 200), "diagrams.dark_theme", allow_none=True)
+    if settings.layout not in ("elk", "dagre"):
+        raise ConfigError("'diagrams.layout' must be elk or dagre")
+    if not isinstance(settings.sketch, bool) or not isinstance(settings.pad, int) or settings.pad < 0:
+        raise ConfigError("'diagrams.sketch' must be true/false and 'diagrams.pad' a non-negative number")
+    return settings
+
+
 @dataclass
 class Config:
     root: Path
@@ -64,6 +144,7 @@ class Config:
     modules: dict[str, str] = field(default_factory=dict)
     test_globs: list[str] = field(default_factory=list)
     source_globs: list[str] = field(default_factory=list)
+    diagrams: DiagramSettings = field(default_factory=DiagramSettings)
 
     @property
     def config_path(self) -> Path:
@@ -170,14 +251,20 @@ def load_config(root: Path, dir: str | None = None) -> Config:
 
     capabilities = {}
     for name, value in (raw.get("capabilities") or {}).items():
+        if not isinstance(name, str) or not MODULE_NAME_RE.match(name):
+            raise ConfigError(f"capability name '{name}' must be kebab-case (e.g. user-auth)")
         if isinstance(value, str):
             value = {"path": value}
         if not isinstance(value, dict) or "path" not in value:
             raise ConfigError(f"capability '{name}' needs a 'path'")
+        prefix = str(value.get("prefix", "") or "")
+        if prefix and not PREFIX_RE.match(prefix):
+            raise ConfigError(f"capability '{name}': prefix '{prefix}' must be upper-case letters/digits (e.g. AUTH)")
         capabilities[name] = Capability(
             name=name,
-            path=str(value["path"]).rstrip("/"),
+            path=validate_relative(str(value["path"]).rstrip("/"), f"capability '{name}' path"),
             description=str(value.get("description", "")),
+            prefix=prefix,
         )
 
     raw_modules = raw.get("modules") or {}
@@ -197,6 +284,7 @@ def load_config(root: Path, dir: str | None = None) -> Config:
         modules=modules,
         test_globs=list(raw.get("test_globs") or []),
         source_globs=list(raw.get("source_globs") or []),
+        diagrams=load_diagram_settings(raw.get("diagrams")),
     )
 
 
@@ -215,11 +303,14 @@ context: |
 docs_dir: docs
 
 # Capabilities: durable behaviours of the system and the code folder that owns
-# each one. `done` writes the capability's living docs into <path>/<docs_dir>/.
+# each one. `close` writes the capability's living docs into <path>/<docs_dir>/.
+# Requirement IDs are REQ-<prefix>-NNN; the prefix defaults to the capability
+# name in upper case (with the module name in front inside a module).
 # capabilities:
 #   user-auth:
 #     path: src/auth
 #     description: Login, sessions and password reset
+#     prefix: AUTH          # optional: REQ-AUTH-001 instead of REQ-USER-AUTH-001
 capabilities: {}
 
 # Modules: sub-projects with their own config (same file name as this one),
@@ -233,12 +324,28 @@ modules: {}
 # "scan everything that is not in the workflow folder".
 test_globs: []
 source_globs: []
+
+# Design diagrams are written in D2 (https://d2lang.com) and rendered to SVG
+# by `specworks diagrams`. Only the top-level settings are used, so every
+# diagram in the workspace shares one look (modules ignore theirs).
+# Themes by name or number - `specworks diagrams --themes` lists them, e.g.
+# neutral-default, neutral-grey, cool-classics, colorblind-clear, c4, origami;
+# dark mode: dark-mauve, dark-flagship-terrastruct, or none (same as theme).
+diagrams:
+  theme: neutral-default
+  dark_theme: dark-mauve
+  layout: elk           # elk or dagre
+  sketch: false         # true for a hand-drawn look
 """
 
 
-def write_default_config(root: Path, dir: str) -> Path:
+def write_default_config(root: Path, dir: str, diagram_theme: str | None = None) -> Path:
     path = root / config_name(validate_dir(dir))
-    path.write_text(DEFAULT_CONFIG, encoding="utf-8")
+    text = DEFAULT_CONFIG
+    if diagram_theme is not None:
+        theme = theme_name(theme_id(diagram_theme, "--diagram-theme"))
+        text = text.replace("  theme: neutral-default\n", f"  theme: {theme}\n", 1)
+    path.write_text(text, encoding="utf-8")
     return path
 
 

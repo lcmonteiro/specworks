@@ -8,7 +8,8 @@ artifacts:
     generates: refinement.md
     template: refinement.md
     requires: []
-    optional: false
+    # Small changes (a bug fix, a tweak) can go straight to propose.
+    optional: true
     instruction: |
       Capture the shared understanding of the problem BEFORE committing to a solution.
       This is the input for the proposal; it is not a plan.
@@ -37,3 +38,161 @@ artifacts:
 
       Keep it to 1-2 pages. No requirements, no tasks, no code: those belong to
       the propose phase.
+
+  - id: proposal
+    phase: propose
+    generates: proposal.md
+    template: proposal.md
+    requires: [refinement]
+    instruction: |
+      State WHY this change is needed and WHAT changes. If refinement.md exists,
+      build on its chosen option; do not repeat its analysis.
+
+      Sections:
+      - **Why**: 1-3 sentences. The problem or opportunity and why now.
+      - **What Changes**: bullets, specific. Mark breaking changes with **BREAKING**.
+      - **Capabilities**: the contract with the specs step. List every capability
+        whose BEHAVIOUR changes, by reference (`name` in this module,
+        `module:name` elsewhere, as in `specworks context`):
+        - **New Capabilities**: `ref` (owning module + code path): what it covers.
+          Name a durable behaviour (`user-auth`), not this piece of work
+          (`add-login-endpoint`). Kebab-case.
+        - **Modified Capabilities**: `ref`: which requirements change.
+        Each one gets a delta spec. A change with no behaviour change (pure
+        refactor, tooling, docs) lists none and sets `skip_specs: true` in its
+        `.change.yaml` - never invent a requirement to pass validation.
+      - **Impact**: code, APIs, data, dependencies and systems affected.
+      - **Out of Scope**: what this change deliberately does not do.
+
+      Before filling Capabilities, read the related capabilities with
+      `specworks spec show <ref>` and reuse an existing one instead of creating
+      a near-duplicate. Keep it to 1-2 pages; HOW belongs in design.md.
+
+  - id: specs
+    phase: propose
+    generates: "specs/**/spec.md"
+    template: spec.md
+    requires: [proposal]
+    instruction: |
+      Write one delta spec per capability listed in the proposal: WHAT the system
+      must do, as testable requirements with acceptance criteria. A spec is a
+      behaviour contract: inputs, outputs, errors, observable effects and
+      external constraints (security, performance, compatibility). Leave out
+      class names, libraries and implementation steps.
+
+      Paths and IDs come from the CLI; never invent them:
+      - `capabilities[*].deltaPath` in this response (or `specworks spec show <ref> --json`)
+        is where the file goes, relative to the change folder:
+        `specs/<capability>/spec.md` for the top level,
+        `specs/<module>/<capability>/spec.md` for a module.
+      - Requirement IDs are `REQ-<prefix>-NNN` with the capability's `prefix`;
+        new requirements start at `nextId` and count up.
+      - Acceptance criteria are scenarios numbered under their requirement:
+        `AC-<prefix>-NNN.1`, `.2`, ... Each one becomes at least one test.
+
+      Delta sections (use only the ones you need):
+      - `## ADDED Requirements`: new behaviour, with new IDs.
+      - `## MODIFIED Requirements`: copy the WHOLE existing block (same ID) from
+        the living spec, then edit it. Partial blocks lose detail at close.
+        Changing only the title is also a MODIFIED.
+      - `## REMOVED Requirements`: the existing ID and title, plus **Reason**
+        and **Migration**.
+
+      Rules (`specworks validate` checks them):
+      - `### Requirement: REQ-<prefix>-NNN <title>` then a description using
+        SHALL or MUST. One behaviour per requirement; split otherwise.
+      - At least one `#### Scenario: AC-<prefix>-NNN.<n> <title>` per
+        requirement, exactly four hashes, with `- **GIVEN**` (optional),
+        `- **WHEN**` and `- **THEN**` bullets. Cover the main path, errors and
+        edge cases that matter.
+      - A new capability starts with `## Purpose` (one or two sentences) and
+        has only ADDED requirements.
+
+      Write the files one at a time and say which capability you are on.
+
+  - id: design
+    phase: propose
+    generates: design.md
+    template: design.md
+    requires: [proposal]
+    optional: true
+    instruction: |
+      Explain HOW the change will be built. Write it only when one applies:
+      cross-cutting change (several modules or capabilities), new dependency or
+      architectural pattern, data model or API change, security, performance or
+      migration risk, or real ambiguity worth deciding before coding. Otherwise
+      skip it and say so.
+
+      Sections:
+      - **Context**: current state and constraints that shape the approach (link
+        to proposal.md for motivation instead of repeating it).
+      - **Goals / Non-Goals**: design-level boundaries only.
+      - **Decisions**: each choice with the alternatives considered and why.
+        Reference requirement IDs a decision serves.
+      - **Interfaces**: public APIs, data shapes, events or CLI surfaces that
+        tests will be written against in the test phase. Name them precisely.
+      - **Diagrams**: only where a picture explains what text cannot - a
+        sequence diagram for a new flow, a state diagram for a lifecycle, a
+        component diagram for a change across modules or services, a data
+        model for new tables. Usually 0-3 per design.
+
+      Diagrams are D2 (https://d2lang.com), rendered to SVG by the CLI:
+      - Write `diagrams/<name>.d2` in the change folder (kebab-case name), run
+        `specworks diagrams --change <ref>`, and embed the result in
+        design.md as `![<caption> (REQ-...)](diagrams/<name>.svg)` with the
+        requirement IDs it illustrates.
+      - One idea per diagram, about 12 shapes at most; give every shape a
+        readable label (`api: Auth API`) and label every connection with what
+        flows (`api -> mail: reset link`).
+      - Flows: `shape: sequence_diagram`. Components: nest containers
+        (`auth: Auth service { api: API; db: Users DB {shape: cylinder} }`).
+        States: shapes as states, connections labelled with events. Tables:
+        `shape: sql_table`. Add `direction: right` for wide diagrams.
+      - Do not set colours, fonts or styles: the workspace theme gives every
+        diagram the same look. Quote labels containing `{ } : ; # | "`.
+      - Never edit the SVG by hand; change the .d2 and re-render. If d2 is
+        not installed, keep the .d2, tell the user how to install it, and
+        continue.
+      - **Risks / Trade-offs**: `[risk] -> mitigation`.
+      - **Migration / Rollback**: when deployment or data needs steps.
+      - **Open Questions**: only ones that do not change specs, approach or
+        tasks; resolve the others with the user now.
+
+  - id: tasks
+    phase: propose
+    generates: tasks.md
+    template: tasks.md
+    requires: [specs, design]
+    instruction: |
+      Break the work into small, ordered, checkable tasks. The test and
+      implement phases work through this list and tick boxes.
+
+      Rules (`specworks validate` checks them):
+      - Group tasks under `## N. <group>` headings, in dependency order.
+      - Every task is `- [ ] N.M <description>`; only `- [x]` counts as done.
+      - Every task names the requirement or acceptance-criterion IDs it serves
+        (e.g. `(REQ-AUTH-001, AC-AUTH-001.2)`), and every acceptance criterion
+        is covered by at least one task.
+      - Every task says how to verify it: a test, a command or an observable
+        result.
+      - Tests come first: in each group, write the failing tests for its
+        acceptance criteria (tagged `@ac <AC-ID>`) before the implementation
+        tasks (tagged `@req <REQ-ID>`). Do not push testing or docs into a
+        final group.
+      - REMOVED requirements get a task that deletes their code and tests.
+      - Resolve design.md Open Questions that would change the tasks before
+        writing them.
+
+      Plain bullets under a final `## Workflow follow-up` heading are notes,
+      not tracked tasks.
+
+  - id: traceability
+    phase: propose
+    generates: traceability.md
+    template: ""
+    requires: [tasks]
+    instruction: |
+      Generated, not written: run `specworks trace --change <ref> --write`.
+      It maps every requirement and acceptance criterion to its tasks, and
+      (from the test phase on) to the tests and code that carry its
+      `@ac` / `@req` tags. Re-run it whenever specs, tasks, tests or code change.
