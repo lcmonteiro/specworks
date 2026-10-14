@@ -9,7 +9,7 @@ authors = [
 requires-python = ">=3.11"
 dependencies = [
     # D2 (v0.7.1) and its Python render API, built from the d2-bin repo at this commit.
-    "d2-bin @ git+https://github.com/lcmonteiro/d2-bin@8c7c7d6e68cea5c4f7a68e572cf59f2795ac757c",
+    "d2-bin @ git+https://github.com/lcmonteiro/d2-bin@ab926f8ef7b9e35bda88c3e69585d7be9f7bfe95",
     "pyyaml>=6.0.3",
     "typer>=0.27.3",
 ]
