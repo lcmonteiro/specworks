@@ -1,0 +1,38 @@
+# The specworks workflow, shown in README.md. Re-render after editing:
+#   uv run python -c "import pyd2; pyd2.render_file('docs/diagrams/workflow.d2', theme='neutral-default', layout='dagre', pad=24)"
+
+direction: right
+
+start: "specworks new" {shape: circle}
+refine: refine\n(optional)
+specify: specify
+design: design\n(API stubs)
+test: test\n(failing tests)
+code: code
+review: review
+validate: validate\n(read-only)
+close: close
+done: done {shape: circle}
+
+start -> refine
+start -> specify: "small change"
+refine -> specify: "option chosen"
+specify -> design: "gate specify"
+design -> test: "gate design"
+test -> code: "gate test"
+code -> review: "gate code"
+review -> validate: "gate review"
+validate -> close: "PASS"
+close -> done: "merged + archived"
+
+design -> specify: "spec wrong /\nunreachable" {style.stroke-dash: 4}
+test -> design: "needs an API\nnot agreed" {style.stroke-dash: 4}
+test -> specify: "criterion wrong /\nuntestable" {style.stroke-dash: 4}
+code -> test: "criteria without tests" {style.stroke-dash: 4}
+code -> specify: "spec or design\ndoes not work" {style.stroke-dash: 4}
+review -> code: "work unfinished" {style.stroke-dash: 4}
+validate -> specify: "artifacts / specs /\ndiagrams" {style.stroke-dash: 4}
+validate -> test: "AC without test" {style.stroke-dash: 4}
+validate -> code: "code, tasks, tests" {style.stroke-dash: 4}
+validate -> review: "drift not reviewed" {style.stroke-dash: 4}
+close -> validate: "does not pass" {style.stroke-dash: 4}

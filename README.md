@@ -9,6 +9,8 @@ Spec-driven development for AI coding agents, inspired by
 refine -> specify -> design -> test -> code -> review -> validate -> close
 ```
 
+![specworks workflow: solid arrows move forward when a phase's gate passes, dashed arrows go back](docs/diagrams/workflow.svg)
+
 | Phase     | Skill                  | Output |
 |-----------|------------------------|--------|
 | refine    | `/specworks-refine`    | `refinement.md`: problem, context, constraints, options, recommendation |
@@ -20,9 +22,13 @@ refine -> specify -> design -> test -> code -> review -> validate -> close
 | validate  | `/specworks-validate`  | **read-only** PASS/FAIL report (completeness, correctness, coherence); every failure names the phase that fixes it |
 | close     | `/specworks-close`     | deltas merged into the living `spec.md`, `requirements.md` regenerated, design / architecture / diagrams updated in `<capability-path>/docs/`, change archived (phase `done`) |
 
-The flow is not strictly linear: `test` goes back to `design` when a test
-needs an API that was not agreed, `review` can send a change back to `specify`
-(missing requirement) and a failing `validate` sends it back to `code`.
+The flow is not strictly linear (dashed arrows): `test` goes back to
+`design` when a test needs an API that was not agreed, `design`, `test` and
+`code` go back to `specify` when the spec turns out wrong, and a failing
+`validate` names the phase that fixes each problem. `review` fixes drift in
+place, updating the code or the spec deltas with you. The diagram shows every
+transition the skills and gates use (source:
+[`docs/diagrams/workflow.d2`](docs/diagrams/workflow.d2)).
 `specworks phase <change> <phase>` moves a change to any phase.
 
 ## Layout
