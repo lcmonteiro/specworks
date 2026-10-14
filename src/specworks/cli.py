@@ -35,7 +35,9 @@ from .config import (
 )
 from .skills import TOOLS, ToolError, install_skills, parse_tools
 from .diagrams import DiagramError, diagrams_in, find_d2, render, state
+from .gate import GATES, GateError, run_gate
 from .specs import capability_ref, describe, resolve_ref, workspace_capabilities
+from .tasks import TaskError, read_tasks, set_done
 from .trace import build_matrix, gaps, scan_tags, to_markdown, unknown_tags, write_traceability
 from .validate import validate_change
 from .workflow import WorkflowError, artifact_states, instructions
@@ -46,6 +48,8 @@ module_app = typer.Typer(help="Manage modules (sub-projects linked to this one, 
 app.add_typer(module_app, name="module")
 spec_app = typer.Typer(help="Read capabilities and their living specs.")
 app.add_typer(spec_app, name="spec")
+task_app = typer.Typer(help="List and tick the tasks of a change (tasks.md).")
+app.add_typer(task_app, name="task")
 
 JsonOpt = typer.Option(False, "--json", help="Machine-readable output.")
 AllOpt = typer.Option(False, "--all", help="Include every module of the workspace.")
@@ -274,6 +278,7 @@ def context(as_json: bool = JsonOpt, all_modules: bool = AllOpt) -> None:
         "changesDir": ws.rel(ws.current.config.changes_path),
         "context": ws.merged_context(),
         "contextChain": ws.context_chain(),
+        "commands": ws.commands(),
         "modules": [module_dict(ws, m) for m in ws.modules()],
         "missingModules": missing_dicts(ws),
         "capabilities": capabilities,
@@ -469,6 +474,92 @@ def diagrams(
     emit(data, as_json, "\n".join(lines) or "no diagrams (add diagrams/<name>.d2 to the change)")
     if failed:
         raise typer.Exit(1)
+
+
+@app.command()
+def gate(
+    phase: str = typer.Argument(..., help=f"Phase to check: {', '.join(GATES)}."),
+    change: str = typer.Option(..., "--change", "-c", help="Change name or module:name."),
+    as_json: bool = JsonOpt,
+) -> None:
+    """Check whether a change has finished a phase (exit 1 if a blocking check fails)."""
+    ws = workspace(as_json)
+    try:
+        mod, ch = resolve_change(ws, change)
+        passed, checks = run_gate(ws, ch, phase)
+    except (ChangeError, ConfigError, GateError) as exc:
+        fail(str(exc), as_json)
+    data = {**change_dict(ws, mod, ch), "gate": phase, "passed": passed, "checks": [c.to_dict() for c in checks]}
+    lines = []
+    for c in checks:
+        mark = "ok  " if c.ok else ("FAIL" if c.blocking else "warn")
+        lines.append(f"[{mark}] {c.name}")
+        lines += [f"         {d}" for d in c.details]
+    lines.append(f"gate {phase}: {'passed' if passed else 'NOT passed'}")
+    emit(data, as_json, "\n".join(lines))
+    if not passed:
+        raise typer.Exit(1)
+
+
+def _task_change(as_json: bool, change: str):
+    ws = workspace(as_json)
+    try:
+        mod, ch = resolve_change(ws, change)
+    except (ChangeError, ConfigError) as exc:
+        fail(str(exc), as_json)
+    return ws, mod, ch
+
+
+def _emit_tasks(ws, mod, ch, tasks, as_json: bool) -> None:
+    done = sum(t.done for t in tasks)
+    data = {**change_dict(ws, mod, ch), "done": done, "total": len(tasks), "tasks": [t.to_dict() for t in tasks]}
+    lines = [f"[{'x' if t.done else ' '}] {t.num} {t.text}" for t in tasks] + [f"{done}/{len(tasks)} done"]
+    emit(data, as_json, "\n".join(lines))
+
+
+@task_app.command("list")
+def task_list(
+    change: str = typer.Option(..., "--change", "-c", help="Change name or module:name."),
+    pending: bool = typer.Option(False, "--pending", help="Only tasks not done yet."),
+    as_json: bool = JsonOpt,
+) -> None:
+    """List the tasks of a change with their IDs and state."""
+    ws, mod, ch = _task_change(as_json, change)
+    try:
+        tasks = read_tasks(ch.path)
+    except TaskError as exc:
+        fail(str(exc), as_json)
+    _emit_tasks(ws, mod, ch, [t for t in tasks if not (pending and t.done)], as_json)
+
+
+def _set(change: str, nums: list[str], done: bool, as_json: bool) -> None:
+    ws, mod, ch = _task_change(as_json, change)
+    try:
+        set_done(ch.path, nums, done)
+        tasks = read_tasks(ch.path)
+    except TaskError as exc:
+        fail(str(exc), as_json)
+    _emit_tasks(ws, mod, ch, tasks, as_json)
+
+
+@task_app.command("done")
+def task_done(
+    nums: list[str] = typer.Argument(..., help="Task numbers, e.g. 1.1 1.2."),
+    change: str = typer.Option(..., "--change", "-c", help="Change name or module:name."),
+    as_json: bool = JsonOpt,
+) -> None:
+    """Tick tasks as done (- [x])."""
+    _set(change, nums, True, as_json)
+
+
+@task_app.command("undo")
+def task_undo(
+    nums: list[str] = typer.Argument(..., help="Task numbers, e.g. 1.1 1.2."),
+    change: str = typer.Option(..., "--change", "-c", help="Change name or module:name."),
+    as_json: bool = JsonOpt,
+) -> None:
+    """Mark tasks as not done (- [ ])."""
+    _set(change, nums, False, as_json)
 
 
 @spec_app.command("show")

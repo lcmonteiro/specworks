@@ -77,6 +77,8 @@ jobs:
           test -f .github/skills/specworks-refine/SKILL.md
           test -f .github/prompts/specworks-refine.prompt.md
           test -f .github/skills/specworks-propose/SKILL.md
+          test -f .github/skills/specworks-test/SKILL.md
+          test -f .github/prompts/specworks-test.prompt.md
           mkdir -p spec/changes/add-example/diagrams
           printf 'shape: sequence_diagram\nuser -> api: "POST /reset {email}"\n' > spec/changes/add-example/diagrams/flow.d2
           sw diagrams --themes | grep -q '(bundled)'

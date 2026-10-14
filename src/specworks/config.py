@@ -116,6 +116,28 @@ class DiagramSettings:
     pad: int = 24
 
 
+COMMAND_KEYS = ("test", "lint", "typecheck", "build", "format")
+
+
+def load_commands(raw: object) -> dict[str, str]:
+    """Shell commands the skills run (tests, lint, ...); empty values are left out."""
+    if raw is None:
+        return {}
+    if not isinstance(raw, dict):
+        raise ConfigError(f"'commands' must be a mapping of {', '.join(COMMAND_KEYS)} to shell commands")
+    unknown = set(raw) - set(COMMAND_KEYS)
+    if unknown:
+        raise ConfigError(f"'commands' has unknown keys: {', '.join(sorted(unknown))} (expected {', '.join(COMMAND_KEYS)})")
+    commands = {}
+    for key, value in raw.items():
+        if value is None or value == "":
+            continue
+        if not isinstance(value, str):
+            raise ConfigError(f"'commands.{key}' must be a shell command string")
+        commands[key] = value.strip()
+    return commands
+
+
 def load_diagram_settings(raw: object) -> DiagramSettings:
     if raw is None:
         return DiagramSettings()
@@ -144,6 +166,7 @@ class Config:
     modules: dict[str, str] = field(default_factory=dict)
     test_globs: list[str] = field(default_factory=list)
     source_globs: list[str] = field(default_factory=list)
+    commands: dict[str, str] = field(default_factory=dict)
     diagrams: DiagramSettings = field(default_factory=DiagramSettings)
 
     @property
@@ -284,6 +307,7 @@ def load_config(root: Path, dir: str | None = None) -> Config:
         modules=modules,
         test_globs=list(raw.get("test_globs") or []),
         source_globs=list(raw.get("source_globs") or []),
+        commands=load_commands(raw.get("commands")),
         diagrams=load_diagram_settings(raw.get("diagrams")),
     )
 
@@ -324,6 +348,14 @@ modules: {}
 # "scan everything that is not in the workflow folder".
 test_globs: []
 source_globs: []
+
+# Commands the skills run, in this project's own tooling (any language).
+# A module's commands override the top level's, key by key.
+#   test: uv run pytest            # or: npm test, go test ./..., cargo test, ctest
+#   lint: uv run ruff check .
+commands:
+  test:
+  lint:
 
 # Design diagrams are written in D2 (https://d2lang.com) and rendered to SVG
 # by `specworks diagrams`. Only the top-level settings are used, so every

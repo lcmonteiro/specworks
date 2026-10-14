@@ -13,7 +13,7 @@ refine -> propose -> test -> implement -> review -> verify -> close
 |-----------|------------------------|--------|
 | refine    | `/specworks-refine`    | `refinement.md`: problem, context, constraints, options, recommendation |
 | propose   | `/specworks-propose`   | `proposal.md`, delta specs (requirements + acceptance criteria), `design.md`, `tasks.md`, `traceability.md` |
-| test      | `/specworks-test`      | failing tests per acceptance criterion + API stubs *(planned)* |
+| test      | `/specworks-test`      | API stubs from the design's interfaces + failing tests tagged `@ac` for every acceptance criterion |
 | implement | `/specworks-implement` | implementation driven by tasks and specs *(planned)* |
 | review    | `/specworks-review`    | fixes code <-> spec drift; **may edit** code and spec deltas *(planned)* |
 | verify    | `/specworks-verify`    | pass/fail report (completeness, correctness, traceability); **read-only** gate before close *(planned)* |
@@ -70,6 +70,8 @@ The system SHALL email a single-use reset link valid for 30 minutes.
 | `specworks spec list` / `spec show <ref>` | capabilities, their requirements, ID prefix, next free ID and delta path |
 | `specworks validate --change <ref>` | checks proposal, delta specs (IDs, SHALL/MUST, scenarios, MODIFIED/REMOVED targets, ID clashes with other changes) and tasks (format, every AC covered) |
 | `specworks diagrams --change <ref> [--check]` | renders the change's `diagrams/*.d2` to SVG with the workspace theme; `--check` reports missing/outdated SVGs without rendering |
+| `specworks task list\|done\|undo --change <ref> [N.M ...]` | lists tasks with their IDs; ticks or unticks checkboxes without touching the rest of `tasks.md` |
+| `specworks gate <phase> --change <ref>` | checks a phase is finished: `propose` (valid specs, tasks cover every AC), `test` (every AC has an `@ac`-tagged test, no tags to unknown IDs) |
 | `specworks trace --change <ref> [--write]` | REQ -> AC -> tasks -> tests (`@ac`) -> code (`@req`) matrix and its gaps; `--write` saves `traceability.md` |
 
 ## Diagrams
@@ -154,6 +156,17 @@ again.
 | `SPECWORKS_D2_CACHE` | where downloaded D2 archives are cached |
 
 To move to a newer D2, update the version and the six hashes in `d2_release.json`.
+
+## Project commands
+
+Skills run the project's own tools, configured per module (a module's entries
+override the top level's), in any language:
+
+```yaml
+commands:
+  test: uv run pytest     # npm test, go test ./..., cargo test, ctest ...
+  lint: uv run ruff check .
+```
 
 ## AI tools
 

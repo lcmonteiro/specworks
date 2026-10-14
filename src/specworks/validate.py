@@ -9,14 +9,12 @@ from pathlib import Path
 from .changes import Change, list_changes
 from .config import ConfigError
 from .diagrams import diagrams_in, referenced_images, state
-from .specfile import DELTA_SECTIONS, LIVING_SECTION, NORMATIVE_RE, Requirement, SpecDoc, ac_parent, find_ids
+from .specfile import DELTA_SECTIONS, LIVING_SECTION, NORMATIVE_RE, Requirement, SpecDoc, ac_parent
 from .specs import CapabilityRef, delta_files, read_spec, resolve_delta
+from .tasks import Task, parse_tasks
 from .workspace import Workspace
 
 PROPOSAL_SECTIONS = ("Why", "What Changes", "Capabilities")
-TASK_RE = re.compile(r"^\s*- \[(?P<mark>[^\]]*)\]\s+(?P<num>\d+\.\d+)\s+(?P<text>\S.*)$")
-TASKISH_RE = re.compile(r"^\s*[-*]\s*\[")
-FOLLOW_UP_RE = re.compile(r"^##\s+Workflow follow-up\s*$", re.IGNORECASE)
 MAX_DESCRIPTION = 1000
 
 
@@ -33,18 +31,6 @@ class Issue:
     def __str__(self) -> str:
         where = f"{self.file}:{self.line}" if self.line else self.file
         return f"{self.level:<7} {where}: {self.message}"
-
-
-@dataclass
-class Task:
-    num: str
-    text: str
-    done: bool
-    line: int
-
-    @property
-    def ids(self) -> list[str]:
-        return find_ids(self.text)
 
 
 @dataclass
@@ -67,20 +53,6 @@ class ChangeSpecs:
     def requirements(self, *sections: str) -> list[tuple[Delta, Requirement]]:
         wanted = sections or DELTA_SECTIONS
         return [(d, r) for d in self.deltas for r in d.doc.requirements if r.section in wanted]
-
-
-def parse_tasks(text: str) -> tuple[list[Task], list[tuple[int, str]]]:
-    tasks, problems = [], []
-    for number, line in enumerate(text.splitlines(), start=1):
-        if FOLLOW_UP_RE.match(line):
-            break  # plain follow-up bullets are not tracked tasks
-        if match := TASK_RE.match(line):
-            tasks.append(
-                Task(num=match.group("num"), text=match.group("text"), done=match.group("mark").strip().lower() == "x", line=number)
-            )
-        elif TASKISH_RE.match(line):
-            problems.append((number, "task must be '- [ ] N.M description' (e.g. '- [ ] 1.2 Add the export endpoint')"))
-    return tasks, problems
 
 
 def collect(ws: Workspace, change: Change) -> ChangeSpecs:
