@@ -8,7 +8,8 @@ authors = [
 ]
 requires-python = ">=3.11"
 dependencies = [
-    "d2-bin==0.7.1",
+    # D2 binary (v0.7.1) as platform wheels, built from the d2-bin repo at this commit.
+    "d2-bin @ git+https://github.com/lcmonteiro/d2-bin@44c309276a53d38b546cbd456a11de50d09df878",
     "pyyaml>=6.0.3",
     "typer>=0.27.3",
 ]
@@ -26,9 +27,9 @@ packages = ["src/specworks"]
 [tool.hatch.build.targets.sdist]
 include = ["src/specworks", "README.md", "tests"]
 
-# Until d2-bin 0.7.1 is on PyPI, develop against its merged main (same version).
-[tool.uv.sources]
-d2-bin = { git = "https://github.com/lcmonteiro/d2-bin", rev = "44c309276a53d38b546cbd456a11de50d09df878" }
+# d2-bin is a git dependency (a direct reference in the package metadata).
+[tool.hatch.metadata]
+allow-direct-references = true
 
 [dependency-groups]
 dev = [

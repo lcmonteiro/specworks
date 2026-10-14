@@ -54,16 +54,14 @@ jobs:
           wheel="$(ls dist/*.whl)"
           echo "$wheel"
           case "$wheel" in *-py3-none-any.whl) ;; *) echo "unexpected wheel tag"; exit 1 ;; esac
-          unzip -p "$wheel" '*/METADATA' | grep -qx 'Requires-Dist: d2-bin==0.7.1'
+          unzip -p "$wheel" '*/METADATA' | grep -qx 'Requires-Dist: d2-bin @ git+https://github.com/lcmonteiro/d2-bin@[0-9a-f]\{40\}'
 
       # The CLI reads schema.yaml, templates/, skills/ and bin/d2 from the
       # installed package, so check they all made it into the wheel.
       - name: Run the installed CLI
         run: |
           wheel="$(ls "$GITHUB_WORKSPACE"/dist/*.whl)"
-          # Until d2-bin is on PyPI, take it from the commit pinned in pyproject.toml.
-          d2bin="d2-bin @ git+https://github.com/lcmonteiro/d2-bin@44c309276a53d38b546cbd456a11de50d09df878"
-          sw() { uv tool run --isolated --from "$wheel" --with "$d2bin" specworks "$@"; }
+          sw() { uv tool run --isolated --from "$wheel" specworks "$@"; }
           project="$(mktemp -d)"
           cd "$project"
           sw init --dir spec --tools all
