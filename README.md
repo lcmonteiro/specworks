@@ -14,7 +14,7 @@ refine -> propose -> test -> implement -> review -> verify -> close
 | refine    | `/specworks-refine`    | `refinement.md`: problem, context, constraints, options, recommendation |
 | propose   | `/specworks-propose`   | `proposal.md`, delta specs (requirements + acceptance criteria), `design.md`, `tasks.md`, `traceability.md` |
 | test      | `/specworks-test`      | API stubs from the design's interfaces + failing tests tagged `@ac` for every acceptance criterion |
-| implement | `/specworks-implement` | implementation driven by tasks and specs *(planned)* |
+| implement | `/specworks-implement` | works through `tasks.md`: real code replacing the stubs, `@req` tags, tests green |
 | review    | `/specworks-review`    | fixes code <-> spec drift; **may edit** code and spec deltas *(planned)* |
 | verify    | `/specworks-verify`    | pass/fail report (completeness, correctness, traceability); **read-only** gate before close *(planned)* |
 | close     | `/specworks-close`     | living docs merged into `<capability-path>/docs/`, change archived (phase `done`) *(planned)* |
@@ -71,7 +71,8 @@ The system SHALL email a single-use reset link valid for 30 minutes.
 | `specworks validate --change <ref>` | checks proposal, delta specs (IDs, SHALL/MUST, scenarios, MODIFIED/REMOVED targets, ID clashes with other changes) and tasks (format, every AC covered) |
 | `specworks diagrams --change <ref> [--check]` | renders the change's `diagrams/*.d2` to SVG with the workspace theme; `--check` reports missing/outdated SVGs without rendering |
 | `specworks task list\|done\|undo --change <ref> [N.M ...]` | lists tasks with their IDs; ticks or unticks checkboxes without touching the rest of `tasks.md` |
-| `specworks gate <phase> --change <ref>` | checks a phase is finished: `propose` (valid specs, tasks cover every AC), `test` (every AC has an `@ac`-tagged test, no tags to unknown IDs) |
+| `specworks gate <phase> --change <ref>` | checks a phase is finished: `propose` (valid specs, tasks cover every AC), `test` (every AC has an `@ac`-tagged test, no tags to unknown IDs), `implement` (all tasks done, every requirement has `@req` code, removed ones gone, and `commands.test` passes; `--no-run` skips running it) |
+| `specworks run <test\|lint\|...> [--change <ref>]` | runs a configured project command in the change's module folder; the exit code passes through |
 | `specworks trace --change <ref> [--write]` | REQ -> AC -> tasks -> tests (`@ac`) -> code (`@req`) matrix and its gaps; `--write` saves `traceability.md` |
 
 ## Diagrams

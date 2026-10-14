@@ -11,11 +11,12 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from .changes import Change
+from .runner import CommandError, run_command
 from .trace import Tag, build_matrix, gaps, scan_tags, unknown_tags
 from .validate import validate_change
-from .workspace import Workspace
+from .workspace import Module, Workspace
 
-GATES = ("propose", "test")
+GATES = ("propose", "test", "implement")
 
 
 class GateError(Exception):
@@ -96,6 +97,39 @@ def _test(ws: Workspace, change: Change) -> list[Check]:
     return checks
 
 
+def _implement(ws: Workspace, module: Module, change: Change, run_tests: bool) -> list[Check]:
+    specs, checks = _spec_checks(ws, change)
+    pending = [f"{t.num} {t.text}" for t in specs.tasks if not t.done]
+    checks.append(Check("every task is done (specworks task list --pending)", specs.tasks_found and not pending, pending))
+    tags = scan_tags(ws)
+    found = gaps(build_matrix(specs, tags))
+    checks.append(Check("every requirement has code (@req tag)", not found["reqWithoutCode"], found["reqWithoutCode"]))
+    checks.append(Check("every acceptance criterion still has a test (@ac tag)", not found["acWithoutTests"], found["acWithoutTests"]))
+    stray = unknown_tags(specs, tags)
+    checks.append(Check("no tag refers to an unknown requirement or criterion", not stray, [f"{t.id} at {t.where}" for t in stray]))
+    checks.append(
+        Check(
+            "removed requirements are gone from tests and code",
+            not found["removedStillTagged"],
+            found["removedStillTagged"],
+        )
+    )
+    checks.append(_tests_pass(ws, module, run_tests))
+    return checks
+
+
+def _tests_pass(ws: Workspace, module: Module, run_tests: bool) -> Check:
+    name = "the test suite passes (commands.test)"
+    if not run_tests:
+        return Check(name, False, ["not run (--no-run); run `specworks run test`"], blocking=False)
+    try:
+        result = run_command(ws, module, "test")
+    except CommandError as exc:
+        return Check(name, False, [str(exc)])
+    details = [f"$ {result.command}  (in {result.cwd}, exit {result.exit_code})"]
+    return Check(name, result.ok, details if result.ok else details + result.tail())
+
+
 def specs_ids(specs) -> set[str]:
     ids = set()
     for delta in specs.deltas:
@@ -108,8 +142,11 @@ def _ac_tags_outside_tests(ids: set[str], tags: list[Tag]) -> list[Tag]:
     return [t for t in tags if t.kind == "ac" and not t.is_test and t.id in ids]
 
 
-def run_gate(ws: Workspace, change: Change, phase: str) -> tuple[bool, list[Check]]:
+def run_gate(ws: Workspace, module: Module, change: Change, phase: str, run_tests: bool = True) -> tuple[bool, list[Check]]:
     if phase not in GATES:
         raise GateError(f"no gate for phase '{phase}' yet; gates exist for: {', '.join(GATES)}")
-    checks = {"propose": _propose, "test": _test}[phase](ws, change)
+    if phase == "implement":
+        checks = _implement(ws, module, change, run_tests)
+    else:
+        checks = {"propose": _propose, "test": _test}[phase](ws, change)
     return all(c.ok for c in checks if c.blocking), checks
