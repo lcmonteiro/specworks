@@ -1,4 +1,5 @@
 import json
+import re
 
 import pytest
 from typer.testing import CliRunner
@@ -85,8 +86,8 @@ def test_context_lists_capabilities_with_docs_path(project):
 
 def test_phase_moves_and_validates(project):
     run_json("new", "add-login")
-    code, data = run_json("phase", "add-login", "propose")
-    assert code == 0 and data["phase"] == "propose"
+    code, data = run_json("phase", "add-login", "specify")
+    assert code == 0 and data["phase"] == "specify"
     code, data = run_json("phase", "add-login", "shipping")
     assert code == 1
 
@@ -141,8 +142,8 @@ def test_init_rejects_bad_dir(tmp_path, monkeypatch, folder):
 def test_phases_follow_the_workflow(project):
     run_json("new", "add-login")
     code, data = run_json("status", "--change", "add-login")
-    assert data["phases"] == ["refine", "propose", "test", "implement", "review", "verify", "close", "done"]
-    for phase in ("implement", "propose", "done"):  # moving back is allowed
+    assert data["phases"] == ["refine", "specify", "design", "test", "code", "review", "validate", "close", "done"]
+    for phase in ("code", "specify", "done"):  # moving back is allowed
         code, data = run_json("phase", "add-login", phase)
         assert code == 0 and data["phase"] == phase
 
@@ -152,3 +153,12 @@ def test_skills_are_installed_with_specworks_prefix(project):
     assert skills and all(name.startswith("specworks-") for name in skills)
     text = (project / ".claude/skills/specworks-refine/SKILL.md").read_text()
     assert "name: specworks-refine" in text and "sw-" not in text
+
+
+def test_changes_saved_with_old_phase_names_still_load(project):
+    run_json("new", "old-change")
+    meta = project / "specworks/changes/old-change/.change.yaml"
+    for old, new in (("propose", "specify"), ("interface", "design"), ("implement", "code"), ("verify", "validate")):
+        meta.write_text(re.sub(r"(?m)^phase: .*$", f"phase: {old}", meta.read_text()))
+        code, data = run_json("status", "--change", "old-change")
+        assert code == 0 and data["phase"] == new

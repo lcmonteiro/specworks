@@ -34,7 +34,7 @@ from .config import (
     load_config,
     write_default_config,
 )
-from .skills import TOOLS, ToolError, install_skills, parse_tools
+from .skills import TOOLS, ToolError, install_skills, parse_tools, remove_renamed_skills
 from .diagrams import DiagramError, diagrams_in, find_d2, render, state
 from .gate import GATES, GateError, run_gate
 from .review import review_change
@@ -46,7 +46,7 @@ from .validate import validate_change
 from .workflow import WorkflowError, artifact_states, instructions
 from .workspace import Module, Workspace, load_module_config, load_workspace
 
-app = typer.Typer(help="Spec-driven development: refine → propose → test → implement → review → verify → close.")
+app = typer.Typer(help="Spec-driven development: refine → specify → design → test → code → review → validate → close.")
 module_app = typer.Typer(help="Manage modules (sub-projects linked to this one, like git submodules).")
 app.add_typer(module_app, name="module")
 spec_app = typer.Typer(help="Read capabilities and their living specs.")
@@ -159,6 +159,8 @@ def write_skills(ws: Workspace, tools: str) -> None:
     typer.echo(f"tools   {', '.join(t.label for t in selected)}")
     for written in install_skills(ws.root, selected):
         typer.echo(f"skill   {ws.rel(written)}")
+    for removed in remove_renamed_skills(ws.root, selected):
+        typer.echo(f"removed {ws.rel(removed)} (renamed skill)")
 
 
 def ensure_module_config(root: Path, name: str, workspace_dir: str) -> tuple[Config, bool]:
@@ -369,8 +371,8 @@ def instructions_cmd(
     emit(data, as_json, text)
 
 
-@app.command()
-def validate(
+@app.command("check")
+def check_cmd(
     change: str = typer.Option(..., "--change", "-c", help="Change name or module:name."),
     strict: bool = typer.Option(False, "--strict", help="Treat warnings as errors."),
     as_json: bool = JsonOpt,
@@ -493,7 +495,7 @@ def diagrams(
 def gate(
     phase: str = typer.Argument(..., help=f"Phase to check: {', '.join(GATES)}."),
     change: str = typer.Option(..., "--change", "-c", help="Change name or module:name."),
-    no_run: bool = typer.Option(False, "--no-run", help="implement/review: do not run commands.test (reported as a warning)."),
+    no_run: bool = typer.Option(False, "--no-run", help="design/code/review: do not run the project's commands (reported as a warning)."),
     base: str | None = typer.Option(None, "--base", help="review: branch to diff against (default: origin's default branch)."),
     as_json: bool = JsonOpt,
 ) -> None:
@@ -520,8 +522,8 @@ def gate(
 def close(
     change: str = typer.Option(..., "--change", "-c", help="Change name or module:name."),
     dry_run: bool = typer.Option(False, "--dry-run", help="Show what would be merged and archived; write nothing."),
-    base: str | None = typer.Option(None, "--base", help="Branch to diff against for verify (default: origin's default branch)."),
-    no_run: bool = typer.Option(False, "--no-run", help="Verify without running test/lint/typecheck."),
+    base: str | None = typer.Option(None, "--base", help="Branch to diff against for validate (default: origin's default branch)."),
+    no_run: bool = typer.Option(False, "--no-run", help="Validate without running test/lint/typecheck."),
     as_json: bool = JsonOpt,
 ) -> None:
     """Merge the change's delta specs into the living specs, update requirements.md, and archive the change."""
@@ -538,7 +540,7 @@ def close(
     result = summary(verify_change(ws, mod, ch, run=not no_run, base=base))
     if result["verdict"] != "PASS":
         fail(
-            f"{ref} does not pass verify ({result['critical']} critical); run `specworks verify --change {ref}`",
+            f"{ref} does not pass validate ({result['critical']} critical); run `specworks validate --change {ref}`",
             as_json,
             goBackTo=result["goBackTo"],
         )
@@ -562,14 +564,14 @@ def close(
     emit(data, as_json, "\n".join(lines))
 
 
-@app.command()
-def verify(
+@app.command("validate")
+def validate_cmd(
     change: str = typer.Option(..., "--change", "-c", help="Change name or module:name."),
     base: str | None = typer.Option(None, "--base", help="Branch to diff against (default: origin's default branch)."),
     no_run: bool = typer.Option(False, "--no-run", help="Do not run test/lint/typecheck (reported as warnings)."),
     as_json: bool = JsonOpt,
 ) -> None:
-    """Final read-only check before close: completeness, correctness, coherence (exit 1 on FAIL)."""
+    """Final read-only check before close (validate phase): completeness, correctness, coherence (exit 1 on FAIL)."""
     from .verify import GROUPS, summary, verify_change
 
     ws = workspace(as_json)

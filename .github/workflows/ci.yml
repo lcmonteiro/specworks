@@ -72,12 +72,14 @@ jobs:
           test -f .claude/skills/specworks-refine/SKILL.md
           test -f .github/skills/specworks-refine/SKILL.md
           test -f .github/prompts/specworks-refine.prompt.md
-          test -f .github/skills/specworks-propose/SKILL.md
+          test -f .github/skills/specworks-specify/SKILL.md
+          test -f .github/skills/specworks-design/SKILL.md
+          test -f .github/prompts/specworks-design.prompt.md
           test -f .github/skills/specworks-test/SKILL.md
           test -f .github/prompts/specworks-test.prompt.md
-          test -f .github/skills/specworks-implement/SKILL.md
+          test -f .github/skills/specworks-code/SKILL.md
           test -f .github/skills/specworks-review/SKILL.md
-          test -f .github/skills/specworks-verify/SKILL.md
+          test -f .github/skills/specworks-validate/SKILL.md
           test -f .github/skills/specworks-close/SKILL.md
           mkdir -p spec/changes/add-example/diagrams
           printf 'shape: sequence_diagram\nuser -> api: "POST /reset {email}"\n' > spec/changes/add-example/diagrams/flow.d2

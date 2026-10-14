@@ -14,7 +14,9 @@ from .config import Config
 META_FILE = ".change.yaml"
 # Each phase is driven by the skill of the same name (specworks-<phase>); `close`
 # writes the living docs and archives the change, which then reads `done`.
-PHASES = ("refine", "propose", "test", "implement", "review", "verify", "close", "done")
+PHASES = ("refine", "specify", "design", "test", "code", "review", "validate", "close", "done")
+# Phase names before the rename; .change.yaml files that still use them load as the new names.
+OLD_PHASES = {"propose": "specify", "interface": "design", "implement": "code", "verify": "validate"}
 NAME_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 
 
@@ -60,6 +62,7 @@ def load_change(cfg: Config, name: str) -> Change:
         raise ChangeError(f"change '{name}' not found in {cfg.changes_dir}")
     meta = yaml.safe_load(meta_file.read_text(encoding="utf-8")) or {}
     phase = meta.get("phase", "refine")
+    phase = OLD_PHASES.get(phase, phase)
     if phase not in PHASES:
         raise ChangeError(f"change '{name}' has unknown phase '{phase}'")
     return Change(

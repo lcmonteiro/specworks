@@ -211,13 +211,13 @@ def test_status_after_planning(change):
 
 
 def test_valid_change(change):
-    code, data = run_json("validate", "--change", "add-password-reset")
+    code, data = run_json("check", "--change", "add-password-reset")
     assert errors(data) == []
     assert code == 0 and data["valid"] is True
 
 
 def test_missing_proposal_and_specs(project):
-    code, data = run_json("validate", "--change", "add-password-reset")
+    code, data = run_json("check", "--change", "add-password-reset")
     assert code == 1
     msgs = " | ".join(errors(data))
     assert "proposal.md is missing" in msgs and "no delta specs" in msgs
@@ -245,7 +245,7 @@ def replace_delta(change, old, new):
 )
 def test_delta_errors(change, old, new, message):
     replace_delta(change, old, new)
-    code, data = run_json("validate", "--change", "add-password-reset")
+    code, data = run_json("check", "--change", "add-password-reset")
     assert code == 1
     assert any(message in m for m in errors(data)), errors(data)
 
@@ -256,13 +256,13 @@ def test_requirement_without_scenario(change):
         "## MODIFIED Requirements",
         "### Requirement: REQ-AUTH-004 Audit\nThe system SHALL log resets.\n\n## MODIFIED Requirements",
     )
-    code, data = run_json("validate", "--change", "add-password-reset")
+    code, data = run_json("check", "--change", "add-password-reset")
     assert any("REQ-AUTH-004 needs at least one" in m for m in errors(data))
 
 
 def test_removed_needs_reason_and_migration(change):
     replace_delta(change, "## MODIFIED", "## REMOVED Requirements\n\n### Requirement: REQ-AUTH-001 Password login\n\n## MODIFIED")
-    code, data = run_json("validate", "--change", "add-password-reset")
+    code, data = run_json("check", "--change", "add-password-reset")
     assert any("needs **Reason** and **Migration**" in m for m in errors(data))
 
 
@@ -270,7 +270,7 @@ def test_new_capability_only_adds_and_needs_purpose(change):
     path = change / "specs/audit-log/spec.md"
     path.parent.mkdir()
     path.write_text("## MODIFIED Requirements\n\n### Requirement: REQ-AUDIT-LOG-001 Log\nThe system SHALL log.\n")
-    code, data = run_json("validate", "--change", "add-password-reset")
+    code, data = run_json("check", "--change", "add-password-reset")
     assert any("has no living spec yet" in m for m in errors(data))
     assert any("add '## Purpose'" in i["message"] for i in data["issues"] if i["level"] == "warning")
 
@@ -279,7 +279,7 @@ def test_delta_under_unknown_module(change):
     path = change / "specs/nope/thing/spec.md"
     path.parent.mkdir(parents=True)
     path.write_text("## ADDED Requirements\n")
-    code, data = run_json("validate", "--change", "add-password-reset")
+    code, data = run_json("check", "--change", "add-password-reset")
     assert any("'nope' in specs/nope/thing/spec.md is not a module" in m for m in errors(data))
 
 
@@ -288,7 +288,7 @@ def test_id_clash_with_another_change(change, project):
     other = project / "spec/changes/other-change/specs/user-auth"
     other.mkdir(parents=True)
     (other / "spec.md").write_text(DELTA)
-    code, data = run_json("validate", "--change", "add-password-reset")
+    code, data = run_json("check", "--change", "add-password-reset")
     assert any("REQ-AUTH-003 is also added by change other-change" in m for m in errors(data))
 
 
@@ -296,19 +296,19 @@ def test_skip_specs(project):
     path = project / "spec/changes/add-password-reset"
     (path / "proposal.md").write_text(PROPOSAL)
     (path / ".change.yaml").write_text((path / ".change.yaml").read_text() + "skip_specs: true\n")
-    code, data = run_json("validate", "--change", "add-password-reset")
+    code, data = run_json("check", "--change", "add-password-reset")
     assert errors(data) == [] and code == 0
 
 
 def test_tasks_must_cover_every_acceptance_criterion(change):
     (change / "tasks.md").write_text(TASKS.replace("AC-AUTH-003.1 and AC-AUTH-003.2", "AC-AUTH-003.1").replace(" (REQ-AUTH-003)", ""))
-    code, data = run_json("validate", "--change", "add-password-reset")
+    code, data = run_json("check", "--change", "add-password-reset")
     assert any("AC-AUTH-003.2 (user-auth) is not covered by any task" in m for m in errors(data))
 
 
 def test_tasks_format_and_unknown_ids(change):
     (change / "tasks.md").write_text(TASKS + "- [ ] fix stuff\n- [ ] 3.1 Cover REQ-AUTH-042\n- [ ] 1.1 duplicate\n")
-    code, data = run_json("validate", "--change", "add-password-reset")
+    code, data = run_json("check", "--change", "add-password-reset")
     msgs = " | ".join(errors(data))
     assert "task must be '- [ ] N.M description'" in msgs
     assert "refers to REQ-AUTH-042" in msgs
@@ -317,9 +317,9 @@ def test_tasks_format_and_unknown_ids(change):
 
 def test_tasks_not_written_is_only_a_warning(change):
     (change / "tasks.md").unlink()
-    code, data = run_json("validate", "--change", "add-password-reset")
+    code, data = run_json("check", "--change", "add-password-reset")
     assert code == 0 and any("tasks.md is not written yet" in i["message"] for i in data["issues"])
-    code, data = run_json("validate", "--change", "add-password-reset", "--strict")
+    code, data = run_json("check", "--change", "add-password-reset", "--strict")
     assert code == 1
 
 

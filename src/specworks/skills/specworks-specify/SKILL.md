@@ -1,10 +1,10 @@
 ---
-name: specworks-propose
-description: Propose phase of spec-driven development - turn a request (or a refinement) into a proposal, delta specs with requirement IDs and acceptance criteria, a design and a task list, validated and traced. Use when the user wants to plan a change before building it, write requirements or acceptance criteria, or says "propose", "proposal", "spec this" or "specworks propose".
+name: specworks-specify
+description: Specify phase of spec-driven development - turn a request (or a refinement) into a proposal, delta specs with requirement IDs and acceptance criteria, a design and a task list, validated and traced. Use when the user wants to plan a change before building it, write requirements or acceptance criteria, or says "specify", "propose", "proposal", "spec this" or "specworks specify".
 allowed-tools: Bash(specworks:*), Bash(uv run specworks:*), Bash(uvx:*), Read, Grep, Glob, Write, Edit
 ---
 
-Propose phase: decide WHAT will change and HOW it will be checked, before any
+Specify phase: decide WHAT will change and HOW it will be checked, before any
 test or code is written. It produces, inside the change folder:
 
 - `proposal.md`: why, what changes, which capabilities
@@ -13,11 +13,11 @@ test or code is written. It produces, inside the change folder:
 - `tasks.md`: ordered checklist, every task naming the IDs it serves
 - `traceability.md`: generated matrix REQ → AC → tasks (→ tests → code later)
 
-It is the second phase of `refine → propose → test → implement → review → verify → close`.
+It is the second phase of `refine → specify → design → test → code → review → validate → close`.
 
 **Phase boundary**: planning only. Do not write tests or code and do not edit
 files outside the change folder, even if the request says "build" or "fix".
-When the artifacts are done, stop and suggest `/specworks-test`.
+When the artifacts are done, stop and suggest `/specworks-design`.
 
 **Running the CLI**: use `specworks <cmd>`. If it is not on PATH, use
 `uv run specworks <cmd>` (inside the specworks repo) or
@@ -43,7 +43,7 @@ When the artifacts are done, stop and suggest `/specworks-test`.
      is optional for small changes.
    - Announce `Using change: <ref>` and move it to this phase:
      ```bash
-     specworks phase "<ref>" propose
+     specworks phase "<ref>" specify
      ```
 
 2. **Load what exists**
@@ -97,7 +97,7 @@ When the artifacts are done, stop and suggest `/specworks-test`.
 
    Then validate and fix every error before going on:
    ```bash
-   specworks validate --change "<ref>"
+   specworks check --change "<ref>"
    ```
    (`tasks.md is not written yet` is expected at this point.)
 
@@ -114,7 +114,7 @@ When the artifacts are done, stop and suggest `/specworks-test`.
 
    plus any assumption you made. Ask: "Are these the right requirements and
    acceptance criteria? Design and tasks are built on them." **Stop and wait.**
-   Apply the user's corrections, re-run `specworks validate`, and continue only
+   Apply the user's corrections, re-run `specworks check`, and continue only
    when they confirm. Agreeing to earlier answers is not confirmation of this
    list.
 
@@ -152,14 +152,14 @@ When the artifacts are done, stop and suggest `/specworks-test`.
 8. **Validate, trace and gate**
 
    ```bash
-   specworks validate --change "<ref>"
+   specworks check --change "<ref>"
    specworks trace --change "<ref>" --write
-   specworks gate propose --change "<ref>"
+   specworks gate specify --change "<ref>"
    ```
 
    Fix every validation error (warnings: fix or explain). `trace` writes
    `traceability.md`; at this phase the test and code columns are empty.
-   `gate propose` must pass: it is what `/specworks-test` checks first.
+   `gate specify` must pass: it is what `/specworks-design` checks first.
 
 9. **Show the result and stop**
 
@@ -170,16 +170,16 @@ When the artifacts are done, stop and suggest `/specworks-test`.
    Summarize: change and location; each artifact in one line (and design
    skipped, if so); the number of requirements and acceptance criteria per
    capability; assumptions made. End with: "The plan is ready for review.
-   When you are ready, run `/specworks-test <ref>` to write the failing tests
-   and API stubs."
+   When you are ready, run `/specworks-design <ref>` to decide the API and
+   create it as stubs."
 
 ---
 
 ## Guardrails
 
 - Planning only: write inside the change folder, nothing else. A request to
-  implement does not carry over; wait for `/specworks-test` or
-  `/specworks-implement`.
+  implement does not carry over; wait for `/specworks-design`,
+  `/specworks-test` and `/specworks-code`.
 - IDs, prefixes and delta paths come from the CLI (`nextId`, `prefix`,
   `deltaPath`). Never renumber or reuse an existing ID; a removed requirement's
   ID is retired.

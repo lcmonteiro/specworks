@@ -103,7 +103,7 @@ def instructions(ws: Workspace, module: Module, change: Change, artifact_id: str
         for path in delta_files(change):
             try:
                 touched.append(resolve_delta(ws, change, path).ref)
-            except ConfigError:  # reported by `specworks validate`
+            except ConfigError:  # reported by `specworks check`
                 continue
         data["capabilities"] = [describe(ws, cap, with_scenarios=False) for cap in workspace_capabilities(ws)]
         data["writtenDeltas"] = touched

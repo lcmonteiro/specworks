@@ -149,7 +149,7 @@ def test_d2_errors_are_reported(change, fake_d2):
 def test_validate_reports_diagram_problems(change, fake_d2):
     (change / "diagrams/orphan.d2").write_text("a -> b\n")
     (change / "design.md").write_text((change / "design.md").read_text() + "![gone](diagrams/gone.svg)\n")
-    code, data = run_json("validate", "--change", CHANGE)
+    code, data = run_json("check", "--change", CHANGE)
     issues = [(i["level"], i["message"]) for i in data["issues"]]
     assert ("error", "image diagrams/gone.svg does not exist") in issues
     assert any(level == "warning" and "has no SVG" in m for level, m in issues)

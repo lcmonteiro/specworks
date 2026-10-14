@@ -8,7 +8,7 @@ artifacts:
     generates: refinement.md
     template: refinement.md
     requires: []
-    # Small changes (a bug fix, a tweak) can go straight to propose.
+    # Small changes (a bug fix, a tweak) can go straight to specify.
     optional: true
     instruction: |
       Capture the shared understanding of the problem BEFORE committing to a solution.
@@ -37,10 +37,10 @@ artifacts:
         new capability say which module should own it.
 
       Keep it to 1-2 pages. No requirements, no tasks, no code: those belong to
-      the propose phase.
+      the specify phase.
 
   - id: proposal
-    phase: propose
+    phase: specify
     generates: proposal.md
     template: proposal.md
     requires: [refinement]
@@ -69,7 +69,7 @@ artifacts:
       a near-duplicate. Keep it to 1-2 pages; HOW belongs in design.md.
 
   - id: specs
-    phase: propose
+    phase: specify
     generates: "specs/**/spec.md"
     template: spec.md
     requires: [proposal]
@@ -98,7 +98,7 @@ artifacts:
       - `## REMOVED Requirements`: the existing ID and title, plus **Reason**
         and **Migration**.
 
-      Rules (`specworks validate` checks them):
+      Rules (`specworks check` checks them):
       - `### Requirement: REQ-<prefix>-NNN <title>` then a description using
         SHALL or MUST. One behaviour per requirement; split otherwise.
       - At least one `#### Scenario: AC-<prefix>-NNN.<n> <title>` per
@@ -111,7 +111,7 @@ artifacts:
       Write the files one at a time and say which capability you are on.
 
   - id: design
-    phase: propose
+    phase: specify
     generates: design.md
     template: design.md
     requires: [proposal]
@@ -129,8 +129,11 @@ artifacts:
       - **Goals / Non-Goals**: design-level boundaries only.
       - **Decisions**: each choice with the alternatives considered and why.
         Reference requirement IDs a decision serves.
-      - **Interfaces**: public APIs, data shapes, events or CLI surfaces that
-        tests will be written against in the test phase. Name them precisely.
+      - **Interfaces**: public APIs, data shapes, events or CLI surfaces the
+        change adds or extends. Name them precisely, each with its file in a
+        code span (`src/auth/reset.py`). The design phase settles this
+        section with the user and creates the stubs; tests are written
+        against it. Write "None" when the API does not change.
       - **Diagrams**: only where a picture explains what text cannot - a
         sequence diagram for a new flow, a state diagram for a lifecycle, a
         component diagram for a change across modules or services, a data
@@ -150,24 +153,23 @@ artifacts:
         `shape: sql_table`. Add `direction: right` for wide diagrams.
       - Do not set colours, fonts or styles: the workspace theme gives every
         diagram the same look. Quote labels containing `{ } : ; # | "`.
-      - Never edit the SVG by hand; change the .d2 and re-render. If d2 is
-        not installed, keep the .d2, tell the user how to install it, and
-        continue.
+      - Never edit the SVG by hand; change the .d2 and re-render. If d2
+        cannot run, keep the .d2, pass the error to the user, and continue.
       - **Risks / Trade-offs**: `[risk] -> mitigation`.
       - **Migration / Rollback**: when deployment or data needs steps.
       - **Open Questions**: only ones that do not change specs, approach or
         tasks; resolve the others with the user now.
 
   - id: tasks
-    phase: propose
+    phase: specify
     generates: tasks.md
     template: tasks.md
     requires: [specs, design]
     instruction: |
-      Break the work into small, ordered, checkable tasks. The test and
-      implement phases work through this list and tick boxes.
+      Break the work into small, ordered, checkable tasks. The design, test
+      and code phases work through this list and tick boxes.
 
-      Rules (`specworks validate` checks them):
+      Rules (`specworks check` checks them):
       - Group tasks under `## N. <group>` headings, in dependency order.
       - Every task is `- [ ] N.M <description>`; only `- [x]` counts as done.
       - Every task names the requirement or acceptance-criterion IDs it serves
@@ -175,10 +177,11 @@ artifacts:
         is covered by at least one task.
       - Every task says how to verify it: a test, a command or an observable
         result.
-      - Tests come first: in each group, write the failing tests for its
-        acceptance criteria (tagged `@ac <AC-ID>`) before the implementation
-        tasks (tagged `@req <REQ-ID>`). Do not push testing or docs into a
-        final group.
+      - Interfaces, then tests, then behaviour: in each group, first the task
+        that adds or extends the API as stubs (the design phase), then the
+        failing tests for its acceptance criteria (tagged `@ac <AC-ID>`), then
+        the implementation tasks (tagged `@req <REQ-ID>`). Do not push
+        testing or docs into a final group.
       - REMOVED requirements get a task that deletes their code and tests.
       - Resolve design.md Open Questions that would change the tasks before
         writing them.
@@ -187,7 +190,7 @@ artifacts:
       not tracked tasks.
 
   - id: traceability
-    phase: propose
+    phase: specify
     generates: traceability.md
     template: ""
     requires: [tasks]
@@ -203,8 +206,8 @@ artifacts:
     template: review.md
     requires: [tasks]
     instruction: |
-      Record the review: every place where the code and the specs disagree,
-      and what was decided for each. It is the evidence /specworks-verify
+      Record the review: every place where the code, the specs and the design
+      (API) disagree, the change proposed for each, and what was decided. It is the evidence /specworks-validate
       and /specworks-close rely on.
 
       Findings (`- [ ] R<n>` open, `- [x] R<n>` resolved), one per drift, with
@@ -214,6 +217,9 @@ artifacts:
         different limits).
       - **code-gap**: a requirement or criterion the code does not (fully)
         implement.
+      - **design-gap**: the code and design.md disagree: an interface under
+        `## Interfaces` (name, parameters, return or error types, file) or a
+        Decision the code does not follow, or that the code proved wrong.
       - **test-gap**: a criterion whose test does not really check its THEN
         (asserts too little, tests a different path, never fails).
       - **tag**: an `@req`/`@ac` tag on the wrong code, missing, or pointing
@@ -221,8 +227,11 @@ artifacts:
       - **quality**: a problem that does not break the spec but should not ship
         (security, error handling, obvious bug in an untested path).
       Each finding names the IDs and the file:line, and a **Decision**:
-      `code fixed`, `spec updated (ADDED/MODIFIED REQ-...)`, or
-      `accepted: <reason>` (only with the user's agreement).
+      `code fixed`, `spec updated (ADDED/MODIFIED REQ-...)`,
+      `design updated (<interface or decision>)`, or `accepted: <reason>`
+      (only with the user's agreement). A finding sent back to an earlier
+      phase stays open (`- [ ]`) with `back to <specify|design|code>: <the
+      agreed proposal>` until the change returns to review and it is done.
 
       "Changed files without tags" accounts for every file `specworks review`
       lists under untracedSource / untracedTests: why it needs no tag, or the

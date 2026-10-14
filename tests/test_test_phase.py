@@ -1,4 +1,4 @@
-"""Test phase support: commands config, task ticking and the propose/test gates."""
+"""Test phase support: commands config, task ticking and the specify/test gates."""
 
 from helpers import REF, run_json, write_tests
 from typer.testing import CliRunner
@@ -74,13 +74,13 @@ def checks(data):
 
 
 def test_propose_gate_passes_for_a_complete_plan(project):
-    code, data = run_json("gate", "propose", "--change", REF)
+    code, data = run_json("gate", "specify", "--change", REF)
     assert code == 0 and data["passed"] is True
 
 
 def test_propose_gate_fails_without_tasks(project):
     (project / "spec/changes" / REF / "tasks.md").unlink()
-    code, data = run_json("gate", "propose", "--change", REF)
+    code, data = run_json("gate", "specify", "--change", REF)
     assert code == 1 and checks(data)["tasks.md is written"]["ok"] is False
 
 
@@ -118,7 +118,7 @@ def test_test_gate_also_requires_valid_specs(project):
     write_tests(project, "AC-AUTH-003.1", "AC-AUTH-003.2", "AC-AUTH-002.1")
     (project / "spec/changes" / REF / "proposal.md").unlink()
     code, data = run_json("gate", "test", "--change", REF)
-    assert code == 1 and checks(data)["specs and tasks are valid (specworks validate)"]["ok"] is False
+    assert code == 1 and checks(data)["specs and tasks are valid (specworks check)"]["ok"] is False
 
 
 def test_unknown_gate(project):
