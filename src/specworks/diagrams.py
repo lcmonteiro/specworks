@@ -10,7 +10,7 @@ generated SVG carries a stamp with the hash of its source and render settings,
 so a stale or hand-edited SVG is detected without relying on file times (which
 git does not preserve).
 
-Rendering goes through ``d2-bin`` (its pinned official D2 release and its
+Rendering goes through ``pyd2`` (its pinned official D2 release and its
 ``render_file``); this module adds what is specific to specworks: the settings
 from the config file, the stamp, and the ``SPECWORKS_D2`` override. Checking
 needs no d2.
@@ -25,14 +25,14 @@ import shutil
 from dataclasses import dataclass
 from pathlib import Path
 
-import d2_bin
+import pyd2
 
 from .config import DiagramSettings
 
 DIAGRAMS_DIR = "diagrams"
 STAMP_RE = re.compile(r"<!-- specworks:d2 sha256=(?P<hash>[0-9a-f]{64}) -->")
 INSTALL_HINT = (
-    "specworks normally installs d2 with its d2-bin dependency; reinstall it (`uv tool install --reinstall specworks`), "
+    "specworks normally installs d2 with its pyd2 dependency; reinstall it (`uv tool install --reinstall specworks`), "
     "or install D2 yourself (https://d2lang.com/tour/install) or set SPECWORKS_D2 to its path"
 )
 
@@ -51,19 +51,19 @@ class Diagram:
 
 
 def bundled_d2() -> str | None:
-    """The d2 binary installed by the d2-bin dependency, if it is there."""
+    """The d2 binary installed by the pyd2 dependency, if it is there."""
     try:
-        return d2_bin.executable()
+        return pyd2.executable()
     except FileNotFoundError:
         return None
 
 
 def find_d2() -> tuple[str | None, str]:
-    """(path, where) - SPECWORKS_D2 first, then d2-bin's pinned release, then PATH."""
+    """(path, where) - SPECWORKS_D2 first, then pyd2's pinned release, then PATH."""
     if os.environ.get("SPECWORKS_D2"):
         return os.environ["SPECWORKS_D2"], "SPECWORKS_D2"
     if path := bundled_d2():
-        return path, "d2-bin"
+        return path, "pyd2"
     if path := shutil.which("d2"):
         return path, "PATH"
     return None, "missing"
@@ -106,8 +106,8 @@ def render(diagram: Diagram, settings: DiagramSettings, d2: str | None = None) -
     if d2 is None:
         raise DiagramError(f"cannot render {diagram.source.name}: d2 is not installed; {INSTALL_HINT}")
     try:
-        d2_bin.render_file(diagram.source, diagram.svg, settings.options(), d2=d2)
-    except d2_bin.D2Error as exc:
+        pyd2.render_file(diagram.source, diagram.svg, settings.options(), d2=d2)
+    except pyd2.D2Error as exc:
         raise DiagramError(str(exc)) from exc
     except OSError as exc:  # SPECWORKS_D2 points at something that does not run
         raise DiagramError(f"cannot run d2 ({d2}) on {diagram.source.name}: {exc}") from exc

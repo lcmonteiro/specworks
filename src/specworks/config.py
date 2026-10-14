@@ -13,9 +13,9 @@ import re
 from dataclasses import dataclass, field
 from pathlib import Path, PurePosixPath
 
-import d2_bin
+import pyd2
 import yaml
-from d2_bin import DARK_THEMES, LAYOUTS, LIGHT_THEMES, THEMES  # noqa: F401  (re-exported)
+from pyd2 import DARK_THEMES, LAYOUTS, LIGHT_THEMES, THEMES  # noqa: F401  (re-exported)
 
 CONFIG_EXT = ".yml"
 CONFIG_VERSION = 1
@@ -64,7 +64,7 @@ def theme_id(value: object, key: str, allow_none: bool = False) -> int | None:
     if allow_none and (value is None or (isinstance(value, str) and value.strip().lower() in ("none", "same"))):
         return None
     try:
-        return d2_bin.theme_id(value)
+        return pyd2.theme_id(value)
     except ValueError:
         raise ConfigError(
             f"'{key}': unknown theme {value!r}; use a name ({', '.join(THEMES)}) or a number from `d2 themes`"
@@ -73,7 +73,7 @@ def theme_id(value: object, key: str, allow_none: bool = False) -> int | None:
 
 
 def theme_name(number: int | None) -> str:
-    return "none" if number is None else d2_bin.theme_name(number)
+    return "none" if number is None else pyd2.theme_name(number)
 
 
 @dataclass
@@ -86,9 +86,9 @@ class DiagramSettings:
     sketch: bool = False  # hand-drawn look
     pad: int = 24
 
-    def options(self) -> d2_bin.Options:
-        """The d2-bin render options for these settings (version left out of the SVG)."""
-        return d2_bin.Options(self.theme, self.dark_theme, self.layout, self.sketch, self.pad, omit_version=True)
+    def options(self) -> pyd2.Options:
+        """The pyd2 render options for these settings (version left out of the SVG)."""
+        return pyd2.Options(self.theme, self.dark_theme, self.layout, self.sketch, self.pad, omit_version=True)
 
 
 COMMAND_KEYS = ("test", "lint", "typecheck", "build", "format")

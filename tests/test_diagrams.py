@@ -111,8 +111,8 @@ def test_bundled_d2_wins_over_path(tmp_path, monkeypatch):
     (tmp_path / "d2").write_text("")
     (tmp_path / "d2").chmod(0o755)
     monkeypatch.setenv("PATH", str(tmp_path))
-    monkeypatch.setattr(diagrams_module, "bundled_d2", lambda: "/pkg/d2_bin/bin/d2")
-    assert diagrams_module.find_d2() == ("/pkg/d2_bin/bin/d2", "d2-bin")
+    monkeypatch.setattr(diagrams_module, "bundled_d2", lambda: "/pkg/pyd2/bin/d2")
+    assert diagrams_module.find_d2() == ("/pkg/pyd2/bin/d2", "pyd2")
     monkeypatch.setattr(diagrams_module, "bundled_d2", lambda: None)
     assert diagrams_module.find_d2() == (str(tmp_path / "d2"), "PATH")
     monkeypatch.setenv("SPECWORKS_D2", "/opt/d2")
@@ -120,20 +120,20 @@ def test_bundled_d2_wins_over_path(tmp_path, monkeypatch):
 
 
 def test_bundled_d2_is_the_pinned_release():
-    """The d2-bin dependency provides the D2 release it pins."""
-    import d2_bin
+    """The pyd2 dependency provides the D2 release it pins."""
+    import pyd2
 
     bundled = diagrams_module.bundled_d2()
-    assert bundled == d2_bin.executable()
+    assert bundled == pyd2.executable()
     out = subprocess.run([bundled, "--version"], capture_output=True, text=True, check=True).stdout.strip()
-    assert out == d2_bin.D2_VERSION
+    assert out == pyd2.D2_VERSION
 
 
-def test_without_the_d2_bin_binary_falls_back(monkeypatch):
+def test_without_the_pyd2_binary_falls_back(monkeypatch):
     def missing():
         raise FileNotFoundError("no binary")
 
-    monkeypatch.setattr(diagrams_module.d2_bin, "executable", missing)
+    monkeypatch.setattr(diagrams_module.pyd2, "executable", missing)
     assert diagrams_module.bundled_d2() is None
 
 

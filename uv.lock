@@ -21,11 +21,6 @@ wheels = [
 ]
 
 [[package]]
-name = "d2-bin"
-version = "0.7.1"
-source = { git = "https://github.com/lcmonteiro/d2-bin?rev=ab926f8ef7b9e35bda88c3e69585d7be9f7bfe95#ab926f8ef7b9e35bda88c3e69585d7be9f7bfe95" }
-
-[[package]]
 name = "iniconfig"
 version = "2.3.1"
 source = { registry = "https://pypi.org/simple" }
@@ -72,6 +67,11 @@ sdist = { url = "https://files.pythonhosted.org/packages/f9/e2/3e91f31a7d2b083fe
 wheels = [
     { url = "https://files.pythonhosted.org/packages/54/20/4d324d65cc6d9205fabedc306948156824eb9f0ee1633355a8f7ec5c66bf/pluggy-1.6.0-py3-none-any.whl", hash = "sha256:e920276dd6813095e9377c0bc5566d94c932c33b27a3e3945d8389c374dd4746", size = 20538, upload-time = "2025-05-15T12:30:06.134Z" },
 ]
+
+[[package]]
+name = "pyd2"
+version = "0.7.1"
+source = { git = "https://github.com/lcmonteiro/pyd2?rev=fddf09561c713644f3e04836665faa7bd9e18bab#fddf09561c713644f3e04836665faa7bd9e18bab" }
 
 [[package]]
 name = "pygments"
@@ -180,7 +180,7 @@ name = "specworks"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
-    { name = "d2-bin" },
+    { name = "pyd2" },
     { name = "pyyaml" },
     { name = "typer" },
 ]
@@ -192,7 +192,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "d2-bin", git = "https://github.com/lcmonteiro/d2-bin?rev=ab926f8ef7b9e35bda88c3e69585d7be9f7bfe95" },
+    { name = "pyd2", git = "https://github.com/lcmonteiro/pyd2?rev=fddf09561c713644f3e04836665faa7bd9e18bab" },
     { name = "pyyaml", specifier = ">=6.0.3" },
     { name = "typer", specifier = ">=0.27.3" },
 ]

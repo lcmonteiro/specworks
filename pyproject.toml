@@ -8,8 +8,8 @@ authors = [
 ]
 requires-python = ">=3.11"
 dependencies = [
-    # D2 (v0.7.1) and its Python render API, built from the d2-bin repo at this commit.
-    "d2-bin @ git+https://github.com/lcmonteiro/d2-bin@ab926f8ef7b9e35bda88c3e69585d7be9f7bfe95",
+    # D2 (v0.7.1) and its Python render API, built from the pyd2 repo at this commit.
+    "pyd2 @ git+https://github.com/lcmonteiro/pyd2@fddf09561c713644f3e04836665faa7bd9e18bab",
     "pyyaml>=6.0.3",
     "typer>=0.27.3",
 ]
@@ -27,7 +27,7 @@ packages = ["src/specworks"]
 [tool.hatch.build.targets.sdist]
 include = ["src/specworks", "README.md", "tests"]
 
-# d2-bin is a git dependency (a direct reference in the package metadata).
+# pyd2 is a git dependency (a direct reference in the package metadata).
 [tool.hatch.metadata]
 allow-direct-references = true
 

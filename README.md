@@ -147,7 +147,7 @@ cd your-project && specworks init --dir spec   # writes spec.yml, spec/ and the 
 ```
 
 The install includes [D2](https://d2lang.com) for diagrams through the
-[`d2-bin`](https://github.com/lcmonteiro/d2-bin) dependency, taken straight
+[`pyd2`](https://github.com/lcmonteiro/pyd2) dependency, taken straight
 from its git repository at a pinned commit. Installing builds it for your
 platform (Linux, macOS and Windows on x86-64 and ARM64): it downloads the
 official D2 release it pins, checks its SHA-256, and packages it; the archive
@@ -155,11 +155,11 @@ is cached, so reinstalling does not download it again.
 
 | Variable | Effect |
 |---|---|
-| `SPECWORKS_D2` | use this `d2` instead of the one from `d2-bin` |
+| `SPECWORKS_D2` | use this `d2` instead of the one from `pyd2` |
 
-Without `d2-bin` (e.g. a platform it has no build for), `d2` is looked up on
-`PATH`. To move to a newer D2, point the `d2-bin` dependency in
-`pyproject.toml` at a newer d2-bin commit and run `uv lock`.
+Without `pyd2` (e.g. a platform it has no build for), `d2` is looked up on
+`PATH`. To move to a newer D2, point the `pyd2` dependency in
+`pyproject.toml` at a newer pyd2 commit and run `uv lock`.
 
 ## Project commands
 
