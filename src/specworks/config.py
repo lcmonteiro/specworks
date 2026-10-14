@@ -8,6 +8,7 @@ an unrelated ``docs.yml`` is never mistaken for one.
 
 from __future__ import annotations
 
+import json
 import re
 from dataclasses import dataclass, field
 from pathlib import Path, PurePosixPath
@@ -396,31 +397,58 @@ def add_module_entry(root: Path, name: str, path: str) -> None:
         if other_path == path:
             raise ConfigError(f"{path} is already linked as module '{other}'")
 
+    _insert_entry(root, "modules", [f"  {name}: {path}"], lambda cfg: cfg.modules.get(name) == path)
+
+
+def _insert_entry(root: Path, key: str, entry: list[str], applied) -> None:
+    """Append ``entry`` lines to the ``key:`` block of the config as text (keeping comments), then re-read to check."""
+    cfg = load_config(root)
     config_file = cfg.config_path
-    lines = config_file.read_text(encoding="utf-8").splitlines()
-    entry = f"  {name}: {path}"
+    original = config_file.read_text(encoding="utf-8")
+    lines = original.splitlines()
+    pattern = re.compile(rf"^{key}:\s*(\{{\s*\}})?\s*(#.*)?$")
     for i, line in enumerate(lines):
-        if re.match(r"^modules:\s*(\{\s*\})?\s*(#.*)?$", line):
-            lines[i] = "modules:"
-            # Append after the last indented entry of the block, keeping the order of addition.
+        if pattern.match(line):
+            lines[i] = f"{key}:"
+            # Append after the last indented line of the block, keeping the order of addition.
             end = i + 1
             while end < len(lines) and (lines[end].startswith((" ", "\t")) or not lines[end].strip()):
                 end += 1
             while end > i + 1 and not lines[end - 1].strip():
                 end -= 1
-            lines.insert(end, entry)
+            lines[end:end] = entry
             break
     else:
-        lines += ["", "modules:", entry]
-    original = config_file.read_text(encoding="utf-8")
+        lines += ["", f"{key}:", *entry]
     config_file.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
     try:
-        updated = load_config(root).modules
+        ok = applied(load_config(root))
     except ConfigError:
-        updated = {}
-    if updated.get(name) != path:
+        ok = False
+    if not ok:
         config_file.write_text(original, encoding="utf-8")
-        raise ConfigError(
-            f"could not add the module to {config_file} automatically; add it by hand:\nmodules:\n{entry}"
-        )
+        body = "\n".join(entry)
+        raise ConfigError(f"could not add it to {config_file} automatically; add it by hand:\n{key}:\n{body}")
+
+
+def add_capability_entry(root: Path, name: str, path: str, prefix: str = "", description: str = "") -> None:
+    """Register a capability (name -> code path) in the config at ``root``, keeping the user's comments."""
+    if not MODULE_NAME_RE.match(name):
+        raise ConfigError(f"capability name '{name}' must be kebab-case (e.g. user-auth)")
+    path = validate_relative(path, f"capability '{name}' path")
+    if prefix and not PREFIX_RE.match(prefix):
+        raise ConfigError(f"prefix '{prefix}' must be upper-case letters/digits (e.g. AUTH)")
+    if name in load_config(root).capabilities:
+        raise ConfigError(f"capability '{name}' already exists")
+    entry = [f"  {name}:", f"    path: {path}"]
+    if description:
+        entry.append(f"    description: {json.dumps(description)}")
+    if prefix:
+        entry.append(f"    prefix: {prefix}")
+
+    def applied(cfg: Config) -> bool:
+        cap = cfg.capabilities.get(name)
+        return cap is not None and cap.path == path and cap.prefix == prefix
+
+    _insert_entry(root, "capabilities", entry, applied)

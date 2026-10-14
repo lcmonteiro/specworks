@@ -20,6 +20,7 @@ import typer
 from . import __version__
 from .changes import PHASES, Change, ChangeError, create_change, list_changes, load_change, set_phase
 from .config import (
+    add_capability_entry,
     DARK_THEMES,
     THEMES,
     theme_name,
@@ -52,6 +53,8 @@ spec_app = typer.Typer(help="Read capabilities and their living specs.")
 app.add_typer(spec_app, name="spec")
 task_app = typer.Typer(help="List and tick the tasks of a change (tasks.md).")
 app.add_typer(task_app, name="task")
+capability_app = typer.Typer(help="Register capabilities (durable behaviours owned by a code folder).")
+app.add_typer(capability_app, name="capability")
 
 JsonOpt = typer.Option(False, "--json", help="Machine-readable output.")
 AllOpt = typer.Option(False, "--all", help="Include every module of the workspace.")
@@ -430,9 +433,10 @@ def diagrams(
     themes: bool = typer.Option(False, "--themes", help="List the diagram themes and the one in use."),
     check: bool = typer.Option(False, "--check", help="Only report missing or outdated SVGs (exit 1 if any); no d2 needed."),
     force: bool = typer.Option(False, "--force", help="Re-render every diagram, even up-to-date ones."),
+    dir: Path | None = typer.Option(None, "--dir", help="Render <dir>/diagrams/*.d2 instead (e.g. a capability's living docs folder)."),
     as_json: bool = JsonOpt,
 ) -> None:
-    """Render the change's D2 diagrams (diagrams/*.d2) to SVG with the workspace's diagram settings."""
+    """Render D2 diagrams (diagrams/*.d2) of a change, or of a docs folder, to SVG with the workspace's settings."""
     ws = workspace(as_json)
     settings = ws.top.config.diagrams
     if themes:
@@ -452,14 +456,21 @@ def diagrams(
         lines += [f"  {r['id']:>4}  {r['name']}{'  (dark)' if r['dark'] else ''}" for r in rows]
         emit(data, as_json, "\n".join(lines))
         return
-    if change is None:
-        fail("give --change <ref> (or --themes)", as_json)
-    try:
-        mod, ch = resolve_change(ws, change)
-    except (ChangeError, ConfigError) as exc:
-        fail(str(exc), as_json)
+    if (change is None) == (dir is None):
+        fail("give either --change <ref> or --dir <folder> (or --themes)", as_json)
+    if dir is not None:
+        folder = dir.resolve()
+        if not folder.is_relative_to(ws.root):
+            fail(f"{dir} is outside the workspace", as_json)
+        header = {"root": str(ws.root), "dir": ws.rel(folder)}
+    else:
+        try:
+            mod, ch = resolve_change(ws, change)
+        except (ChangeError, ConfigError) as exc:
+            fail(str(exc), as_json)
+        folder, header = ch.path, change_dict(ws, mod, ch)
     results, failed = [], False
-    for diagram in diagrams_in(ch.path):
+    for diagram in diagrams_in(folder):
         status = state(diagram, settings)
         entry = {"source": ws.rel(diagram.source), "svg": ws.rel(diagram.svg), "status": status}
         if not check and (force or status != "ok"):
@@ -471,9 +482,9 @@ def diagrams(
         failed |= entry["status"] in ("missing", "stale", "error")
         results.append(entry)
     d2_path, d2_from = find_d2()
-    data = {**change_dict(ws, mod, ch), "d2": d2_path, "d2From": d2_from, "diagrams": results}
+    data = {**header, "d2": d2_path, "d2From": d2_from, "diagrams": results}
     lines = [f"{r['status']:<9} {r['svg']}" + (f"\n          {r['error']}" if "error" in r else "") for r in results]
-    emit(data, as_json, "\n".join(lines) or "no diagrams (add diagrams/<name>.d2 to the change)")
+    emit(data, as_json, "\n".join(lines) or "no diagrams (add diagrams/<name>.d2)")
     if failed:
         raise typer.Exit(1)
 
@@ -503,6 +514,52 @@ def gate(
     emit(data, as_json, "\n".join(lines))
     if not passed:
         raise typer.Exit(1)
+
+
+@app.command()
+def close(
+    change: str = typer.Option(..., "--change", "-c", help="Change name or module:name."),
+    dry_run: bool = typer.Option(False, "--dry-run", help="Show what would be merged and archived; write nothing."),
+    base: str | None = typer.Option(None, "--base", help="Branch to diff against for verify (default: origin's default branch)."),
+    no_run: bool = typer.Option(False, "--no-run", help="Verify without running test/lint/typecheck."),
+    as_json: bool = JsonOpt,
+) -> None:
+    """Merge the change's delta specs into the living specs, update requirements.md, and archive the change."""
+    from .merge import MergeError, archive_change, plan_merge, write_merge
+    from .validate import validate_change
+    from .verify import summary, verify_change
+
+    ws = workspace(as_json)
+    try:
+        mod, ch = resolve_change(ws, change)
+    except (ChangeError, ConfigError) as exc:
+        fail(str(exc), as_json)
+    ref = mod.qualify(ch.name)
+    result = summary(verify_change(ws, mod, ch, run=not no_run, base=base))
+    if result["verdict"] != "PASS":
+        fail(
+            f"{ref} does not pass verify ({result['critical']} critical); run `specworks verify --change {ref}`",
+            as_json,
+            goBackTo=result["goBackTo"],
+        )
+    specs, _ = validate_change(ws, ch)
+    try:
+        merges = plan_merge(ws, ch, specs, ref)
+    except MergeError as exc:
+        fail(str(exc), as_json)
+    data = {**change_dict(ws, mod, ch), "dryRun": dry_run, "merges": [m.to_dict(ws) for m in merges], "archivedTo": None}
+    lines = [f"{'would merge' if dry_run else 'merged'} {m.cap.ref} -> {ws.rel(m.spec_path)}{' (new)' if m.created else ''}: {m.summary()}" for m in merges]
+    lines = lines or ["no delta specs to merge (skip_specs)"]
+    if not dry_run:
+        try:
+            write_merge(merges)
+            target = archive_change(ch, mod.config.archive_path)
+        except (MergeError, OSError) as exc:
+            fail(str(exc), as_json)
+        data["archivedTo"] = ws.rel(target)
+        data["phase"] = "done"
+        lines.append(f"archived -> {data['archivedTo']}")
+    emit(data, as_json, "\n".join(lines))
 
 
 @app.command()
@@ -686,6 +743,27 @@ def spec_list(as_json: bool = JsonOpt) -> None:
         c["requirements"] = len(c["requirements"])
     text = "\n".join(f"{c['ref']:<28} REQ-{c['prefix']}-  {c['requirements']} req  {c['livingSpec']}" for c in caps)
     emit({"root": str(ws.root), "capabilities": caps}, as_json, text or "no capabilities")
+
+
+@capability_app.command("add")
+def capability_add(
+    name: str = typer.Argument(..., help="Capability name (kebab-case)."),
+    path: str = typer.Option(..., "--path", help="Code folder that owns it, relative to the module root."),
+    module: str | None = typer.Option(None, "--module", "-m", help="Module that owns it (default: the current one)."),
+    prefix: str = typer.Option("", "--prefix", help="Requirement ID prefix, e.g. AUTH (default: derived from the name)."),
+    description: str = typer.Option("", "--description", help="One line on what it covers."),
+    as_json: bool = JsonOpt,
+) -> None:
+    """Register a capability in a module's config (needed before closing a change that creates it)."""
+    ws = workspace(as_json)
+    try:
+        target = ws.module(module) if module is not None else ws.current
+        add_capability_entry(target.root, name, path, prefix=prefix, description=description)
+        ws = load_workspace(target.root)
+        data = describe(ws, capability_ref(ws.module(target.name), name), with_scenarios=False)
+    except ConfigError as exc:
+        fail(str(exc), as_json)
+    emit(data, as_json, f"registered {data['ref']} -> {data['codePath']} (REQ-{data['prefix']}-)")
 
 
 @module_app.command("add")
