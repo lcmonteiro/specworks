@@ -111,6 +111,13 @@ class Workspace:
             return chain[0]["context"]
         return "\n\n".join(f"[{item['module']}]\n{item['context']}" for item in chain)
 
+    def commands(self, module: Module | None = None) -> dict[str, str]:
+        """Commands for a module: the top level's, overridden key by key down to the module."""
+        merged: dict[str, str] = {}
+        for node in (module or self.current).lineage():
+            merged.update(node.config.commands)
+        return merged
+
     def capabilities(self) -> list[tuple[Module, Capability]]:
         return [(m, cap) for m in self.modules() for cap in m.config.capabilities.values()]
 

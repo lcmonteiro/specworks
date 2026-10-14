@@ -149,16 +149,17 @@ When the artifacts are done, stop and suggest `/specworks-test`.
    failing tests (tagged `@ac`) come before the implementation (tagged `@req`)
    in every group; every acceptance criterion is covered.
 
-8. **Validate and trace**
+8. **Validate, trace and gate**
 
    ```bash
    specworks validate --change "<ref>"
    specworks trace --change "<ref>" --write
+   specworks gate propose --change "<ref>"
    ```
 
    Fix every validation error (warnings: fix or explain). `trace` writes
-   `traceability.md`; at this phase the test and code columns are empty,
-   but `acWithoutTasks` in its gaps must be empty.
+   `traceability.md`; at this phase the test and code columns are empty.
+   `gate propose` must pass: it is what `/specworks-test` checks first.
 
 9. **Show the result and stop**
 
