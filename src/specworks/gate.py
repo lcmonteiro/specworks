@@ -17,7 +17,7 @@ from .trace import Tag, build_matrix, gaps, scan_tags, unknown_tags
 from .validate import validate_change
 from .workspace import Module, Workspace
 
-GATES = ("propose", "test", "implement", "review")
+GATES = ("propose", "test", "implement", "review", "verify")
 
 
 class GateError(Exception):
@@ -30,9 +30,16 @@ class Check:
     ok: bool
     details: list[str] = field(default_factory=list)
     blocking: bool = True
+    group: str = ""  # verify: completeness / correctness / coherence
+    fix: str = ""  # verify: the phase skill that fixes a failure
 
     def to_dict(self) -> dict:
-        return {"name": self.name, "ok": self.ok, "blocking": self.blocking, "details": self.details}
+        data = {"name": self.name, "ok": self.ok, "blocking": self.blocking, "details": self.details}
+        if self.group:
+            data["group"] = self.group
+        if self.fix:
+            data["fix"] = self.fix
+        return data
 
 
 def _spec_checks(ws: Workspace, change: Change):
@@ -177,7 +184,11 @@ def run_gate(
 ) -> tuple[bool, list[Check]]:
     if phase not in GATES:
         raise GateError(f"no gate for phase '{phase}' yet; gates exist for: {', '.join(GATES)}")
-    if phase == "review":
+    if phase == "verify":
+        from .verify import verify_change  # verify builds on the other gates' checks
+
+        checks = verify_change(ws, module, change, run_tests, base)
+    elif phase == "review":
         checks = _review(ws, module, change, run_tests, base)
     elif phase == "implement":
         checks = _implement(ws, module, change, run_tests)

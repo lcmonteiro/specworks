@@ -1,40 +1,6 @@
 """Review phase support: drift candidates (`specworks review`) and the review gate."""
 
-import json
-import re
-import subprocess
-import sys
-
-import pytest
-from helpers import REF, run_json, write_tests
-
-PASS = f'"{sys.executable}" -c "print(\'ok\')"'
-
-
-def git(root, *args):
-    subprocess.run(["git", *args], cwd=root, check=True, capture_output=True)
-
-
-@pytest.fixture
-def repo(project, monkeypatch):
-    """The planned project as a git repo: baseline on main, the change's work on a feature branch."""
-    for key, value in {"GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t", "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@t"}.items():
-        monkeypatch.setenv(key, value)
-    cfg = project / "spec.yml"
-    cfg.write_text(re.sub(r"(?m)^  test:.*$", lambda _: f"  test: {json.dumps(PASS)}", cfg.read_text(), count=1))
-    (project / "src/auth/session.py").write_text("def session(): ...\n")
-    git(project, "init", "-q", "-b", "main")
-    git(project, "add", "-A")
-    git(project, "commit", "-q", "-m", "baseline")
-    git(project, "checkout", "-q", "-b", "feature")
-    write_tests(project, "AC-AUTH-003.1", "AC-AUTH-003.2", "AC-AUTH-002.1")
-    (project / "src/auth/reset.py").write_text("# @req REQ-AUTH-003\ndef reset(): ...\n")
-    (project / "src/auth/lockout.py").write_text("# @req REQ-AUTH-002\nLIMIT = 3\n")
-    git(project, "add", "-A")
-    git(project, "commit", "-q", "-m", "implement")
-    run_json("task", "done", "1.1", "1.2", "--change", REF)
-    return project
-
+from helpers import REF, run_json
 
 def findings(data):
     return data["findings"]
