@@ -4,12 +4,12 @@ Base: `<!-- base branch -->`
 
 ## Findings
 
-<!-- One line per drift between code and spec, from `specworks review` and from
+<!-- One line per drift between code, spec and design (API), from `specworks review` and from
 reading the diff. `- [ ] R<n>` while open, `- [x] R<n>` once resolved. Write
 "None." when there are no findings. -->
 
-- [ ] R1 **<!-- spec-gap | code-gap | test-gap | tag | quality -->** <!-- what drifts, with REQ/AC IDs --> (`<!-- file:line -->`)
-  - **Decision**: <!-- code fixed | spec updated (ADDED/MODIFIED REQ-...) | accepted: reason -->
+- [ ] R1 **<!-- spec-gap | code-gap | design-gap | test-gap | tag | quality -->** <!-- what drifts, with REQ/AC IDs --> (`<!-- file:line -->`)
+  - **Decision**: <!-- code fixed | spec updated (ADDED/MODIFIED REQ-...) | design updated (interface/decision) | back to specify/design/code: proposal (stays open) | accepted: reason -->
 
 ## Changed files without tags
 
@@ -21,4 +21,4 @@ finding that covers it. -->
 
 ## Summary
 
-<!-- Two or three lines: what was found, what changed in code and specs. -->
+<!-- Two or three lines: what was found, what changed in code, specs and design, and anything sent back to an earlier phase. -->

@@ -18,15 +18,17 @@ refine -> specify -> design -> test -> code -> review -> validate -> close
 | design    | `/specworks-design`    | the API decided with you (new and extended classes, functions, signatures, errors), recorded under Interfaces in `design.md` and created as empty stubs that build |
 | test      | `/specworks-test`      | failing tests tagged `@ac` for every acceptance criterion, written against those stubs |
 | code      | `/specworks-code`      | works through `tasks.md`: real code replacing the stubs, `@req` tags, tests green |
-| review    | `/specworks-review`    | finds code <-> spec drift both ways, fixes code or spec deltas with you, records every decision in `review.md` |
+| review    | `/specworks-review`    | finds drift between code, spec and design/API, proposes a change to whichever is wrong (applied with you, or sent back to `specify` / `design` / `code`), records every decision in `review.md` |
 | validate  | `/specworks-validate`  | **read-only** PASS/FAIL report (completeness, correctness, coherence); every failure names the phase that fixes it |
 | close     | `/specworks-close`     | deltas merged into the living `spec.md`, `requirements.md` regenerated, design / architecture / diagrams updated in `<capability-path>/docs/`, change archived (phase `done`) |
 
 The flow is not strictly linear (dashed arrows): `test` goes back to
 `design` when a test needs an API that was not agreed, `design`, `test` and
 `code` go back to `specify` when the spec turns out wrong, and a failing
-`validate` names the phase that fixes each problem. `review` fixes drift in
-place, updating the code or the spec deltas with you. The diagram shows every
+`validate` names the phase that fixes each problem. `review` proposes, for
+each drift, a change to the code, the spec or the design/API: small, local
+ones are applied there with you, larger ones go back to `code`, `specify` or
+`design`. The diagram shows every
 transition the skills and gates use (source:
 [`docs/diagrams/workflow.d2`](docs/diagrams/workflow.d2)).
 `specworks phase <change> <phase>` moves a change to any phase.

@@ -206,8 +206,8 @@ artifacts:
     template: review.md
     requires: [tasks]
     instruction: |
-      Record the review: every place where the code and the specs disagree,
-      and what was decided for each. It is the evidence /specworks-validate
+      Record the review: every place where the code, the specs and the design
+      (API) disagree, the change proposed for each, and what was decided. It is the evidence /specworks-validate
       and /specworks-close rely on.
 
       Findings (`- [ ] R<n>` open, `- [x] R<n>` resolved), one per drift, with
@@ -217,6 +217,9 @@ artifacts:
         different limits).
       - **code-gap**: a requirement or criterion the code does not (fully)
         implement.
+      - **design-gap**: the code and design.md disagree: an interface under
+        `## Interfaces` (name, parameters, return or error types, file) or a
+        Decision the code does not follow, or that the code proved wrong.
       - **test-gap**: a criterion whose test does not really check its THEN
         (asserts too little, tests a different path, never fails).
       - **tag**: an `@req`/`@ac` tag on the wrong code, missing, or pointing
@@ -224,8 +227,11 @@ artifacts:
       - **quality**: a problem that does not break the spec but should not ship
         (security, error handling, obvious bug in an untested path).
       Each finding names the IDs and the file:line, and a **Decision**:
-      `code fixed`, `spec updated (ADDED/MODIFIED REQ-...)`, or
-      `accepted: <reason>` (only with the user's agreement).
+      `code fixed`, `spec updated (ADDED/MODIFIED REQ-...)`,
+      `design updated (<interface or decision>)`, or `accepted: <reason>`
+      (only with the user's agreement). A finding sent back to an earlier
+      phase stays open (`- [ ]`) with `back to <specify|design|code>: <the
+      agreed proposal>` until the change returns to review and it is done.
 
       "Changed files without tags" accounts for every file `specworks review`
       lists under untracedSource / untracedTests: why it needs no tag, or the
