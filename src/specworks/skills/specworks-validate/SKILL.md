@@ -1,15 +1,15 @@
 ---
-name: specworks-verify
-description: Verify phase of spec-driven development - a final, read-only pass/fail check that a change is complete, correct and coherent before it is closed, with every failure pointing to the phase that fixes it. Use when a change has been reviewed and the user wants to know if it is ready, or says "verify", "is it done", "ready to close" or "specworks verify".
+name: specworks-validate
+description: Validate phase of spec-driven development - a final, read-only pass/fail check that a change is complete, correct and coherent before it is closed, with every failure pointing to the phase that fixes it. Use when a change has been reviewed and the user wants to know if it is ready, or says "validate", "verify", "is it done", "ready to close" or "specworks validate".
 allowed-tools: Bash(specworks:*), Bash(uv run specworks:*), Bash(uvx:*), Bash(git diff:*), Bash(git log:*), Bash(git status:*), Read, Grep, Glob
 ---
 
-Verify phase: decide, without changing anything, whether the change is ready
+Validate phase: decide, without changing anything, whether the change is ready
 to close. The CLI checks what can be measured; you check what needs reading.
 The result is a clear PASS or FAIL, and every failure says which phase fixes
 it.
 
-It is the seventh phase of `refine → propose → interface → test → implement → review → verify → close`.
+It is the seventh phase of `refine → specify → design → test → code → review → validate → close`.
 
 **Phase boundary**: read-only. Do not edit code, tests, specs, tasks, design or
 review.md, and do not fix what you find, even when it is a one-line fix: report
@@ -29,13 +29,13 @@ go back to.
 
    Select it as the other phases do and announce `Using change: <ref>`, then:
    ```bash
-   specworks phase "<ref>" verify
+   specworks phase "<ref>" validate
    ```
 
 2. **Run the measurable checks**
 
    ```bash
-   specworks verify --change "<ref>" --json      # add --base <branch> if the default is wrong
+   specworks validate --change "<ref>" --json      # add --base <branch> if the default is wrong
    ```
 
    It runs the project's test, lint and typecheck commands and reports three
@@ -65,10 +65,10 @@ go back to.
 4. **Report the verdict and stop**
 
    ```
-   Verify <ref>: PASS | FAIL
+   Validate <ref>: PASS | FAIL
 
    Completeness  5/5   Correctness  6/6   Coherence  3/3
-   CRITICAL  every requirement has code: REQ-AUTH-002   -> /specworks-implement
+   CRITICAL  every requirement has code: REQ-AUTH-002   -> /specworks-code
    WARNING   AC-AUTH-003.2 test checks the status only  -> /specworks-review
    ```
 
@@ -76,8 +76,8 @@ go back to.
      close. Run `/specworks-close <ref>` to merge the specs into the living docs
      and archive the change."
    - **FAIL**: list the critical issues grouped by the phase to go back to, and
-     suggest the earliest one (e.g. `specworks phase "<ref>" implement`, then
-     `/specworks-implement <ref>`). Warnings are listed but do not block.
+     suggest the earliest one (e.g. `specworks phase "<ref>" code`, then
+     `/specworks-code <ref>`). Warnings are listed but do not block.
 
 ---
 
@@ -85,7 +85,7 @@ go back to.
 
 - Never modify the project in this phase. A fix here would skip the review
   and the records the other phases keep.
-- A FAIL from `specworks verify` is never overridden by your judgement; your
+- A FAIL from `specworks validate` is never overridden by your judgement; your
   reading can only add issues.
 - Be specific: every issue names the check or file and the phase that fixes it.
 - Re-read artifacts from disk; the user may have changed them since review.

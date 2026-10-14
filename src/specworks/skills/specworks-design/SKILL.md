@@ -1,16 +1,16 @@
 ---
-name: specworks-interface
-description: Interface phase of spec-driven development - decide with the user the API a change adds or extends (classes, functions, signatures, data shapes, errors), record it in design.md, and create it as empty stubs that compile, before any test or behaviour is written. Use when a change has been proposed and the user wants to define the interfaces/API first, or says "interface", "API", "stubs", "signatures" or "specworks interface".
+name: specworks-design
+description: Design phase of spec-driven development - decide with the user the API a change adds or extends (classes, functions, signatures, data shapes, errors), record it in design.md, and create it as empty stubs that compile, before any test or behaviour is written. Use when a change has been proposed and the user wants to define the interfaces/API first, or says "design", "interface", "API", "stubs", "signatures" or "specworks design".
 allowed-tools: Bash(specworks:*), Bash(uv run specworks:*), Bash(uvx:*), Read, Grep, Glob, Write, Edit
 ---
 
-Interface phase: agree on the API the change adds or extends, write it down in
+Design phase: agree on the API the change adds or extends, write it down in
 design.md, and create it as empty classes and functions (stubs) so the test
 phase can write tests against the real names and signatures.
 At the end the API is decided, recorded under `## Interfaces` in design.md,
 and present in the code as stubs that compile and break nothing.
 
-It is the third phase of `refine → propose → interface → test → implement → review → verify → close`.
+It is the third phase of `refine → specify → design → test → code → review → validate → close`.
 
 **Phase boundary**: interfaces only. A stub has the real public signature
 (names, parameters, types, errors, doc comments) and a body that only
@@ -29,16 +29,16 @@ it looks easy. When the gate passes, stop and suggest `/specworks-test`.
 
    ```bash
    specworks context --json
-   specworks gate propose --change "<ref>"
+   specworks gate specify --change "<ref>"
    ```
 
-   - Select the change as in `/specworks-propose` (named by the user, or the
+   - Select the change as in `/specworks-specify` (named by the user, or the
      single active one; ask if ambiguous). Announce `Using change: <ref>`.
-   - If `gate propose` fails, stop: show the failing checks and suggest
-     `/specworks-propose <ref>` to finish the plan.
+   - If `gate specify` fails, stop: show the failing checks and suggest
+     `/specworks-specify <ref>` to finish the plan.
    - Otherwise move the change to this phase:
      ```bash
-     specworks phase "<ref>" interface
+     specworks phase "<ref>" design
      ```
 
 2. **Load the plan and the code it touches**
@@ -69,7 +69,7 @@ it looks easy. When the gate passes, stop and suggest `/specworks-test`.
 
    Prefer extending an existing interface over adding a parallel one, keep
    the surface as small as the requirements need, and leave internals out
-   (private helpers are the implement phase's business).
+   (private helpers are the code phase's business).
 
    Show the list to the user and agree on it before writing code. Ask about
    anything that would change what tests assert (names of errors, return
@@ -110,7 +110,7 @@ it looks easy. When the gate passes, stop and suggest `/specworks-test`.
    Extending an existing function: add the new parameter or method with a
    stub for the new path only; never break the behaviour existing tests rely
    on. Do not add `@req` tags: `@req` marks implemented code and is added in
-   the implement phase.
+   the code phase.
 
 6. **Check the stubs build and break nothing, then gate**
 
@@ -119,7 +119,7 @@ it looks easy. When the gate passes, stop and suggest `/specworks-test`.
    specworks run typecheck --change "<ref>"   # when configured
    specworks run test --change "<ref>"
    specworks task done <N.M> [<N.M> ...] --change "<ref>"   # interface tasks you completed
-   specworks gate interface --change "<ref>"
+   specworks gate design --change "<ref>"
    ```
 
    The existing test suite must still pass: there are no new tests yet, so a
@@ -147,10 +147,10 @@ it looks easy. When the gate passes, stop and suggest `/specworks-test`.
 ## Guardrails
 
 - No tests and no behaviour: stubs only signal "not implemented". Tests
-  belong to `/specworks-test`, behaviour to `/specworks-implement`.
+  belong to `/specworks-test`, behaviour to `/specworks-code`.
 - The API serves the specs. If a requirement cannot be reached through a
   sensible API, or the API exposes something no requirement asks for, stop
-  and suggest `/specworks-propose <ref>` to fix the spec.
+  and suggest `/specworks-specify <ref>` to fix the spec.
 - Decide with the user before writing code; design.md's Interfaces is the
   record of that decision, and the code must match it.
 - IDs come from the specs. Never invent a requirement ID.

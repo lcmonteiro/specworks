@@ -1,4 +1,4 @@
-"""Implement phase support: `specworks run` and the implement gate."""
+"""Code phase support: `specworks run` and the code gate."""
 
 import json
 import re
@@ -59,13 +59,13 @@ def test_run_unconfigured_command(project):
     assert code == 1 and "no 'lint' command configured" in data["error"]
 
 
-# --- gate implement ---------------------------------------------------------
+# --- gate code ---------------------------------------------------------
 
 
 def test_implement_gate_passes_when_everything_is_done(project):
     set_test_command(project, PASS)
     implement_everything(project)
-    code, data = run_json("gate", "implement", "--change", REF)
+    code, data = run_json("gate", "code", "--change", REF)
     assert code == 0 and data["passed"] is True, data
     assert checks(data)["the test suite passes (commands.test)"]["details"][0].startswith("$ ")
 
@@ -74,7 +74,7 @@ def test_implement_gate_lists_what_is_missing(project):
     set_test_command(project, PASS)
     write_tests(project, "AC-AUTH-003.1", "AC-AUTH-003.2", "AC-AUTH-002.1")
     (project / "src/auth/reset.py").write_text("# @req REQ-AUTH-003\n")
-    code, data = run_json("gate", "implement", "--change", REF)
+    code, data = run_json("gate", "code", "--change", REF)
     assert code == 1
     c = checks(data)
     assert c["every requirement has code (@req tag)"]["details"] == ["REQ-AUTH-002"]
@@ -84,7 +84,7 @@ def test_implement_gate_lists_what_is_missing(project):
 def test_implement_gate_fails_when_tests_fail(project):
     set_test_command(project, FAIL)
     implement_everything(project)
-    code, data = run_json("gate", "implement", "--change", REF)
+    code, data = run_json("gate", "code", "--change", REF)
     assert code == 1
     tests = checks(data)["the test suite passes (commands.test)"]
     assert tests["ok"] is False and "2 failed" in tests["details"]
@@ -92,13 +92,13 @@ def test_implement_gate_fails_when_tests_fail(project):
 
 def test_implement_gate_needs_a_test_command(project):
     implement_everything(project)
-    code, data = run_json("gate", "implement", "--change", REF)
+    code, data = run_json("gate", "code", "--change", REF)
     assert code == 1 and "no 'test' command configured" in checks(data)["the test suite passes (commands.test)"]["details"][0]
 
 
 def test_no_run_turns_the_test_check_into_a_warning(project):
     implement_everything(project)
-    code, data = run_json("gate", "implement", "--change", REF, "--no-run")
+    code, data = run_json("gate", "code", "--change", REF, "--no-run")
     assert code == 0
     tests = checks(data)["the test suite passes (commands.test)"]
     assert tests["blocking"] is False and "not run" in tests["details"][0]
@@ -115,5 +115,5 @@ def test_removed_requirement_still_tagged_blocks_implement(project):
     tasks = project / "spec/changes" / REF / "tasks.md"
     tasks.write_text(tasks.read_text() + "- [x] 2.2 Remove password login (REQ-AUTH-001)\n")
     (project / "src/auth/login.py").write_text("# @req REQ-AUTH-001\n")
-    code, data = run_json("gate", "implement", "--change", REF)
+    code, data = run_json("gate", "code", "--change", REF)
     assert code == 1 and checks(data)["removed requirements are gone from tests and code"]["details"] == ["REQ-AUTH-001"]

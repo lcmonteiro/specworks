@@ -1,4 +1,4 @@
-"""Interface phase: the interface gate (API recorded in design.md, stubs exist, build and tests still pass)."""
+"""Design phase: the design gate (API recorded in design.md, stubs exist, build and tests still pass)."""
 
 import json
 import re
@@ -28,7 +28,7 @@ def write_design(root, body):
 
 
 def gate(*extra):
-    code, data = run_json("gate", "interface", "--change", REF, *extra)
+    code, data = run_json("gate", "design", "--change", REF, *extra)
     return code, {c["name"]: c for c in data["checks"]}
 
 
@@ -44,10 +44,10 @@ def planned(project):
 
 
 def test_phase_order_has_interface_between_propose_and_test(planned):
-    code, data = run_json("phase", REF, "interface")
-    assert code == 0 and data["phase"] == "interface"
+    code, data = run_json("phase", REF, "design")
+    assert code == 0 and data["phase"] == "design"
     code, data = run_json("status", "--change", REF)
-    assert data["phase"] == "interface" and data["phases"].index("propose") < data["phases"].index("interface") < data["phases"].index("test")
+    assert data["phase"] == "design" and data["phases"].index("specify") < data["phases"].index("design") < data["phases"].index("test")
 
 
 def test_gate_needs_the_interfaces_section(planned):
@@ -109,7 +109,7 @@ def test_invalid_specs_fail_the_gate(planned):
     delta = planned / "spec/changes" / REF / "specs/user-auth/spec.md"
     delta.write_text(delta.read_text().replace("SHALL", "should"))
     code, checks = gate()
-    assert code == 1 and not checks["specs and tasks are valid (specworks validate)"]["ok"]
+    assert code == 1 and not checks["specs and tasks are valid (specworks check)"]["ok"]
 
 
 @pytest.mark.parametrize(

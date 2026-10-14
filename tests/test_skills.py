@@ -89,3 +89,19 @@ def test_module_init_installs_skills_at_workspace_root(tmp_path, monkeypatch):
     init(tmp_path, monkeypatch, "--tools", "copilot")
     runner.invoke(app, ["init", "services/billing", "--tools", "copilot"])
     assert not (tmp_path / "services/billing/.github").exists()
+
+
+def test_skills_renamed_in_the_phase_rename_are_removed(tmp_path, monkeypatch):
+    init(tmp_path, monkeypatch, "--tools", "all")
+    old = [tmp_path / ".claude/skills/specworks-propose/SKILL.md", tmp_path / ".github/skills/specworks-verify/SKILL.md"]
+    prompt = tmp_path / ".github/prompts/specworks-implement.prompt.md"
+    kept = tmp_path / ".claude/skills/specworks-interface/notes.md"  # not ours: the folder stays
+    for path in [*old, prompt, kept]:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("old")
+    result = runner.invoke(app, ["skills", "--tools", "all"])
+    assert result.exit_code == 0, result.output
+    assert "removed .claude/skills/specworks-propose/SKILL.md (renamed skill)" in result.output
+    assert not any(p.exists() for p in old) and not prompt.exists()
+    assert not (tmp_path / ".claude/skills/specworks-propose").exists() and kept.is_file()
+    assert (tmp_path / ".claude/skills/specworks-specify/SKILL.md").is_file()

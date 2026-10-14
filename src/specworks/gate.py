@@ -18,7 +18,7 @@ from .trace import Tag, build_matrix, gaps, scan_tags, unknown_tags
 from .validate import validate_change
 from .workspace import Module, Workspace
 
-GATES = ("propose", "interface", "test", "implement", "review", "verify")
+GATES = ("specify", "design", "test", "code", "review", "validate")
 
 
 class GateError(Exception):
@@ -31,8 +31,8 @@ class Check:
     ok: bool
     details: list[str] = field(default_factory=list)
     blocking: bool = True
-    group: str = ""  # verify: completeness / correctness / coherence
-    fix: str = ""  # verify: the phase skill that fixes a failure
+    group: str = ""  # validate: completeness / correctness / coherence
+    fix: str = ""  # validate: the phase skill that fixes a failure
 
     def to_dict(self) -> dict:
         data = {"name": self.name, "ok": self.ok, "blocking": self.blocking, "details": self.details}
@@ -46,11 +46,11 @@ class Check:
 def _spec_checks(ws: Workspace, change: Change):
     specs, issues = validate_change(ws, change)
     errors = [str(i) for i in issues if i.level == "error"]
-    checks = [Check("specs and tasks are valid (specworks validate)", not errors, errors)]
+    checks = [Check("specs and tasks are valid (specworks check)", not errors, errors)]
     return specs, checks
 
 
-def _propose(ws: Workspace, change: Change) -> list[Check]:
+def _specify(ws: Workspace, change: Change) -> list[Check]:
     specs, checks = _spec_checks(ws, change)
     checks.append(
         Check(
@@ -89,7 +89,7 @@ def interface_files(section: str) -> list[str]:
     return paths
 
 
-def _interface(ws: Workspace, module: Module, change: Change, run_tests: bool) -> list[Check]:
+def _design(ws: Workspace, module: Module, change: Change, run_tests: bool) -> list[Check]:
     _, checks = _spec_checks(ws, change)
     section = interfaces_section(change)
     checks.append(
@@ -158,7 +158,7 @@ def _test(ws: Workspace, change: Change) -> list[Check]:
     return checks
 
 
-def _implement(ws: Workspace, module: Module, change: Change, run_tests: bool) -> list[Check]:
+def _code(ws: Workspace, module: Module, change: Change, run_tests: bool) -> list[Check]:
     specs, checks = _spec_checks(ws, change)
     pending = [f"{t.num} {t.text}" for t in specs.tasks if not t.done]
     checks.append(Check("every task is done (specworks task list --pending)", specs.tasks_found and not pending, pending))
@@ -184,7 +184,7 @@ def _review(ws: Workspace, module: Module, change: Change, run_tests: bool, base
     found = report.findings()
     exists, open_findings, text = review_findings(change)
     checks = [
-        Check("specs and tasks are valid (specworks validate)", not report.spec_errors, report.spec_errors),
+        Check("specs and tasks are valid (specworks check)", not report.spec_errors, report.spec_errors),
         Check(f"{REVIEW_FILE} is written", exists, [] if exists else ["write it (specworks instructions review)"]),
         Check(f"no open finding in {REVIEW_FILE}", exists and not open_findings, open_findings),
         Check("every requirement has code (@req tag)", not found["reqWithoutCode"], found["reqWithoutCode"]),
@@ -240,16 +240,16 @@ def run_gate(
 ) -> tuple[bool, list[Check]]:
     if phase not in GATES:
         raise GateError(f"no gate for phase '{phase}' yet; gates exist for: {', '.join(GATES)}")
-    if phase == "verify":
-        from .verify import verify_change  # verify builds on the other gates' checks
+    if phase == "validate":
+        from .verify import verify_change  # validate builds on the other gates' checks
 
         checks = verify_change(ws, module, change, run_tests, base)
     elif phase == "review":
         checks = _review(ws, module, change, run_tests, base)
-    elif phase == "implement":
-        checks = _implement(ws, module, change, run_tests)
-    elif phase == "interface":
-        checks = _interface(ws, module, change, run_tests)
+    elif phase == "code":
+        checks = _code(ws, module, change, run_tests)
+    elif phase == "design":
+        checks = _design(ws, module, change, run_tests)
     else:
-        checks = {"propose": _propose, "test": _test}[phase](ws, change)
+        checks = {"specify": _specify, "test": _test}[phase](ws, change)
     return all(c.ok for c in checks if c.blocking), checks

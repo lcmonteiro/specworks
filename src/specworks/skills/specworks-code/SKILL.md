@@ -1,14 +1,14 @@
 ---
-name: specworks-implement
-description: Implement phase of spec-driven development - work through a change's tasks, replacing the API stubs with real code until the acceptance tests pass, tagging code with @req and ticking tasks as they are done. Use when a change has its tests and the user wants to build it, or says "implement", "apply", "code it", "make the tests pass" or "specworks implement".
+name: specworks-code
+description: Code phase of spec-driven development - work through a change's tasks, replacing the API stubs with real code until the acceptance tests pass, tagging code with @req and ticking tasks as they are done. Use when a change has its tests and the user wants to build it, or says "code", "implement", "apply", "code it", "make the tests pass" or "specworks code".
 allowed-tools: Bash(specworks:*), Bash(uv run specworks:*), Bash(uvx:*), Read, Grep, Glob, Write, Edit
 ---
 
-Implement phase: make the failing tests from the test phase pass by writing
+Code phase: make the failing tests from the test phase pass by writing
 the code the tasks describe, and nothing more. Every requirement ends up with
 code tagged `@req <REQ-ID>`, every task ticked, and the whole test suite green.
 
-It is the fifth phase of `refine → propose → interface → test → implement → review → verify → close`.
+It is the fifth phase of `refine → specify → design → test → code → review → validate → close`.
 
 **Phase boundary**: implement what the specs and tasks say. The specs, the
 acceptance criteria and the tests from the test phase are the contract: do not
@@ -37,7 +37,7 @@ change them to make the code easier. When the gate passes, stop and suggest
      go on only with their agreement.
    - Move the change to this phase:
      ```bash
-     specworks phase "<ref>" implement
+     specworks phase "<ref>" code
      ```
    - `commands` in the context are this project's tools; `specworks run test`
      (and `run lint`, `run typecheck` when configured) runs them in the right
@@ -92,7 +92,7 @@ change them to make the code easier. When the gate passes, stop and suggest
    - the design does not work in practice: propose the change, and after the
      user agrees record it under the decision in design.md;
    - you discover work the tasks do not cover: suggest adding a task (and a
-     requirement, via `/specworks-propose <ref>`, if behaviour changes).
+     requirement, via `/specworks-specify <ref>`, if behaviour changes).
 
 4. **Run the project's checks**
 
@@ -107,7 +107,7 @@ change them to make the code easier. When the gate passes, stop and suggest
 5. **Gate and trace**
 
    ```bash
-   specworks gate implement --change "<ref>"
+   specworks gate code --change "<ref>"
    specworks trace --change "<ref>" --write
    ```
 
@@ -129,7 +129,7 @@ change them to make the code easier. When the gate passes, stop and suggest
 ## Guardrails
 
 - The specs and tests are the contract. Do not edit the delta specs here; if
-  they are wrong, stop and suggest `/specworks-propose <ref>`.
+  they are wrong, stop and suggest `/specworks-specify <ref>`.
 - No scope creep: no features, refactors or clean-ups the tasks do not ask
   for. Note ideas for later instead.
 - Tick a task only after its verification passed; never tick ahead.

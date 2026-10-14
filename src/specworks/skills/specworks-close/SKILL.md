@@ -9,7 +9,7 @@ The deltas are merged into each capability's living docs next to its code,
 the design knowledge worth keeping moves there too, and the change folder is
 archived as the record of how it happened.
 
-It is the last phase of `refine → propose → interface → test → implement → review → verify → close`.
+It is the last phase of `refine → specify → design → test → code → review → validate → close`.
 
 **Phase boundary**: edit only the living docs (`<capability path>/<docs_dir>/`)
 and, for new capabilities, the config. No code, tests or delta specs change
@@ -23,13 +23,13 @@ here; if something is wrong, go back to the phase that owns it.
 
 ## Steps
 
-1. **Pick the change and confirm it passes verify**
+1. **Pick the change and confirm it passes validate**
 
    ```bash
-   specworks verify --change "<ref>"
+   specworks validate --change "<ref>"
    ```
 
-   If it fails, stop and point to the phases it names (`/specworks-verify`
+   If it fails, stop and point to the phases it names (`/specworks-validate`
    explains them). `specworks close` refuses a change that does not pass.
 
 2. **Register new capabilities**
@@ -101,7 +101,7 @@ here; if something is wrong, go back to the phase that owns it.
 
 ## Guardrails
 
-- Never close a change that does not pass `specworks verify`.
+- Never close a change that does not pass `specworks validate`.
 - Do not edit spec.md or requirements.md by hand; they are produced by
   `specworks close` from the deltas. Change requirements through a new change.
 - Living docs describe the system as it is now. History belongs in the

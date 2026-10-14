@@ -8,7 +8,7 @@ artifacts:
     generates: refinement.md
     template: refinement.md
     requires: []
-    # Small changes (a bug fix, a tweak) can go straight to propose.
+    # Small changes (a bug fix, a tweak) can go straight to specify.
     optional: true
     instruction: |
       Capture the shared understanding of the problem BEFORE committing to a solution.
@@ -37,10 +37,10 @@ artifacts:
         new capability say which module should own it.
 
       Keep it to 1-2 pages. No requirements, no tasks, no code: those belong to
-      the propose phase.
+      the specify phase.
 
   - id: proposal
-    phase: propose
+    phase: specify
     generates: proposal.md
     template: proposal.md
     requires: [refinement]
@@ -69,7 +69,7 @@ artifacts:
       a near-duplicate. Keep it to 1-2 pages; HOW belongs in design.md.
 
   - id: specs
-    phase: propose
+    phase: specify
     generates: "specs/**/spec.md"
     template: spec.md
     requires: [proposal]
@@ -98,7 +98,7 @@ artifacts:
       - `## REMOVED Requirements`: the existing ID and title, plus **Reason**
         and **Migration**.
 
-      Rules (`specworks validate` checks them):
+      Rules (`specworks check` checks them):
       - `### Requirement: REQ-<prefix>-NNN <title>` then a description using
         SHALL or MUST. One behaviour per requirement; split otherwise.
       - At least one `#### Scenario: AC-<prefix>-NNN.<n> <title>` per
@@ -111,7 +111,7 @@ artifacts:
       Write the files one at a time and say which capability you are on.
 
   - id: design
-    phase: propose
+    phase: specify
     generates: design.md
     template: design.md
     requires: [proposal]
@@ -131,7 +131,7 @@ artifacts:
         Reference requirement IDs a decision serves.
       - **Interfaces**: public APIs, data shapes, events or CLI surfaces the
         change adds or extends. Name them precisely, each with its file in a
-        code span (`src/auth/reset.py`). The interface phase settles this
+        code span (`src/auth/reset.py`). The design phase settles this
         section with the user and creates the stubs; tests are written
         against it. Write "None" when the API does not change.
       - **Diagrams**: only where a picture explains what text cannot - a
@@ -161,15 +161,15 @@ artifacts:
         tasks; resolve the others with the user now.
 
   - id: tasks
-    phase: propose
+    phase: specify
     generates: tasks.md
     template: tasks.md
     requires: [specs, design]
     instruction: |
-      Break the work into small, ordered, checkable tasks. The interface, test
-      and implement phases work through this list and tick boxes.
+      Break the work into small, ordered, checkable tasks. The design, test
+      and code phases work through this list and tick boxes.
 
-      Rules (`specworks validate` checks them):
+      Rules (`specworks check` checks them):
       - Group tasks under `## N. <group>` headings, in dependency order.
       - Every task is `- [ ] N.M <description>`; only `- [x]` counts as done.
       - Every task names the requirement or acceptance-criterion IDs it serves
@@ -178,7 +178,7 @@ artifacts:
       - Every task says how to verify it: a test, a command or an observable
         result.
       - Interfaces, then tests, then behaviour: in each group, first the task
-        that adds or extends the API as stubs (the interface phase), then the
+        that adds or extends the API as stubs (the design phase), then the
         failing tests for its acceptance criteria (tagged `@ac <AC-ID>`), then
         the implementation tasks (tagged `@req <REQ-ID>`). Do not push
         testing or docs into a final group.
@@ -190,7 +190,7 @@ artifacts:
       not tracked tasks.
 
   - id: traceability
-    phase: propose
+    phase: specify
     generates: traceability.md
     template: ""
     requires: [tasks]
@@ -207,7 +207,7 @@ artifacts:
     requires: [tasks]
     instruction: |
       Record the review: every place where the code and the specs disagree,
-      and what was decided for each. It is the evidence /specworks-verify
+      and what was decided for each. It is the evidence /specworks-validate
       and /specworks-close rely on.
 
       Findings (`- [ ] R<n>` open, `- [x] R<n>` resolved), one per drift, with

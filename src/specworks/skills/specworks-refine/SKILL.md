@@ -6,11 +6,11 @@ allowed-tools: Bash(specworks:*), Bash(uv run specworks:*), Read, Grep, Glob, Wr
 
 Refinement phase: build a shared understanding of the problem and its possible
 solutions, then record it in `refinement.md`. This is the first phase of
-`refine → propose → interface → test → implement → review → verify → close`.
+`refine → specify → design → test → code → review → validate → close`.
 
 **Phase boundary**: this phase writes `refinement.md` only. Do not write
 requirements, tasks, tests or code, even if the user asks to "build" something.
-When refinement is done, stop and suggest `/specworks-propose`.
+When refinement is done, stop and suggest `/specworks-specify`.
 
 **Running the CLI**: use `specworks <cmd>`. If it is not on PATH, use
 `uv run specworks <cmd>` (inside the specworks repo) or
@@ -108,7 +108,7 @@ When refinement is done, stop and suggest `/specworks-propose`.
 
    Summarize: the problem in one line, the options, the recommendation (or
    "pending"), and the open questions that still block the proposal.
-   End with: "When you are ready, run `/specworks-propose <ref>`."
+   End with: "When you are ready, run `/specworks-specify <ref>`."
 
 ---
 
@@ -117,5 +117,5 @@ When refinement is done, stop and suggest `/specworks-propose`.
 - Write only `refinement.md` in the change folder. Never edit project code here.
 - Never run `specworks init` unless the user asks for it.
 - Do not invent product intent, priorities or constraints. Ask when only the user can answer.
-- Keep refinement to 1-2 pages. Requirements, acceptance criteria, design and tasks belong to `/specworks-propose`.
+- Keep refinement to 1-2 pages. Requirements, acceptance criteria, design and tasks belong to `/specworks-specify`.
 - Use existing capability names from `specworks context` when they fit, qualified with their module (`billing:invoices`); propose new names only for genuinely new behaviour, and say which module should own each one.

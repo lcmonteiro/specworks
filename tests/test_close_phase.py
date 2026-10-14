@@ -18,7 +18,7 @@ CHANGE_DIR = f"spec/changes/{REF}"
 
 @pytest.fixture
 def ready(repo):
-    """A change that passes verify: implemented, reviewed, in the review phase."""
+    """A change that passes validate: implemented, reviewed, in the review phase."""
     (repo / CHANGE_DIR / "review.md").write_text("# Review\n\n## Findings\n\nNone.\n")
     run_json("phase", REF, "review")
     return repo
@@ -79,7 +79,7 @@ def test_close_merges_indexes_and_archives(ready):
 
 def test_close_refuses_when_verify_fails(repo):
     code, data = run_json("close", "--change", REF, "--base", "main")
-    assert code == 1 and "does not pass verify" in data["error"] and "/specworks-review" in data["goBackTo"]
+    assert code == 1 and "does not pass validate" in data["error"] and "/specworks-review" in data["goBackTo"]
     assert (repo / CHANGE_DIR).is_dir()
 
 

@@ -1,22 +1,22 @@
 ---
 name: specworks-test
-description: Test phase of spec-driven development - turn a change's acceptance criteria into failing tests (tagged @ac) written against the API agreed in the interface phase, before any implementation. Use when a change has its interfaces and the user wants to write the tests first, or says "test", "write the tests", "TDD" or "specworks test".
+description: Test phase of spec-driven development - turn a change's acceptance criteria into failing tests (tagged @ac) written against the API agreed in the design phase, before any implementation. Use when a change has its interfaces and the user wants to write the tests first, or says "test", "write the tests", "TDD" or "specworks test".
 allowed-tools: Bash(specworks:*), Bash(uv run specworks:*), Bash(uvx:*), Read, Grep, Glob, Write, Edit
 ---
 
 Test phase: write the tests that prove each acceptance criterion, through the
-API stubs created in the interface phase, so the implement phase has a
+API stubs created in the design phase, so the code phase has a
 precise, executable target.
 At the end every acceptance criterion has at least one test tagged
 `@ac <AC-ID>`, and those tests **fail for the right reason** (not implemented
 yet), not because they cannot compile or import.
 
-It is the fourth phase of `refine → propose → interface → test → implement → review → verify → close`.
+It is the fourth phase of `refine → specify → design → test → code → review → validate → close`.
 
 **Phase boundary**: write tests only, against the interfaces recorded in
 design.md. Do not add or change public interfaces here: if a test needs one,
-go back to `/specworks-interface`. No behaviour, no partial logic, even if it
-looks easy. When the gate passes, stop and suggest `/specworks-implement`.
+go back to `/specworks-design`. No behaviour, no partial logic, even if it
+looks easy. When the gate passes, stop and suggest `/specworks-code`.
 
 **Running the CLI**: use `specworks <cmd>`. If it is not on PATH, use
 `uv run specworks <cmd>` (inside the specworks repo) or
@@ -30,13 +30,13 @@ looks easy. When the gate passes, stop and suggest `/specworks-implement`.
 
    ```bash
    specworks context --json
-   specworks gate interface --change "<ref>"
+   specworks gate design --change "<ref>"
    ```
 
-   - Select the change as in `/specworks-propose` (named by the user, or the
+   - Select the change as in `/specworks-specify` (named by the user, or the
      single active one; ask if ambiguous). Announce `Using change: <ref>`.
-   - If `gate interface` fails, stop: show the failing checks and suggest
-     `/specworks-interface <ref>` (or `/specworks-propose <ref>` when the specs
+   - If `gate design` fails, stop: show the failing checks and suggest
+     `/specworks-design <ref>` (or `/specworks-specify <ref>` when the specs
      themselves fail). Tests built on an undecided API test the wrong thing.
    - Otherwise move the change to this phase:
      ```bash
@@ -72,7 +72,7 @@ looks easy. When the gate passes, stop and suggest `/specworks-implement`.
    For each ADDED or MODIFIED acceptance criterion, find the interface in
    design.md (and its stub in the code) that a test will call. If one is
    missing or cannot express the WHEN/THEN (a missing parameter, error type
-   or return field), stop and go back to `/specworks-interface <ref>` to
+   or return field), stop and go back to `/specworks-design <ref>` to
    decide and stub it with the user; do not add it here.
 
 4. **Write the tests, one acceptance criterion at a time**
@@ -143,18 +143,18 @@ looks easy. When the gate passes, stop and suggest `/specworks-implement`.
 
    plus tests updated or deleted for MODIFIED/REMOVED criteria, and anything
    you had to decide. Mention that the
-   test suite is red on purpose until the implement phase. End with: "When
-   you are ready, run `/specworks-implement <ref>` to make these tests pass."
+   test suite is red on purpose until the code phase. End with: "When
+   you are ready, run `/specworks-code <ref>` to make these tests pass."
 
 ---
 
 ## Guardrails
 
 - No implementation and no new interfaces: tests call the stubs from the
-  interface phase. Behaviour belongs to `/specworks-implement`, API changes to
-  `/specworks-interface`.
+  design phase. Behaviour belongs to `/specworks-code`, API changes to
+  `/specworks-design`.
 - Tests verify the acceptance criteria as written. If a criterion is wrong,
-  ambiguous or untestable, stop and suggest `/specworks-propose <ref>` to fix
+  ambiguous or untestable, stop and suggest `/specworks-specify <ref>` to fix
   the spec instead of testing your own interpretation.
 - IDs come from the specs. Never invent an AC ID or tag a test with an ID of
   another change.

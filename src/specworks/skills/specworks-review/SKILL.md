@@ -9,12 +9,12 @@ always teaches something the plan did not know; this phase decides, for each
 difference, whether the code or the spec is right, fixes the other one, and
 records the decision in `review.md`.
 
-It is the sixth phase of `refine → propose → interface → test → implement → review → verify → close`.
+It is the sixth phase of `refine → specify → design → test → code → review → validate → close`.
 
 **Phase boundary**: this phase may change code, tests and the change's delta
 specs, but only to remove drift. New features are out of scope: note them for a
 future change. Every spec change and every accepted difference is agreed with
-the user. When the gate passes, stop and suggest `/specworks-verify`.
+the user. When the gate passes, stop and suggest `/specworks-validate`.
 
 **Running the CLI**: use `specworks <cmd>`. If it is not on PATH, use
 `uv run specworks <cmd>` (inside the specworks repo) or
@@ -28,12 +28,12 @@ the user. When the gate passes, stop and suggest `/specworks-verify`.
 
    ```bash
    specworks context --json
-   specworks gate implement --change "<ref>"
+   specworks gate code --change "<ref>"
    ```
 
    Select the change as the other phases do and announce `Using change: <ref>`.
-   If `gate implement` fails (pending tasks, failing tests), stop and suggest
-   `/specworks-implement <ref>`; reviewing unfinished work finds noise. Then:
+   If `gate code` fails (pending tasks, failing tests), stop and suggest
+   `/specworks-code <ref>`; reviewing unfinished work finds noise. Then:
    ```bash
    specworks phase "<ref>" review
    ```
@@ -86,7 +86,7 @@ the user. When the gate passes, stop and suggest `/specworks-verify`.
    - **spec updated**: edit the change's delta spec (ADDED for new behaviour
      with the next free ID from `specworks spec show <cap> --json`, MODIFIED
      with the whole block), add the test (`@ac`) and tag (`@req`) for it, add
-     or tick a task, and run `specworks validate --change "<ref>"`;
+     or tick a task, and run `specworks check --change "<ref>"`;
    - **accepted**: only with the user's explicit agreement, with the reason.
 
 5. **Write `review.md`**
@@ -116,7 +116,7 @@ the user. When the gate passes, stop and suggest `/specworks-verify`.
 
    Summarize the findings by type and decision, the spec changes (IDs added or
    modified), the code changes, and anything accepted. End with: "When you are
-   ready, run `/specworks-verify <ref>` for the final check before closing."
+   ready, run `/specworks-validate <ref>` for the final check before closing."
 
 ---
 
