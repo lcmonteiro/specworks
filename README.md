@@ -17,7 +17,7 @@ refine -> propose -> test -> implement -> review -> verify -> close
 | implement | `/specworks-implement` | works through `tasks.md`: real code replacing the stubs, `@req` tags, tests green |
 | review    | `/specworks-review`    | finds code <-> spec drift both ways, fixes code or spec deltas with you, records every decision in `review.md` |
 | verify    | `/specworks-verify`    | **read-only** PASS/FAIL report (completeness, correctness, coherence); every failure names the phase that fixes it |
-| close     | `/specworks-close`     | living docs merged into `<capability-path>/docs/`, change archived (phase `done`) *(planned)* |
+| close     | `/specworks-close`     | deltas merged into the living `spec.md`, `requirements.md` regenerated, design / architecture / diagrams updated in `<capability-path>/docs/`, change archived (phase `done`) |
 
 The flow is not strictly linear: `review` can send a change back to `propose`
 (missing requirement) and a failing `verify` sends it back to `implement`.
@@ -69,9 +69,11 @@ The system SHALL email a single-use reset link valid for 30 minutes.
 |---|---|
 | `specworks spec list` / `spec show <ref>` | capabilities, their requirements, ID prefix, next free ID and delta path |
 | `specworks validate --change <ref>` | checks proposal, delta specs (IDs, SHALL/MUST, scenarios, MODIFIED/REMOVED targets, ID clashes with other changes) and tasks (format, every AC covered) |
-| `specworks diagrams --change <ref> [--check]` | renders the change's `diagrams/*.d2` to SVG with the workspace theme; `--check` reports missing/outdated SVGs without rendering |
+| `specworks diagrams --change <ref> \| --dir <folder> [--check]` | renders `diagrams/*.d2` of a change (or of a living docs folder) to SVG with the workspace theme; `--check` reports missing/outdated SVGs without rendering |
 | `specworks task list\|done\|undo --change <ref> [N.M ...]` | lists tasks with their IDs; ticks or unticks checkboxes without touching the rest of `tasks.md` |
 | `specworks gate <phase> --change <ref>` | checks a phase is finished: `propose` (valid specs, tasks cover every AC), `test` (every AC has an `@ac`-tagged test, no tags to unknown IDs), `implement` (all tasks done, every requirement has `@req` code, removed ones gone, and `commands.test` passes; `--no-run` skips running it), `review` (`review.md` with no open finding, every untagged changed file accounted for, tags complete, tests pass), `verify` (same checks as `specworks verify`) |
+| `specworks close --change <ref> [--dry-run]` | after a passing verify: merges the deltas into each living `spec.md` (ADDED appended, MODIFIED replaced by ID, REMOVED deleted), regenerates `requirements.md` with a History line, marks the change `done` and moves it to `changes/archive/<date>-<name>/` |
+| `specworks capability add <name> --path <dir> [--module] [--prefix]` | registers a new capability in a module's config (required before closing a change that creates it) |
 | `specworks verify --change <ref> [--base] [--no-run]` | final read-only report in three groups (completeness, correctness, coherence): artifacts, tasks, tags, review, specs valid, test/lint/typecheck pass, untagged files accounted for, diagrams current; each failure names the phase to go back to |
 | `specworks review --change <ref> [--base <branch>]` | drift candidates: requirements without code, criteria without tests, bad tags, and files changed on the branch (git) with no `@req`/`@ac` tag |
 | `specworks run <test\|lint\|...> [--change <ref>]` | runs a configured project command in the change's module folder; the exit code passes through |

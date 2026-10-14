@@ -1,0 +1,182 @@
+"""Close phase: capability registration, delta merge into living specs, requirements index, archive."""
+
+import hashlib
+import sys
+from datetime import date
+
+import pytest
+from helpers import REF, run_json
+from typer.testing import CliRunner
+
+from specworks.cli import app
+from specworks.merge import MergeError, apply_delta
+from specworks.specfile import parse_spec
+
+runner = CliRunner()
+CHANGE_DIR = f"spec/changes/{REF}"
+
+
+@pytest.fixture
+def ready(repo):
+    """A change that passes verify: implemented, reviewed, in the review phase."""
+    (repo / CHANGE_DIR / "review.md").write_text("# Review\n\n## Findings\n\nNone.\n")
+    run_json("phase", REF, "review")
+    return repo
+
+
+def snapshot(root):
+    return {
+        str(p.relative_to(root)): hashlib.sha256(p.read_bytes()).hexdigest()
+        for p in sorted(root.rglob("*"))
+        if p.is_file() and ".git" not in p.relative_to(root).parts
+    }
+
+
+def test_dry_run_shows_the_plan_and_writes_nothing(ready):
+    before = snapshot(ready)
+    code, data = run_json("close", "--change", REF, "--base", "main", "--dry-run")
+    assert code == 0, data
+    assert data["merges"] == [
+        {
+            "capability": "user-auth",
+            "spec": "src/auth/docs/spec.md",
+            "requirements": "src/auth/docs/requirements.md",
+            "created": False,
+            "added": ["REQ-AUTH-003"],
+            "modified": ["REQ-AUTH-002"],
+            "removed": [],
+        }
+    ]
+    assert data["archivedTo"] is None and snapshot(ready) == before
+
+
+def test_close_merges_indexes_and_archives(ready):
+    code, data = run_json("close", "--change", REF, "--base", "main")
+    assert code == 0, data
+    today = date.today().isoformat()
+    assert data["archivedTo"] == f"spec/changes/archive/{today}-{REF}"
+
+    living = parse_spec((ready / "src/auth/docs/spec.md").read_text())
+    assert [(r.id, r.title) for r in living.requirements] == [
+        ("REQ-AUTH-001", "Password login"),
+        ("REQ-AUTH-002", "Lockout after failures"),
+        ("REQ-AUTH-003", "Password reset"),
+    ]
+    assert "3 failed attempts" in living.by_id()["REQ-AUTH-002"].description
+
+    index = (ready / "src/auth/docs/requirements.md").read_text()
+    assert "| REQ-AUTH-003 | Password reset | AC-AUTH-003.1, AC-AUTH-003.2 |" in index
+    assert f"- {today} `{REF}`: ADDED REQ-AUTH-003; MODIFIED REQ-AUTH-002" in index
+
+    archived = ready / data["archivedTo"]
+    assert (archived / "proposal.md").is_file() and "phase: done" in (archived / ".change.yaml").read_text()
+    assert not (ready / CHANGE_DIR).exists()
+    code, data = run_json("list")
+    assert data["changes"] == []
+    code, data = run_json("spec", "show", "user-auth")
+    assert data["nextId"] == "REQ-AUTH-004"
+
+
+def test_close_refuses_when_verify_fails(repo):
+    code, data = run_json("close", "--change", REF, "--base", "main")
+    assert code == 1 and "does not pass verify" in data["error"] and "/specworks-review" in data["goBackTo"]
+    assert (repo / CHANGE_DIR).is_dir()
+
+
+def test_new_capability_must_be_registered_first(ready):
+    delta = ready / CHANGE_DIR / "specs/audit-log/spec.md"
+    delta.parent.mkdir(parents=True)
+    delta.write_text(
+        "## Purpose\n\nRecords security events for audits.\n\n## ADDED Requirements\n\n"
+        "### Requirement: REQ-AUDIT-LOG-001 Log resets\nThe system SHALL log every password reset.\n\n"
+        "#### Scenario: AC-AUDIT-LOG-001.1 Reset logged\n- **WHEN** a reset is requested\n- **THEN** an audit event is stored\n"
+    )
+    (ready / "tests/test_audit.py").write_text("# @ac AC-AUDIT-LOG-001.1\n")
+    (ready / "src/audit").mkdir()
+    (ready / "src/audit/log.py").write_text("# @req REQ-AUDIT-LOG-001\n")
+    tasks = ready / CHANGE_DIR / "tasks.md"
+    tasks.write_text(tasks.read_text() + "- [x] 2.2 Log resets (AC-AUDIT-LOG-001.1)\n")
+    review = ready / CHANGE_DIR / "review.md"
+    review.write_text(review.read_text() + "\n## Changed files without tags\n\nNone.\n")
+
+    code, data = run_json("close", "--change", REF, "--base", "main")
+    assert code == 1 and data["error"].startswith("new capabilities must be registered before closing: audit-log")
+    assert (ready / CHANGE_DIR).is_dir()
+
+    code, data = run_json("capability", "add", "audit-log", "--path", "src/audit", "--description", "Security audit trail")
+    assert code == 0 and data["ref"] == "audit-log" and data["new"] is False and data["prefix"] == "AUDIT-LOG"
+    assert "  audit-log:\n    path: src/audit\n    description: \"Security audit trail\"\n" in (ready / "spec.yml").read_text()
+
+    code, data = run_json("close", "--change", REF, "--base", "main")
+    assert code == 0, data
+    text = (ready / "src/audit/docs/spec.md").read_text()
+    assert text.startswith("# audit-log\n\n## Purpose\n\nRecords security events for audits.\n")
+    assert [r.id for r in parse_spec(text).requirements] == ["REQ-AUDIT-LOG-001"]
+
+
+def test_capability_add_validates(ready):
+    code, data = run_json("capability", "add", "user-auth", "--path", "src/x")
+    assert code == 1 and "already exists" in data["error"]
+    code, data = run_json("capability", "add", "Bad_Name", "--path", "src/x")
+    assert code == 1 and "kebab-case" in data["error"]
+    code, data = run_json("capability", "add", "ok-name", "--path", "../out")
+    assert code == 1
+
+
+def test_capability_add_in_a_module(ready, monkeypatch):
+    runner.invoke(app, ["module", "add", "services/billing"])
+    code, data = run_json("capability", "add", "invoices", "--path", "src/invoices", "--module", "billing", "--prefix", "INV")
+    assert code == 0 and data["ref"] == "billing:invoices" and data["codePath"] == "services/billing/src/invoices"
+    assert data["prefix"] == "INV" and data["nextId"] == "REQ-INV-001"
+    assert "invoices:" in (ready / "services/billing/spec.yml").read_text()
+
+
+DELTA_MODIFY_MISSING = "## MODIFIED Requirements\n\n### Requirement: REQ-AUTH-009 Ghost\nThe system SHALL x.\n"
+
+
+class FakeDelta:
+    def __init__(self, text):
+        self.doc = parse_spec(text)
+        self.cap = type("Cap", (), {"ref": "user-auth"})()
+
+
+@pytest.mark.parametrize(
+    "delta, message",
+    [
+        (DELTA_MODIFY_MISSING, "REQ-AUTH-009 is MODIFIED but not in the living spec"),
+        ("## REMOVED Requirements\n\n### Requirement: REQ-AUTH-009 Ghost\n", "REQ-AUTH-009 is REMOVED but not in the living spec"),
+        ("## ADDED Requirements\n\n### Requirement: REQ-AUTH-001 Dup\nThe system SHALL x.\n", "REQ-AUTH-001 is ADDED but already"),
+    ],
+)
+def test_merge_errors(delta, message):
+    living = "# user-auth\n\n## Requirements\n\n### Requirement: REQ-AUTH-001 Login\nThe system SHALL log in.\n"
+    with pytest.raises(MergeError, match=message):
+        apply_delta(living, FakeDelta(delta))
+
+
+def test_removed_requirement_is_deleted_and_other_sections_kept():
+    living = (
+        "# user-auth\n\nIntro.\n\n## Requirements\n\n### Requirement: REQ-AUTH-001 A\nThe system SHALL a.\n\n"
+        "### Requirement: REQ-AUTH-002 B\nThe system SHALL b.\n\n## Notes\n\nKeep me.\n"
+    )
+    text, added, modified, removed = apply_delta(
+        living, FakeDelta("## REMOVED Requirements\n\n### Requirement: REQ-AUTH-001 A\n**Reason**: x\n**Migration**: y\n")
+    )
+    assert removed == ["REQ-AUTH-001"] and "REQ-AUTH-001" not in text
+    assert text.startswith("# user-auth\n\nIntro.\n") and text.endswith("## Notes\n\nKeep me.\n")
+
+
+def test_diagrams_in_a_docs_folder(ready, monkeypatch):
+    fake = ready / "fake_d2.py"
+    fake.write_text("import sys, pathlib\npathlib.Path(sys.argv[-1]).write_text('<?xml version=\"1.0\"?><svg/>')\n")
+    script = ready / "d2"
+    script.write_text(f"#!{sys.executable}\nexec(open({str(fake)!r}).read())\n")
+    script.chmod(0o755)
+    monkeypatch.setenv("SPECWORKS_D2", str(script))
+    folder = ready / "src/auth/docs/diagrams"
+    folder.mkdir(parents=True)
+    (folder / "reset.d2").write_text("a -> b\n")
+    code, data = run_json("diagrams", "--dir", "src/auth/docs")
+    assert code == 0 and data["dir"] == "src/auth/docs" and data["diagrams"][0]["status"] == "rendered"
+    code, data = run_json("diagrams")
+    assert code == 1 and "--change" in data["error"]
