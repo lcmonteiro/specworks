@@ -4,4 +4,3 @@ __pycache__/
 .pytest_cache/
 dist/
 # D2 binary placed by the build hook for editable installs
-src/specworks/bin/

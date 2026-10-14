@@ -29,14 +29,11 @@ jobs:
           python-version: ${{ matrix.python-version }}
           enable-cache: true
 
-      # The build hook (hatch_build.py) bundles the pinned D2 release into the
-      # editable install, so the diagram tests render with the real d2.
+      # d2-bin brings the pinned D2 release, so the diagram tests render with the real d2.
       - name: Install dependencies
         run: uv sync --locked
 
       - name: Run tests
-        env:
-          SPECWORKS_REQUIRE_D2: "1"
         run: uv run pytest -v
 
   package:
@@ -52,20 +49,21 @@ jobs:
       - name: Build
         run: uv build
 
-      - name: Wheel carries the bundled d2
+      - name: Wheel is pure Python and requires d2-bin
         run: |
           wheel="$(ls dist/*.whl)"
           echo "$wheel"
-          case "$wheel" in *-py3-none-linux_x86_64.whl) ;; *) echo "unexpected wheel tag"; exit 1 ;; esac
-          unzip -l "$wheel" | grep -q 'specworks/bin/d2$'
-          ! tar tzf dist/*.tar.gz | grep -q 'specworks/bin/'
+          case "$wheel" in *-py3-none-any.whl) ;; *) echo "unexpected wheel tag"; exit 1 ;; esac
+          unzip -p "$wheel" '*/METADATA' | grep -qx 'Requires-Dist: d2-bin==0.7.1'
 
       # The CLI reads schema.yaml, templates/, skills/ and bin/d2 from the
       # installed package, so check they all made it into the wheel.
       - name: Run the installed CLI
         run: |
           wheel="$(ls "$GITHUB_WORKSPACE"/dist/*.whl)"
-          sw() { uv tool run --isolated --from "$wheel" specworks "$@"; }
+          # Until d2-bin is on PyPI, take it from the commit pinned in pyproject.toml.
+          d2bin="d2-bin @ git+https://github.com/lcmonteiro/d2-bin@44c309276a53d38b546cbd456a11de50d09df878"
+          sw() { uv tool run --isolated --from "$wheel" --with "$d2bin" specworks "$@"; }
           project="$(mktemp -d)"
           cd "$project"
           sw init --dir spec --tools all
@@ -85,6 +83,6 @@ jobs:
           test -f .github/skills/specworks-close/SKILL.md
           mkdir -p spec/changes/add-example/diagrams
           printf 'shape: sequence_diagram\nuser -> api: "POST /reset {email}"\n' > spec/changes/add-example/diagrams/flow.d2
-          sw diagrams --themes | grep -q '(bundled)'
+          sw diagrams --themes | grep -q '(d2-bin)'
           sw diagrams --change add-example
           grep -q 'specworks:d2 sha256=' spec/changes/add-example/diagrams/flow.svg

@@ -10,9 +10,9 @@ generated SVG carries a stamp with the hash of its source and render settings,
 so a stale or hand-edited SVG is detected without relying on file times (which
 git does not preserve).
 
-Rendering uses the ``d2`` program (https://d2lang.com). The specworks wheel
-bundles the pinned official release (see ``d2_release.json`` and
-``hatch_build.py``), so it is normally already there; checking needs no d2.
+Rendering uses the ``d2`` program (https://d2lang.com). specworks depends on
+``d2-bin``, which ships the pinned official release as platform wheels, so it is
+normally already there; checking needs no d2.
 """
 
 from __future__ import annotations
@@ -23,7 +23,6 @@ import re
 import shutil
 import subprocess
 from dataclasses import dataclass
-from importlib import resources
 from pathlib import Path
 
 from .config import DiagramSettings
@@ -31,7 +30,7 @@ from .config import DiagramSettings
 DIAGRAMS_DIR = "diagrams"
 STAMP_RE = re.compile(r"<!-- specworks:d2 sha256=(?P<hash>[0-9a-f]{64}) -->")
 INSTALL_HINT = (
-    "specworks normally bundles d2; reinstall it (`uv tool install --reinstall specworks`), "
+    "specworks normally installs d2 with its d2-bin dependency; reinstall it (`uv tool install --reinstall specworks`), "
     "or install D2 yourself (https://d2lang.com/tour/install) or set SPECWORKS_D2 to its path"
 )
 
@@ -50,21 +49,21 @@ class Diagram:
 
 
 def bundled_d2() -> str | None:
-    """The d2 binary shipped inside the specworks package, if this build has one."""
-    folder = resources.files("specworks").joinpath("bin")
-    for name in ("d2", "d2.exe"):
-        candidate = folder.joinpath(name)
-        if candidate.is_file():
-            return str(candidate)
-    return None
+    """The d2 binary installed by the d2-bin dependency, if it is there."""
+    try:
+        import d2_bin
+
+        return d2_bin.executable()
+    except (ImportError, FileNotFoundError):
+        return None
 
 
 def find_d2() -> tuple[str | None, str]:
-    """(path, where) - SPECWORKS_D2 first, then the bundled release (pinned version), then PATH."""
+    """(path, where) - SPECWORKS_D2 first, then d2-bin's pinned release, then PATH."""
     if os.environ.get("SPECWORKS_D2"):
         return os.environ["SPECWORKS_D2"], "SPECWORKS_D2"
     if path := bundled_d2():
-        return path, "bundled"
+        return path, "d2-bin"
     if path := shutil.which("d2"):
         return path, "PATH"
     return None, "missing"

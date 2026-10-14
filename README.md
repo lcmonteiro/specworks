@@ -146,21 +146,18 @@ uv tool install git+https://github.com/lcmonteiro/specworks
 cd your-project && specworks init --dir spec   # writes spec.yml, spec/ and the agent skills
 ```
 
-The install includes [D2](https://d2lang.com) for diagrams. When uv builds
-specworks, a build hook (`hatch_build.py`) downloads the official D2 release
-pinned in `src/specworks/d2_release.json` for your platform (Linux, macOS and
-Windows on x86-64 and ARM64), checks its SHA-256, and ships it inside the
-package. Downloaded archives are cached, so reinstalling does not download
-again.
+The install includes [D2](https://d2lang.com) for diagrams through the
+[`d2-bin`](https://github.com/lcmonteiro/d2-bin) dependency, which ships the
+official D2 release (pinned version, SHA-256 checked) as wheels for Linux,
+macOS and Windows on x86-64 and ARM64. Nothing is downloaded or compiled at
+install time beyond the wheel itself.
 
 | Variable | Effect |
 |---|---|
-| `SPECWORKS_D2` | use this `d2` instead of the bundled one |
-| `SPECWORKS_D2_BUNDLE=0` | build without D2 (e.g. offline); `d2` is then looked up on `PATH` |
-| `SPECWORKS_D2_PLATFORM` | build the wheel for another platform, e.g. `macos-arm64` |
-| `SPECWORKS_D2_CACHE` | where downloaded D2 archives are cached |
+| `SPECWORKS_D2` | use this `d2` instead of the one from `d2-bin` |
 
-To move to a newer D2, update the version and the six hashes in `d2_release.json`.
+Without `d2-bin` (e.g. a platform it has no wheel for), `d2` is looked up on
+`PATH`. To move to a newer D2, bump the `d2-bin` pin in `pyproject.toml`.
 
 ## Project commands
 
