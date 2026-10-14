@@ -54,7 +54,7 @@ jobs:
           wheel="$(ls dist/*.whl)"
           echo "$wheel"
           case "$wheel" in *-py3-none-any.whl) ;; *) echo "unexpected wheel tag"; exit 1 ;; esac
-          unzip -p "$wheel" '*/METADATA' | grep -qx 'Requires-Dist: pyd2 @ git+https://github.com/lcmonteiro/pyd2@[0-9a-f]\{40\}'
+          unzip -p "$wheel" '*/METADATA' | grep -qx 'Requires-Dist: pyd2 @ git+https://github.com/lcmonteiro/pyd2@main'
 
       # The CLI reads schema.yaml, templates/, skills/ and bin/d2 from the
       # installed package, so check they all made it into the wheel.

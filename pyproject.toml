@@ -8,8 +8,9 @@ authors = [
 ]
 requires-python = ">=3.11"
 dependencies = [
-    # D2 (v0.7.1) and its Python render API, built from the pyd2 repo at this commit.
-    "pyd2 @ git+https://github.com/lcmonteiro/pyd2@db48637189726d754dbcb06d3df74ce2d3643cc9",
+    # D2 and its Python API, from pyd2's main branch. uv.lock pins the commit;
+    # `uv lock --upgrade-package pyd2` moves it to the latest main.
+    "pyd2 @ git+https://github.com/lcmonteiro/pyd2@main",
     "pyyaml>=6.0.3",
     "typer>=0.27.3",
 ]
