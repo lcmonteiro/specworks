@@ -22,6 +22,14 @@ refine -> specify -> design -> test -> code -> review -> validate -> close
 | validate  | `/specworks-validate`  | **read-only** PASS/FAIL report (completeness, correctness, coherence); every failure names the phase that fixes it |
 | close     | `/specworks-close`     | deltas merged into the living `spec.md`, `requirements.md` regenerated, design / architecture / diagrams updated in `<capability-path>/docs/`, change archived (phase `done`) |
 
+**`/specworks-build`** runs design → test → code → review in one go, each
+phase exactly as its own skill. When the review has findings, it asks
+whether to start a new cycle, and starts it at the earliest phase the
+findings need: code findings → code, review; test findings → test, code,
+review; design/API findings → design, test, code, review. A spec finding
+stops the build and hands over to `/specworks-specify`.
+`specworks cycle --change <ref>` shows where the next cycle would start.
+
 The flow is not strictly linear (dashed arrows): `test` goes back to
 `design` when a test needs an API that was not agreed, `design`, `test` and
 `code` go back to `specify` when the spec turns out wrong, and a failing
@@ -86,6 +94,7 @@ The system SHALL email a single-use reset link valid for 30 minutes.
 | `specworks capability add <name> --path <dir> [--module] [--prefix]` | registers a new capability in a module's config (required before closing a change that creates it) |
 | `specworks validate --change <ref> [--base] [--no-run]` | final read-only report in three groups (completeness, correctness, coherence): artifacts, tasks, tags, review, specs valid, test/lint/typecheck pass, untagged files accounted for, diagrams current; each failure names the phase to go back to |
 | `specworks review --change <ref> [--base <branch>]` | drift candidates: requirements without code, criteria without tests, bad tags, and files changed on the branch (git) with no `@req`/`@ac` tag |
+| `specworks cycle --change <ref>` | after a review: the open findings in `review.md`, the phase each one needs, and where the next design → test → code → review cycle starts (or that a spec finding hands over to specify) |
 | `specworks run <test\|lint\|...> [--change <ref>]` | runs a configured project command in the change's module folder; the exit code passes through |
 | `specworks trace --change <ref> [--write]` | REQ -> AC -> tasks -> tests (`@ac`) -> code (`@req`) matrix and its gaps; `--write` saves `traceability.md` |
 
