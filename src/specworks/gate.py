@@ -11,12 +11,13 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from .changes import Change
+from .review import REVIEW_FILE, review_change, review_findings
 from .runner import CommandError, run_command
 from .trace import Tag, build_matrix, gaps, scan_tags, unknown_tags
 from .validate import validate_change
 from .workspace import Module, Workspace
 
-GATES = ("propose", "test", "implement")
+GATES = ("propose", "test", "implement", "review")
 
 
 class GateError(Exception):
@@ -118,6 +119,35 @@ def _implement(ws: Workspace, module: Module, change: Change, run_tests: bool) -
     return checks
 
 
+def _review(ws: Workspace, module: Module, change: Change, run_tests: bool, base: str | None) -> list[Check]:
+    specs, report = review_change(ws, change, base)
+    found = report.findings()
+    exists, open_findings, text = review_findings(change)
+    checks = [
+        Check("specs and tasks are valid (specworks validate)", not report.spec_errors, report.spec_errors),
+        Check(f"{REVIEW_FILE} is written", exists, [] if exists else ["write it (specworks instructions review)"]),
+        Check(f"no open finding in {REVIEW_FILE}", exists and not open_findings, open_findings),
+        Check("every requirement has code (@req tag)", not found["reqWithoutCode"], found["reqWithoutCode"]),
+        Check("every acceptance criterion has a test (@ac tag)", not found["acWithoutTests"], found["acWithoutTests"]),
+        Check("no tag refers to an unknown requirement or criterion", not found["unknownTags"], found["unknownTags"]),
+        Check("removed requirements are gone from tests and code", not found["removedStillTagged"], found["removedStillTagged"]),
+    ]
+    if report.changed is None:
+        checks.append(Check("changed files without tags are accounted for", False, [report.note], blocking=False))
+    else:
+        untraced = found["untracedSource"] + found["untracedTests"]
+        missing = [path for path in untraced if path not in text]
+        checks.append(
+            Check(
+                f"changed files without tags are accounted for in {REVIEW_FILE} (base {report.base})",
+                not missing,
+                missing,
+            )
+        )
+    checks.append(_tests_pass(ws, module, run_tests))
+    return checks
+
+
 def _tests_pass(ws: Workspace, module: Module, run_tests: bool) -> Check:
     name = "the test suite passes (commands.test)"
     if not run_tests:
@@ -142,10 +172,14 @@ def _ac_tags_outside_tests(ids: set[str], tags: list[Tag]) -> list[Tag]:
     return [t for t in tags if t.kind == "ac" and not t.is_test and t.id in ids]
 
 
-def run_gate(ws: Workspace, module: Module, change: Change, phase: str, run_tests: bool = True) -> tuple[bool, list[Check]]:
+def run_gate(
+    ws: Workspace, module: Module, change: Change, phase: str, run_tests: bool = True, base: str | None = None
+) -> tuple[bool, list[Check]]:
     if phase not in GATES:
         raise GateError(f"no gate for phase '{phase}' yet; gates exist for: {', '.join(GATES)}")
-    if phase == "implement":
+    if phase == "review":
+        checks = _review(ws, module, change, run_tests, base)
+    elif phase == "implement":
         checks = _implement(ws, module, change, run_tests)
     else:
         checks = {"propose": _propose, "test": _test}[phase](ws, change)

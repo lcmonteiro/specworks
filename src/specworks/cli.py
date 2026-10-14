@@ -36,6 +36,7 @@ from .config import (
 from .skills import TOOLS, ToolError, install_skills, parse_tools
 from .diagrams import DiagramError, diagrams_in, find_d2, render, state
 from .gate import GATES, GateError, run_gate
+from .review import review_change
 from .runner import CommandError, run_command
 from .specs import capability_ref, describe, resolve_ref, workspace_capabilities
 from .tasks import TaskError, read_tasks, set_done
@@ -481,14 +482,15 @@ def diagrams(
 def gate(
     phase: str = typer.Argument(..., help=f"Phase to check: {', '.join(GATES)}."),
     change: str = typer.Option(..., "--change", "-c", help="Change name or module:name."),
-    no_run: bool = typer.Option(False, "--no-run", help="implement: do not run commands.test (reported as a warning)."),
+    no_run: bool = typer.Option(False, "--no-run", help="implement/review: do not run commands.test (reported as a warning)."),
+    base: str | None = typer.Option(None, "--base", help="review: branch to diff against (default: origin's default branch)."),
     as_json: bool = JsonOpt,
 ) -> None:
     """Check whether a change has finished a phase (exit 1 if a blocking check fails)."""
     ws = workspace(as_json)
     try:
         mod, ch = resolve_change(ws, change)
-        passed, checks = run_gate(ws, mod, ch, phase, run_tests=not no_run)
+        passed, checks = run_gate(ws, mod, ch, phase, run_tests=not no_run, base=base)
     except (ChangeError, ConfigError, GateError) as exc:
         fail(str(exc), as_json)
     data = {**change_dict(ws, mod, ch), "gate": phase, "passed": passed, "checks": [c.to_dict() for c in checks]}
@@ -501,6 +503,37 @@ def gate(
     emit(data, as_json, "\n".join(lines))
     if not passed:
         raise typer.Exit(1)
+
+
+@app.command()
+def review(
+    change: str = typer.Option(..., "--change", "-c", help="Change name or module:name."),
+    base: str | None = typer.Option(None, "--base", help="Branch to diff against (default: origin's default branch)."),
+    as_json: bool = JsonOpt,
+) -> None:
+    """Drift candidates between a change's specs and its code, in both directions."""
+    ws = workspace(as_json)
+    try:
+        mod, ch = resolve_change(ws, change)
+    except (ChangeError, ConfigError) as exc:
+        fail(str(exc), as_json)
+    _, report = review_change(ws, ch, base)
+    data = {**change_dict(ws, mod, ch), **report.to_dict()}
+    labels = {
+        "reqWithoutCode": "requirements without code (@req)",
+        "acWithoutTests": "acceptance criteria without tests (@ac)",
+        "removedStillTagged": "removed requirements still tagged",
+        "unknownTags": "tags to unknown IDs",
+        "untracedSource": "changed code files without @req tags",
+        "untracedTests": "changed test files without @ac tags",
+    }
+    lines = [f"base: {report.base or '-'}"] + ([f"note: {report.note}"] if report.note else [])
+    lines += [f"spec error: {e}" for e in report.spec_errors]
+    for key, items in data["findings"].items():
+        lines.append(f"{labels[key]}: {len(items)}")
+        lines += [f"  {item}" for item in items]
+    lines.append(f"{data['findingCount']} drift candidates")
+    emit(data, as_json, "\n".join(lines))
 
 
 @app.command()

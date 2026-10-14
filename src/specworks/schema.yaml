@@ -196,3 +196,36 @@ artifacts:
       It maps every requirement and acceptance criterion to its tasks, and
       (from the test phase on) to the tests and code that carry its
       `@ac` / `@req` tags. Re-run it whenever specs, tasks, tests or code change.
+
+  - id: review
+    phase: review
+    generates: review.md
+    template: review.md
+    requires: [tasks]
+    instruction: |
+      Record the review: every place where the code and the specs disagree,
+      and what was decided for each. It is the evidence /specworks-verify
+      and /specworks-close rely on.
+
+      Findings (`- [ ] R<n>` open, `- [x] R<n>` resolved), one per drift, with
+      a type:
+      - **spec-gap**: the code does something no requirement describes, or does
+        it differently from the spec (extra behaviour, other error codes,
+        different limits).
+      - **code-gap**: a requirement or criterion the code does not (fully)
+        implement.
+      - **test-gap**: a criterion whose test does not really check its THEN
+        (asserts too little, tests a different path, never fails).
+      - **tag**: an `@req`/`@ac` tag on the wrong code, missing, or pointing
+        to an unknown ID.
+      - **quality**: a problem that does not break the spec but should not ship
+        (security, error handling, obvious bug in an untested path).
+      Each finding names the IDs and the file:line, and a **Decision**:
+      `code fixed`, `spec updated (ADDED/MODIFIED REQ-...)`, or
+      `accepted: <reason>` (only with the user's agreement).
+
+      "Changed files without tags" accounts for every file `specworks review`
+      lists under untracedSource / untracedTests: why it needs no tag, or the
+      finding that covers it. `specworks gate review` checks they are all
+      mentioned and that no finding is still open.
+
