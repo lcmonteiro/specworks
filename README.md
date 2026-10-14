@@ -157,9 +157,6 @@ so reinstalling does not download it again.
 |---|---|
 | `SPECWORKS_D2` | use this `d2` instead of the one from `pyd2` |
 
-Without `pyd2` (e.g. a platform it has no build for), `d2` is looked up on
-`PATH`.
-
 `uv.lock` pins the pyd2 commit, so `uv sync` and CI always use the same one.
 To take what is on pyd2's `main` now (a newer D2, API changes, fixes):
 

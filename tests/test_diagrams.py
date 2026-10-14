@@ -3,6 +3,7 @@ import stat
 import subprocess
 import sys
 
+import pyd2
 import pytest
 from typer.testing import CliRunner
 
@@ -87,10 +88,14 @@ def test_hand_edited_svg_is_stale(change, fake_d2):
 
 @pytest.fixture
 def no_d2(monkeypatch):
-    """No d2 anywhere: not configured, not bundled, not on PATH."""
-    monkeypatch.setenv("SPECWORKS_D2", "")
-    monkeypatch.setenv("PATH", "")
-    monkeypatch.setattr(diagrams_module, "bundled_d2", lambda: None)
+    """pyd2 has no binary (a broken install) and SPECWORKS_D2 is not set."""
+
+    def missing():
+        raise FileNotFoundError("the d2 binary is missing; reinstall pyd2")
+
+    monkeypatch.delenv("SPECWORKS_D2", raising=False)
+    monkeypatch.setattr(pyd2, "executable", missing)
+    monkeypatch.setattr(sys.modules["pyd2.render"], "executable", missing)
 
 
 def test_check_does_not_need_d2(change, no_d2):
@@ -99,42 +104,30 @@ def test_check_does_not_need_d2(change, no_d2):
     assert not (change / "diagrams/reset-flow.svg").exists()
 
 
-def test_missing_d2_explains_how_to_install(change, no_d2):
+def test_missing_d2_reports_pyd2s_error(change, no_d2):
     code, data = run_json("diagrams", "--change", CHANGE)
-    assert code == 1 and data["d2From"] == "missing"
-    error = data["diagrams"][0]["error"]
-    assert "d2 is not installed" in error and "uv tool install --reinstall specworks" in error
+    assert code == 1 and data["d2From"] == "missing" and data["d2"] is None
+    assert data["diagrams"][0]["error"] == "cannot render reset-flow.d2: the d2 binary is missing; reinstall pyd2"
 
 
-def test_bundled_d2_wins_over_path(tmp_path, monkeypatch):
+def test_specworks_d2_overrides_pyd2(monkeypatch):
     monkeypatch.delenv("SPECWORKS_D2", raising=False)
-    (tmp_path / "d2").write_text("")
-    (tmp_path / "d2").chmod(0o755)
-    monkeypatch.setenv("PATH", str(tmp_path))
-    monkeypatch.setattr(diagrams_module, "bundled_d2", lambda: "/pkg/pyd2/bin/d2")
-    assert diagrams_module.find_d2() == ("/pkg/pyd2/bin/d2", "pyd2")
-    monkeypatch.setattr(diagrams_module, "bundled_d2", lambda: None)
-    assert diagrams_module.find_d2() == (str(tmp_path / "d2"), "PATH")
+    assert diagrams_module.find_d2() == (pyd2.executable(), "pyd2")
     monkeypatch.setenv("SPECWORKS_D2", "/opt/d2")
     assert diagrams_module.find_d2() == ("/opt/d2", "SPECWORKS_D2")
 
 
-def test_bundled_d2_is_the_pinned_release():
-    """The pyd2 dependency provides the D2 release it pins."""
-    import pyd2
-
-    bundled = diagrams_module.bundled_d2()
-    assert bundled == pyd2.executable()
-    out = subprocess.run([bundled, "--version"], capture_output=True, text=True, check=True).stdout.strip()
-    assert out == pyd2.D2_VERSION
+def test_d2_that_does_not_run(change, monkeypatch):
+    monkeypatch.setenv("SPECWORKS_D2", str(change / "no-such-d2"))
+    code, data = run_json("diagrams", "--change", CHANGE)
+    assert code == 1 and data["diagrams"][0]["error"].startswith("cannot render reset-flow.d2: ")
 
 
-def test_without_the_pyd2_binary_falls_back(monkeypatch):
-    def missing():
-        raise FileNotFoundError("no binary")
-
-    monkeypatch.setattr(diagrams_module.pyd2, "executable", missing)
-    assert diagrams_module.bundled_d2() is None
+def test_pyd2_provides_the_pinned_release(monkeypatch):
+    monkeypatch.delenv("SPECWORKS_D2", raising=False)
+    path, where = diagrams_module.find_d2()
+    out = subprocess.run([path, "--version"], capture_output=True, text=True, check=True).stdout.strip()
+    assert where == "pyd2" and out == pyd2.D2_VERSION
 
 
 def test_render_args_are_stable():
