@@ -8,6 +8,7 @@ an unrelated ``docs.yml`` is never mistaken for one.
 
 from __future__ import annotations
 
+import json
 import re
 from dataclasses import dataclass, field
 from pathlib import Path, PurePosixPath
@@ -110,6 +111,17 @@ def load_commands(raw: object) -> dict[str, str]:
             raise ConfigError(f"'commands.{key}' must be a shell command string")
         commands[key] = value.strip()
     return commands
+
+
+def load_globs(raw: object, key: str) -> list[str]:
+    """A list of glob strings; a single string is a common slip, so it gets its own message."""
+    if raw is None:
+        return []
+    if isinstance(raw, str):
+        raise ConfigError(f"'{key}' must be a list of globs, e.g. {key}: [{json.dumps(raw)}]")
+    if not isinstance(raw, list) or not all(isinstance(g, str) and g.strip() for g in raw):
+        raise ConfigError(f"'{key}' must be a list of glob strings")
+    return [g.strip() for g in raw]
 
 
 def load_diagram_settings(raw: object) -> DiagramSettings:
@@ -246,8 +258,11 @@ def load_config(root: Path, dir: str | None = None) -> Config:
     if len(context.encode("utf-8")) > MAX_CONTEXT_BYTES:
         raise ConfigError(f"'context' is larger than {MAX_CONTEXT_BYTES} bytes")
 
+    raw_capabilities = raw.get("capabilities") or {}
+    if not isinstance(raw_capabilities, dict):
+        raise ConfigError("'capabilities' must be a mapping of name: path (or name: {path, prefix, description})")
     capabilities = {}
-    for name, value in (raw.get("capabilities") or {}).items():
+    for name, value in raw_capabilities.items():
         if not isinstance(name, str) or not MODULE_NAME_RE.match(name):
             raise ConfigError(f"capability name '{name}' must be kebab-case (e.g. user-auth)")
         if isinstance(value, str):
@@ -276,11 +291,12 @@ def load_config(root: Path, dir: str | None = None) -> Config:
         root=root,
         context=context,
         dir=validate_dir(path.stem),
-        docs_dir=raw.get("docs_dir", DEFAULT_DOCS_DIR),
+        # Joined to each capability's path, so it must stay inside it.
+        docs_dir=validate_relative(raw.get("docs_dir", DEFAULT_DOCS_DIR), "'docs_dir'"),
         capabilities=capabilities,
         modules=modules,
-        test_globs=list(raw.get("test_globs") or []),
-        source_globs=list(raw.get("source_globs") or []),
+        test_globs=load_globs(raw.get("test_globs"), "test_globs"),
+        source_globs=load_globs(raw.get("source_globs"), "source_globs"),
         commands=load_commands(raw.get("commands")),
         diagrams=load_diagram_settings(raw.get("diagrams")),
     )

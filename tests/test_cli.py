@@ -131,6 +131,34 @@ def test_old_dir_key_is_rejected(project):
     assert code == 1 and "'dir' is no longer a setting" in data["error"]
 
 
+@pytest.mark.parametrize(
+    "setting, message",
+    [
+        ("capabilities: [user-auth]", "'capabilities' must be a mapping"),
+        ("capabilities:\n  user-auth: [src/auth]", "capability 'user-auth' needs a 'path'"),
+        ("test_globs: 'tests/**'", 'test_globs: ["tests/**"]'),
+        ("source_globs: [src/**, 3]", "'source_globs' must be a list of glob strings"),
+        ("docs_dir: ../../outside", "'docs_dir' must be a relative folder inside the project"),
+        ("docs_dir: /etc", "'docs_dir' must be a relative folder inside the project"),
+        ("docs_dir: 3", "'docs_dir' must be a non-empty folder name"),
+    ],
+)
+def test_malformed_config_is_a_clear_error(project, setting, message):
+    cfg = project / "specworks.yml"
+    key = setting.split(":", 1)[0]
+    text = "\n".join(line for line in cfg.read_text().splitlines() if not line.startswith(f"{key}:"))
+    cfg.write_text(f"{text}\n{setting}\n")
+    code, data = run_json("context")
+    assert code == 1 and message in data["error"], data
+
+
+def test_nested_docs_dir_is_allowed(project):
+    cfg = project / "specworks.yml"
+    cfg.write_text(cfg.read_text().replace("docs_dir: docs", "docs_dir: docs/specworks"))
+    code, data = run_json("context")
+    assert code == 0, data
+
+
 @pytest.mark.parametrize("folder", ["/abs", "../outside", ".", "", "docs/spec", ".hidden"])
 def test_init_rejects_bad_dir(tmp_path, monkeypatch, folder):
     monkeypatch.chdir(tmp_path)
