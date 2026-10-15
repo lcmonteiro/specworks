@@ -7,12 +7,12 @@ import json
 import typer
 
 from ..core.changes import PHASES
-from ..core.runner import CommandError, run_command
-from ..specs.check import check_change
-from ..specs.merge import MergeError, archive_target, close_change, plan_merge
-from ..workflow.checks import Check
+from ..core.runner import run_command
+from ..specs.merge import archive_target, close_change, plan_merge
+from ..specs.trace import Analysis
+from ..workflow.checks import Check, GateContext
 from ..workflow.cycle import next_cycle
-from ..workflow.gate import GATES, GateContext, GateError, run_gate, start_phase
+from ..workflow.gate import GATES, run_gate, start_phase
 from ..workflow.review import review_change
 from ..workflow.validate import GROUPS, summary, validate_change
 from .app import app
@@ -32,10 +32,7 @@ def gate(
 ) -> None:
     """Check whether a change has finished a phase (exit 1 if a blocking check fails)."""
     ws, mod, ch = require_change(change, as_json)
-    try:
-        passed, checks = run_gate(GateContext(ws, mod, ch, run_tests=not no_run, base=base, allow_open=allow_open), phase)
-    except GateError as exc:
-        fail(str(exc), as_json)
+    passed, checks = run_gate(GateContext(ws, mod, ch, run_tests=not no_run, base=base, allow_open=allow_open), phase)
     data = {**change_dict(ws, mod, ch), "gate": phase, "passed": passed, "checks": [c.to_dict() for c in checks]}
     emit(data, as_json, "\n".join(_check_lines(checks) + [f"gate {phase}: {'passed' if passed else 'NOT passed'}"]))
     if not passed:
@@ -45,8 +42,7 @@ def gate(
 def _check_lines(checks: list[Check]) -> list[str]:
     lines = []
     for c in checks:
-        mark = "ok  " if c.ok else ("FAIL" if c.blocking else "warn")
-        lines.append(f"[{mark}] {c.name}")
+        lines.append(f"[{c.mark}] {c.name}")
         lines += [f"         {d}" for d in c.details]
     return lines
 
@@ -66,10 +62,7 @@ def start(
     """
     ws, mod, ch = require_change(change, as_json)
     before = ch.phase
-    try:
-        started, gates = start_phase(GateContext(ws, mod, ch, run_tests=not no_run, base=base), phase)
-    except GateError as exc:
-        fail(str(exc), as_json)
+    started, gates = start_phase(GateContext(ws, mod, ch, run_tests=not no_run, base=base), phase)
     data = {
         **change_dict(ws, mod, ch),
         "from": before,
@@ -94,7 +87,7 @@ def review(
 ) -> None:
     """Drift candidates between a change's specs and its code, in both directions."""
     ws, mod, ch = require_change(change, as_json)
-    _, report = review_change(ws, ch, base)
+    report = review_change(Analysis(ws, ch), base)
     data = {**change_dict(ws, mod, ch), **report.to_dict()}
     labels = {
         "reqWithoutCode": "requirements without code (@req)",
@@ -144,7 +137,7 @@ def validate_cmd(
 ) -> None:
     """Final read-only check before close (validate phase): completeness, correctness, coherence (exit 1 on FAIL)."""
     ws, mod, ch = require_change(change, as_json)
-    checks = validate_change(ws, mod, ch, run=not no_run, base=base)
+    checks = validate_change(GateContext(ws, mod, ch, run_tests=not no_run, base=base))
     result = summary(checks)
     data = {**change_dict(ws, mod, ch), **result, "checks": [c.to_dict() for c in checks]}
     lines = []
@@ -152,8 +145,7 @@ def validate_cmd(
         counts = result["groups"][group]
         lines.append(f"{group.capitalize()} ({counts['passed']}/{counts['total']})")
         for c in (c for c in checks if c.group == group):
-            mark = "ok  " if c.ok else ("FAIL" if c.blocking else "warn")
-            lines.append(f"  [{mark}] {c.name}" + ("" if c.ok else f"  -> {c.fix}"))
+            lines.append(f"  [{c.mark}] {c.name}" + ("" if c.ok else f"  -> {c.fix}"))
             lines += [f"           {d}" for d in c.details if not c.ok or d.startswith("$ ")]
     lines.append(f"{mod.qualify(ch.name)}: {result['verdict']} ({result['critical']} critical, {result['warnings']} warnings)")
     if result["goBackTo"]:
@@ -174,26 +166,23 @@ def close(
     """Merge the change's delta specs into the living specs, update requirements.md, and archive the change."""
     ws, mod, ch = require_change(change, as_json)
     ref = mod.qualify(ch.name)
-    result = summary(validate_change(ws, mod, ch, run=not no_run, base=base))
+    ctx = GateContext(ws, mod, ch, run_tests=not no_run, base=base)
+    result = summary(validate_change(ctx))
     if result["verdict"] != "PASS":
         fail(
             f"{ref} does not pass validate ({result['critical']} critical); run `specworks validate --change {ref}`",
             as_json,
             goBackTo=result["goBackTo"],
         )
-    specs, _ = check_change(ws, ch)
-    try:
-        merges = plan_merge(ws, ch, specs, ref)
-        archive_target(ch, mod.config.archive_path)
-    except MergeError as exc:
-        fail(str(exc), as_json)
+    merges = plan_merge(ws, ch, ctx.analysis.specs, ref)
+    archive_target(ch, mod.config.archive_path)
     data = {**change_dict(ws, mod, ch), "dryRun": dry_run, "merges": [m.to_dict(ws) for m in merges], "archivedTo": None}
     lines = [f"{'would merge' if dry_run else 'merged'} {m.cap.ref} -> {ws.rel(m.spec_path)}{' (new)' if m.created else ''}: {m.summary()}" for m in merges]
     lines = lines or ["no delta specs to merge (skip_specs)"]
     if not dry_run:
         try:
             target = close_change(merges, ch, mod.config.archive_path)
-        except (MergeError, OSError) as exc:
+        except OSError as exc:
             fail(str(exc), as_json)
         data["archivedTo"] = ws.rel(target)
         data["phase"] = "done"
@@ -213,10 +202,7 @@ def run(
     else:
         ws = workspace(as_json)
         mod = ws.current
-    try:
-        result = run_command(ws, mod, key, capture=as_json)
-    except CommandError as exc:
-        fail(str(exc), as_json)
+    result = run_command(ws, mod, key, capture=as_json)
     if as_json:
         typer.echo(
             json.dumps(

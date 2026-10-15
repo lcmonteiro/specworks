@@ -17,6 +17,8 @@ import pyd2
 import yaml
 from pyd2 import DARK_THEMES, LAYOUTS, LIGHT_THEMES, THEMES  # noqa: F401  (re-exported)
 
+from .errors import SpecworksError
+
 CONFIG_EXT = ".yml"
 CONFIG_VERSION = 1
 MARKER_RE = re.compile(r"^specworks:[ \t]*\d+[ \t]*(#.*)?$", re.MULTILINE)
@@ -24,13 +26,14 @@ DEFAULT_DIR = "specworks"
 DIR_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]*$")
 DEFAULT_DOCS_DIR = "docs"
 MAX_CONTEXT_BYTES = 50 * 1024
-MODULE_NAME_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
+KEBAB_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")  # module, capability and change names
 PREFIX_RE = re.compile(r"^[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)*$")
 CONFIG_KEYS = ("specworks", "context", "docs_dir", "capabilities", "modules", "test_globs", "source_globs", "commands", "diagrams")
 CAPABILITY_KEYS = ("path", "prefix", "description")
+DIAGRAM_KEYS = ("theme", "dark_theme", "layout", "sketch", "pad")
 
 
-class ConfigError(Exception):
+class ConfigError(SpecworksError):
     """Raised when a config file is missing or invalid."""
 
 
@@ -49,16 +52,6 @@ class Capability:
 
     def docs_path(self, root: Path, docs_dir: str) -> Path:
         return root / self.path / docs_dir
-
-    def to_dict(self, root: Path, docs_dir: str) -> dict:
-        docs = self.docs_path(root, docs_dir)
-        return {
-            "name": self.name,
-            "path": self.path,
-            "description": self.description,
-            "docsPath": str(docs.relative_to(root)),
-            "hasSpec": (docs / "spec.md").is_file(),
-        }
 
 
 def theme_id(value: object, key: str) -> int:
@@ -109,9 +102,7 @@ def load_commands(raw: object) -> dict[str, str]:
         return {}
     if not isinstance(raw, dict):
         raise ConfigError(f"'commands' must be a mapping of {', '.join(COMMAND_KEYS)} to shell commands")
-    unknown = set(raw) - set(COMMAND_KEYS)
-    if unknown:
-        raise ConfigError(f"'commands' has unknown keys: {', '.join(sorted(unknown))} (expected {', '.join(COMMAND_KEYS)})")
+    check_keys(raw, COMMAND_KEYS, "'commands'")
     commands = {}
     for key, value in raw.items():
         if value is None or value == "":
@@ -138,12 +129,10 @@ def load_diagram_settings(raw: object) -> DiagramSettings:
         return DiagramSettings()
     if not isinstance(raw, dict):
         raise ConfigError("'diagrams' must be a mapping (theme, dark_theme, layout, sketch, pad)")
-    unknown = set(raw) - {"theme", "dark_theme", "layout", "sketch", "pad"}
-    if unknown:
-        raise ConfigError(f"'diagrams' has unknown keys: {', '.join(sorted(unknown))}")
-    settings = DiagramSettings(**raw)
-    settings.theme = theme_id(raw.get("theme", 0), "diagrams.theme")
-    settings.dark_theme = dark_theme_id(raw.get("dark_theme", 200), "diagrams.dark_theme")
+    check_keys(raw, DIAGRAM_KEYS, "'diagrams'")
+    settings = DiagramSettings(**raw)  # themes by name or number, resolved below; the defaults are numbers already
+    settings.theme = theme_id(settings.theme, "diagrams.theme")
+    settings.dark_theme = dark_theme_id(settings.dark_theme, "diagrams.dark_theme")
     if settings.layout not in LAYOUTS:
         raise ConfigError("'diagrams.layout' must be elk or dagre")
     if not isinstance(settings.sketch, bool) or not isinstance(settings.pad, int) or settings.pad < 0:
@@ -231,10 +220,32 @@ def validate_dir(value: object) -> str:
     return value.strip()
 
 
-def validate_module_name(name: object) -> str:
-    if not isinstance(name, str) or not MODULE_NAME_RE.match(name):
-        raise ConfigError(f"module name '{name}' must be kebab-case (e.g. billing, user-service)")
+def validate_kebab(name: object, what: str, example: str) -> str:
+    """A module, capability or change name: ``what`` names it in the error (``capability name``)."""
+    if not isinstance(name, str) or not KEBAB_RE.match(name):
+        raise ConfigError(f"{what} '{name}' must be kebab-case (e.g. {example})")
     return name
+
+
+def validate_module_name(name: object) -> str:
+    return validate_kebab(name, "module name", "billing, user-service")
+
+
+def validate_capability_name(name: object) -> str:
+    return validate_kebab(name, "capability name", "user-auth")
+
+
+def validate_prefix(prefix: str, where: str = "") -> str:
+    """A requirement ID prefix (REQ-<prefix>-001); empty means derived from the capability name."""
+    if prefix and not PREFIX_RE.match(prefix):
+        raise ConfigError(f"{where}prefix '{prefix}' must be upper-case letters/digits (e.g. AUTH)")
+    return prefix
+
+
+def check_keys(raw: dict, allowed: tuple[str, ...], where: str) -> None:
+    unknown = set(raw) - set(allowed)
+    if unknown:
+        raise ConfigError(f"{where} has unknown keys: {', '.join(sorted(map(str, unknown)))} (expected {', '.join(allowed)})")
 
 
 def load_config(root: Path, dir: str | None = None) -> Config:
@@ -260,9 +271,7 @@ def load_config(root: Path, dir: str | None = None) -> Config:
         raise ConfigError(
             f"{path}: 'dir' is no longer a setting; the file name sets the folder ({path.name} -> {path.stem}/). Remove it."
         )
-    unknown = set(raw) - set(CONFIG_KEYS)
-    if unknown:
-        raise ConfigError(f"{path}: unknown keys: {', '.join(sorted(map(str, unknown)))} (expected {', '.join(CONFIG_KEYS)})")
+    check_keys(raw, CONFIG_KEYS, str(path))
 
     context = raw.get("context") or ""
     if not isinstance(context, str):
@@ -275,18 +284,13 @@ def load_config(root: Path, dir: str | None = None) -> Config:
         raise ConfigError("'capabilities' must be a mapping of name: path (or name: {path, prefix, description})")
     capabilities = {}
     for name, value in raw_capabilities.items():
-        if not isinstance(name, str) or not MODULE_NAME_RE.match(name):
-            raise ConfigError(f"capability name '{name}' must be kebab-case (e.g. user-auth)")
+        validate_capability_name(name)
         if isinstance(value, str):
             value = {"path": value}
         if not isinstance(value, dict) or not isinstance(value.get("path"), str):
             raise ConfigError(f"capability '{name}' needs a 'path'")
-        unknown = set(value) - set(CAPABILITY_KEYS)
-        if unknown:
-            raise ConfigError(f"capability '{name}' has unknown keys: {', '.join(sorted(map(str, unknown)))} (expected {', '.join(CAPABILITY_KEYS)})")
-        prefix = str(value.get("prefix") or "")
-        if prefix and not PREFIX_RE.match(prefix):
-            raise ConfigError(f"capability '{name}': prefix '{prefix}' must be upper-case letters/digits (e.g. AUTH)")
+        check_keys(value, CAPABILITY_KEYS, f"capability '{name}'")
+        prefix = validate_prefix(str(value.get("prefix") or ""), f"capability '{name}': ")
         capabilities[name] = Capability(
             name=name,
             path=validate_relative(value["path"].rstrip("/"), f"capability '{name}' path"),

@@ -23,11 +23,12 @@ import fnmatch
 import os
 import re
 from dataclasses import dataclass, field
+from functools import cached_property
 from pathlib import Path
 
 from ..core.changes import Change
 from ..core.workspace import Module, Workspace
-from .check import ChangeSpecs
+from .check import ChangeSpecs, Issue, check_change
 from .specfile import id_prefix
 
 TAG_RE = re.compile(r"@(?P<kind>req|ac)\s+(?P<id>(?:REQ|AC)-[A-Z0-9][A-Z0-9.-]*[A-Z0-9])")
@@ -52,6 +53,10 @@ class Tag:
     def where(self) -> str:
         return f"{self.file}:{self.line}"
 
+    @property
+    def at(self) -> str:
+        return f"{self.id} at {self.where}"
+
 
 @dataclass
 class Row:
@@ -71,11 +76,6 @@ def is_test_file(rel: str, test_globs: list[str]) -> bool:
         return any(fnmatch.fnmatch(rel, g) for g in test_globs)
     parts = rel.split("/")
     return any(p in TEST_DIRS for p in parts[:-1]) or bool(TEST_NAME_RE.search(parts[-1]))
-
-
-def is_test_path(module: Module, path: Path) -> bool:
-    """Whether ``path`` (a file of ``module``) is a test, by the module's ``test_globs`` relative to its folder."""
-    return is_test_file(path.relative_to(module.root).as_posix(), module.config.test_globs)
 
 
 def scan_rule(module: Module, path: Path) -> tuple[bool, bool]:
@@ -172,11 +172,7 @@ def gaps(rows: list[Row]) -> dict[str, list[str]]:
 def unknown_tags(specs: ChangeSpecs, tags: list[Tag]) -> list[Tag]:
     """Tags whose ID belongs to a capability this change touches but is in neither the delta nor the living spec."""
     prefixes = {d.cap.prefix for d in specs.deltas}
-    known = set()
-    for delta in specs.deltas:
-        for doc in (delta.doc, delta.living):
-            if doc:
-                known |= {r.id for r in doc.requirements} | {s.id for r in doc.requirements for s in r.scenarios}
+    known = specs.known_ids()
     return [t for t in tags if t.id not in known and id_prefix(t.id) in prefixes]
 
 
@@ -218,3 +214,50 @@ def write_traceability(change: Change, text: str) -> Path:
     path = change.path / "traceability.md"
     path.write_text(text, encoding="utf-8")
     return path
+
+
+class Analysis:
+    """What the CLI knows about a change: its parsed specs and their issues, the workspace's tags and the gaps.
+
+    Each part is computed on first use, so a caller that needs only the specs never scans the workspace.
+    """
+
+    def __init__(self, ws: Workspace, change: Change) -> None:
+        self.ws, self.change = ws, change
+
+    @cached_property
+    def _checked(self) -> tuple[ChangeSpecs, list[Issue]]:
+        return check_change(self.ws, self.change)
+
+    @property
+    def specs(self) -> ChangeSpecs:
+        return self._checked[0]
+
+    @property
+    def issues(self) -> list[Issue]:
+        return self._checked[1]
+
+    @property
+    def spec_errors(self) -> list[str]:
+        return [str(i) for i in self.issues if i.level == "error"]
+
+    @cached_property
+    def tags(self) -> list[Tag]:
+        return scan_tags(self.ws)
+
+    @cached_property
+    def rows(self) -> list[Row]:
+        return build_matrix(self.specs, self.tags)
+
+    @cached_property
+    def gaps(self) -> dict[str, list[str]]:
+        return gaps(self.rows)
+
+    @property
+    def acs_without_tasks(self) -> list[str]:
+        """Needs no tag scan: tasks come from tasks.md."""
+        return gaps(build_matrix(self.specs, []))["acWithoutTasks"]
+
+    @cached_property
+    def unknown_tags(self) -> list[Tag]:
+        return unknown_tags(self.specs, self.tags)

@@ -6,10 +6,9 @@ from pathlib import Path
 
 import typer
 
-from ..core.config import DARK_THEMES, THEMES, ConfigError, theme_name
+from ..core.config import DARK_THEMES, THEMES, theme_name
 from ..specs.capabilities import describe, resolve_ref, workspace_capabilities
-from ..specs.check import check_change
-from ..specs.trace import build_matrix, gaps, scan_tags, to_markdown, unknown_tags, write_traceability
+from ..specs.trace import Analysis, to_markdown, write_traceability
 from ..tools.diagrams import DiagramError, diagrams_in, find_d2, render, state
 from .app import app, spec_app
 from .output import ChangeOpt, JsonOpt, change_dict, emit, fail, require_change, workspace
@@ -23,7 +22,7 @@ def check_cmd(
 ) -> None:
     """Check a change's proposal, delta specs and tasks (IDs, SHALL/MUST, scenarios, coverage)."""
     ws, mod, ch = require_change(change, as_json)
-    _, issues = check_change(ws, ch)
+    issues = Analysis(ws, ch).issues
     errors = [i for i in issues if i.level == "error" or strict]
     data = {
         **change_dict(ws, mod, ch),
@@ -47,18 +46,16 @@ def trace(
 ) -> None:
     """Requirement -> acceptance criterion -> task -> test (@ac) -> code (@req) matrix of a change."""
     ws, mod, ch = require_change(change, as_json)
-    specs, issues = check_change(ws, ch)
-    tags = scan_tags(ws)
-    rows = build_matrix(specs, tags)
-    found = gaps(rows)
+    analysis = Analysis(ws, ch)
+    rows, found = analysis.rows, analysis.gaps
     markdown = to_markdown(mod.qualify(ch.name), rows, found)
     written = ws.rel(write_traceability(ch, markdown)) if write else None
     data = {
         **change_dict(ws, mod, ch),
         "rows": [vars(r) for r in rows],
         "gaps": found,
-        "unknownTags": [{"id": t.id, "where": t.where} for t in unknown_tags(specs, tags)],
-        "specErrors": sum(i.level == "error" for i in issues),
+        "unknownTags": [{"id": t.id, "where": t.where} for t in analysis.unknown_tags],
+        "specErrors": len(analysis.spec_errors),
         "written": written,
     }
     text = markdown + (f"\nwrote {written}" if written else "")
@@ -73,10 +70,7 @@ def spec_show(
 ) -> None:
     """A capability's living spec, ID prefix, next free ID and delta path (also for a new capability)."""
     ws = workspace(as_json)
-    try:
-        cap = resolve_ref(ws, ref)
-    except ConfigError as exc:
-        fail(str(exc), as_json)
+    cap = resolve_ref(ws, ref)
     data = describe(ws, cap, with_scenarios=not no_scenarios)
     lines = [
         f"{data['ref']}{'  (new)' if data['new'] else ''}",

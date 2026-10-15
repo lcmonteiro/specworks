@@ -15,6 +15,8 @@ from dataclasses import dataclass, field
 from importlib import resources
 from pathlib import Path
 
+from ..core.errors import SpecworksError
+
 FRONTMATTER_RE = re.compile(r"\A---\n(.*?)\n---\n", re.DOTALL)
 
 
@@ -55,7 +57,7 @@ TOOLS: dict[str, Tool] = {
 }
 
 
-class ToolError(Exception):
+class ToolError(SpecworksError):
     """Raised for unknown tool ids."""
 
 

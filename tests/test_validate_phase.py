@@ -58,9 +58,10 @@ def test_verify_names_the_phase_to_go_back_to(repo):
     code, data = run_json("validate", "--change", REF, "--base", "main")
     assert code == 1 and data["verdict"] == "FAIL"
     checks = by_name(data)
-    assert checks["every task is done"]["fix"] == "/specworks-code"
-    assert checks["every requirement has code (@req)"]["details"] == ["REQ-AUTH-002"]
-    assert checks["review done (review.md with no open finding)"]["details"] == ["review.md is missing"]
+    assert checks["every task is done (specworks task list --pending)"]["fix"] == "/specworks-code"
+    assert checks["every requirement has code (@req tag)"]["details"] == ["REQ-AUTH-002"]
+    assert checks["review.md is written"]["details"] == ["write review.md (specworks instructions review)"]
+    assert checks["review.md is written"]["fix"] == "/specworks-review"
     assert data["goBackTo"] == ["/specworks-code", "/specworks-review"]
 
 

@@ -15,8 +15,7 @@ import sys
 
 import typer
 
-from ..core.changes import ChangeError
-from ..core.config import ConfigError
+from ..core.errors import SpecworksError
 from .app import app
 
 # Importing the command modules registers their commands; this order is the order of `--help`.
@@ -34,7 +33,7 @@ def main() -> None:
     """Run the CLI; a broken config or change file anywhere in the workspace is an error message, not a traceback."""
     try:
         app()
-    except (ConfigError, ChangeError) as exc:
+    except SpecworksError as exc:  # raised outside a command (each command reports its own)
         if "--json" in sys.argv[1:]:
             typer.echo(json.dumps({"error": str(exc)}, indent=2))
         else:
