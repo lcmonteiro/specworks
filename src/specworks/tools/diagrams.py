@@ -25,7 +25,7 @@ from pathlib import Path
 
 import pyd2
 
-from .config import DiagramSettings
+from ..core.config import DiagramSettings
 
 DIAGRAMS_DIR = "diagrams"
 STAMP_RE = re.compile(r"<!-- specworks:d2 sha256=(?P<hash>[0-9a-f]{64}) -->")

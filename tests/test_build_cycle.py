@@ -3,7 +3,7 @@
 import pytest
 from helpers import REF, run_json
 
-from specworks.cycle import open_findings
+from specworks.workflow.cycle import open_findings
 
 
 def write_review(root, body):

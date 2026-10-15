@@ -9,8 +9,8 @@ from helpers import REF, run_json
 from typer.testing import CliRunner
 
 from specworks.cli import app
-from specworks.merge import MergeError, apply_delta
-from specworks.specfile import parse_spec
+from specworks.specs.merge import MergeError, apply_delta
+from specworks.specs.specfile import parse_spec
 
 runner = CliRunner()
 CHANGE_DIR = f"spec/changes/{REF}"

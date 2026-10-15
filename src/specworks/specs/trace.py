@@ -18,9 +18,9 @@ import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from .changes import Change
-from .validate import ChangeSpecs
-from .workspace import Workspace
+from ..core.changes import Change
+from .check import ChangeSpecs
+from ..core.workspace import Workspace
 
 TAG_RE = re.compile(r"@(?P<kind>req|ac)\s+(?P<id>(?:REQ|AC)-[A-Z0-9][A-Z0-9.-]*[A-Z0-9])")
 SKIP_DIRS = {"node_modules", "__pycache__", "venv", "dist", "build", "target", "out", "vendor", "site-packages"}

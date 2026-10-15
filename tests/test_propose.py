@@ -4,7 +4,7 @@ import pytest
 from typer.testing import CliRunner
 
 from specworks.cli import app
-from specworks.specfile import ac_parent, find_ids, parse_spec
+from specworks.specs.specfile import ac_parent, find_ids, parse_spec
 
 runner = CliRunner()
 

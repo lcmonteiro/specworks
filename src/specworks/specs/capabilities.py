@@ -16,10 +16,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from .changes import Change, list_changes
-from .config import MODULE_NAME_RE, Capability, ConfigError
+from ..core.changes import Change, list_changes
+from ..core.config import MODULE_NAME_RE, Capability, ConfigError
 from .specfile import REQ_ID_RE, SpecDoc, parse_spec, requirement_number
-from .workspace import Module, Workspace
+from ..core.workspace import Module, Workspace
 
 SPECS_DIR = "specs"
 SPEC_FILE = "spec.md"
