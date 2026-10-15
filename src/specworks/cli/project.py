@@ -108,15 +108,16 @@ def init(
                 typer.echo(f"note    {existing.name} already exists; rename it (and its {existing.stem}/ folder) to change the name")
             cfg, created = load_config(root), existing is None
             cfg.archive_path.mkdir(parents=True, exist_ok=True)
-        if created:
-            typer.echo(f"created {cfg.config_path}")
-        typer.echo(f"ready   {cfg.changes_path}/")
-        if parent is not None:
-            linked = link_to_parent(root, name)
-            typer.echo(f"linked  as module '{linked}' of the parent project")
+        linked = link_to_parent(root, name) if parent is not None else None
         ws = require_workspace(root)
     except ConfigError as exc:
         fail(str(exc), False)
+    # Paths relative to the workspace root, like every other command's output.
+    if created:
+        typer.echo(f"created {ws.rel(cfg.config_path)}")
+    typer.echo(f"ready   {ws.rel(cfg.changes_path)}/")
+    if linked is not None:
+        typer.echo(f"linked  as module '{linked}' of the parent project")
     if not no_skills:
         write_skills(ws, tools)
 
