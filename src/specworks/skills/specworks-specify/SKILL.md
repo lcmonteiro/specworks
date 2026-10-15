@@ -189,7 +189,8 @@ When the artifacts are done, stop and suggest `/specworks-design`.
   ID is retired.
 - Always re-read artifacts from disk before building on them.
 - Do not invent requirements to satisfy validation. A change with no behaviour
-  change sets `skip_specs: true` in `.change.yaml` and has no delta specs.
+  change has no delta specs and is marked with
+  `specworks skip-specs --change "<ref>"`.
 - Do not move past step 5 without the user's confirmation.
 - If the specs reveal that the refinement was wrong, say so and suggest going
   back (`specworks phase "<ref>" refine`) rather than silently changing scope.

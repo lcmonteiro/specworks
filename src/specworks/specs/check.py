@@ -251,8 +251,8 @@ def check_change(ws: Workspace, change: Change) -> tuple[ChangeSpecs, list[Issue
                 "error",
                 ws.rel(change.path / "specs"),
                 0,
-                "no delta specs; write specs/[<module>/]<capability>/spec.md, or set skip_specs: true in "
-                ".change.yaml when no behaviour changes (refactor, tooling, docs)",
+                "no delta specs; write specs/[<module>/]<capability>/spec.md, or run "
+                "`specworks skip-specs --change <ref>` when no behaviour changes (refactor, tooling, docs)",
             )
         )
     seen: dict[str, str] = {}

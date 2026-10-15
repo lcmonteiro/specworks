@@ -247,5 +247,16 @@ def test_test_globs_are_relative_to_their_module_and_apply_only_to_it(workspace)
     ws = load_workspace(workspace)
     assert ws is not None
     found = {(t.file, t.is_test) for t in scan_tags(ws)}
-    # billing scans only its qa/ tests; the top level keeps its default (scan all, tests by name).
-    assert found == {("services/billing/qa/check_invoices.py", True), ("tests/test_top.py", True), ("app.py", False)}
+    # billing's qa/ files are its tests (its code is still scanned: test_globs only mark tests);
+    # the top level keeps its default (scan all, tests by name).
+    assert found == {
+        ("services/billing/qa/check_invoices.py", True),
+        ("services/billing/src/invoices.py", False),
+        ("tests/test_top.py", True),
+        ("app.py", False),
+    }
+
+
+def test_init_in_a_nested_module_reports_its_full_name(workspace, monkeypatch):
+    monkeypatch.chdir(workspace / "services/billing")
+    assert "as module 'billing/vat'" in run("init", "vat", "--no-skills")
