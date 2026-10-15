@@ -35,6 +35,12 @@ def test_init_creates_config_changes_and_skills(project):
     assert (project / ".claude/skills/specworks-refine/SKILL.md").is_file()
 
 
+def test_init_prints_paths_relative_to_the_project_root(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    result = runner.invoke(app, ["init", "--dir", "spec", "--no-skills"])
+    assert result.exit_code == 0 and result.output == "created spec.yml\nready   spec/changes/\n"
+
+
 def test_new_change_starts_in_refine_phase(project):
     code, data = run_json("new", "add-login")
     assert code == 0

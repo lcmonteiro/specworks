@@ -141,6 +141,12 @@ def test_init_in_subfolder_links_to_parent(workspace):
     assert "auth" in [m["name"] for m in data["modules"]]
 
 
+def test_init_prints_paths_relative_to_the_workspace_root(workspace):
+    output = run("init", "libs/auth", "--name", "auth", "--no-skills")
+    assert "created libs/auth/spec.yml\nready   libs/auth/spec/changes/\nlinked  as module 'auth'" in output
+    assert str(workspace) not in output
+
+
 def test_init_no_link_keeps_project_independent(workspace, monkeypatch):
     run("init", "tools/other", "--no-link", "--no-skills")
     assert "tools/other" not in (workspace / "spec.yml").read_text()
