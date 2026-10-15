@@ -154,6 +154,29 @@ def test_ids_helpers():
     assert id_prefix("REQ-V2-001") == "V2" and id_prefix("REQ-AUTH") is None and id_prefix("nope") is None
 
 
+def test_ids_with_an_all_digit_prefix_segment():
+    assert find_ids("task (REQ-OAUTH-2-001, AC-OAUTH-2-001.1)") == ["REQ-OAUTH-2-001", "AC-OAUTH-2-001.1"]
+    assert id_prefix("REQ-OAUTH-2-001") == "OAUTH-2" and ac_parent("AC-OAUTH-2-001.1") == "REQ-OAUTH-2-001"
+    doc = parse_spec("## ADDED Requirements\n\n### Requirement: REQ-OAUTH-2-001 Login\nThe system SHALL x.\n")
+    assert (doc.requirements[0].id, doc.requirements[0].title) == ("REQ-OAUTH-2-001", "Login")
+
+
+def test_change_for_a_capability_with_an_all_digit_prefix_segment(project):
+    run_json("capability", "add", "oauth-2", "--path", "src/oauth")
+    code, data = run_json("spec", "show", "oauth-2")
+    assert data["prefix"] == "OAUTH-2" and data["nextId"] == "REQ-OAUTH-2-001"
+    path = project / "spec/changes/add-password-reset"
+    (path / "proposal.md").write_text(PROPOSAL)
+    (path / "specs/oauth-2").mkdir(parents=True)
+    (path / "specs/oauth-2/spec.md").write_text(
+        "## Purpose\n\nOAuth 2 login.\n\n## ADDED Requirements\n\n### Requirement: REQ-OAUTH-2-001 Login\nThe system SHALL log in.\n\n"
+        "#### Scenario: AC-OAUTH-2-001.1 Valid token\n- **WHEN** a valid token is sent\n- **THEN** the user is logged in\n"
+    )
+    (path / "tasks.md").write_text("## 1. Login\n\n- [ ] 1.1 Implement login (REQ-OAUTH-2-001, AC-OAUTH-2-001.1); verify the test passes\n")
+    code, data = run_json("check", "--change", "add-password-reset")
+    assert code == 0, errors(data)
+
+
 def test_requirement_markdown_round_trips():
     req = parse_spec(DELTA).requirements[0]
     assert parse_spec("## ADDED Requirements\n" + req.markdown()).requirements[0].scenarios[1].id == "AC-AUTH-003.2"
