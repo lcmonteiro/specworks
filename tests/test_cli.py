@@ -4,7 +4,7 @@ import re
 import pytest
 from typer.testing import CliRunner
 
-from specworks.cli import app
+from specworks.cli import app, main
 
 runner = CliRunner()
 
@@ -196,3 +196,30 @@ def test_changes_saved_with_old_phase_names_still_load(project):
         meta.write_text(re.sub(r"(?m)^phase: .*$", f"phase: {old}", meta.read_text()))
         code, data = run_json("status", "--change", "old-change")
         assert code == 0 and data["phase"] == new
+
+
+@pytest.mark.parametrize(
+    "meta, message",
+    [
+        ("- a\n- list\n", "specworks/changes/add-login/.change.yaml must be a mapping (name, created, phase), got list"),
+        ("phase: [unclosed\n", "cannot read specworks/changes/add-login/.change.yaml"),
+        ("phase: shipping\n", "change 'add-login' has unknown phase 'shipping' in specworks/changes/add-login/.change.yaml"),
+    ],
+    ids=["list", "bad-yaml", "unknown-phase"],
+)
+def test_a_broken_change_file_is_an_error_not_a_crash(project, monkeypatch, capsys, meta, message):
+    run_json("new", "add-login")
+    (project / "specworks/changes/add-login/.change.yaml").write_text(meta)
+    # Naming the change reports the broken file, not "not found".
+    code, data = run_json("status", "--change", "add-login")
+    assert code == 1 and message in data["error"]
+    # Commands that list every change go through main(), which turns the error into a message.
+    monkeypatch.setattr("sys.argv", ["specworks", "list", "--json"])
+    with pytest.raises(SystemExit) as exit_info:
+        main()
+    assert exit_info.value.code == 1 and message in json.loads(capsys.readouterr().out)["error"]
+    monkeypatch.setattr("sys.argv", ["specworks", "context"])
+    with pytest.raises(SystemExit) as exit_info:
+        main()
+    err = capsys.readouterr().err
+    assert exit_info.value.code == 1 and err.startswith("error: ") and message in err

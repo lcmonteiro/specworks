@@ -24,6 +24,10 @@ class ChangeError(Exception):
     """Raised for invalid change names or missing changes."""
 
 
+class ChangeFileError(ChangeError):
+    """Raised when a change's .change.yaml cannot be read: the change exists but is broken."""
+
+
 @dataclass
 class Change:
     name: str
@@ -60,11 +64,17 @@ def load_change(cfg: Config, name: str) -> Change:
     meta_file = path / META_FILE
     if name == "archive" or not meta_file.is_file():
         raise ChangeError(f"change '{name}' not found in {cfg.changes_dir}")
-    meta = yaml.safe_load(meta_file.read_text(encoding="utf-8")) or {}
+    where = f"{cfg.changes_dir}/{name}/{META_FILE}"
+    try:
+        meta = yaml.safe_load(meta_file.read_text(encoding="utf-8")) or {}
+    except (OSError, UnicodeDecodeError, yaml.YAMLError) as exc:
+        raise ChangeFileError(f"cannot read {where}: {exc}") from None
+    if not isinstance(meta, dict):
+        raise ChangeFileError(f"{where} must be a mapping (name, created, phase), got {type(meta).__name__}")
     phase = meta.get("phase", "refine")
     phase = OLD_PHASES.get(phase, phase)
     if phase not in PHASES:
-        raise ChangeError(f"change '{name}' has unknown phase '{phase}'")
+        raise ChangeFileError(f"change '{name}' has unknown phase '{phase}' in {where}; expected one of {', '.join(PHASES)}")
     return Change(
         name=name,
         path=path,
