@@ -20,18 +20,15 @@ looks easy. When the gate passes, stop and suggest `/specworks-code`.
 
 <!-- specworks:include running-cli -->
 
+<!-- specworks:include picking-the-change -->
+
 ---
 
 ## Steps
 
 1. **Pick the change and start the phase once the interfaces are ready**
 
-   ```bash
-   specworks context --json
-   ```
-
-   - Select the change as in `/specworks-specify` (named by the user, or the
-     single active one; ask if ambiguous). Announce `Using change: <ref>`, then:
+   - Pick the change (above), then:
      ```bash
      specworks start test --change "<ref>"
      ```

@@ -25,20 +25,21 @@ fails and cannot be fixed within that phase, when the specs turn out wrong
 
 <!-- specworks:include running-cli -->
 
+<!-- specworks:include picking-the-change -->
+
 ---
 
 ## Steps
 
 1. **Pick the change and where to start**
 
+   Pick the change (above), then:
    ```bash
-   specworks context --json
    specworks gate specify --change "<ref>"
    specworks status --change "<ref>" --json
    specworks cycle --change "<ref>" --json
    ```
 
-   - Select the change as the phase skills do; announce `Using change: <ref>`.
    - If `gate specify` fails, stop and suggest `/specworks-specify <ref>`.
    - Start point:
      - a previous review left open findings (`cycle` returns `startAt`):

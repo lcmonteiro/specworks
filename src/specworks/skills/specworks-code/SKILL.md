@@ -17,17 +17,15 @@ change them to make the code easier. When the gate passes, stop and suggest
 
 <!-- specworks:include running-cli -->
 
+<!-- specworks:include picking-the-change -->
+
 ---
 
 ## Steps
 
 1. **Pick the change and start the phase once the tests are in place**
 
-   ```bash
-   specworks context --json
-   ```
-
-   - Select the change as the other phases do; announce `Using change: <ref>`, then:
+   - Pick the change (above), then:
      ```bash
      specworks start code --change "<ref>"
      ```

@@ -19,13 +19,15 @@ go back to.
 
 <!-- specworks:include running-cli -->
 
+<!-- specworks:include picking-the-change -->
+
 ---
 
 ## Steps
 
 1. **Pick the change and start the phase once it is reviewed**
 
-   Select it as the other phases do and announce `Using change: <ref>`, then:
+   Pick the change (above), then:
    ```bash
    specworks start validate --change "<ref>"      # same --base as below if the default is wrong
    ```
