@@ -416,6 +416,27 @@ def test_trace_skips_workflow_and_hidden_folders(change, project):
     assert {r["ac"]: r for r in data["rows"]}["AC-AUTH-003.1"]["tests"] == []
 
 
+def test_trace_does_not_count_tags_quoted_in_docs(change, project):
+    (project / "NOTES.md").write_text("TODO: implement `@req REQ-AUTH-003`\n")
+    (project / "tests").mkdir()
+    (project / "tests/README.txt").write_text("covers @ac AC-AUTH-003.1\n")
+    (project / "tests/reset.feature").write_text("# @ac AC-AUTH-003.2\nScenario: expired link\n")
+    code, data = run_json("trace", "--change", "add-password-reset")
+    rows = {r["ac"]: r for r in data["rows"]}
+    assert rows["AC-AUTH-003.1"]["code"] == [] and rows["AC-AUTH-003.1"]["tests"] == []
+    assert rows["AC-AUTH-003.2"]["tests"] == ["tests/reset.feature:1"]  # non-code tests still count
+    assert "REQ-AUTH-003" in data["gaps"]["reqWithoutCode"]
+
+
+def test_globs_that_name_docs_scan_them(change, project):
+    cfg = project / "spec.yml"
+    cfg.write_text(cfg.read_text().replace("source_globs: []", 'source_globs: ["docs/*"]'))
+    (project / "docs").mkdir()
+    (project / "docs/impl.md").write_text("@req REQ-AUTH-003\n")
+    code, data = run_json("trace", "--change", "add-password-reset")
+    assert {r["ac"]: r for r in data["rows"]}["AC-AUTH-003.1"]["code"] == ["docs/impl.md:1"]
+
+
 def test_trace_respects_test_globs(change, project):
     cfg = project / "spec.yml"
     cfg.write_text(cfg.read_text().replace("test_globs: []", 'test_globs: ["qa/*.py"]'))
