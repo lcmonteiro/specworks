@@ -117,7 +117,7 @@ fails and cannot be fixed within that phase, when the specs turn out wrong
    The cycle starts at the earliest phase any finding needs: code findings
    (`code-gap`, `tag`, `quality`) → code, review; test findings → test, code,
    review; design/API findings → design, test, code, review. A
-   `back to <phase>` in a finding's Decision overrides its type.
+   `back to <phase>: ...` in a finding's Decision overrides its type.
 
    After the third cycle, say how many cycles have run and what keeps coming
    back before asking again: repeated findings usually mean the spec or the

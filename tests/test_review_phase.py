@@ -91,6 +91,22 @@ def test_gate_review_requires_untagged_files_accounted_for(repo):
     assert code == 0 and data["passed"] is True
 
 
+def test_untagged_files_count_only_as_whole_paths_under_their_heading(repo):
+    (repo / "src/auth/audit.py").write_text("def audit(): ...\n")
+    not_accounted = [
+        "- [x] R1 **quality** `src/auth/audit.py` logs passwords\n  - **Decision**: code fixed\n",  # in a finding only
+        "None.\n\n## Changed files without tags\n\n<!-- e.g. `src/auth/audit.py`: helper -->\n",  # in a comment
+        "None.\n\n## Changed files without tags\n\n- `src/auth/audit.py.bak`: backup\n",  # a longer path
+    ]
+    for body in not_accounted:
+        write_review(repo, body)
+        code, data = run_json("gate", "review", "--change", REF, "--base", "main")
+        assert checks(data)["changed files without tags are accounted for in review.md"]["details"] == ["src/auth/audit.py"], body
+    write_review(repo, "None.\n\n## Changed files without tags\n\n- src/auth/audit.py (helper of R1, no behaviour)\n")
+    code, data = run_json("gate", "review", "--change", REF, "--base", "main")
+    assert code == 0, data
+
+
 def test_gate_review_passes_when_clean(repo):
     write_review(repo, "- [x] R1 **test-gap** AC-AUTH-003.2 only checked the status\n  - **Decision**: code fixed\n")
     code, data = run_json("gate", "review", "--change", REF, "--base", "main")

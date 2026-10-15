@@ -69,3 +69,18 @@ def test_open_findings_parsing():
         {"id": "R1", "type": "test-gap", "text": "**test-gap** weak assert", "phase": "test"},
         {"id": "R3", "type": "", "text": "untyped finding", "phase": "code"},
     ]
+
+
+def test_back_to_on_the_finding_line_counts():
+    text = "- [ ] R1 **code-gap** reset returns None. **Decision**: back to design: return the token\n"
+    assert [f["phase"] for f in open_findings(text)] == ["design"]
+
+
+def test_back_to_needs_the_decision_form_and_stays_in_its_finding():
+    text = (
+        "- [ ] R1 **code-gap** the form goes back to design view on error\n"  # prose, no "back to <phase>:"
+        "<!-- Decision: code fixed | back to specify/design/code: proposal -->\n"  # template comment
+        "Back to design: a stray line outside any finding\n"
+        "  - not indented under R1 any more, so it is not R1's Decision\n"
+    )
+    assert [f["phase"] for f in open_findings(text)] == ["code"]

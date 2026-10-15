@@ -12,7 +12,7 @@ import re
 from dataclasses import dataclass, field
 
 from ..core.changes import Change
-from .review import REVIEW_FILE, review_change, review_findings
+from .review import REVIEW_FILE, read_review, review_change
 from ..core.runner import CommandError, run_command
 from ..specs.trace import Tag, build_matrix, gaps, scan_tags, unknown_tags
 from ..specs.check import check_change
@@ -190,12 +190,13 @@ def _code(ws: Workspace, module: Module, change: Change, run_tests: bool) -> lis
 def _review(ws: Workspace, module: Module, change: Change, run_tests: bool, base: str | None, allow_open: bool) -> list[Check]:
     specs, report = review_change(ws, change, base)
     found = report.findings()
-    exists, open_findings, text = review_findings(change)
+    review = read_review(change)
+    open_findings = [f"{f.id} {f.text}" for f in review.open]
     checks = [
         Check("specs and tasks are valid (specworks check)", not report.spec_errors, report.spec_errors),
-        Check(f"{REVIEW_FILE} is written", exists, [] if exists else ["write it (specworks instructions review)"]),
+        Check(f"{REVIEW_FILE} is written", review.exists, [] if review.exists else ["write it (specworks instructions review)"]),
         # In a build, open findings are the hand-off to the next cycle (`specworks cycle`), not a failure.
-        Check(f"no open finding in {REVIEW_FILE}", exists and not open_findings, open_findings, blocking=not allow_open),
+        Check(f"no open finding in {REVIEW_FILE}", review.exists and not open_findings, open_findings, blocking=not allow_open),
         Check("every requirement has code (@req tag)", not found["reqWithoutCode"], found["reqWithoutCode"]),
         Check("every acceptance criterion has a test (@ac tag)", not found["acWithoutTests"], found["acWithoutTests"]),
         Check("no tag refers to an unknown requirement or criterion", not found["unknownTags"], found["unknownTags"]),
@@ -205,7 +206,7 @@ def _review(ws: Workspace, module: Module, change: Change, run_tests: bool, base
         checks.append(Check("changed files without tags are accounted for", False, [report.note], blocking=False))
     else:
         untraced = found["untracedSource"] + found["untracedTests"]
-        missing = [path for path in untraced if path not in text]
+        missing = [path for path in untraced if not review.accounts_for(path)]
         checks.append(
             Check(
                 f"changed files without tags are accounted for in {REVIEW_FILE} (base {report.base})",
