@@ -4,6 +4,8 @@ import pytest
 from typer.testing import CliRunner
 
 from specworks.cli import app
+from specworks.core.workspace import load_workspace
+from specworks.specs.trace import scan_tags
 
 runner = CliRunner()
 
@@ -229,3 +231,21 @@ def test_module_add_rejects_existing_config_with_other_dir(workspace):
     assert code == 1 and "uses docs.yml" in data["error"]
     assert not (other / "spec.yml").exists()
     assert "legacy: libs/legacy" not in (workspace / "spec.yml").read_text()
+
+
+def test_test_globs_are_relative_to_their_module_and_apply_only_to_it(workspace):
+    billing = workspace / "services/billing"
+    cfg = billing / "spec.yml"
+    cfg.write_text(cfg.read_text().replace("test_globs: []", 'test_globs: ["qa/*.py"]'))
+    (billing / "qa").mkdir()
+    (billing / "qa/check_invoices.py").write_text("# @ac AC-BILLING-INVOICES-001.1\n")
+    (billing / "src").mkdir()
+    (billing / "src/invoices.py").write_text("# @req REQ-BILLING-INVOICES-001\n")
+    (workspace / "tests").mkdir()
+    (workspace / "tests/test_top.py").write_text("# @ac AC-TOP-001.1\n")
+    (workspace / "app.py").write_text("# @req REQ-TOP-001\n")
+    ws = load_workspace(workspace)
+    assert ws is not None
+    found = {(t.file, t.is_test) for t in scan_tags(ws)}
+    # billing scans only its qa/ tests; the top level keeps its default (scan all, tests by name).
+    assert found == {("services/billing/qa/check_invoices.py", True), ("tests/test_top.py", True), ("app.py", False)}

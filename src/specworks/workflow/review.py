@@ -22,7 +22,7 @@ from pathlib import Path
 from ..core.changes import Change
 from ..core.workspace import Workspace
 from ..specs.check import ChangeSpecs, check_change
-from ..specs.trace import Tag, build_matrix, gaps, is_test_file, scan_tags, unknown_tags
+from ..specs.trace import Tag, build_matrix, gaps, is_test_path, scan_tags, unknown_tags
 
 CODE_EXTENSIONS = {
     ".py", ".pyi", ".js", ".jsx", ".mjs", ".cjs", ".ts", ".tsx", ".go", ".rs", ".java", ".kt", ".kts",
@@ -128,8 +128,7 @@ def classify(ws: Workspace, rel: str) -> str | None:
     for module in ws.modules():
         if path.is_relative_to(module.root / module.config.dir):
             return None
-    test_globs = [g for m in ws.modules() for g in m.config.test_globs]
-    if is_test_file(rel, test_globs):
+    if is_test_path(ws.owner(path), path):
         return "test"
     return "source" if path.suffix.lower() in CODE_EXTENSIONS else "other"
 

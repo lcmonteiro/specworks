@@ -41,8 +41,9 @@ capabilities: {}
 #   billing: services/billing
 modules: {}
 
-# Globs used by `specworks trace` to find tests and source files. Empty means
-# "scan everything that is not in the workflow folder".
+# Globs used by `specworks trace` to find tests and source files, relative to
+# this file's folder; they apply to this project's files, not to its modules'.
+# Empty means "scan everything that is not in the workflow folder".
 test_globs: []
 source_globs: []
 
@@ -97,8 +98,14 @@ def add_module_entry(root: Path, name: str, path: str) -> None:
 
 
 def _insert_entry(root: Path, key: str, entry: list[str], applied) -> None:
-    """Append ``entry`` lines to the ``key:`` block of the config as text (keeping comments), then re-read to check."""
+    """Append ``entry`` lines to the ``key:`` block of the config as text (keeping comments), then re-read to check.
+
+    The check also requires every entry already under ``key`` to survive: a block the
+    text edit does not understand (e.g. ``capabilities: {auth: src/auth}``) would
+    otherwise gain a second ``key:``, and YAML keeps only the last one.
+    """
     cfg = load_config(root)
+    before = dict(getattr(cfg, key))
     config_file = cfg.config_path
     original = config_file.read_text(encoding="utf-8")
     lines = original.splitlines()
@@ -119,7 +126,9 @@ def _insert_entry(root: Path, key: str, entry: list[str], applied) -> None:
     config_file.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
     try:
-        ok = applied(load_config(root))
+        after = load_config(root)
+        kept = getattr(after, key)
+        ok = applied(after) and all(kept.get(name) == value for name, value in before.items())
     except ConfigError:
         ok = False
     if not ok:

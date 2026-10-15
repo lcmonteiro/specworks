@@ -23,12 +23,16 @@ go back to.
 
 ## Steps
 
-1. **Pick the change**
+1. **Pick the change and start the phase once it is reviewed**
 
    Select it as the other phases do and announce `Using change: <ref>`, then:
    ```bash
-   specworks phase "<ref>" validate
+   specworks start validate --change "<ref>"      # same --base as below if the default is wrong
    ```
+   It runs `gate review` (and the gates of any earlier phase left behind) and
+   moves the change to validate only if they pass. If one fails, the verdict
+   is FAIL: show the failing checks, suggest the skill of the failed gate's
+   phase (`/specworks-review <ref>` for `gate review`), and stop.
 
 2. **Run the measurable checks**
 

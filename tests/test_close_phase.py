@@ -123,6 +123,22 @@ def test_capability_add_validates(ready):
     assert code == 1
 
 
+def test_capability_add_never_drops_existing_capabilities(project):
+    # A flow mapping is not a block the text edit can extend; appending a second
+    # `capabilities:` would make YAML keep only the new entry.
+    cfg = project / "spec.yml"
+    text = cfg.read_text()
+    start = text.index("capabilities:\n  user-auth:")
+    end = text.index("\n\n", start)
+    cfg.write_text(text[:start] + "capabilities: {user-auth: {path: src/auth, prefix: AUTH}}" + text[end:])
+    before = cfg.read_text()
+    code, data = run_json("capability", "add", "billing", "--path", "src/billing")
+    assert code == 1 and "add it by hand" in data["error"]
+    assert cfg.read_text() == before
+    code, data = run_json("spec", "list")
+    assert [c["ref"] for c in data["capabilities"]] == ["user-auth"]
+
+
 def test_capability_add_in_a_module(ready, monkeypatch):
     runner.invoke(app, ["module", "add", "services/billing"])
     code, data = run_json("capability", "add", "invoices", "--path", "src/invoices", "--module", "billing", "--prefix", "INV")

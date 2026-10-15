@@ -5,9 +5,12 @@ Tests and code link back to the specs with comment tags, in any language::
     # @ac AC-AUTH-001.1        (in a test)
     // @req REQ-AUTH-001       (in code)
 
-A file counts as a test when it matches the module's ``test_globs`` or, when
-none are set, when its name or folder looks like a test (``test_x.py``,
-``x_test.go``, ``x.test.ts``, ``x.spec.js``, ``x_spec.rb``, ``tests/``, ``__tests__/``...).
+Each file belongs to the innermost module whose folder holds it, and that
+module's ``source_globs`` / ``test_globs`` (relative to its folder) decide
+whether it is scanned and whether it is a test. A file counts as a test when
+it matches the module's ``test_globs`` or, when none are set, when its name or
+folder looks like a test (``test_x.py``, ``x_test.go``, ``x.test.ts``,
+``x.spec.js``, ``x_spec.rb``, ``tests/``, ``__tests__/``...).
 """
 
 from __future__ import annotations
@@ -19,7 +22,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from ..core.changes import Change
-from ..core.workspace import Workspace
+from ..core.workspace import Module, Workspace
 from .check import ChangeSpecs
 from .specfile import id_prefix
 
@@ -65,21 +68,26 @@ def is_test_file(rel: str, test_globs: list[str]) -> bool:
     return any(p in TEST_DIRS for p in parts[:-1]) or bool(TEST_NAME_RE.search(parts[-1]))
 
 
+def is_test_path(module: Module, path: Path) -> bool:
+    """Whether ``path`` (a file of ``module``) is a test, by the module's ``test_globs`` relative to its folder."""
+    return is_test_file(path.relative_to(module.root).as_posix(), module.config.test_globs)
+
+
 def scan_tags(ws: Workspace) -> list[Tag]:
     """Every @req / @ac tag in the workspace, skipping hidden, vendored and workflow folders."""
     skip_roots = {(m.root / m.config.dir).resolve() for m in ws.modules()}
-    globs = [g for m in ws.modules() for g in m.config.source_globs + m.config.test_globs]
-    test_globs = [g for m in ws.modules() for g in m.config.test_globs]
     tags: list[Tag] = []
     for dirpath, dirnames, filenames in os.walk(ws.root):
         here = Path(dirpath)
         dirnames[:] = sorted(
             d for d in dirnames if not d.startswith(".") and d not in SKIP_DIRS and (here / d).resolve() not in skip_roots
         )
+        module = ws.owner(here)
+        globs = module.config.source_globs + module.config.test_globs
         for name in sorted(filenames):
             path = here / name
             rel = ws.rel(path)
-            if globs and not any(fnmatch.fnmatch(rel, g) for g in globs):
+            if globs and not any(fnmatch.fnmatch(path.relative_to(module.root).as_posix(), g) for g in globs):
                 continue
             try:
                 if path.stat().st_size > MAX_FILE_BYTES:
@@ -89,7 +97,7 @@ def scan_tags(ws: Workspace) -> list[Tag]:
                 continue
             if "@req" not in text and "@ac" not in text:
                 continue
-            is_test = is_test_file(rel, test_globs)
+            is_test = is_test_path(module, path)
             for number, line in enumerate(text.splitlines(), start=1):
                 for match in TAG_RE.finditer(line):
                     tags.append(Tag(id=match.group("id"), kind=match.group("kind"), file=rel, line=number, is_test=is_test))

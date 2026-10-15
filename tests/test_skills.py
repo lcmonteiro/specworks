@@ -2,7 +2,7 @@ import pytest
 from typer.testing import CliRunner
 
 from specworks.cli import app
-from specworks.tools.skills import packaged_skills
+from specworks.tools.skills import packaged_skills, read_skill
 
 runner = CliRunner()
 SKILL = "specworks-refine"
@@ -122,3 +122,10 @@ def test_skill_triggers_name_specworks(tmp_path, monkeypatch):
         description = next(line for line in frontmatter(tmp_path / f".claude/skills/{name}/SKILL.md").splitlines() if line.startswith("description:"))
         use_when = description.split("Use ", 1)[1]
         assert "specworks" in use_when and f'"{name.replace("-", " ")}"' in use_when, name
+
+
+def test_validate_enters_its_phase_through_the_review_gate():
+    # `specworks phase` would move the change unchecked and make "the change went through review" always pass.
+    text = read_skill("specworks-validate")
+    assert 'specworks start validate --change "<ref>"' in text
+    assert 'specworks phase "<ref>" validate' not in text

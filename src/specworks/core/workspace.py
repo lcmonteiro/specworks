@@ -118,6 +118,10 @@ class Workspace:
             merged.update(node.config.commands)
         return merged
 
+    def owner(self, path: Path) -> Module:
+        """The innermost module whose folder holds ``path`` (a path inside the workspace)."""
+        return max((m for m in self.modules() if path.is_relative_to(m.root)), key=lambda m: len(m.root.parts))
+
     def capabilities(self) -> list[tuple[Module, Capability]]:
         return [(m, cap) for m in self.modules() for cap in m.config.capabilities.values()]
 
