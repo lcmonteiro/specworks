@@ -118,6 +118,7 @@ def test_invalid_specs_fail_the_gate(planned):
         ("`src/a.py`, `src/a.py:Thing`, `pkg/b.ts#run`, `lib/c.go(x)`", ["src/a.py", "pkg/b.ts", "lib/c.go"]),
         ("`ResetService`, `request_reset(email)`, `None`", []),
         ("`docs/` and `Makefile` and `a/b`", []),
+        ("`main.py`, `cli.ts:run`, `ResetService.request_reset`, `obj.method()`, `v1.2`", ["main.py", "cli.ts"]),
     ],
 )
 def test_interface_files(section, files):

@@ -22,6 +22,7 @@ from pathlib import Path
 from ..core.changes import Change
 from ..core.workspace import Workspace
 from ..specs.check import ChangeSpecs, check_change
+from ..specs.specfile import H2_RE
 from ..specs.trace import Tag, build_matrix, gaps, is_test_path, scan_tags, unknown_tags
 
 CODE_EXTENSIONS = {
@@ -192,7 +193,6 @@ BACK_RE = re.compile(r"\bback to (?P<phase>specify|design|test|code)\s*:", re.IG
 DONE_RE = re.compile(r"\bdone in (?P<phase>specify|design|test|code)\s*:", re.IGNORECASE)
 # Workflow order of the phases a finding can need, and the phase after each one.
 FINDING_PHASES = ("specify", "design", "test", "code", "review")
-H2_RE = re.compile(r"^##\s+(?P<title>.+?)\s*$")
 ACCOUNTED_SECTION = "changed files without tags"
 
 

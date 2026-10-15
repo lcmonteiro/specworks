@@ -186,6 +186,22 @@ def test_removed_requirement_is_deleted_and_other_sections_kept():
     assert text.startswith("# user-auth\n\nIntro.\n") and text.endswith("## Notes\n\nKeep me.\n")
 
 
+def test_headings_in_a_code_fence_are_text_when_merging():
+    living = (
+        "# user-auth\n\n## Requirements\n\n### Requirement: REQ-AUTH-001 A\nThe system SHALL read:\n\n"
+        "```markdown\n## Example\n### Requirement: REQ-AUTH-009 not real\n```\n\n## Notes\n\nKeep me.\n"
+    )
+    text, added, _, removed = apply_delta(
+        living,
+        FakeDelta(
+            "## ADDED Requirements\n\n### Requirement: REQ-AUTH-002 B\nThe system SHALL b.\n\n"
+            "## REMOVED Requirements\n\n### Requirement: REQ-AUTH-001 A\n**Reason**: x\n**Migration**: y\n"
+        ),
+    )
+    assert added == ["REQ-AUTH-002"] and removed == ["REQ-AUTH-001"]
+    assert text == "# user-auth\n\n## Requirements\n\n### Requirement: REQ-AUTH-002 B\nThe system SHALL b.\n\n## Notes\n\nKeep me.\n"
+
+
 def test_diagrams_in_a_docs_folder(ready, monkeypatch):
     fake = ready / "fake_d2.py"
     fake.write_text("import sys, pathlib\npathlib.Path(sys.argv[-1]).write_text('<?xml version=\"1.0\"?><svg/>')\n")

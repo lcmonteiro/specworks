@@ -64,18 +64,30 @@ class CapabilityMerge:
 
 
 def _blocks(lines: list[str]) -> tuple[int, int, list[tuple[str | None, int, int]]]:
-    """Locate '## Requirements' and its requirement blocks: (section start, section end, [(id, start, end)])."""
+    """Locate '## Requirements' and its requirement blocks: (section start, section end, [(id, start, end)]).
+
+    Headings inside code fences are text (an example in a requirement), as in ``parse_spec``.
+    """
     section_start = section_end = None
+    headers: list[tuple[int, str]] = []
+    in_fence = False
     for i, line in enumerate(lines):
+        if line.lstrip().startswith("```"):
+            in_fence = not in_fence
+            continue
+        if in_fence:
+            continue
         if h2 := H2_RE.match(line):
-            if section_start is not None and section_end is None:
+            if section_start is not None:
                 section_end = i
-            if section_kind(h2.group("title")) == LIVING_SECTION and section_start is None:
+                break
+            if section_kind(h2.group("title")) == LIVING_SECTION:
                 section_start = i
+        elif section_start is not None and (m := REQ_HEADER_RE.match(line)):
+            headers.append((i, m.group("rest")))
     if section_start is None:
         raise MergeError("the living spec has no '## Requirements' section")
     section_end = section_end if section_end is not None else len(lines)
-    headers = [(i, m.group("rest")) for i in range(section_start + 1, section_end) if (m := REQ_HEADER_RE.match(lines[i]))]
     blocks = []
     for n, (start, rest) in enumerate(headers):
         end = headers[n + 1][0] if n + 1 < len(headers) else section_end
@@ -117,28 +129,22 @@ def apply_delta(living_text: str, delta: Delta) -> tuple[str, list[str], list[st
         elif req.section == "ADDED" and req.id in by_id:
             raise MergeError(f"{req.id} is ADDED but already in the living spec of {delta.cap.ref}")
 
+    # Every replaced block lies inside the section; ADDED blocks go at its end.
     out: list[str] = []
     i = 0
-    while i < len(lines):
-        if i == section_end:
-            if out and out[-1].strip():
-                out.append("")
-            for req in delta.doc.section("ADDED"):
-                out += _block_lines(req)
-                added.append(req.id or "?")  # check_change requires IDs before close
+    while i < section_end:
         if i in replacements:
-            end, new_lines = replacements[i]
+            i, new_lines = replacements[i]
             out += new_lines
-            i = end
-            continue
-        out.append(lines[i])
-        i += 1
-    if section_end >= len(lines):
+        else:
+            out.append(lines[i])
+            i += 1
+    for req in delta.doc.section("ADDED"):
         if out and out[-1].strip():
             out.append("")
-        for req in delta.doc.section("ADDED"):
-            out += _block_lines(req)
-            added.append(req.id or "?")  # check_change requires IDs before close
+        out += _block_lines(req)
+        added.append(req.id or "?")  # check_change requires IDs before close
+    out += lines[section_end:]
     text = re.sub(r"\n{3,}", "\n\n", "\n".join(out)).rstrip("\n") + "\n"
     return text, added, modified, removed
 
