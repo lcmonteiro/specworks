@@ -97,8 +97,14 @@ def add_module_entry(root: Path, name: str, path: str) -> None:
 
 
 def _insert_entry(root: Path, key: str, entry: list[str], applied) -> None:
-    """Append ``entry`` lines to the ``key:`` block of the config as text (keeping comments), then re-read to check."""
+    """Append ``entry`` lines to the ``key:`` block of the config as text (keeping comments), then re-read to check.
+
+    The check also requires every entry that was there before to be unchanged: a
+    block the text edit does not understand (e.g. flow style ``key: {a: b}``)
+    would otherwise get a second ``key:`` that silently replaces the first.
+    """
     cfg = load_config(root)
+    before: dict = getattr(cfg, key)
     config_file = cfg.config_path
     original = config_file.read_text(encoding="utf-8")
     lines = original.splitlines()
@@ -119,7 +125,9 @@ def _insert_entry(root: Path, key: str, entry: list[str], applied) -> None:
     config_file.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
     try:
-        ok = applied(load_config(root))
+        updated = load_config(root)
+        after: dict = getattr(updated, key)
+        ok = applied(updated) and all(after.get(name) == value for name, value in before.items())
     except ConfigError:
         ok = False
     if not ok:

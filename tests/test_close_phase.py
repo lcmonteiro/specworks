@@ -123,6 +123,27 @@ def test_capability_add_validates(ready):
     assert code == 1
 
 
+def test_capability_add_never_drops_existing_entries(ready):
+    cfg = ready / "spec.yml"
+    original = cfg.read_text().replace("capabilities:\n  user-auth:\n    path: src/auth\n    prefix: AUTH", "capabilities: {user-auth: {path: src/auth, prefix: AUTH}}")
+    cfg.write_text(original)
+    code, data = run_json("capability", "add", "billing", "--path", "src/billing")
+    assert code == 1 and "add it by hand" in data["error"]
+    assert cfg.read_text() == original
+    code, data = run_json("spec", "show", "user-auth")
+    assert code == 0 and not data["new"]
+
+
+def test_module_add_never_drops_existing_entries(ready):
+    cfg = ready / "spec.yml"
+    runner.invoke(app, ["module", "add", "services/billing"])
+    original = cfg.read_text().replace("modules:\n  billing: services/billing", "modules: {billing: services/billing}")
+    cfg.write_text(original)
+    result = runner.invoke(app, ["module", "add", "services/shipping"])
+    assert result.exit_code == 1 and "add it by hand" in result.output
+    assert cfg.read_text() == original
+
+
 def test_capability_add_in_a_module(ready, monkeypatch):
     runner.invoke(app, ["module", "add", "services/billing"])
     code, data = run_json("capability", "add", "invoices", "--path", "src/invoices", "--module", "billing", "--prefix", "INV")
