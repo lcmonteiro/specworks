@@ -84,18 +84,18 @@ def _check_proposal(ws: Workspace, change: Change, issues: list[Issue]) -> None:
             issues.append(Issue("error", ws.rel(path), 0, f"missing section '## {section}'"))
 
 
-def _other_changes_adding(ws: Workspace, change: Change, cap: CapabilityRef) -> dict[str, str]:
-    """IDs that other active changes ADD to the same capability -> the change adding them."""
-    taken = {}
+def _other_changes(ws: Workspace, change: Change, cap: CapabilityRef) -> dict[str, dict[str, str]]:
+    """For each delta section, the IDs that other active changes put there for the same capability -> that change."""
+    claimed: dict[str, dict[str, str]] = {section: {} for section in DELTA_SECTIONS}
     for module in ws.modules():
         for other in list_changes(module.config):
             if other.path == change.path:
                 continue
             doc = read_spec(other.path / cap.delta_path)
-            for req in doc.section("ADDED") if doc else []:
-                if req.id:
-                    taken[req.id] = module.qualify(other.name)
-    return taken
+            for req in doc.requirements if doc else []:
+                if req.id and req.section in claimed:
+                    claimed[req.section][req.id] = module.qualify(other.name)
+    return claimed
 
 
 def _check_delta(ws: Workspace, change: Change, delta: Delta, seen: dict[str, str], issues: list[Issue]) -> None:
@@ -119,7 +119,11 @@ def _check_delta(ws: Workspace, change: Change, delta: Delta, seen: dict[str, st
         if not doc.purpose:
             issues.append(Issue("warning", file, 0, f"new capability {cap.ref}: add '## Purpose' (one or two sentences)"))
 
-    taken = _other_changes_adding(ws, change, cap)
+    others = _other_changes(ws, change, cap)
+    taken = others["ADDED"]
+    # Each MODIFIED/REMOVED block replaces the whole living block at close, so two changes
+    # editing one requirement would lose the first one's edit: one has to close first.
+    edited = {**others["REMOVED"], **others["MODIFIED"]}
     retired = retired_ids(cap)
     for req in doc.requirements:
         if req.section not in DELTA_SECTIONS:
@@ -144,6 +148,12 @@ def _check_delta(ws: Workspace, change: Change, delta: Delta, seen: dict[str, st
                 err(req.line, f"{req.id} is also added by change {taken[req.id]}; take the next free ID")
         elif delta.living is not None and req.id not in living_ids:
             err(req.line, f"{req.id} is not in the living spec of {cap.ref}, so it cannot be {req.section}")
+        elif req.id in edited:
+            err(
+                req.line,
+                f"{req.id} is also MODIFIED or REMOVED by change {edited[req.id]}; close one change first, "
+                "then copy the requirement again from the living spec in the other",
+            )
 
         if req.section == "REMOVED":
             if "reason" not in req.description.lower() or "migration" not in req.description.lower():

@@ -333,6 +333,27 @@ def test_id_clash_with_another_change(change, project):
     assert any("REQ-AUTH-003 is also added by change other-change" in m for m in errors(data))
 
 
+@pytest.mark.parametrize(
+    "other_delta",
+    [
+        "## MODIFIED Requirements\n\n### Requirement: REQ-AUTH-002 Lockout\nThe system SHALL lock after 10 failures.\n\n"
+        "#### Scenario: AC-AUTH-002.1 Tenth failure\n- **WHEN** the tenth wrong password is submitted\n- **THEN** the account is locked\n",
+        "## REMOVED Requirements\n\n### Requirement: REQ-AUTH-002 Lockout\n**Reason**: SSO only\n**Migration**: none\n",
+    ],
+    ids=["modified", "removed"],
+)
+def test_two_changes_cannot_edit_the_same_requirement(change, project, other_delta):
+    run_json("new", "other-change")
+    other = project / "spec/changes/other-change/specs/user-auth"
+    other.mkdir(parents=True)
+    (other / "spec.md").write_text(other_delta)
+    code, data = run_json("check", "--change", "add-password-reset")
+    assert code == 1
+    assert any("REQ-AUTH-002 is also MODIFIED or REMOVED by change other-change; close one change first" in m for m in errors(data))
+    code, data = run_json("check", "--change", "other-change")
+    assert any("REQ-AUTH-002 is also MODIFIED or REMOVED by change add-password-reset" in m for m in errors(data))
+
+
 def test_skip_specs(project):
     path = project / "spec/changes/add-password-reset"
     (path / "proposal.md").write_text(PROPOSAL)
