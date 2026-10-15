@@ -11,7 +11,7 @@ from __future__ import annotations
 from ..core.changes import Change
 from ..tools.diagrams import diagrams_in, state
 from .gate import Check, _tests_pass
-from .review import REVIEW_FILE, review_change, review_findings
+from .review import REVIEW_FILE, read_review, review_change
 from ..core.runner import CommandError, run_command
 from ..core.workspace import Module, Workspace
 
@@ -41,7 +41,8 @@ def _optional_command(ws: Workspace, module: Module, key: str, run: bool) -> Che
 def validate_change(ws: Workspace, module: Module, change: Change, run: bool = True, base: str | None = None) -> list[Check]:
     specs, report = review_change(ws, change, base)
     found = report.findings()
-    reviewed, open_findings, review_text = review_findings(change)
+    review = read_review(change)
+    reviewed, open_findings = review.exists, [f"{f.id} {f.text}" for f in review.open]
     checks: list[Check] = []
 
     # Completeness: everything the plan asked for exists and is done.
@@ -73,7 +74,7 @@ def validate_change(ws: Workspace, module: Module, change: Change, run: bool = T
         checks.append(_check(COHERENCE, "/specworks-review", "changed files without tags are accounted for", False, [report.note], blocking=False))
     else:
         untraced = found["untracedSource"] + found["untracedTests"]
-        missing = [path for path in untraced if path not in review_text]
+        missing = [path for path in untraced if not review.accounts_for(path)]
         checks.append(
             _check(COHERENCE, "/specworks-review", f"changed files without tags are accounted for in {REVIEW_FILE} (base {report.base})", not missing, missing)
         )
