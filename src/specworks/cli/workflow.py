@@ -1,4 +1,4 @@
-"""Phase commands: gates, review, cycle, validate, close and the project's own commands."""
+"""Workflow commands: gates, review, cycle, validate, close and the project's own commands."""
 
 from __future__ import annotations
 
@@ -9,8 +9,8 @@ import typer
 from ..core.changes import ChangeError
 from ..core.config import ConfigError
 from ..core.runner import CommandError, run_command
-from ..phases.gate import GATES, GateError, run_gate
-from ..phases.review import review_change
+from ..workflow.gate import GATES, GateError, run_gate
+from ..workflow.review import review_change
 from .app import app
 from .output import JsonOpt, change_dict, emit, fail, resolve_change, workspace
 
@@ -79,7 +79,7 @@ def cycle(
     as_json: bool = JsonOpt,
 ) -> None:
     """After a review: where the next design → test → code → review cycle starts, from review.md's open findings."""
-    from ..phases.cycle import next_cycle
+    from ..workflow.cycle import next_cycle
 
     ws = workspace(as_json)
     try:
@@ -109,7 +109,7 @@ def validate_cmd(
     as_json: bool = JsonOpt,
 ) -> None:
     """Final read-only check before close (validate phase): completeness, correctness, coherence (exit 1 on FAIL)."""
-    from ..phases.validate import GROUPS, summary, validate_change
+    from ..workflow.validate import GROUPS, summary, validate_change
 
     ws = workspace(as_json)
     try:
@@ -144,9 +144,9 @@ def close(
     as_json: bool = JsonOpt,
 ) -> None:
     """Merge the change's delta specs into the living specs, update requirements.md, and archive the change."""
-    from ..phases.validate import summary, validate_change
     from ..specs.check import check_change
     from ..specs.merge import MergeError, archive_change, plan_merge, write_merge
+    from ..workflow.validate import summary, validate_change
 
     ws = workspace(as_json)
     try:

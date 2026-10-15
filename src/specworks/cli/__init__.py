@@ -17,7 +17,7 @@ from .app import app
 from . import project  # noqa: E402, F401
 from . import changes  # noqa: E402, F401
 from . import specs  # noqa: E402, F401
-from . import phases  # noqa: E402, F401
+from . import workflow  # noqa: E402, F401
 # isort: on
 
 __all__ = ["app", "main"]

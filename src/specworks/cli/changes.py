@@ -6,8 +6,8 @@ import typer
 
 from ..core.changes import PHASES, ChangeError, create_change, set_phase
 from ..core.config import ConfigError
-from ..phases.workflow import WorkflowError, artifact_states, instructions
 from ..specs.tasks import TaskError, read_tasks, set_done
+from ..workflow.artifacts import WorkflowError, artifact_states, instructions
 from .app import app, task_app
 from .output import JsonOpt, change_dict, emit, fail, resolve_change, workspace
 
