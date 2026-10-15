@@ -9,7 +9,6 @@ import pytest
 from typer.testing import CliRunner
 
 from specworks.cli import app
-
 from test_propose import DELTA, LIVING, PROPOSAL, TASKS
 
 runner = CliRunner()

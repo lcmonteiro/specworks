@@ -7,8 +7,8 @@ import pyd2
 import pytest
 from typer.testing import CliRunner
 
-from specworks.tools import diagrams as diagrams_module
 from specworks.cli import app
+from specworks.tools import diagrams as diagrams_module
 
 runner = CliRunner()
 CHANGE = "add-reset"

@@ -19,9 +19,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from ..core.changes import Change
+from ..core.workspace import Workspace
 from .check import ChangeSpecs
 from .specfile import id_prefix
-from ..core.workspace import Workspace
 
 TAG_RE = re.compile(r"@(?P<kind>req|ac)\s+(?P<id>(?:REQ|AC)-[A-Z0-9][A-Z0-9.-]*[A-Z0-9])")
 SKIP_DIRS = {"node_modules", "__pycache__", "venv", "dist", "build", "target", "out", "vendor", "site-packages"}
@@ -108,20 +108,22 @@ def build_matrix(specs: ChangeSpecs, tags: list[Tag]) -> list[Row]:
 
     rows: list[Row] = []
     for delta, req in specs.requirements():
-        base = dict(capability=delta.cap.ref, req=req.id or "?", title=req.title, section=req.section)
-        req_tasks = tasks_by_id.get(req.id, [])
-        code = code_by_id.get(req.id, [])
+        req_id = req.id or "?"
+        base = dict(capability=delta.cap.ref, req=req_id, title=req.title, section=req.section)
+        req_tasks = tasks_by_id.get(req_id, [])
+        code = code_by_id.get(req_id, [])
         if req.section == "REMOVED" or not req.scenarios:
-            rows.append(Row(**base, tasks=req_tasks, tests=tests_by_id.get(req.id, []), code=code))
+            rows.append(Row(**base, tasks=req_tasks, tests=tests_by_id.get(req_id, []), code=code))
             continue
         for sc in req.scenarios:
+            ac_id = sc.id or "?"
             rows.append(
                 Row(
                     **base,
                     ac=sc.id,
                     ac_title=sc.title,
-                    tasks=sorted(set(req_tasks + tasks_by_id.get(sc.id, [])), key=_task_key),
-                    tests=tests_by_id.get(sc.id, []),
+                    tasks=sorted(set(req_tasks + tasks_by_id.get(ac_id, [])), key=_task_key),
+                    tests=tests_by_id.get(ac_id, []),
                     code=code,
                 )
             )

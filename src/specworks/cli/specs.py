@@ -6,7 +6,6 @@ from pathlib import Path
 
 import typer
 
-from ..core.changes import ChangeError
 from ..core.config import DARK_THEMES, THEMES, ConfigError, theme_name
 from ..specs.capabilities import describe, resolve_ref, workspace_capabilities
 from ..specs.check import check_change
@@ -20,21 +19,25 @@ from ..specs.trace import (
 )
 from ..tools.diagrams import DiagramError, diagrams_in, find_d2, render, state
 from .app import app, spec_app
-from .output import JsonOpt, change_dict, emit, fail, resolve_change, workspace
+from .output import (
+    ChangeOpt,
+    JsonOpt,
+    change_dict,
+    emit,
+    fail,
+    require_change,
+    workspace,
+)
 
 
 @app.command("check")
 def check_cmd(
-    change: str = typer.Option(..., "--change", "-c", help="Change name or module:name."),
+    change: str = ChangeOpt,
     strict: bool = typer.Option(False, "--strict", help="Treat warnings as errors."),
     as_json: bool = JsonOpt,
 ) -> None:
     """Check a change's proposal, delta specs and tasks (IDs, SHALL/MUST, scenarios, coverage)."""
-    ws = workspace(as_json)
-    try:
-        mod, ch = resolve_change(ws, change)
-    except (ChangeError, ConfigError) as exc:
-        fail(str(exc), as_json)
+    ws, mod, ch = require_change(change, as_json)
     _, issues = check_change(ws, ch)
     errors = [i for i in issues if i.level == "error" or strict]
     data = {
@@ -53,16 +56,12 @@ def check_cmd(
 
 @app.command()
 def trace(
-    change: str = typer.Option(..., "--change", "-c", help="Change name or module:name."),
+    change: str = ChangeOpt,
     write: bool = typer.Option(False, "--write", help="Write traceability.md in the change folder."),
     as_json: bool = JsonOpt,
 ) -> None:
     """Requirement -> acceptance criterion -> task -> test (@ac) -> code (@req) matrix of a change."""
-    ws = workspace(as_json)
-    try:
-        mod, ch = resolve_change(ws, change)
-    except (ChangeError, ConfigError) as exc:
-        fail(str(exc), as_json)
+    ws, mod, ch = require_change(change, as_json)
     specs, issues = check_change(ws, ch)
     tags = scan_tags(ws)
     rows = build_matrix(specs, tags)
@@ -130,7 +129,7 @@ def diagrams(
     if themes:
         rows = [{"name": n, "id": i, "dark": n in DARK_THEMES} for n, i in THEMES.items()]
         d2_path, d2_from = find_d2()
-        data = {
+        data: dict[str, object] = {
             "theme": theme_name(settings.theme),
             "darkTheme": theme_name(settings.dark_theme),
             "d2": d2_path,
@@ -152,10 +151,8 @@ def diagrams(
             fail(f"{dir} is outside the workspace", as_json)
         header = {"root": str(ws.root), "dir": ws.rel(folder)}
     else:
-        try:
-            mod, ch = resolve_change(ws, change)
-        except (ChangeError, ConfigError) as exc:
-            fail(str(exc), as_json)
+        assert change is not None  # exactly one of --change / --dir, checked above
+        ws, mod, ch = require_change(change, as_json)
         folder, header = ch.path, change_dict(ws, mod, ch)
     results, failed = [], False
     for diagram in diagrams_in(folder):

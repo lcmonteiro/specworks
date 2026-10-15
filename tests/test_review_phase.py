@@ -2,6 +2,7 @@
 
 from helpers import REF, run_json
 
+
 def findings(data):
     return data["findings"]
 

@@ -20,9 +20,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from ..core.changes import Change
-from ..specs.trace import Tag, build_matrix, gaps, is_test_file, scan_tags, unknown_tags
-from ..specs.check import ChangeSpecs, check_change
 from ..core.workspace import Workspace
+from ..specs.check import ChangeSpecs, check_change
+from ..specs.trace import Tag, build_matrix, gaps, is_test_file, scan_tags, unknown_tags
 
 CODE_EXTENSIONS = {
     ".py", ".pyi", ".js", ".jsx", ".mjs", ".cjs", ".ts", ".tsx", ".go", ".rs", ".java", ".kt", ".kts",

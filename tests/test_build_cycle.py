@@ -1,8 +1,8 @@
 """Build cycles: `specworks cycle` picks where the next design → test → code → review cycle starts."""
 
 import pytest
-from helpers import REF, run_json
 
+from helpers import REF, run_json
 from specworks.workflow.cycle import open_findings
 
 

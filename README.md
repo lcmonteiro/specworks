@@ -222,6 +222,8 @@ terminal access (Copilot agent mode, Claude Code).
 ```bash
 uv sync
 uv run pytest
+uv run ruff check src tests   # lint (CI runs both)
+uv run mypy                   # typecheck
 uv run specworks --help
 ```
 
@@ -232,7 +234,7 @@ Code layout (`src/specworks/`):
 | `cli/` | the `specworks` command: `app.py` (Typer app and command groups), `output.py` (options, JSON/text output, resolving changes), and one module per area: `project.py`, `changes.py`, `specs.py`, `workflow.py` |
 | `core/` | `config.py` (find and read `<dir>.yml`), `config_file.py` (write it), `workspace.py` (modules), `changes.py` (changes and phases), `runner.py` (project commands) |
 | `specs/` | `specfile.py` (parse specs), `capabilities.py`, `check.py` (`specworks check`), `tasks.py`, `trace.py`, `merge.py` (close) |
-| `workflow/` | `artifacts.py` (artifacts and instructions, `schema.yaml`), `gate.py`, `review.py`, `cycle.py`, `validate.py` (`specworks validate`) |
+| `workflow/` | `artifacts.py` (artifacts and instructions, `schema.yaml`), `checks.py` (checks shared by gates and validate), `gate.py`, `review.py` (drift and `review.md`), `cycle.py`, `validate.py` (`specworks validate`) |
 | `tools/` | `diagrams.py` (D2 via pyd2), `skills.py` (install the skills) |
 
 `schema.yaml`, `templates/` and `skills/` are package data next to them.
