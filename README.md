@@ -200,6 +200,15 @@ commands:
   lint: uv run ruff check .
 ```
 
+Gates and `specworks validate` reuse the result of a command already run on the
+same code: same command and folder, same commit, same uncommitted and untracked
+files (the workflow folder, with specs, tasks and `review.md`, does not count).
+A reused result says so (`same code as the run at ...`). The cache is kept in
+`.git/specworks-runs.json`; without git, or with `SPECWORKS_RUN_CACHE=0`, every run
+is real. `specworks run` always runs. Files git ignores (installed dependencies, a local
+`.env`) are not part of the fingerprint: after changing only those, run once with
+`SPECWORKS_RUN_CACHE=0` (a tracked lockfile change already counts).
+
 ## AI tools
 
 The skills use the open [Agent Skills](https://agentskills.io) format, so the same

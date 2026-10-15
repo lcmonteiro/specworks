@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from ..core.runner import CommandError, run_command
+from ..core.runner import CommandError, cached_run
 from ..core.workspace import Module, Workspace
 from ..specs.check import ChangeSpecs
 from .review import REVIEW_FILE, ReviewDoc, ReviewReport
@@ -35,10 +35,11 @@ def command_check(ws: Workspace, module: Module, key: str, name: str, run: bool,
     if not run:
         return Check(name, False, [f"not run (--no-run); run `specworks run {key}`"], blocking=False)
     try:
-        result = run_command(ws, module, key)
+        result = cached_run(ws, module, key)
     except CommandError as exc:
         return Check(name, False, [str(exc)])
-    details = [f"$ {result.command}  (in {result.cwd}, exit {result.exit_code})"]
+    reused = f", same code as the run at {result.cached_at}" if result.cached_at else ""
+    details = [f"$ {result.command}  (in {result.cwd}, exit {result.exit_code}{reused})"]
     return Check(name, result.ok, details if result.ok else details + result.tail())
 
 
