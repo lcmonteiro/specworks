@@ -24,9 +24,11 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 
-REQ_ID_RE = re.compile(r"REQ-(?P<prefix>[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)*?)-(?P<num>\d+)\b")
-AC_ID_RE = re.compile(r"AC-(?P<prefix>[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)*?)-(?P<num>\d+)\.(?P<n>\d+)\b")
-ANY_ID_RE = re.compile(r"\b(?:AC-[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)*?-\d+\.\d+|REQ-[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)*?-\d+)\b")
+# The number is the last segment: `(?![\w-])` stops a prefix with an all-digit segment
+# (OAUTH-2) from ending early, so REQ-OAUTH-2-001 is OAUTH-2 number 001, not OAUTH number 2.
+REQ_ID_RE = re.compile(r"REQ-(?P<prefix>[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)*?)-(?P<num>\d+)(?![\w-])")
+AC_ID_RE = re.compile(r"AC-(?P<prefix>[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)*?)-(?P<num>\d+)\.(?P<n>\d+)(?![\w-])")
+ANY_ID_RE = re.compile(r"\b(?:AC-[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)*?-\d+\.\d+|REQ-[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)*?-\d+)(?![\w-])")
 
 H2_RE = re.compile(r"^##\s+(?P<title>.+?)\s*$")
 REQ_HEADER_RE = re.compile(r"^###\s+Requirement:\s*(?P<rest>.*?)\s*$")
