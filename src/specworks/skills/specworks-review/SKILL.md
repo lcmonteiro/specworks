@@ -28,17 +28,15 @@ earliest of those phases (`specworks cycle --change "<ref>"`).
 
 <!-- specworks:include running-cli -->
 
+<!-- specworks:include picking-the-change -->
+
 ---
 
 ## Steps
 
 1. **Pick the change and start the phase once it is implemented**
 
-   ```bash
-   specworks context --json
-   ```
-
-   Select the change as the other phases do and announce `Using change: <ref>`, then:
+   Pick the change (above), then:
    ```bash
    specworks start review --change "<ref>"
    ```

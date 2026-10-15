@@ -21,25 +21,19 @@ When the artifacts are done, stop and suggest `/specworks-design`.
 
 <!-- specworks:include running-cli -->
 
+<!-- specworks:include picking-the-change -->
+
 ---
 
 ## Steps
 
 1. **Check the project and pick the change**
 
-   ```bash
-   specworks context --json
-   ```
-
-   - `"root": null`: the project is not set up. Stop and ask whether to run
-     `specworks init`. Do not create files by hand.
-   - Apply `context` as constraints (it is already merged top level → module);
-     never copy it into an artifact.
-   - If the user named a change, or one in `changes` matches the request, use
-     it. Otherwise create one as `/specworks-refine` does (kebab-case name,
-     owning module, `specworks new "<name>" [--module <m>] --json`); refinement
-     is optional for small changes.
-   - Announce `Using change: <ref>` and move it to this phase:
+   - Pick the change (above). When none fits the request, create one as
+     `/specworks-refine` does (kebab-case name, owning module,
+     `specworks new "<name>" [--module <m>] --json`); refinement is optional
+     for small changes.
+   - Move it to this phase:
      ```bash
      specworks phase "<ref>" specify
      ```

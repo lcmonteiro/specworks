@@ -149,3 +149,11 @@ def test_skills_pre_approve_only_specworks_and_read_only_git(name):
     commands = re.findall(r"Bash\(([^)]*):\*\)", allowed)
     assert set(commands) <= {"specworks", "uv run specworks", UVX, "git diff", "git log", "git status"}, commands
     assert UVX in commands and f"`{UVX} <cmd>`" in read_skill(name)  # the rule matches the command the skill documents
+
+
+@pytest.mark.parametrize("name", [n for n in packaged_skills() if n != "specworks-refine"])
+def test_skills_pick_the_change_by_one_shared_rule(name):
+    # "Select the change as the other phases do" pointed at no rule; the shared paragraph is that rule.
+    text = read_skill(name)
+    assert "**Picking the change**" in text and "Pick the change (above)" in text
+    assert "as the other phases do" not in text and "as in `/specworks-specify`" not in text
