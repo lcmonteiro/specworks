@@ -9,51 +9,16 @@ that new tests fail for the right reason).
 from __future__ import annotations
 
 import re
-from collections.abc import Callable
-from dataclasses import dataclass
 
 from ..core.changes import Change
-from ..core.workspace import Module, Workspace
-from ..specs.check import ChangeSpecs, check_change
-from ..specs.trace import build_matrix, gaps, scan_tags, unknown_tags
-from .checks import Check, accounted_check, change_ids, command_check, tests_pass
-from .review import REVIEW_FILE, read_review, review_change
+from ..core.errors import SpecworksError
+from . import checks as c
+from .checks import Check, CheckFn, GateContext, run_checks
 from .validate import validate_change
 
 
-class GateError(Exception):
+class GateError(SpecworksError):
     """Raised for a phase without a gate."""
-
-
-@dataclass
-class GateContext:
-    ws: Workspace
-    module: Module
-    change: Change
-    run_tests: bool = True  # False: --no-run, the project's commands are reported as not run
-    base: str | None = None  # review / validate: branch to diff against
-    allow_open: bool = False  # review: open findings do not fail the gate (inside a build)
-
-
-def _spec_checks(ctx: GateContext) -> tuple[ChangeSpecs, list[Check]]:
-    specs, issues = check_change(ctx.ws, ctx.change)
-    errors = [str(i) for i in issues if i.level == "error"]
-    return specs, [Check("specs and tasks are valid (specworks check)", not errors, errors)]
-
-
-def _specify(ctx: GateContext) -> list[Check]:
-    specs, checks = _spec_checks(ctx)
-    checks.append(
-        Check(
-            "tasks.md is written",
-            specs.tasks_found,
-            [] if specs.tasks_found else ["write tasks.md (specworks instructions tasks)"],
-        )
-    )
-    if not ctx.change.skip_specs:
-        missing = gaps(build_matrix(specs, []))["acWithoutTasks"]
-        checks.append(Check("every acceptance criterion has a task", not missing, missing))
-    return checks
 
 
 INTERFACES_RE = re.compile(r"^## Interfaces[ \t]*\n(?P<body>.*?)(?=^## |\Z)", re.MULTILINE | re.DOTALL)
@@ -79,116 +44,86 @@ def interface_files(section: str) -> list[str]:
     return paths
 
 
-def _design(ctx: GateContext) -> list[Check]:
-    ws, module, change = ctx.ws, ctx.module, ctx.change
-    specs, checks = _spec_checks(ctx)
-    section = interfaces_section(change)
-    checks.append(
-        Check(
-            'design.md has an Interfaces section (write "None" when the API does not change)',
-            bool(section),
-            [] if section else ["write the agreed API under ## Interfaces in design.md (specworks instructions design)"],
-        )
+# --- design: the API is recorded, its stubs exist and build, nothing broke ---------
+
+
+def interfaces_recorded(ctx: GateContext) -> Check:
+    section = interfaces_section(ctx.change)
+    return Check(
+        'design.md has an Interfaces section (write "None" when the API does not change)',
+        bool(section),
+        [] if section else ["write the agreed API under ## Interfaces in design.md (specworks instructions design)"],
     )
-    files = interface_files(section or "")
-    missing = [path for path in files if not (module.root / path).exists() and not (ws.root / path).exists()]
-    checks.append(Check("every file named under Interfaces exists", not missing, missing))
-    if section and not files and not re.match(r"none\b", section, re.IGNORECASE):
-        checks.append(
-            Check(
-                "Interfaces names the file of each interface (`src/auth/reset.py`)",
-                False,
-                ["no file paths found, so the gate cannot check that the stubs exist"],
-                blocking=False,
-            )
-        )
-    for key in ("build", "typecheck"):
-        if ws.commands(module).get(key):
-            checks.append(command_check(ws, module, key, f"the stubs build (commands.{key})", ctx.run_tests))
-    tests = command_check(ws, module, "test", "the existing tests still pass with the stubs (commands.test)", ctx.run_tests)
-    ids = change_ids(specs)
-    ran = ctx.run_tests and bool(ws.commands(module).get("test"))  # a missing command still blocks
-    if ran and not tests.ok and any(t.kind == "ac" and t.is_test and t.id in ids for t in scan_tags(ws)):
-        # The test phase has started (or a later cycle reopened the API): this change's
-        # own tests are red until the code phase, whose gate requires a green suite.
-        tests.blocking = False
-        tests.details.insert(0, "not blocking: this change already has @ac tests, which fail until the code phase")
-    checks.append(tests)
-    return checks
 
 
-def _test(ctx: GateContext) -> list[Check]:
-    specs, checks = _spec_checks(ctx)
-    tags = scan_tags(ctx.ws)
-    found = gaps(build_matrix(specs, tags))
-    stray = unknown_tags(specs, tags)
-    ids = change_ids(specs)
-    misplaced = [t for t in tags if t.kind == "ac" and not t.is_test and t.id in ids]
-    return checks + [
-        Check("every acceptance criterion has a test (@ac tag in a test file)", not found["acWithoutTests"], found["acWithoutTests"]),
-        Check("no tag refers to an unknown requirement or criterion", not stray, [f"{t.id} at {t.where}" for t in stray]),
-        Check(
-            "@ac tags are in test files (configure test_globs if your tests live elsewhere)",
-            not misplaced,
-            [f"{t.id} at {t.where}" for t in misplaced],
-            blocking=False,
-        ),
-        Check("removed requirements are no longer tagged", not found["removedStillTagged"], found["removedStillTagged"], blocking=False),
-    ]
+def interface_files_exist(ctx: GateContext) -> Check:
+    files = interface_files(interfaces_section(ctx.change) or "")
+    missing = [path for path in files if not (ctx.module.root / path).exists() and not (ctx.ws.root / path).exists()]
+    return Check("every file named under Interfaces exists", not missing, missing)
 
 
-def _code(ctx: GateContext) -> list[Check]:
-    specs, checks = _spec_checks(ctx)
-    pending = [f"{t.num} {t.text}" for t in specs.tasks if not t.done]
-    tags = scan_tags(ctx.ws)
-    found = gaps(build_matrix(specs, tags))
-    stray = unknown_tags(specs, tags)
-    return checks + [
-        Check("every task is done (specworks task list --pending)", specs.tasks_found and not pending, pending),
-        Check("every requirement has code (@req tag)", not found["reqWithoutCode"], found["reqWithoutCode"]),
-        Check("every acceptance criterion still has a test (@ac tag)", not found["acWithoutTests"], found["acWithoutTests"]),
-        Check("no tag refers to an unknown requirement or criterion", not stray, [f"{t.id} at {t.where}" for t in stray]),
-        Check("removed requirements are gone from tests and code", not found["removedStillTagged"], found["removedStillTagged"]),
-        tests_pass(ctx.ws, ctx.module, ctx.run_tests),
-    ]
+def interface_files_named(ctx: GateContext) -> Check | None:
+    section = interfaces_section(ctx.change)
+    if not section or interface_files(section) or re.match(r"none\b", section, re.IGNORECASE):
+        return None
+    return Check(
+        "Interfaces names the file of each interface (`src/auth/reset.py`)",
+        False,
+        ["no file paths found, so the gate cannot check that the stubs exist"],
+        blocking=False,
+    )
 
 
-def _review(ctx: GateContext) -> list[Check]:
-    _, report = review_change(ctx.ws, ctx.change, ctx.base)
-    found = report.findings()
-    review = read_review(ctx.change)
-    open_findings = [f"{f.id} {f.text}" for f in review.open]
-    return [
-        Check("specs and tasks are valid (specworks check)", not report.spec_errors, report.spec_errors),
-        Check(f"{REVIEW_FILE} is written", review.exists, [] if review.exists else ["write it (specworks instructions review)"]),
-        # In a build, open findings are the hand-off to the next cycle (`specworks cycle`), not a failure.
-        Check(f"no open finding in {REVIEW_FILE}", review.exists and not open_findings, open_findings, blocking=not ctx.allow_open),
-        Check("every requirement has code (@req tag)", not found["reqWithoutCode"], found["reqWithoutCode"]),
-        Check("every acceptance criterion has a test (@ac tag)", not found["acWithoutTests"], found["acWithoutTests"]),
-        Check("no tag refers to an unknown requirement or criterion", not found["unknownTags"], found["unknownTags"]),
-        Check("removed requirements are gone from tests and code", not found["removedStillTagged"], found["removedStillTagged"]),
-        accounted_check(report, review),
-        tests_pass(ctx.ws, ctx.module, ctx.run_tests),
-    ]
+def stubs_build(key: str) -> CheckFn:
+    def check(ctx: GateContext) -> Check | None:
+        return c.command_check(ctx, key, f"the stubs build (commands.{key})") if ctx.has_command(key) else None
+
+    return check
 
 
-def _validate(ctx: GateContext) -> list[Check]:
-    return validate_change(ctx.ws, ctx.module, ctx.change, ctx.run_tests, ctx.base)
+def existing_tests_pass(ctx: GateContext) -> Check:
+    tests = c.command_check(ctx, "test", "the existing tests still pass with the stubs (commands.test)")
+    ran = ctx.run_tests and ctx.has_command("test")  # a missing command still blocks
+    if ran and not tests.ok:
+        ids = c.change_ids(ctx)
+        if any(t.kind == "ac" and t.is_test and t.id in ids for t in ctx.analysis.tags):
+            # The test phase has started (or a later cycle reopened the API): this change's
+            # own tests are red until the code phase, whose gate requires a green suite.
+            tests.blocking = False
+            tests.details.insert(0, "not blocking: this change already has @ac tests, which fail until the code phase")
+    return tests
 
 
-GATE_CHECKS: dict[str, Callable[[GateContext], list[Check]]] = {
-    "specify": _specify,
-    "design": _design,
-    "test": _test,
-    "code": _code,
-    "review": _review,
-    "validate": _validate,
+GATE_CHECKS: dict[str, list[CheckFn]] = {
+    "specify": [c.specs_valid, c.tasks_written, c.acs_have_tasks],
+    "design": [
+        c.specs_valid,
+        interfaces_recorded,
+        interface_files_exist,
+        interface_files_named,
+        stubs_build("build"),
+        stubs_build("typecheck"),
+        existing_tests_pass,
+    ],
+    "test": [c.specs_valid, c.acs_have_tests, c.no_unknown_tags, c.acs_in_test_files, c.removed_gone_warning],
+    "code": [c.specs_valid, c.tasks_done, c.reqs_have_code, c.acs_have_tests, c.no_unknown_tags, c.removed_gone, c.tests_pass],
+    "review": [
+        c.specs_valid,
+        c.review_written,
+        c.review_closed,
+        c.reqs_have_code,
+        c.acs_have_tests,
+        c.no_unknown_tags,
+        c.removed_gone,
+        c.files_accounted,
+        c.tests_pass,
+    ],
 }
-GATES = tuple(GATE_CHECKS)
+GATES = (*GATE_CHECKS, "validate")
 
 
 def run_gate(ctx: GateContext, phase: str) -> tuple[bool, list[Check]]:
-    if phase not in GATE_CHECKS:
+    if phase not in GATES:
         raise GateError(f"no gate for phase '{phase}' yet; gates exist for: {', '.join(GATES)}")
-    checks = GATE_CHECKS[phase](ctx)
-    return all(c.ok for c in checks if c.blocking), checks
+    checks = validate_change(ctx) if phase == "validate" else run_checks(ctx, GATE_CHECKS[phase])
+    return all(check.ok for check in checks if check.blocking), checks

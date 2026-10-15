@@ -1,13 +1,22 @@
-"""Checks shared by the phase gates and validate: the Check result and the checks both run."""
+"""The checks behind the phase gates and validate, each defined once.
+
+A check is a function of a ``GateContext``: what it reads (specs, tags, git, review.md)
+is computed on first use and shared by every check of the same run. A check returns
+``None`` when it does not apply. Gates and validate are lists of these checks.
+"""
 
 from __future__ import annotations
 
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
+from functools import cached_property
 
+from ..core.changes import Change
 from ..core.runner import CommandError, run_command
 from ..core.workspace import Module, Workspace
-from ..specs.check import ChangeSpecs
-from .review import REVIEW_FILE, ReviewDoc, ReviewReport
+from ..specs.tasks import TASKS_FILE
+from ..specs.trace import Analysis
+from .review import REVIEW_FILE, ReviewDoc, ReviewReport, read_review, review_change
 
 
 @dataclass
@@ -19,6 +28,10 @@ class Check:
     group: str = ""  # validate: completeness / correctness / coherence
     fix: str = ""  # validate: the phase skill that fixes a failure
 
+    @property
+    def mark(self) -> str:
+        return "ok  " if self.ok else ("FAIL" if self.blocking else "warn")
+
     def to_dict(self) -> dict:
         data = {"name": self.name, "ok": self.ok, "blocking": self.blocking, "details": self.details}
         if self.group:
@@ -28,32 +41,147 @@ class Check:
         return data
 
 
-def command_check(ws: Workspace, module: Module, key: str, name: str, run: bool, optional: bool = False) -> Check:
+@dataclass
+class GateContext:
+    ws: Workspace
+    module: Module
+    change: Change
+    run_tests: bool = True  # False: --no-run, the project's commands are reported as not run
+    base: str | None = None  # review / validate: branch to diff against
+    allow_open: bool = False  # review: open findings do not fail the gate (inside a build)
+
+    @cached_property
+    def analysis(self) -> Analysis:
+        return Analysis(self.ws, self.change)
+
+    @cached_property
+    def report(self) -> ReviewReport:
+        return review_change(self.analysis, self.base)
+
+    @cached_property
+    def review(self) -> ReviewDoc:
+        return read_review(self.change)
+
+    def has_command(self, key: str) -> bool:
+        return bool(self.ws.commands(self.module).get(key))
+
+
+CheckFn = Callable[[GateContext], "Check | None"]
+
+
+def run_checks(ctx: GateContext, checks: Iterable[CheckFn]) -> list[Check]:
+    return [c for check in checks if (c := check(ctx)) is not None]
+
+
+def _listed(name: str, missing: list[str], blocking: bool = True) -> Check:
+    """Passes when nothing is listed; the listed items are the details."""
+    return Check(name, not missing, missing, blocking=blocking)
+
+
+# --- specs and tasks -----------------------------------------------------------
+
+
+def specs_valid(ctx: GateContext) -> Check:
+    return _listed("specs and tasks are valid (specworks check)", ctx.analysis.spec_errors)
+
+
+def tasks_written(ctx: GateContext) -> Check:
+    found = ctx.analysis.specs.tasks_found
+    return Check(f"{TASKS_FILE} is written", found, [] if found else [f"write {TASKS_FILE} (specworks instructions tasks)"])
+
+
+def acs_have_tasks(ctx: GateContext) -> Check | None:
+    if ctx.change.skip_specs:
+        return None
+    return _listed("every acceptance criterion has a task", ctx.analysis.acs_without_tasks)
+
+
+def tasks_done(ctx: GateContext) -> Check:
+    specs = ctx.analysis.specs
+    pending = [f"{t.num} {t.text}" for t in specs.tasks if not t.done]
+    return Check("every task is done (specworks task list --pending)", specs.tasks_found and not pending, pending)
+
+
+# --- tags ------------------------------------------------------------------------
+
+
+def reqs_have_code(ctx: GateContext) -> Check:
+    return _listed("every requirement has code (@req tag)", ctx.analysis.gaps["reqWithoutCode"])
+
+
+def acs_have_tests(ctx: GateContext) -> Check:
+    return _listed("every acceptance criterion has a test (@ac tag)", ctx.analysis.gaps["acWithoutTests"])
+
+
+def no_unknown_tags(ctx: GateContext) -> Check:
+    return _listed("no tag refers to an unknown requirement or criterion", [t.at for t in ctx.analysis.unknown_tags])
+
+
+def removed_gone(ctx: GateContext) -> Check:
+    return _listed("removed requirements are gone from tests and code", ctx.analysis.gaps["removedStillTagged"])
+
+
+def removed_gone_warning(ctx: GateContext) -> Check:
+    """Before the code phase the code of a removed requirement may still be there."""
+    check = removed_gone(ctx)
+    check.blocking = False
+    return check
+
+
+def acs_in_test_files(ctx: GateContext) -> Check:
+    ids_ = change_ids(ctx)
+    misplaced = [t.at for t in ctx.analysis.tags if t.kind == "ac" and not t.is_test and t.id in ids_]
+    return _listed("@ac tags are in test files (configure test_globs if your tests live elsewhere)", misplaced, blocking=False)
+
+
+def change_ids(ctx: GateContext) -> set[str]:
+    """Every requirement and acceptance-criterion ID in the change's delta specs."""
+    return {i for d in ctx.analysis.specs.deltas for i in d.doc.ids()}
+
+
+# --- review.md -----------------------------------------------------------------
+
+
+def review_written(ctx: GateContext) -> Check:
+    exists = ctx.review.exists
+    return Check(f"{REVIEW_FILE} is written", exists, [] if exists else [f"write {REVIEW_FILE} (specworks instructions review)"])
+
+
+def review_closed(ctx: GateContext) -> Check:
+    """In a build (--allow-open), open findings are the hand-off to the next cycle (`specworks cycle`), not a failure."""
+    open_findings = [f"{f.id} {f.text}" for f in ctx.review.open]
+    return Check(f"no open finding in {REVIEW_FILE}", ctx.review.exists and not open_findings, open_findings, blocking=not ctx.allow_open)
+
+
+def files_accounted(ctx: GateContext) -> Check:
+    """Every changed file without tags is listed under "Changed files without tags" in review.md."""
+    report = ctx.report
+    if report.changed is None:
+        return Check("changed files without tags are accounted for", False, [report.note], blocking=False)
+    missing = [path for path in report.untraced_source + report.untraced_tests if not ctx.review.accounts_for(path)]
+    return _listed(f"changed files without tags are accounted for in {REVIEW_FILE} (base {report.base})", missing)
+
+
+# --- the project's commands ---------------------------------------------------------
+
+
+def command_check(ctx: GateContext, key: str, name: str, optional: bool = False) -> Check:
     """Run ``commands.<key>``; ``optional`` commands pass (as a warning) when not configured."""
-    if optional and not ws.commands(module).get(key):
+    if optional and not ctx.has_command(key):
         return Check(name, True, ["not configured"], blocking=False)
-    if not run:
+    if not ctx.run_tests:
         return Check(name, False, [f"not run (--no-run); run `specworks run {key}`"], blocking=False)
     try:
-        result = run_command(ws, module, key)
+        result = run_command(ctx.ws, ctx.module, key)
     except CommandError as exc:
         return Check(name, False, [str(exc)])
     details = [f"$ {result.command}  (in {result.cwd}, exit {result.exit_code})"]
     return Check(name, result.ok, details if result.ok else details + result.tail())
 
 
-def tests_pass(ws: Workspace, module: Module, run: bool) -> Check:
-    return command_check(ws, module, "test", "the test suite passes (commands.test)", run)
+def tests_pass(ctx: GateContext) -> Check:
+    return command_check(ctx, "test", "the test suite passes (commands.test)")
 
 
-def accounted_check(report: ReviewReport, review: ReviewDoc) -> Check:
-    """Every changed file without tags is listed under "Changed files without tags" in review.md."""
-    if report.changed is None:
-        return Check("changed files without tags are accounted for", False, [report.note], blocking=False)
-    missing = [path for path in report.untraced_source + report.untraced_tests if not review.accounts_for(path)]
-    return Check(f"changed files without tags are accounted for in {REVIEW_FILE} (base {report.base})", not missing, missing)
-
-
-def change_ids(specs: ChangeSpecs) -> set[str]:
-    """Every requirement and acceptance-criterion ID in the change's delta specs."""
-    return {i for d in specs.deltas for r in d.doc.requirements for i in (r.id, *(s.id for s in r.scenarios)) if i}
+def optional_command(key: str, name: str) -> CheckFn:
+    return lambda ctx: command_check(ctx, key, name, optional=True)

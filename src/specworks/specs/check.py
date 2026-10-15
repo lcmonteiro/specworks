@@ -50,6 +50,10 @@ class ChangeSpecs:
     tasks_found: bool = False
     issues: list[Issue] = field(default_factory=list)
 
+    def known_ids(self) -> set[str]:
+        """Every ID in the deltas and in the living specs they change."""
+        return {i for d in self.deltas for doc in (d.doc, d.living) if doc for i in doc.ids()}
+
     def requirements(self, *sections: str) -> list[tuple[Delta, Requirement]]:
         wanted = sections or DELTA_SECTIONS
         return [(d, r) for d in self.deltas for r in d.doc.requirements if r.section in wanted]
@@ -184,11 +188,7 @@ def _check_tasks(ws: Workspace, change: Change, specs: ChangeSpecs, issues: list
             issues.append(Issue("error", file, task.line, f"task {task.num} is numbered twice (line {numbers[task.num]})"))
         numbers[task.num] = task.line
 
-    known = set()
-    for delta in specs.deltas:
-        known |= {r.id for r in delta.doc.requirements if r.id} | {s.id for r in delta.doc.requirements for s in r.scenarios if s.id}
-        if delta.living:
-            known |= set(delta.living.by_id())
+    known = specs.known_ids()
     for task in specs.tasks:
         for ref in task.ids:
             if ref not in known:

@@ -8,65 +8,64 @@ test, lint and typecheck commands.
 
 from __future__ import annotations
 
-from ..core.changes import Change
-from ..core.workspace import Module, Workspace
 from ..tools.diagrams import diagrams_in, state
-from .checks import Check, accounted_check, command_check, tests_pass
-from .review import REVIEW_FILE, read_review, review_change
+from . import checks as c
+from .checks import Check, CheckFn, GateContext
 
 COMPLETENESS, CORRECTNESS, COHERENCE = "completeness", "correctness", "coherence"
 GROUPS = (COMPLETENESS, CORRECTNESS, COHERENCE)
 REVIEWED_PHASES = ("review", "validate", "close")
+SPECIFY, TEST, CODE, REVIEW = "/specworks-specify", "/specworks-test", "/specworks-code", "/specworks-review"
 
 
-def _check(group: str, fix: str, name: str, ok: bool, details: list[str] | None = None, blocking: bool = True) -> Check:
-    return Check(name, ok, details or [], blocking=blocking, group=group, fix=fix)
+def planning_artifacts(ctx: GateContext) -> Check:
+    missing = [n for n in ("proposal.md", "tasks.md") if not (ctx.change.path / n).is_file()]
+    if not ctx.change.skip_specs and not ctx.analysis.specs.deltas:
+        missing.append("specs/")
+    return Check("planning artifacts exist (proposal, specs, tasks)", not missing, missing)
 
 
-def _grouped(check: Check, group: str, fix: str) -> Check:
-    check.group, check.fix = group, fix
-    return check
+def diagrams_current(ctx: GateContext) -> Check:
+    settings = ctx.ws.top.config.diagrams
+    stale = [f"{ctx.ws.rel(d.svg)} ({status})" for d in diagrams_in(ctx.change.path) if (status := state(d, settings)) != "ok"]
+    return Check("diagram SVGs are up to date (specworks diagrams)", not stale, stale)
 
 
-def validate_change(ws: Workspace, module: Module, change: Change, run: bool = True, base: str | None = None) -> list[Check]:
-    specs, report = review_change(ws, change, base)
-    found = report.findings()
-    review = read_review(change)
-    reviewed, open_findings = review.exists, [f"{f.id} {f.text}" for f in review.open]
-    checks: list[Check] = []
+def went_through_review(ctx: GateContext) -> Check:
+    in_order = ctx.change.phase in REVIEWED_PHASES
+    return Check("the change went through review", in_order, [] if in_order else [f"phase is {ctx.change.phase}"], blocking=False)
 
+
+# (group, the phase skill that fixes a failure, check), in report order.
+VALIDATE: list[tuple[str, str, CheckFn]] = [
     # Completeness: everything the plan asked for exists and is done.
-    missing_artifacts = [n for n in ("proposal.md", "tasks.md") if not (change.path / n).is_file()]
-    if not change.skip_specs and not specs.deltas:
-        missing_artifacts.append("specs/")
-    checks.append(_check(COMPLETENESS, "/specworks-specify", "planning artifacts exist (proposal, specs, tasks)", not missing_artifacts, missing_artifacts))
-    pending = [f"{t.num} {t.text}" for t in specs.tasks if not t.done]
-    checks.append(_check(COMPLETENESS, "/specworks-code", "every task is done", specs.tasks_found and not pending, pending))
-    checks.append(_check(COMPLETENESS, "/specworks-code", "every requirement has code (@req)", not found["reqWithoutCode"], found["reqWithoutCode"]))
-    checks.append(_check(COMPLETENESS, "/specworks-test", "every acceptance criterion has a test (@ac)", not found["acWithoutTests"], found["acWithoutTests"]))
-    review_details = [] if reviewed else [f"{REVIEW_FILE} is missing"]
-    checks.append(
-        _check(COMPLETENESS, "/specworks-review", f"review done ({REVIEW_FILE} with no open finding)", reviewed and not open_findings, review_details + open_findings)
-    )
-
+    (COMPLETENESS, SPECIFY, planning_artifacts),
+    (COMPLETENESS, CODE, c.tasks_done),
+    (COMPLETENESS, CODE, c.reqs_have_code),
+    (COMPLETENESS, TEST, c.acs_have_tests),
+    (COMPLETENESS, REVIEW, c.review_written),
+    (COMPLETENESS, REVIEW, c.review_closed),
     # Correctness: the specs are well-formed and the code does what they say.
-    checks.append(_check(CORRECTNESS, "/specworks-specify", "specs and tasks are valid (specworks check)", not report.spec_errors, report.spec_errors))
-    checks.append(_grouped(tests_pass(ws, module, run), CORRECTNESS, "/specworks-code"))
-    for key in ("lint", "typecheck"):
-        command = command_check(ws, module, key, f"{key} passes (commands.{key})", run, optional=True)
-        checks.append(_grouped(command, CORRECTNESS, "/specworks-code"))
-    checks.append(_check(CORRECTNESS, "/specworks-review", "no tag refers to an unknown requirement or criterion", not found["unknownTags"], found["unknownTags"]))
-    checks.append(_check(CORRECTNESS, "/specworks-code", "removed requirements are gone from tests and code", not found["removedStillTagged"], found["removedStillTagged"]))
-
+    (CORRECTNESS, SPECIFY, c.specs_valid),
+    (CORRECTNESS, CODE, c.tests_pass),
+    (CORRECTNESS, CODE, c.optional_command("lint", "lint passes (commands.lint)")),
+    (CORRECTNESS, CODE, c.optional_command("typecheck", "typecheck passes (commands.typecheck)")),
+    (CORRECTNESS, REVIEW, c.no_unknown_tags),
+    (CORRECTNESS, CODE, c.removed_gone),
     # Coherence: code, specs, review and design tell the same story.
-    checks.append(_grouped(accounted_check(report, review), COHERENCE, "/specworks-review"))
-    settings = ws.top.config.diagrams
-    stale = [f"{ws.rel(d.svg)} ({status})" for d in diagrams_in(change.path) if (status := state(d, settings)) != "ok"]
-    checks.append(_check(COHERENCE, "/specworks-specify", "diagram SVGs are up to date (specworks diagrams)", not stale, stale))
-    in_order = change.phase in REVIEWED_PHASES
-    checks.append(
-        _check(COHERENCE, "/specworks-review", "the change went through review", in_order, [] if in_order else [f"phase is {change.phase}"], blocking=False)
-    )
+    (COHERENCE, REVIEW, c.files_accounted),
+    (COHERENCE, SPECIFY, diagrams_current),
+    (COHERENCE, REVIEW, went_through_review),
+]
+
+
+def validate_change(ctx: GateContext) -> list[Check]:
+    checks = []
+    for group, fix, check in VALIDATE:
+        result = check(ctx)
+        if result is not None:
+            result.group, result.fix = group, fix
+            checks.append(result)
     return checks
 
 

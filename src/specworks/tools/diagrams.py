@@ -26,12 +26,13 @@ from pathlib import Path
 import pyd2
 
 from ..core.config import DiagramSettings
+from ..core.errors import SpecworksError
 
 DIAGRAMS_DIR = "diagrams"
 STAMP_RE = re.compile(r"<!-- specworks:d2 sha256=(?P<hash>[0-9a-f]{64}) -->")
 
 
-class DiagramError(Exception):
+class DiagramError(SpecworksError):
     """Raised when D2 is missing or fails to render a diagram."""
 
 

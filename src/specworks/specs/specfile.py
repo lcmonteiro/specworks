@@ -88,6 +88,10 @@ class SpecDoc:
     def by_id(self) -> dict[str, Requirement]:
         return {r.id: r for r in self.requirements if r.id}
 
+    def ids(self) -> set[str]:
+        """Every requirement and acceptance-criterion ID in the document."""
+        return {i for r in self.requirements for i in (r.id, *(s.id for s in r.scenarios)) if i}
+
 
 def split_id(rest: str, pattern: re.Pattern) -> tuple[str | None, str]:
     """``"REQ-AUTH-001 Users can log in"`` -> ("REQ-AUTH-001", "Users can log in")."""

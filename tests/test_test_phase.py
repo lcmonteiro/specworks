@@ -88,7 +88,7 @@ def test_test_gate_lists_criteria_without_tests(project):
     write_tests(project, "AC-AUTH-003.1")
     code, data = run_json("gate", "test", "--change", REF)
     assert code == 1
-    missing = checks(data)["every acceptance criterion has a test (@ac tag in a test file)"]
+    missing = checks(data)["every acceptance criterion has a test (@ac tag)"]
     assert missing["details"] == ["AC-AUTH-003.2", "AC-AUTH-002.1"]
 
 

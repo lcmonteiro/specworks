@@ -10,6 +10,7 @@ from pathlib import Path
 import yaml
 
 from .config import Config
+from .errors import SpecworksError
 
 META_FILE = ".change.yaml"
 # Each phase is driven by the skill of the same name (specworks-<phase>); `close`
@@ -20,7 +21,7 @@ OLD_PHASES = {"propose": "specify", "interface": "design", "implement": "code", 
 NAME_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 
 
-class ChangeError(Exception):
+class ChangeError(SpecworksError):
     """Raised for invalid change names or missing changes."""
 
 
