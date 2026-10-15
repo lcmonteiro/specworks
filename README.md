@@ -237,4 +237,5 @@ Code layout (`src/specworks/`):
 | `workflow/` | `artifacts.py` (artifacts and instructions, `schema.yaml`), `checks.py` (checks shared by gates and validate), `gate.py`, `review.py` (drift and `review.md`), `cycle.py`, `validate.py` (`specworks validate`) |
 | `tools/` | `diagrams.py` (D2 via pyd2), `skills.py` (install the skills) |
 
-`schema.yaml`, `templates/` and `skills/` are package data next to them.
+`schema.yaml`, `templates/` and `skills/` are package data next to them. Text several skills share lives once in
+`skills/_shared/<name>.md`; a skill marks its place with `<!-- specworks:include <name> -->`, filled in on install.

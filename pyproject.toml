@@ -1,7 +1,7 @@
 [project]
 name = "specworks"
 version = "0.1.0"
-description = "Spec-driven development workflow (refine → propose → test → implement → review → verify → close) for AI coding agents"
+description = "Spec-driven development workflow (refine → specify → design → test → code → review → validate → close) for AI coding agents"
 readme = "README.md"
 authors = [
     { name = "lcmonteiro", email = "monteiro.lcm@gmail.com" }

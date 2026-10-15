@@ -1,6 +1,6 @@
 ---
 name: specworks-build
-description: Build a specified change end to end in cycles of design → test → code → review, running each phase's own skill in order; after each review with findings, ask whether to start a new cycle and start it from the earliest phase the findings need (code findings → code, review; test findings → test, code, review; design/API findings → design, test, code, review). Use when a change has been specified and the user wants to build it in one go, or says "build", "build it", "run the cycle", "design test code review" or "specworks build".
+description: Build a specified change end to end in cycles of design → test → code → review, running each phase's own skill in order; after each review with findings, ask whether to start a new cycle and start it from the earliest phase the findings need (code findings → code, review; test findings → test, code, review; design/API findings → design, test, code, review). Use when a specworks change has been specified and the user wants to build it in one go, or says "build the change", "run the build cycle", "design test code review" or "specworks build".
 allowed-tools: Bash(specworks:*), Bash(uv run specworks:*), Bash(uvx:*), Bash(git diff:*), Bash(git log:*), Bash(git status:*), Read, Grep, Glob, Write, Edit
 ---
 
@@ -23,9 +23,7 @@ a one-line result instead and go on to the next phase.
 fails and cannot be fixed within that phase, when the specs turn out wrong
 (spec findings go to `/specworks-specify`), or when the user says stop.
 
-**Running the CLI**: use `specworks <cmd>`. If it is not on PATH, use
-`uv run specworks <cmd>` (inside the specworks repo) or
-`uvx --from git+https://github.com/lcmonteiro/specworks specworks <cmd>`.
+<!-- specworks:include running-cli -->
 
 ---
 

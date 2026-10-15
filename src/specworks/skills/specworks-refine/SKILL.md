@@ -1,7 +1,7 @@
 ---
 name: specworks-refine
-description: Refinement phase of spec-driven development - explore a problem with the user, ground it in the codebase and existing capability docs, compare 2-3 solution options, and record the result in refinement.md. Use when the user wants to start a new feature/fix/change, think through a problem before proposing, or says "refine", "refinement" or "specworks refine".
-allowed-tools: Bash(specworks:*), Bash(uv run specworks:*), Read, Grep, Glob, Write, Edit
+description: Refinement phase of spec-driven development - explore a problem with the user, ground it in the codebase and existing capability docs, compare 2-3 solution options, and record the result in refinement.md. Use in a specworks project when the user wants to start a new feature/fix/change and think it through before specifying it, or says "refine", "refinement" or "specworks refine".
+allowed-tools: Bash(specworks:*), Bash(uv run specworks:*), Bash(uvx:*), Read, Grep, Glob, Write, Edit
 ---
 
 Refinement phase: build a shared understanding of the problem and its possible
@@ -12,9 +12,7 @@ solutions, then record it in `refinement.md`. This is the first phase of
 requirements, tasks, tests or code, even if the user asks to "build" something.
 When refinement is done, stop and suggest `/specworks-specify`.
 
-**Running the CLI**: use `specworks <cmd>`. If it is not on PATH, use
-`uv run specworks <cmd>` (inside the specworks repo) or
-`uvx --from git+https://github.com/lcmonteiro/specworks specworks <cmd>`.
+<!-- specworks:include running-cli -->
 
 ---
 

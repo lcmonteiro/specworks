@@ -1,6 +1,6 @@
 ---
 name: specworks-code
-description: Code phase of spec-driven development - work through a change's tasks, replacing the API stubs with real code until the acceptance tests pass, tagging code with @req and ticking tasks as they are done. Use when a change has its tests and the user wants to build it, or says "code", "implement", "apply", "code it", "make the tests pass" or "specworks code".
+description: Code phase of spec-driven development - work through a change's tasks, replacing the API stubs with real code until the acceptance tests pass, tagging code with @req and ticking tasks as they are done. Use when a specworks change has its failing tests and the user wants to implement it, or says "implement the change", "make the acceptance tests pass" or "specworks code".
 allowed-tools: Bash(specworks:*), Bash(uv run specworks:*), Bash(uvx:*), Read, Grep, Glob, Write, Edit
 ---
 
@@ -15,9 +15,7 @@ acceptance criteria and the tests from the test phase are the contract: do not
 change them to make the code easier. When the gate passes, stop and suggest
 `/specworks-review`.
 
-**Running the CLI**: use `specworks <cmd>`. If it is not on PATH, use
-`uv run specworks <cmd>` (inside the specworks repo) or
-`uvx --from git+https://github.com/lcmonteiro/specworks specworks <cmd>`.
+<!-- specworks:include running-cli -->
 
 ---
 

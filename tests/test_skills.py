@@ -105,3 +105,20 @@ def test_skills_renamed_in_the_phase_rename_are_removed(tmp_path, monkeypatch):
     assert not any(p.exists() for p in old) and not prompt.exists()
     assert not (tmp_path / ".claude/skills/specworks-propose").exists() and kept.is_file()
     assert (tmp_path / ".claude/skills/specworks-specify/SKILL.md").is_file()
+
+
+def test_installed_skills_have_their_shared_parts_filled_in(tmp_path, monkeypatch):
+    init(tmp_path, monkeypatch, "--tools", "all")
+    for name in packaged_skills():
+        for path in (tmp_path / f".claude/skills/{name}/SKILL.md", tmp_path / f".github/prompts/{name}.prompt.md"):
+            text = path.read_text()
+            assert "specworks:include" not in text and "**Running the CLI**" in text, path
+
+
+def test_skill_triggers_name_specworks(tmp_path, monkeypatch):
+    # Descriptions decide when an agent loads a skill: each one is scoped to specworks, not to any "test" or "review".
+    init(tmp_path, monkeypatch, "--tools", "claude")
+    for name in packaged_skills():
+        description = next(line for line in frontmatter(tmp_path / f".claude/skills/{name}/SKILL.md").splitlines() if line.startswith("description:"))
+        use_when = description.split("Use ", 1)[1]
+        assert "specworks" in use_when and f'"{name.replace("-", " ")}"' in use_when, name
