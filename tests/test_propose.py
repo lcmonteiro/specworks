@@ -467,3 +467,41 @@ def test_tags_of_a_capability_with_a_longer_prefix_are_not_unknown(change, proje
 )
 def test_test_file_detection(path, is_test):
     assert is_test_file(path, []) is is_test
+
+
+def test_test_globs_do_not_hide_source_tags(change, project):
+    cfg = project / "spec.yml"
+    cfg.write_text(cfg.read_text().replace("test_globs: []", 'test_globs: ["qa/*.py"]'))
+    (project / "qa").mkdir()
+    (project / "qa/reset_checks.py").write_text("# @ac AC-AUTH-003.2\n")
+    (project / "src/auth/reset.py").write_text("# @req REQ-AUTH-003\n")
+    code, data = run_json("trace", "--change", "add-password-reset")
+    rows = {r["ac"]: r for r in data["rows"]}
+    assert rows["AC-AUTH-003.2"]["tests"] == ["qa/reset_checks.py:1"]
+    assert rows["AC-AUTH-003.2"]["code"] == ["src/auth/reset.py:1"]
+
+
+def test_source_globs_limit_the_other_files_but_not_tests(change, project):
+    cfg = project / "spec.yml"
+    cfg.write_text(cfg.read_text().replace("source_globs: []", 'source_globs: ["src/*"]'))
+    (project / "src/auth/reset.py").write_text("# @req REQ-AUTH-003\n")
+    (project / "scripts").mkdir()
+    (project / "scripts/tool.py").write_text("# @req REQ-AUTH-003\n")
+    (project / "tests").mkdir()
+    (project / "tests/test_reset.py").write_text("# @ac AC-AUTH-003.1\n")
+    code, data = run_json("trace", "--change", "add-password-reset")
+    rows = {r["ac"]: r for r in data["rows"]}
+    assert rows["AC-AUTH-003.1"]["code"] == ["src/auth/reset.py:1"]
+    assert rows["AC-AUTH-003.1"]["tests"] == ["tests/test_reset.py:1"]
+
+
+def test_skip_specs_change(project):
+    run_json("new", "tidy-up")
+    code, data = run_json("skip-specs", "--change", "tidy-up")
+    assert code == 0 and data["skipSpecs"] is True
+    (project / "spec/changes/tidy-up/proposal.md").write_text("# P\n\n## Why\n\n## What Changes\n\n## Capabilities\n")
+    code, data = run_json("status", "--change", "tidy-up")
+    states = {a["id"]: a["status"] for a in data["artifacts"]}
+    assert states["specs"] == "skipped" and states["tasks"] == "ready"
+    code, data = run_json("skip-specs", "--change", "tidy-up", "--off")
+    assert data["skipSpecs"] is False

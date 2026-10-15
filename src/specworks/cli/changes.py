@@ -4,12 +4,11 @@ from __future__ import annotations
 
 import typer
 
-from ..core.changes import PHASES, ChangeError, create_change, set_phase
-from ..core.config import ConfigError
-from ..specs.tasks import TaskError, read_tasks, set_done
-from ..workflow.artifacts import WorkflowError, artifact_states, instructions
+from ..core.changes import PHASES, create_change, set_phase
+from ..specs.tasks import read_tasks, set_done
+from ..workflow.artifacts import artifact_states, instructions
 from .app import app, task_app
-from .output import ChangeOpt, JsonOpt, change_dict, emit, fail, require_change, workspace
+from .output import ChangeOpt, JsonOpt, change_dict, emit, require_change, workspace
 
 
 @app.command()
@@ -20,11 +19,8 @@ def new(
 ) -> None:
     """Create a new change folder (phase: refine) in the current module."""
     ws = workspace(as_json)
-    try:
-        target = ws.module(module) if module is not None else ws.current
-        change = create_change(target.config, name)
-    except (ChangeError, ConfigError) as exc:
-        fail(str(exc), as_json)
+    target = ws.module(module) if module is not None else ws.current
+    change = create_change(target.config, name)
     emit(change_dict(ws, target, change), as_json, f"created {ws.rel(change.path)}")
 
 
@@ -46,11 +42,22 @@ def phase(
 ) -> None:
     """Move a change to another phase."""
     ws, mod, ch = require_change(name, as_json)
-    try:
-        set_phase(ch, to)
-    except ChangeError as exc:
-        fail(str(exc), as_json)
+    set_phase(ch, to)
     emit(change_dict(ws, mod, ch), as_json, f"{mod.qualify(ch.name)}: phase → {ch.phase}")
+
+
+@app.command("skip-specs")
+def skip_specs(
+    change: str = ChangeOpt,
+    off: bool = typer.Option(False, "--off", help="The change does change behaviour after all: delta specs are required again."),
+    as_json: bool = JsonOpt,
+) -> None:
+    """Mark a change with no behaviour change (refactor, tooling, docs): it has no delta specs."""
+    ws, mod, ch = require_change(change, as_json)
+    ch.skip_specs = not off
+    ch.save()
+    state = "skips delta specs" if ch.skip_specs else "needs delta specs"
+    emit(change_dict(ws, mod, ch), as_json, f"{mod.qualify(ch.name)}: {state}")
 
 
 @app.command("instructions")
@@ -61,10 +68,7 @@ def instructions_cmd(
 ) -> None:
     """Template, rules and output path for writing one artifact of a change."""
     ws, mod, ch = require_change(change, as_json)
-    try:
-        data = instructions(ws, mod, ch, artifact)
-    except (ConfigError, WorkflowError) as exc:
-        fail(str(exc), as_json)
+    data = instructions(ws, mod, ch, artifact)
     text = f"# {data['artifact']} → {data['outputPath']}\n\n{data['instruction']}\n---\n{data['template']}"
     emit(data, as_json, text)
 
@@ -84,20 +88,14 @@ def task_list(
 ) -> None:
     """List the tasks of a change with their IDs and state."""
     ws, mod, ch = require_change(change, as_json)
-    try:
-        tasks = read_tasks(ch.path)
-    except TaskError as exc:
-        fail(str(exc), as_json)
+    tasks = read_tasks(ch.path)
     _emit_tasks(ws, mod, ch, [t for t in tasks if not (pending and t.done)], as_json)
 
 
 def _set(change: str, nums: list[str], done: bool, as_json: bool) -> None:
     ws, mod, ch = require_change(change, as_json)
-    try:
-        set_done(ch.path, nums, done)
-        tasks = read_tasks(ch.path)
-    except TaskError as exc:
-        fail(str(exc), as_json)
+    set_done(ch.path, nums, done)
+    tasks = read_tasks(ch.path)
     _emit_tasks(ws, mod, ch, tasks, as_json)
 
 

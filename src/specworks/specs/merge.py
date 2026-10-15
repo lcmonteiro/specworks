@@ -22,13 +22,14 @@ from datetime import date
 from pathlib import Path
 
 from ..core.changes import Change
+from ..core.errors import SpecworksError
 from ..core.workspace import Workspace
 from .capabilities import HISTORY_HEADING, REQUIREMENTS_FILE, CapabilityRef, history_lines
 from .check import ChangeSpecs, Delta
-from .specfile import H2_RE, LIVING_SECTION, REQ_HEADER_RE, Requirement, parse_spec, section_kind
+from .specfile import LIVING_SECTION, Requirement, parse_spec, section_kind
 
 
-class MergeError(Exception):
+class MergeError(SpecworksError):
     """Raised when a delta cannot be applied to its living spec."""
 
 
@@ -64,36 +65,18 @@ class CapabilityMerge:
 
 
 def _blocks(lines: list[str]) -> tuple[int, int, list[tuple[str | None, int, int]]]:
-    """Locate '## Requirements' and its requirement blocks: (section start, section end, [(id, start, end)]).
+    """Locate '## Requirements' and its requirement blocks as 0-based line indexes: (section start, section end, [(id, start, end)]).
 
-    Headings inside code fences are text (an example in a requirement), as in ``parse_spec``.
+    The blocks come from ``parse_spec``, so headings inside code fences (an example in a requirement) are text.
     """
-    section_start = section_end = None
-    headers: list[tuple[int, str]] = []
-    in_fence = False
-    for i, line in enumerate(lines):
-        if line.lstrip().startswith("```"):
-            in_fence = not in_fence
-            continue
-        if in_fence:
-            continue
-        if h2 := H2_RE.match(line):
-            if section_start is not None:
-                section_end = i
-                break
-            if section_kind(h2.group("title")) == LIVING_SECTION:
-                section_start = i
-        elif section_start is not None and (m := REQ_HEADER_RE.match(line)):
-            headers.append((i, m.group("rest")))
-    if section_start is None:
+    doc = parse_spec("\n".join(lines))
+    starts = [number for number, title in doc.sections if section_kind(title) == LIVING_SECTION]
+    if not starts:
         raise MergeError("the living spec has no '## Requirements' section")
-    section_end = section_end if section_end is not None else len(lines)
-    blocks = []
-    for n, (start, rest) in enumerate(headers):
-        end = headers[n + 1][0] if n + 1 < len(headers) else section_end
-        req_id = rest.split()[0] if rest.split() else None
-        blocks.append((req_id, start, end))
-    return section_start, section_end, blocks
+    start = starts[0]
+    end = next((number for number, _ in doc.sections if number > start), len(lines) + 1)
+    blocks = [(r.id, r.line - 1, r.end) for r in doc.requirements if start < r.line < end]
+    return start - 1, end - 1, blocks
 
 
 def _block_lines(req: Requirement) -> list[str]:

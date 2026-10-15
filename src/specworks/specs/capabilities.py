@@ -21,7 +21,8 @@ from pathlib import Path
 from typing import Any
 
 from ..core.changes import Change, list_changes
-from ..core.config import MODULE_NAME_RE, Capability, ConfigError
+from ..core.config import Capability, ConfigError
+from ..core.validators import validate_capability_name
 from ..core.workspace import Module, Workspace
 from .specfile import REQ_ID_RE, SpecDoc, find_ids, id_prefix, parse_spec, requirement_number
 
@@ -68,8 +69,7 @@ class CapabilityRef:
 
 
 def capability_ref(module: Module, name: str) -> CapabilityRef:
-    if not MODULE_NAME_RE.match(name):
-        raise ConfigError(f"capability name '{name}' must be kebab-case (e.g. user-auth)")
+    validate_capability_name(name)
     return CapabilityRef(module=module, name=name, capability=module.config.capabilities.get(name))
 
 

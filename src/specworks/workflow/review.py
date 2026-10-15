@@ -20,10 +20,10 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from ..core.changes import Change
+from ..core.errors import SpecworksError
 from ..core.workspace import Workspace
-from ..specs.check import ChangeSpecs, check_change
 from ..specs.specfile import H2_RE
-from ..specs.trace import Tag, build_matrix, gaps, is_test_path, scan_tags, unknown_tags
+from ..specs.trace import Analysis, scan_rule
 
 CODE_EXTENSIONS = {
     ".py", ".pyi", ".js", ".jsx", ".mjs", ".cjs", ".ts", ".tsx", ".go", ".rs", ".java", ".kt", ".kts",
@@ -35,7 +35,7 @@ BASE_CANDIDATES = ("origin/main", "main", "origin/master", "master")
 REVIEW_FILE = "review.md"
 
 
-class ReviewError(Exception):
+class ReviewError(SpecworksError):
     """Raised when git cannot tell what changed."""
 
 
@@ -51,12 +51,14 @@ class ChangedFile:
 
 @dataclass
 class ReviewReport:
-    base: str | None
-    changed: list[ChangedFile] | None  # None when git is not available
-    gaps: dict[str, list[str]]
-    unknown_tags: list[Tag]
-    spec_errors: list[str]
+    analysis: Analysis
+    base: str | None = None
+    changed: list[ChangedFile] | None = None  # None when git is not available
     note: str = ""
+
+    @property
+    def spec_errors(self) -> list[str]:
+        return self.analysis.spec_errors
 
     @property
     def untraced_source(self) -> list[str]:
@@ -67,11 +69,12 @@ class ReviewReport:
         return [f.path for f in self.changed or [] if f.kind == "test" and not any(t.startswith("AC-") for t in f.tags)]
 
     def findings(self) -> dict[str, list[str]]:
+        found = self.analysis.gaps
         return {
-            "reqWithoutCode": self.gaps["reqWithoutCode"],
-            "acWithoutTests": self.gaps["acWithoutTests"],
-            "removedStillTagged": self.gaps["removedStillTagged"],
-            "unknownTags": [f"{t.id} at {t.where}" for t in self.unknown_tags],
+            "reqWithoutCode": found["reqWithoutCode"],
+            "acWithoutTests": found["acWithoutTests"],
+            "removedStillTagged": found["removedStillTagged"],
+            "unknownTags": [t.at for t in self.analysis.unknown_tags],
             "untracedSource": self.untraced_source,
             "untracedTests": self.untraced_tests,
         }
@@ -129,38 +132,32 @@ def classify(ws: Workspace, rel: str) -> str | None:
     for module in ws.modules():
         if path.is_relative_to(module.root / module.config.dir):
             return None
-    if is_test_path(ws.owner(path), path):
+    scanned, is_test = scan_rule(ws.owner(path), path)  # the module's test_globs / source_globs, as for tags
+    if is_test:
         return "test"
-    return "source" if path.suffix.lower() in CODE_EXTENSIONS else "other"
+    return "source" if scanned and path.suffix.lower() in CODE_EXTENSIONS else "other"
 
 
-def review_change(ws: Workspace, change: Change, base: str | None = None) -> tuple[ChangeSpecs, ReviewReport]:
-    specs, issues = check_change(ws, change)
-    tags = scan_tags(ws)
-    found = gaps(build_matrix(specs, tags))
-    report = ReviewReport(
-        base=None,
-        changed=None,
-        gaps=found,
-        unknown_tags=unknown_tags(specs, tags),
-        spec_errors=[str(i) for i in issues if i.level == "error"],
-    )
+def review_change(analysis: Analysis, base: str | None = None) -> ReviewReport:
+    """Drift candidates of the analysed change; changed files come from git against ``base``."""
+    ws = analysis.ws
+    report = ReviewReport(analysis)
     try:
         report.base = base or detect_base(ws.root)
         paths = changed_paths(ws, report.base)
     except (ReviewError, OSError) as exc:
         report.note = f"changed files unknown ({exc}); only spec -> code drift was checked"
-        return specs, report
+        return report
 
     tags_by_file: dict[str, list[str]] = {}
-    for tag in tags:
+    for tag in analysis.tags:
         tags_by_file.setdefault(tag.file, []).append(tag.id)
     report.changed = []
     for rel in paths:
         kind = classify(ws, rel)
         if kind is not None:
             report.changed.append(ChangedFile(path=rel, kind=kind, tags=sorted(set(tags_by_file.get(rel, [])))))
-    return specs, report
+    return report
 
 
 # --- review.md ----------------------------------------------------------------

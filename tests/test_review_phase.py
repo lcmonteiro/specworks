@@ -86,8 +86,9 @@ def test_an_unreadable_finding_blocks_review_and_validate(repo):
     readable = checks(data)["every finding in review.md is readable (- [ ] R<n> ...)"]
     assert code == 1 and readable["blocking"] and "is not a finding" in readable["details"][0]
     code, data = run_json("validate", "--change", REF, "--base", "main")
-    review_done = {c["name"]: c for c in data["checks"]}["review done (review.md with no open finding)"]
-    assert code == 1 and not review_done["ok"] and any("is not a finding" in d for d in review_done["details"])
+    readable = {c["name"]: c for c in data["checks"]}["every finding in review.md is readable (- [ ] R<n> ...)"]
+    assert code == 1 and not readable["ok"] and readable["fix"] == "/specworks-review"
+    assert any("is not a finding" in d for d in readable["details"])
 
 
 def test_gate_review_allow_open_reports_open_findings_as_a_warning(repo):

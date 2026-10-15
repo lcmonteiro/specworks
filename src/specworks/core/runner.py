@@ -19,12 +19,13 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 
+from .errors import SpecworksError
 from .workspace import Module, Workspace
 
 TAIL_LINES = 40
 
 
-class CommandError(Exception):
+class CommandError(SpecworksError):
     """Raised when a command is not configured."""
 
 

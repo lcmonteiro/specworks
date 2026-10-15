@@ -26,12 +26,14 @@ from pathlib import Path
 import pyd2
 
 from ..core.config import DiagramSettings
+from ..core.errors import SpecworksError
 
 DIAGRAMS_DIR = "diagrams"
-STAMP_RE = re.compile(r"<!-- specworks:d2 sha256=(?P<hash>[0-9a-f]{64}) -->")
+STAMP = "<!-- specworks:d2 sha256={} -->"
+STAMP_RE = re.compile(re.escape(STAMP).replace(r"\{\}", r"(?P<hash>[0-9a-f]{64})"))
 
 
-class DiagramError(Exception):
+class DiagramError(SpecworksError):
     """Raised when D2 is missing or fails to render a diagram."""
 
 
@@ -44,10 +46,14 @@ class Diagram:
         return self.source.with_suffix(".svg")
 
 
+def env_d2() -> str | None:
+    return os.environ.get("SPECWORKS_D2") or None
+
+
 def find_d2() -> tuple[str | None, str]:
     """(path, where) of the d2 that renders: SPECWORKS_D2 if set, else pyd2's (None if pyd2 has none)."""
-    if os.environ.get("SPECWORKS_D2"):
-        return os.environ["SPECWORKS_D2"], "SPECWORKS_D2"
+    if d2 := env_d2():
+        return d2, "SPECWORKS_D2"
     try:
         return pyd2.executable(), "pyd2"
     except FileNotFoundError:
@@ -75,7 +81,7 @@ def state(diagram: Diagram, settings: DiagramSettings) -> str:
 
 
 def stamp(svg_text: str, digest: str) -> str:
-    mark = f"<!-- specworks:d2 sha256={digest} -->"
+    mark = STAMP.format(digest)
     if svg_text.startswith("<?xml"):
         end = svg_text.index("?>") + 2
         return svg_text[:end] + mark + svg_text[end:]
@@ -84,7 +90,7 @@ def stamp(svg_text: str, digest: str) -> str:
 
 def render(diagram: Diagram, settings: DiagramSettings) -> None:
     try:
-        pyd2.render_file(diagram.source, diagram.svg, settings.options(), d2=os.environ.get("SPECWORKS_D2") or None)
+        pyd2.render_file(diagram.source, diagram.svg, settings.options(), d2=env_d2())
     except pyd2.D2Error as exc:
         raise DiagramError(str(exc)) from exc
     except OSError as exc:  # pyd2 has no binary, or SPECWORKS_D2 does not run

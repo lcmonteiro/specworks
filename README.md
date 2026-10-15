@@ -93,6 +93,7 @@ The system SHALL email a single-use reset link valid for 30 minutes.
 | `specworks spec list` / `spec show <ref>` | capabilities, their requirements, ID prefix, next free ID and delta path |
 | `specworks check --change <ref>` | checks proposal, delta specs (IDs, SHALL/MUST, scenarios, MODIFIED/REMOVED targets, ID clashes with other changes: the same ID ADDED twice, or one requirement MODIFIED/REMOVED by two active changes) and tasks (format, every AC covered) |
 | `specworks diagrams --change <ref> \| --dir <folder> [--check]` | renders `diagrams/*.d2` of a change (or of a living docs folder) to SVG with the workspace theme; `--check` reports missing/outdated SVGs without rendering |
+| `specworks skip-specs --change <ref> [--off]` | marks a change with no behaviour change (refactor, tooling, docs): it needs no delta specs |
 | `specworks task list\|done\|undo --change <ref> [N.M ...]` | lists tasks with their IDs; ticks or unticks checkboxes without touching the rest of `tasks.md` |
 | `specworks gate <phase> --change <ref>` | checks a phase is finished: `specify` (valid specs, tasks cover every AC), `design` (design.md Interfaces recorded, the files it names exist, build/typecheck and the existing tests pass; once the change has `@ac` tests, a red suite is only a warning), `test` (every AC has an `@ac`-tagged test, no tags to unknown IDs), `code` (all tasks done, every requirement has `@req` code, removed ones gone, and `commands.test` passes; `--no-run` skips running it), `review` (`review.md` with no open finding (`--allow-open` in a build), every untagged changed file accounted for, tags complete, tests pass), `validate` (same checks as `specworks validate`) |
 | `specworks start <phase> --change <ref> [--no-run] [--base]` | moves a change to a phase once the gates it depends on pass, and leaves it where it is (exit 1) when one fails: moving forward, every phase left behind must pass its gate; going back or re-entering needs the gate of the phase just before |
@@ -248,9 +249,9 @@ Code layout (`src/specworks/`):
 | Package | What it holds |
 |---|---|
 | `cli/` | the `specworks` command: `app.py` (Typer app and command groups), `output.py` (options, JSON/text output, resolving changes), and one module per area: `project.py`, `changes.py`, `specs.py`, `workflow.py` |
-| `core/` | `config.py` (find and read `<dir>.yml`), `config_file.py` (write it), `workspace.py` (modules), `changes.py` (changes and phases), `runner.py` (project commands) |
-| `specs/` | `specfile.py` (parse specs), `capabilities.py`, `check.py` (`specworks check`), `tasks.py`, `trace.py`, `merge.py` (close) |
-| `workflow/` | `artifacts.py` (artifacts and instructions, `schema.yaml`), `checks.py` (checks shared by gates and validate), `gate.py`, `review.py` (drift and `review.md`), `cycle.py`, `validate.py` (`specworks validate`) |
+| `core/` | `config.py` (find and read `<dir>.yml`), `config_file.py` (write it), `workspace.py` (modules), `changes.py` (changes and phases), `runner.py` (project commands), `validators.py` (folder, name and prefix rules), `errors.py` (`SpecworksError`, the base of every error the CLI reports, and `ConfigError`) |
+| `specs/` | `specfile.py` (parse specs), `capabilities.py`, `check.py` (`specworks check`), `tasks.py`, `trace.py` (tags, matrix, and `Analysis`: everything known about a change, computed once), `merge.py` (close) |
+| `workflow/` | `artifacts.py` (artifacts and instructions, `schema.yaml`), `checks.py` (every check, each defined once; gates and validate are lists of them), `gate.py`, `review.py` (drift and `review.md`), `cycle.py`, `validate.py` (`specworks validate`) |
 | `tools/` | `diagrams.py` (D2 via pyd2), `skills.py` (install the skills) |
 
 `schema.yaml`, `templates/` and `skills/` are package data next to them. Text several skills share lives once in

@@ -10,10 +10,11 @@ from ..core.changes import Change, list_changes
 from ..core.config import ConfigError
 from ..core.workspace import Workspace
 from ..tools.diagrams import diagrams_in, referenced_images, state
-from .capabilities import CapabilityRef, delta_files, read_spec, resolve_delta, retired_ids
+from .capabilities import SPECS_DIR, CapabilityRef, delta_files, read_spec, resolve_delta, retired_ids
 from .specfile import DELTA_SECTIONS, LIVING_SECTION, NORMATIVE_RE, Requirement, SpecDoc, ac_parent, parse_spec
-from .tasks import Task, parse_tasks
+from .tasks import TASKS_FILE, Task, parse_tasks
 
+PROPOSAL_FILE, DESIGN_FILE = "proposal.md", "design.md"
 PROPOSAL_SECTIONS = ("Why", "What Changes", "Capabilities")
 MAX_DESCRIPTION = 1000
 
@@ -50,6 +51,10 @@ class ChangeSpecs:
     tasks_found: bool = False
     issues: list[Issue] = field(default_factory=list)
 
+    def known_ids(self) -> set[str]:
+        """Every ID in the deltas and in the living specs they change."""
+        return {i for d in self.deltas for doc in (d.doc, d.living) if doc for i in doc.ids()}
+
     def requirements(self, *sections: str) -> list[tuple[Delta, Requirement]]:
         wanted = sections or DELTA_SECTIONS
         return [(d, r) for d in self.deltas for r in d.doc.requirements if r.section in wanted]
@@ -65,7 +70,7 @@ def collect(ws: Workspace, change: Change) -> ChangeSpecs:
             continue
         doc = parse_spec(path.read_text(encoding="utf-8"))
         result.deltas.append(Delta(cap=cap, path=path, doc=doc, living=read_spec(cap.living_spec())))
-    tasks_file = change.path / "tasks.md"
+    tasks_file = change.path / TASKS_FILE
     if tasks_file.is_file():
         result.tasks_found = True
         result.tasks, problems = parse_tasks(tasks_file.read_text(encoding="utf-8"))
@@ -74,9 +79,9 @@ def collect(ws: Workspace, change: Change) -> ChangeSpecs:
 
 
 def _check_proposal(ws: Workspace, change: Change, issues: list[Issue]) -> None:
-    path = change.path / "proposal.md"
+    path = change.path / PROPOSAL_FILE
     if not path.is_file():
-        issues.append(Issue("error", ws.rel(path), 0, "proposal.md is missing"))
+        issues.append(Issue("error", ws.rel(path), 0, f"{PROPOSAL_FILE} is missing"))
         return
     headings = {m.group(1).strip().lower() for m in re.finditer(r"^##\s+(.+)$", path.read_text(encoding="utf-8"), re.MULTILINE)}
     for section in PROPOSAL_SECTIONS:
@@ -182,7 +187,7 @@ def _check_delta(ws: Workspace, change: Change, delta: Delta, seen: dict[str, st
 
 
 def _check_tasks(ws: Workspace, change: Change, specs: ChangeSpecs, issues: list[Issue]) -> None:
-    file = ws.rel(change.path / "tasks.md")
+    file = ws.rel(change.path / TASKS_FILE)
     if not specs.tasks_found:
         if specs.deltas:
             issues.append(Issue("warning", file, 0, "tasks.md is not written yet"))
@@ -197,11 +202,7 @@ def _check_tasks(ws: Workspace, change: Change, specs: ChangeSpecs, issues: list
             issues.append(Issue("error", file, task.line, f"task {task.num} is numbered twice (line {numbers[task.num]})"))
         numbers[task.num] = task.line
 
-    known = set()
-    for delta in specs.deltas:
-        known |= {r.id for r in delta.doc.requirements if r.id} | {s.id for r in delta.doc.requirements for s in r.scenarios if s.id}
-        if delta.living:
-            known |= set(delta.living.by_id())
+    known = specs.known_ids()
     for task in specs.tasks:
         for ref in task.ids:
             if ref not in known:
@@ -221,7 +222,7 @@ def _check_tasks(ws: Workspace, change: Change, specs: ChangeSpecs, issues: list
 
 def _check_diagrams(ws: Workspace, change: Change, issues: list[Issue]) -> None:
     settings = ws.top.config.diagrams
-    design = change.path / "design.md"
+    design = change.path / DESIGN_FILE
     images = referenced_images(design.read_text(encoding="utf-8")) if design.is_file() else []
     for ref in images:
         if not (change.path / ref).is_file():
@@ -245,14 +246,15 @@ def check_change(ws: Workspace, change: Change) -> tuple[ChangeSpecs, list[Issue
 
     if change.skip_specs and specs.deltas:
         issues.append(Issue("error", ws.rel(change.path), 0, "skip_specs is set but the change has delta specs"))
-    if not change.skip_specs and not specs.deltas and not any(i.file.startswith(ws.rel(change.path / "specs")) for i in issues):
+    specs_dir = ws.rel(change.path / SPECS_DIR)
+    if not change.skip_specs and not specs.deltas and not any(i.file.startswith(specs_dir) for i in issues):
         issues.append(
             Issue(
                 "error",
-                ws.rel(change.path / "specs"),
+                specs_dir,
                 0,
-                "no delta specs; write specs/[<module>/]<capability>/spec.md, or set skip_specs: true in "
-                ".change.yaml when no behaviour changes (refactor, tooling, docs)",
+                "no delta specs; write specs/[<module>/]<capability>/spec.md, or run "
+                "`specworks skip-specs --change <ref>` when no behaviour changes (refactor, tooling, docs)",
             )
         )
     seen: dict[str, str] = {}

@@ -155,6 +155,9 @@ def test_old_dir_key_is_rejected(project):
         ("docs_dir: ../../outside", "'docs_dir' must be a relative folder inside the project"),
         ("docs_dir: /etc", "'docs_dir' must be a relative folder inside the project"),
         ("docs_dir: 3", "'docs_dir' must be a non-empty folder name"),
+        ("capabilities:\n  user-auth:\n    path: null", "capability 'user-auth' needs a 'path'"),
+        ("capabilities:\n  user-auth:\n    path: src/auth\n    prefx: AUTH", "capability 'user-auth' has unknown keys: prefx"),
+        ("capabilites: {}", "unknown keys: capabilites"),
     ],
 )
 def test_malformed_config_is_a_clear_error(project, setting, message):
@@ -231,3 +234,10 @@ def test_a_broken_change_file_is_an_error_not_a_crash(project, monkeypatch, caps
         main()
     err = capsys.readouterr().err
     assert exit_info.value.code == 1 and err.startswith("error: ") and message in err
+
+
+def test_null_description_is_empty(project):
+    cfg = project / "specworks.yml"
+    cfg.write_text(cfg.read_text().replace("capabilities: {}", "capabilities:\n  user-auth:\n    path: src/auth\n    description:"))
+    code, data = run_json("context")
+    assert code == 0 and data["capabilities"][0]["description"] == "", data
