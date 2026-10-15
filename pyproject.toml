@@ -63,8 +63,3 @@ extend-immutable-calls = ["typer.Argument", "typer.Option"]
 files = ["src/specworks"]
 python_version = "3.11"
 check_untyped_defs = true
-
-[[tool.mypy.overrides]]
-# pyd2 has no py.typed marker yet; analyse it anyway.
-module = ["pyd2", "pyd2.*"]
-follow_untyped_imports = true
