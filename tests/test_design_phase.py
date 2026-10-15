@@ -7,7 +7,7 @@ import sys
 import pytest
 from helpers import REF, run_json
 
-from specworks.gate import interface_files
+from specworks.phases.gate import interface_files
 
 PASS = f'"{sys.executable}" -c "print(\'all green\')"'
 FAIL = f'"{sys.executable}" -c "import sys; print(\'ImportError: cannot import ResetService\'); sys.exit(1)"'

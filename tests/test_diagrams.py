@@ -7,7 +7,7 @@ import pyd2
 import pytest
 from typer.testing import CliRunner
 
-from specworks import diagrams as diagrams_module
+from specworks.tools import diagrams as diagrams_module
 from specworks.cli import app
 
 runner = CliRunner()
@@ -132,7 +132,7 @@ def test_pyd2_provides_the_pinned_release(monkeypatch):
 
 def test_render_args_are_stable():
     """The stamp hashes these flags: changing them would mark every committed SVG stale."""
-    from specworks.config import DiagramSettings
+    from specworks.core.config import DiagramSettings
 
     assert DiagramSettings().options().args() == [
         "--theme=0", "--layout=elk", "--pad=24", "--omit-version", "--dark-theme=200"

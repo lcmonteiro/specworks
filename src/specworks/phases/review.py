@@ -19,10 +19,10 @@ import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from .changes import Change
-from .trace import Tag, build_matrix, gaps, is_test_file, scan_tags, unknown_tags
-from .validate import ChangeSpecs, validate_change
-from .workspace import Workspace
+from ..core.changes import Change
+from ..specs.trace import Tag, build_matrix, gaps, is_test_file, scan_tags, unknown_tags
+from ..specs.check import ChangeSpecs, check_change
+from ..core.workspace import Workspace
 
 CODE_EXTENSIONS = {
     ".py", ".pyi", ".js", ".jsx", ".mjs", ".cjs", ".ts", ".tsx", ".go", ".rs", ".java", ".kt", ".kts",
@@ -134,7 +134,7 @@ def classify(ws: Workspace, rel: str) -> str | None:
 
 
 def review_change(ws: Workspace, change: Change, base: str | None = None) -> tuple[ChangeSpecs, ReviewReport]:
-    specs, issues = validate_change(ws, change)
+    specs, issues = check_change(ws, change)
     tags = scan_tags(ws)
     found = gaps(build_matrix(specs, tags))
     report = ReviewReport(

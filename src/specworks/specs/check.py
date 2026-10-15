@@ -1,4 +1,4 @@
-"""Validate the planning artifacts of a change: proposal, delta specs and tasks."""
+"""`specworks check`: the planning artifacts of a change are well formed (proposal, delta specs, tasks)."""
 
 from __future__ import annotations
 
@@ -6,13 +6,13 @@ import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from .changes import Change, list_changes
-from .config import ConfigError
-from .diagrams import diagrams_in, referenced_images, state
+from ..core.changes import Change, list_changes
+from ..core.config import ConfigError
+from ..tools.diagrams import diagrams_in, referenced_images, state
 from .specfile import DELTA_SECTIONS, LIVING_SECTION, NORMATIVE_RE, Requirement, SpecDoc, ac_parent
-from .specs import CapabilityRef, delta_files, read_spec, resolve_delta
+from .capabilities import CapabilityRef, delta_files, read_spec, resolve_delta
 from .tasks import Task, parse_tasks
-from .workspace import Workspace
+from ..core.workspace import Workspace
 
 PROPOSAL_SECTIONS = ("Why", "What Changes", "Capabilities")
 MAX_DESCRIPTION = 1000
@@ -225,7 +225,7 @@ def _check_diagrams(ws: Workspace, change: Change, issues: list[Issue]) -> None:
             issues.append(Issue("warning", ws.rel(diagram.source), 0, f"not shown in design.md; add ![caption]({rel})"))
 
 
-def validate_change(ws: Workspace, change: Change) -> tuple[ChangeSpecs, list[Issue]]:
+def check_change(ws: Workspace, change: Change) -> tuple[ChangeSpecs, list[Issue]]:
     specs = collect(ws, change)
     issues = list(specs.issues)
     _check_proposal(ws, change, issues)

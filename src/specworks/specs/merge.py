@@ -21,11 +21,11 @@ from dataclasses import dataclass, field
 from datetime import date
 from pathlib import Path
 
-from .changes import Change
+from ..core.changes import Change
 from .specfile import H2_RE, LIVING_SECTION, REQ_HEADER_RE, Requirement, parse_spec, section_kind
-from .specs import CapabilityRef
-from .validate import ChangeSpecs, Delta
-from .workspace import Workspace
+from .capabilities import CapabilityRef
+from .check import ChangeSpecs, Delta
+from ..core.workspace import Workspace
 
 REQUIREMENTS_FILE = "requirements.md"
 HISTORY_HEADING = "## History"

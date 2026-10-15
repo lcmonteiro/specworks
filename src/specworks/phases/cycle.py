@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import re
 
-from .changes import Change
+from ..core.changes import Change
 from .review import REVIEW_FILE
 
 CYCLE = ("design", "test", "code", "review")

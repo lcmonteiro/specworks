@@ -2,7 +2,7 @@ import pytest
 from typer.testing import CliRunner
 
 from specworks.cli import app
-from specworks.skills import packaged_skills
+from specworks.tools.skills import packaged_skills
 
 runner = CliRunner()
 SKILL = "specworks-refine"

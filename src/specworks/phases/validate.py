@@ -1,19 +1,19 @@
-"""Final, read-only verification of a change before it is closed.
+"""Validate phase (`specworks validate`): final, read-only check of a change before it is closed.
 
 Every check is grouped (completeness, correctness, coherence) and names the
-phase skill that fixes it. Nothing here writes to the project: verify only
+phase skill that fixes it. Nothing here writes to the project: it only
 reads specs, tasks, tags, review.md and diagrams, and runs the project's own
 test, lint and typecheck commands.
 """
 
 from __future__ import annotations
 
-from .changes import Change
-from .diagrams import diagrams_in, state
+from ..core.changes import Change
+from ..tools.diagrams import diagrams_in, state
 from .gate import Check, _tests_pass
 from .review import REVIEW_FILE, review_change, review_findings
-from .runner import CommandError, run_command
-from .workspace import Module, Workspace
+from ..core.runner import CommandError, run_command
+from ..core.workspace import Module, Workspace
 
 COMPLETENESS, CORRECTNESS, COHERENCE = "completeness", "correctness", "coherence"
 GROUPS = (COMPLETENESS, CORRECTNESS, COHERENCE)
@@ -38,7 +38,7 @@ def _optional_command(ws: Workspace, module: Module, key: str, run: bool) -> Che
     return _check(CORRECTNESS, "/specworks-code", name, result.ok, details if result.ok else details + result.tail())
 
 
-def verify_change(ws: Workspace, module: Module, change: Change, run: bool = True, base: str | None = None) -> list[Check]:
+def validate_change(ws: Workspace, module: Module, change: Change, run: bool = True, base: str | None = None) -> list[Check]:
     specs, report = review_change(ws, change, base)
     found = report.findings()
     reviewed, open_findings, review_text = review_findings(change)

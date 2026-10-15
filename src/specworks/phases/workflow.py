@@ -8,10 +8,10 @@ from importlib import resources
 
 import yaml
 
-from .changes import Change
-from .config import ConfigError
-from .specs import delta_files, describe, resolve_delta, workspace_capabilities
-from .workspace import Module, Workspace
+from ..core.changes import Change
+from ..core.config import ConfigError
+from ..specs.capabilities import delta_files, describe, resolve_delta, workspace_capabilities
+from ..core.workspace import Module, Workspace
 
 
 @dataclass

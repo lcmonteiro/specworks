@@ -11,12 +11,12 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 
-from .changes import Change
+from ..core.changes import Change
 from .review import REVIEW_FILE, review_change, review_findings
-from .runner import CommandError, run_command
-from .trace import Tag, build_matrix, gaps, scan_tags, unknown_tags
-from .validate import validate_change
-from .workspace import Module, Workspace
+from ..core.runner import CommandError, run_command
+from ..specs.trace import Tag, build_matrix, gaps, scan_tags, unknown_tags
+from ..specs.check import check_change
+from ..core.workspace import Module, Workspace
 
 GATES = ("specify", "design", "test", "code", "review", "validate")
 
@@ -44,7 +44,7 @@ class Check:
 
 
 def _spec_checks(ws: Workspace, change: Change):
-    specs, issues = validate_change(ws, change)
+    specs, issues = check_change(ws, change)
     errors = [str(i) for i in issues if i.level == "error"]
     checks = [Check("specs and tasks are valid (specworks check)", not errors, errors)]
     return specs, checks
@@ -241,9 +241,9 @@ def run_gate(
     if phase not in GATES:
         raise GateError(f"no gate for phase '{phase}' yet; gates exist for: {', '.join(GATES)}")
     if phase == "validate":
-        from .verify import verify_change  # validate builds on the other gates' checks
+        from .validate import validate_change  # validate builds on the other gates' checks
 
-        checks = verify_change(ws, module, change, run_tests, base)
+        checks = validate_change(ws, module, change, run_tests, base)
     elif phase == "review":
         checks = _review(ws, module, change, run_tests, base)
     elif phase == "code":
