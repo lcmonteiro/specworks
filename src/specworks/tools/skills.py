@@ -64,8 +64,16 @@ def packaged_skills() -> list[str]:
     return sorted(entry.name for entry in root.iterdir() if entry.joinpath("SKILL.md").is_file())
 
 
+# Text several skills share lives once in skills/_shared/<name>.md; a skill marks where it
+# goes with a line ``<!-- specworks:include <name> -->``, filled in when the skill is read.
+INCLUDE_RE = re.compile(r"^<!-- specworks:include (?P<name>[a-z0-9-]+) -->\n", re.MULTILINE)
+
+
 def read_skill(name: str) -> str:
-    return resources.files("specworks").joinpath("skills", name, "SKILL.md").read_text(encoding="utf-8")
+    """A packaged skill's SKILL.md with its shared parts filled in."""
+    skills = resources.files("specworks").joinpath("skills")
+    text = skills.joinpath(name, "SKILL.md").read_text(encoding="utf-8")
+    return INCLUDE_RE.sub(lambda m: skills.joinpath("_shared", f"{m.group('name')}.md").read_text(encoding="utf-8"), text)
 
 
 def split_frontmatter(text: str) -> tuple[list[tuple[str, str]], str]:

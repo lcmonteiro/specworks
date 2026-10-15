@@ -75,8 +75,9 @@ jobs:
           case "$wheel" in *-py3-none-any.whl) ;; *) echo "unexpected wheel tag"; exit 1 ;; esac
           unzip -p "$wheel" '*/METADATA' | grep -qx 'Requires-Dist: pyd2 @ git+https://github.com/lcmonteiro/pyd2@main'
 
-      # The CLI reads schema.yaml, templates/, skills/ and bin/d2 from the
-      # installed package, so check they all made it into the wheel.
+      # The CLI reads schema.yaml, templates/ and skills/ (with skills/_shared/,
+      # filled into each skill on install) from the installed package, so check
+      # they all made it into the wheel.
       - name: Run the installed CLI
         run: |
           wheel="$(ls "$GITHUB_WORKSPACE"/dist/*.whl)"
@@ -102,6 +103,8 @@ jobs:
           test -f .github/skills/specworks-review/SKILL.md
           test -f .github/skills/specworks-validate/SKILL.md
           test -f .github/skills/specworks-close/SKILL.md
+          grep -q 'Running the CLI' .claude/skills/specworks-refine/SKILL.md
+          if grep -rq 'specworks:include' .claude .github; then echo 'unfilled include in an installed skill'; exit 1; fi
           mkdir -p spec/changes/add-example/diagrams
           printf 'shape: sequence_diagram\nuser -> api: "POST /reset {email}"\n' > spec/changes/add-example/diagrams/flow.d2
           sw diagrams --themes | grep -q '(pyd2)'

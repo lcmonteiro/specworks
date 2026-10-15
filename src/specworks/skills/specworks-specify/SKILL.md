@@ -1,6 +1,6 @@
 ---
 name: specworks-specify
-description: Specify phase of spec-driven development - turn a request (or a refinement) into a proposal, delta specs with requirement IDs and acceptance criteria, a design and a task list, validated and traced. Use when the user wants to plan a change before building it, write requirements or acceptance criteria, or says "specify", "propose", "proposal", "spec this" or "specworks specify".
+description: Specify phase of spec-driven development - turn a request (or a refinement) into a proposal, delta specs with requirement IDs and acceptance criteria, a design and a task list, validated and traced. Use in a specworks project when the user wants to plan a change before building it, write requirements or acceptance criteria, or says "specify", "spec this", "write the proposal" or "specworks specify".
 allowed-tools: Bash(specworks:*), Bash(uv run specworks:*), Bash(uvx:*), Read, Grep, Glob, Write, Edit
 ---
 
@@ -19,9 +19,7 @@ It is the second phase of `refine → specify → design → test → code → r
 files outside the change folder, even if the request says "build" or "fix".
 When the artifacts are done, stop and suggest `/specworks-design`.
 
-**Running the CLI**: use `specworks <cmd>`. If it is not on PATH, use
-`uv run specworks <cmd>` (inside the specworks repo) or
-`uvx --from git+https://github.com/lcmonteiro/specworks specworks <cmd>`.
+<!-- specworks:include running-cli -->
 
 ---
 
