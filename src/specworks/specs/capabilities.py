@@ -7,7 +7,10 @@ left out for the top level (``specs/<capability>/spec.md``). The same path
 means the same capability whichever module the change lives in.
 
 The living spec of a capability is ``<capability path>/<docs_dir>/spec.md``
-next to its code. A capability that is not yet in its module's config is a
+next to its code, with ``requirements.md`` beside it: an index whose
+``## History`` records every requirement each close added, modified or
+removed. A removed requirement leaves the living spec but stays in that
+History, so its ID is never handed out again. A capability that is not yet in its module's config is a
 *new* capability: its delta may only ADD requirements.
 """
 
@@ -20,10 +23,12 @@ from typing import Any
 from ..core.changes import Change, list_changes
 from ..core.config import MODULE_NAME_RE, Capability, ConfigError
 from ..core.workspace import Module, Workspace
-from .specfile import REQ_ID_RE, SpecDoc, id_prefix, parse_spec, requirement_number
+from .specfile import REQ_ID_RE, SpecDoc, find_ids, id_prefix, parse_spec, requirement_number
 
 SPECS_DIR = "specs"
 SPEC_FILE = "spec.md"
+REQUIREMENTS_FILE = "requirements.md"
+HISTORY_HEADING = "## History"
 
 
 @dataclass
@@ -112,9 +117,33 @@ def read_spec(path: Path | None) -> SpecDoc | None:
     return parse_spec(path.read_text(encoding="utf-8"))
 
 
+def history_lines(path: Path | None) -> list[str]:
+    """The ``- ...`` lines under ``## History`` in a requirements.md (none when it does not exist)."""
+    if path is None or not path.is_file():
+        return []
+    text = path.read_text(encoding="utf-8")
+    if HISTORY_HEADING not in text:
+        return []
+    tail = text.split(HISTORY_HEADING, 1)[1]
+    return [line for line in tail.splitlines() if line.startswith("- ") and line != "- (none)"]
+
+
+def history_ids(cap: CapabilityRef) -> set[str]:
+    """Requirement IDs of ``cap`` that its requirements.md History says were ever added, modified or removed."""
+    living = cap.living_spec()
+    lines = history_lines(living.parent / REQUIREMENTS_FILE if living else None)
+    return {i for line in lines for i in find_ids(line) if cap.id_matches(i)}
+
+
+def retired_ids(cap: CapabilityRef) -> set[str]:
+    """IDs that were used by ``cap`` and removed: never to be added again."""
+    living = read_spec(cap.living_spec())
+    return history_ids(cap) - (set(living.by_id()) if living else set())
+
+
 def used_numbers(ws: Workspace, cap: CapabilityRef) -> set[int]:
-    """Requirement numbers taken by the living spec and by every active change's delta."""
-    numbers: set[int] = set()
+    """Requirement numbers taken by the living spec, its History (removed ones too) and every active change's delta."""
+    numbers: set[int] = {requirement_number(i) for i in history_ids(cap)}
     docs = [read_spec(cap.living_spec())]
     for module in ws.modules():
         for change in list_changes(module.config):

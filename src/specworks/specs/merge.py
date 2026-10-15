@@ -23,12 +23,9 @@ from pathlib import Path
 
 from ..core.changes import Change
 from ..core.workspace import Workspace
-from .capabilities import CapabilityRef
+from .capabilities import HISTORY_HEADING, REQUIREMENTS_FILE, CapabilityRef, history_lines
 from .check import ChangeSpecs, Delta
 from .specfile import H2_RE, LIVING_SECTION, REQ_HEADER_RE, Requirement, parse_spec, section_kind
-
-REQUIREMENTS_FILE = "requirements.md"
-HISTORY_HEADING = "## History"
 
 
 class MergeError(Exception):
@@ -163,16 +160,6 @@ def requirements_index(cap: CapabilityRef, spec_text: str, history: list[str]) -
     return "\n".join(out) + "\n"
 
 
-def _history(path: Path) -> list[str]:
-    if not path.is_file():
-        return []
-    text = path.read_text(encoding="utf-8")
-    if HISTORY_HEADING not in text:
-        return []
-    tail = text.split(HISTORY_HEADING, 1)[1]
-    return [line for line in tail.splitlines() if line.startswith("- ") and line != "- (none)"]
-
-
 def plan_merge(ws: Workspace, change: Change, specs: ChangeSpecs, change_ref: str, today: str | None = None) -> list[CapabilityMerge]:
     """Compute every living spec and requirements index this change produces, without writing."""
     today = today or date.today().isoformat()
@@ -194,7 +181,7 @@ def plan_merge(ws: Workspace, change: Change, specs: ChangeSpecs, change_ref: st
         except MergeError as exc:
             raise MergeError(f"{ws.rel(spec_path)}: {exc}") from None
         merge = CapabilityMerge(delta.cap, spec_path, created, added, modified, removed, text)
-        history = _history(merge.requirements_path) + [f"- {today} `{change_ref}`: {merge.summary() or 'no requirement changes'}"]
+        history = history_lines(merge.requirements_path) + [f"- {today} `{change_ref}`: {merge.summary() or 'no requirement changes'}"]
         merge.requirements_text = requirements_index(delta.cap, text, history)
         merges.append(merge)
     return merges

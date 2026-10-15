@@ -1,6 +1,7 @@
 """Close phase: capability registration, delta merge into living specs, requirements index, archive."""
 
 import hashlib
+import shutil
 import sys
 from datetime import date
 
@@ -9,7 +10,10 @@ from typer.testing import CliRunner
 
 from helpers import REF, run_json
 from specworks.cli import app
-from specworks.specs.merge import MergeError, apply_delta
+from specworks.core.changes import load_change
+from specworks.core.workspace import load_workspace
+from specworks.specs.check import collect
+from specworks.specs.merge import MergeError, apply_delta, close_change, plan_merge
 from specworks.specs.specfile import parse_spec
 
 runner = CliRunner()
@@ -226,3 +230,17 @@ def test_a_failed_archive_puts_the_living_docs_back(ready, monkeypatch):
     assert snapshot(ready) == before  # living spec, requirements.md and the change's phase untouched
     code, data = run_json("close", "--change", REF, "--base", "main")  # and closing again works
     assert code == 0, data
+
+
+def test_a_removed_id_is_never_handed_out_again(project):
+    shutil.rmtree(project / CHANGE_DIR)  # its delta takes REQ-AUTH-003; only the living spec counts here
+    run_json("new", "drop-lockout")
+    delta = project / "spec/changes/drop-lockout/specs/user-auth"
+    delta.mkdir(parents=True)
+    (delta / "spec.md").write_text("## REMOVED Requirements\n\n### Requirement: REQ-AUTH-002 Lockout\n**Reason**: x\n**Migration**: y\n")
+    ws = load_workspace(project)
+    change = load_change(ws.current.config, "drop-lockout")
+    close_change(plan_merge(ws, change, collect(ws, change), "drop-lockout"), change, ws.current.config.archive_path)
+    assert "REMOVED REQ-AUTH-002" in (project / "src/auth/docs/requirements.md").read_text()
+    code, data = run_json("spec", "show", "user-auth")
+    assert [r["id"] for r in data["requirements"]] == ["REQ-AUTH-001"] and data["nextId"] == "REQ-AUTH-003"

@@ -81,7 +81,8 @@ The system SHALL email a single-use reset link valid for 30 minutes.
   `AC-<prefix>-NNN.<n>`. The prefix is the capability name in upper case
   (`billing:invoices` -> `BILLING-INVOICES`) or the capability's `prefix:` in the config.
 - `## MODIFIED Requirements` repeats a whole existing block (same ID);
-  `## REMOVED Requirements` needs **Reason** and **Migration**. IDs are never reused.
+  `## REMOVED Requirements` needs **Reason** and **Migration**. IDs are never reused: a removed ID stays in `requirements.md`'s History, so
+  `nextId` skips it and `specworks check` rejects adding it again.
 - `close` merges the deltas into the living spec next to the code
   (`<capability path>/<docs_dir>/spec.md`).
 - Tests and code point back with comment tags in any language:

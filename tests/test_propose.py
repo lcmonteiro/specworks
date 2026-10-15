@@ -181,6 +181,21 @@ def test_next_id_counts_ids_added_by_active_changes(change):
     assert data["nextId"] == "REQ-AUTH-004"
 
 
+REMOVED_HISTORY = "# Requirements: user-auth\n\n## History\n\n- 2026-01-02 `drop-sso`: REMOVED REQ-AUTH-003, REQ-AUTH-005\n"
+
+
+def test_next_id_skips_removed_requirements(project):
+    (project / "src/auth/docs/requirements.md").write_text(REMOVED_HISTORY)
+    code, data = run_json("spec", "show", "user-auth")
+    assert data["nextId"] == "REQ-AUTH-006"
+
+
+def test_a_removed_id_cannot_be_added_again(change, project):
+    (project / "src/auth/docs/requirements.md").write_text(REMOVED_HISTORY)
+    code, data = run_json("check", "--change", "add-password-reset")
+    assert any("REQ-AUTH-003 was removed from user-auth" in m and "never reused" in m for m in errors(data))
+
+
 def test_spec_show_in_module_uses_module_path_and_prefix(project, monkeypatch):
     runner.invoke(app, ["module", "add", "services/pay"])
     cfg = project / "services/pay/spec.yml"
