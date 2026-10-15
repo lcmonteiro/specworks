@@ -26,6 +26,8 @@ DEFAULT_DOCS_DIR = "docs"
 MAX_CONTEXT_BYTES = 50 * 1024
 MODULE_NAME_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 PREFIX_RE = re.compile(r"^[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)*$")
+CONFIG_KEYS = ("specworks", "context", "docs_dir", "capabilities", "modules", "test_globs", "source_globs", "commands", "diagrams")
+CAPABILITY_KEYS = ("path", "prefix", "description")
 
 
 class ConfigError(Exception):
@@ -258,6 +260,9 @@ def load_config(root: Path, dir: str | None = None) -> Config:
         raise ConfigError(
             f"{path}: 'dir' is no longer a setting; the file name sets the folder ({path.name} -> {path.stem}/). Remove it."
         )
+    unknown = set(raw) - set(CONFIG_KEYS)
+    if unknown:
+        raise ConfigError(f"{path}: unknown keys: {', '.join(sorted(map(str, unknown)))} (expected {', '.join(CONFIG_KEYS)})")
 
     context = raw.get("context") or ""
     if not isinstance(context, str):
@@ -274,15 +279,18 @@ def load_config(root: Path, dir: str | None = None) -> Config:
             raise ConfigError(f"capability name '{name}' must be kebab-case (e.g. user-auth)")
         if isinstance(value, str):
             value = {"path": value}
-        if not isinstance(value, dict) or "path" not in value:
+        if not isinstance(value, dict) or not isinstance(value.get("path"), str):
             raise ConfigError(f"capability '{name}' needs a 'path'")
-        prefix = str(value.get("prefix", "") or "")
+        unknown = set(value) - set(CAPABILITY_KEYS)
+        if unknown:
+            raise ConfigError(f"capability '{name}' has unknown keys: {', '.join(sorted(map(str, unknown)))} (expected {', '.join(CAPABILITY_KEYS)})")
+        prefix = str(value.get("prefix") or "")
         if prefix and not PREFIX_RE.match(prefix):
             raise ConfigError(f"capability '{name}': prefix '{prefix}' must be upper-case letters/digits (e.g. AUTH)")
         capabilities[name] = Capability(
             name=name,
-            path=validate_relative(str(value["path"]).rstrip("/"), f"capability '{name}' path"),
-            description=str(value.get("description", "")),
+            path=validate_relative(value["path"].rstrip("/"), f"capability '{name}' path"),
+            description=str(value.get("description") or ""),
             prefix=prefix,
         )
 

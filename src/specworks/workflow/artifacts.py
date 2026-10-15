@@ -24,6 +24,10 @@ class Artifact:
     requires: list[str] = field(default_factory=list)
     optional: bool = False
 
+    def skipped(self, change: Change) -> bool:
+        """Delta specs of a change with no behaviour change (``skip_specs``) are not written."""
+        return self.id == "specs" and change.skip_specs
+
     def exists(self, change: Change) -> bool:
         if any(ch in self.generates for ch in "*?["):
             return any(p.is_file() for p in change.path.glob(self.generates))
@@ -48,14 +52,16 @@ def read_template(name: str) -> str:
 
 
 def artifact_states(change: Change) -> list[dict]:
-    """Each artifact as done, ready (all requirements exist) or blocked."""
+    """Each artifact as done, ready (all requirements exist), blocked, or skipped (specs of a skip_specs change)."""
     artifacts = load_artifacts()
     states = []
     for art in artifacts.values():
         if art.exists(change):
             status = "done"
+        elif art.skipped(change):
+            status = "skipped"
         else:
-            missing = [r for r in art.requires if not artifacts[r].exists(change) and not artifacts[r].optional]
+            missing = [r for r in art.requires if not (artifacts[r].exists(change) or artifacts[r].optional or artifacts[r].skipped(change))]
             status = "blocked" if missing else "ready"
         states.append(
             {

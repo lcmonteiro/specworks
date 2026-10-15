@@ -9,7 +9,7 @@ reading the diff. `- [ ] R<n>` while open, `- [x] R<n>` once resolved. Write
 "None." when there are no findings. -->
 
 - [ ] R1 **<!-- spec-gap | code-gap | design-gap | test-gap | tag | quality -->** <!-- what drifts, with REQ/AC IDs --> (`<!-- file:line -->`)
-  - **Decision**: <!-- code fixed | spec updated (ADDED/MODIFIED REQ-...) | design updated (interface/decision) | back to specify/design/code: proposal (stays open) | accepted: reason -->
+  - **Decision**: <!-- code fixed | spec updated (ADDED/MODIFIED REQ-...) | design updated (interface/decision) | back to specify/design/test/code: proposal (stays open) | accepted: reason -->
 
 ## Changed files without tags
 

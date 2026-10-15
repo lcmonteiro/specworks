@@ -41,8 +41,10 @@ capabilities: {}
 #   billing: services/billing
 modules: {}
 
-# Globs used by `specworks trace` to find tests and source files. Empty means
-# "scan everything that is not in the workflow folder".
+# Globs, relative to this file's folder, for the files `specworks trace` scans
+# for @ac / @req tags. test_globs mark test files (empty: recognised by name,
+# e.g. test_x.py, x.test.ts, tests/). source_globs limit the other files scanned
+# (empty: everything outside the workflow folder). Each module uses its own.
 test_globs: []
 source_globs: []
 
