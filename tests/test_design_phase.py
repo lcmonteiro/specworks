@@ -5,8 +5,8 @@ import re
 import sys
 
 import pytest
-from helpers import REF, run_json
 
+from helpers import REF, run_json
 from specworks.workflow.gate import interface_files
 
 PASS = f'"{sys.executable}" -c "print(\'all green\')"'

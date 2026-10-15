@@ -9,11 +9,10 @@ test, lint and typecheck commands.
 from __future__ import annotations
 
 from ..core.changes import Change
-from ..tools.diagrams import diagrams_in, state
-from .gate import Check, _tests_pass
-from .review import REVIEW_FILE, read_review, review_change
-from ..core.runner import CommandError, run_command
 from ..core.workspace import Module, Workspace
+from ..tools.diagrams import diagrams_in, state
+from .checks import Check, accounted_check, command_check, tests_pass
+from .review import REVIEW_FILE, read_review, review_change
 
 COMPLETENESS, CORRECTNESS, COHERENCE = "completeness", "correctness", "coherence"
 GROUPS = (COMPLETENESS, CORRECTNESS, COHERENCE)
@@ -24,18 +23,9 @@ def _check(group: str, fix: str, name: str, ok: bool, details: list[str] | None 
     return Check(name, ok, details or [], blocking=blocking, group=group, fix=fix)
 
 
-def _optional_command(ws: Workspace, module: Module, key: str, run: bool) -> Check:
-    name = f"{key} passes (commands.{key})"
-    if not ws.commands(module).get(key):
-        return _check(CORRECTNESS, "/specworks-code", name, True, ["not configured"], blocking=False)
-    if not run:
-        return _check(CORRECTNESS, "/specworks-code", name, False, ["not run (--no-run)"], blocking=False)
-    try:
-        result = run_command(ws, module, key)
-    except CommandError as exc:
-        return _check(CORRECTNESS, "/specworks-code", name, False, [str(exc)])
-    details = [f"$ {result.command}  (in {result.cwd}, exit {result.exit_code})"]
-    return _check(CORRECTNESS, "/specworks-code", name, result.ok, details if result.ok else details + result.tail())
+def _grouped(check: Check, group: str, fix: str) -> Check:
+    check.group, check.fix = group, fix
+    return check
 
 
 def validate_change(ws: Workspace, module: Module, change: Change, run: bool = True, base: str | None = None) -> list[Check]:
@@ -61,23 +51,15 @@ def validate_change(ws: Workspace, module: Module, change: Change, run: bool = T
 
     # Correctness: the specs are well-formed and the code does what they say.
     checks.append(_check(CORRECTNESS, "/specworks-specify", "specs and tasks are valid (specworks check)", not report.spec_errors, report.spec_errors))
-    test_check = _tests_pass(ws, module, run)
-    test_check.group, test_check.fix = CORRECTNESS, "/specworks-code"
-    checks.append(test_check)
-    checks.append(_optional_command(ws, module, "lint", run))
-    checks.append(_optional_command(ws, module, "typecheck", run))
+    checks.append(_grouped(tests_pass(ws, module, run), CORRECTNESS, "/specworks-code"))
+    for key in ("lint", "typecheck"):
+        command = command_check(ws, module, key, f"{key} passes (commands.{key})", run, optional=True)
+        checks.append(_grouped(command, CORRECTNESS, "/specworks-code"))
     checks.append(_check(CORRECTNESS, "/specworks-review", "no tag refers to an unknown requirement or criterion", not found["unknownTags"], found["unknownTags"]))
     checks.append(_check(CORRECTNESS, "/specworks-code", "removed requirements are gone from tests and code", not found["removedStillTagged"], found["removedStillTagged"]))
 
     # Coherence: code, specs, review and design tell the same story.
-    if report.changed is None:
-        checks.append(_check(COHERENCE, "/specworks-review", "changed files without tags are accounted for", False, [report.note], blocking=False))
-    else:
-        untraced = found["untracedSource"] + found["untracedTests"]
-        missing = [path for path in untraced if not review.accounts_for(path)]
-        checks.append(
-            _check(COHERENCE, "/specworks-review", f"changed files without tags are accounted for in {REVIEW_FILE} (base {report.base})", not missing, missing)
-        )
+    checks.append(_grouped(accounted_check(report, review), COHERENCE, "/specworks-review"))
     settings = ws.top.config.diagrams
     stale = [f"{ws.rel(d.svg)} ({status})" for d in diagrams_in(change.path) if (status := state(d, settings)) != "ok"]
     checks.append(_check(COHERENCE, "/specworks-specify", "diagram SVGs are up to date (specworks diagrams)", not stale, stale))

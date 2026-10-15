@@ -1,8 +1,8 @@
 """Test phase support: commands config, task ticking and the specify/test gates."""
 
-from helpers import REF, run_json, write_tests
 from typer.testing import CliRunner
 
+from helpers import REF, run_json, write_tests
 from specworks.cli import app
 
 runner = CliRunner()

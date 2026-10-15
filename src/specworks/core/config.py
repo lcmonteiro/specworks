@@ -59,17 +59,24 @@ class Capability:
         }
 
 
-def theme_id(value: object, key: str, allow_none: bool = False) -> int | None:
+def theme_id(value: object, key: str) -> int:
     """A theme given by name (``c4``, ``Colorblind Clear``) or number -> its D2 number."""
-    if allow_none and (value is None or (isinstance(value, str) and value.strip().lower() in ("none", "same"))):
-        return None
     try:
+        if isinstance(value, bool) or not isinstance(value, (int, str)):
+            raise ValueError(value)
         return pyd2.theme_id(value)
     except ValueError:
-        raise ConfigError(
-            f"'{key}': unknown theme {value!r}; use a name ({', '.join(THEMES)}) or a number from `d2 themes`"
-            + (", or none to use the light theme in dark mode too" if allow_none else "")
-        ) from None
+        raise ConfigError(f"'{key}': unknown theme {value!r}; use a name ({', '.join(THEMES)}) or a number from `d2 themes`") from None
+
+
+def dark_theme_id(value: object, key: str) -> int | None:
+    """Like ``theme_id``; ``none`` (or ``same``) means the light theme is used in dark mode too."""
+    if value is None or (isinstance(value, str) and value.strip().lower() in ("none", "same")):
+        return None
+    try:
+        return theme_id(value, key)
+    except ConfigError as exc:
+        raise ConfigError(f"{exc}, or none to use the light theme in dark mode too") from None
 
 
 def theme_name(number: int | None) -> str:
@@ -134,7 +141,7 @@ def load_diagram_settings(raw: object) -> DiagramSettings:
         raise ConfigError(f"'diagrams' has unknown keys: {', '.join(sorted(unknown))}")
     settings = DiagramSettings(**raw)
     settings.theme = theme_id(raw.get("theme", 0), "diagrams.theme")
-    settings.dark_theme = theme_id(raw.get("dark_theme", 200), "diagrams.dark_theme", allow_none=True)
+    settings.dark_theme = dark_theme_id(raw.get("dark_theme", 200), "diagrams.dark_theme")
     if settings.layout not in LAYOUTS:
         raise ConfigError("'diagrams.layout' must be elk or dagre")
     if not isinstance(settings.sketch, bool) or not isinstance(settings.pad, int) or settings.pad < 0:

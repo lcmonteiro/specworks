@@ -5,9 +5,9 @@ import sys
 from datetime import date
 
 import pytest
-from helpers import REF, run_json
 from typer.testing import CliRunner
 
+from helpers import REF, run_json
 from specworks.cli import app
 from specworks.specs.merge import MergeError, apply_delta
 from specworks.specs.specfile import parse_spec

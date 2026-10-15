@@ -65,6 +65,7 @@ def set_done(change_path: Path, nums: list[str], done: bool) -> list[Task]:
         index = tasks[num].line - 1
         ending = lines[index][len(lines[index].rstrip("\r\n")) :]
         match = TASK_RE.match(lines[index].rstrip("\r\n"))
+        assert match is not None  # read_tasks found a task on this line
         mark = "x" if done else " "
         lines[index] = f"{match.group('lead')}{mark}{match.group('close')}{match.group('num')} {match.group('text')}{ending}"
     path.write_text("".join(lines), encoding="utf-8")

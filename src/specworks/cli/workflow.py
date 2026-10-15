@@ -6,19 +6,21 @@ import json
 
 import typer
 
-from ..core.changes import ChangeError
-from ..core.config import ConfigError
 from ..core.runner import CommandError, run_command
-from ..workflow.gate import GATES, GateError, run_gate
+from ..specs.check import check_change
+from ..specs.merge import MergeError, archive_target, close_change, plan_merge
+from ..workflow.cycle import next_cycle
+from ..workflow.gate import GATES, GateContext, GateError, run_gate
 from ..workflow.review import review_change
+from ..workflow.validate import GROUPS, summary, validate_change
 from .app import app
-from .output import JsonOpt, change_dict, emit, fail, resolve_change, workspace
+from .output import ChangeOpt, JsonOpt, change_dict, emit, fail, require_change, workspace
 
 
 @app.command()
 def gate(
     phase: str = typer.Argument(..., help=f"Phase to check: {', '.join(GATES)}."),
-    change: str = typer.Option(..., "--change", "-c", help="Change name or module:name."),
+    change: str = ChangeOpt,
     no_run: bool = typer.Option(False, "--no-run", help="design/code/review: do not run the project's commands (reported as a warning)."),
     base: str | None = typer.Option(None, "--base", help="review: branch to diff against (default: origin's default branch)."),
     allow_open: bool = typer.Option(
@@ -27,11 +29,10 @@ def gate(
     as_json: bool = JsonOpt,
 ) -> None:
     """Check whether a change has finished a phase (exit 1 if a blocking check fails)."""
-    ws = workspace(as_json)
+    ws, mod, ch = require_change(change, as_json)
     try:
-        mod, ch = resolve_change(ws, change)
-        passed, checks = run_gate(ws, mod, ch, phase, run_tests=not no_run, base=base, allow_open=allow_open)
-    except (ChangeError, ConfigError, GateError) as exc:
+        passed, checks = run_gate(GateContext(ws, mod, ch, run_tests=not no_run, base=base, allow_open=allow_open), phase)
+    except GateError as exc:
         fail(str(exc), as_json)
     data = {**change_dict(ws, mod, ch), "gate": phase, "passed": passed, "checks": [c.to_dict() for c in checks]}
     lines = []
@@ -47,16 +48,12 @@ def gate(
 
 @app.command()
 def review(
-    change: str = typer.Option(..., "--change", "-c", help="Change name or module:name."),
+    change: str = ChangeOpt,
     base: str | None = typer.Option(None, "--base", help="Branch to diff against (default: origin's default branch)."),
     as_json: bool = JsonOpt,
 ) -> None:
     """Drift candidates between a change's specs and its code, in both directions."""
-    ws = workspace(as_json)
-    try:
-        mod, ch = resolve_change(ws, change)
-    except (ChangeError, ConfigError) as exc:
-        fail(str(exc), as_json)
+    ws, mod, ch = require_change(change, as_json)
     _, report = review_change(ws, ch, base)
     data = {**change_dict(ws, mod, ch), **report.to_dict()}
     labels = {
@@ -78,17 +75,11 @@ def review(
 
 @app.command()
 def cycle(
-    change: str = typer.Option(..., "--change", "-c", help="Change name or module:name."),
+    change: str = ChangeOpt,
     as_json: bool = JsonOpt,
 ) -> None:
     """After a review: where the next design → test → code → review cycle starts, from review.md's open findings."""
-    from ..workflow.cycle import next_cycle
-
-    ws = workspace(as_json)
-    try:
-        mod, ch = resolve_change(ws, change)
-    except (ChangeError, ConfigError) as exc:
-        fail(str(exc), as_json)
+    ws, mod, ch = require_change(change, as_json)
     result = next_cycle(ch)
     data = {**change_dict(ws, mod, ch), **result}
     if not result["reviewed"]:
@@ -106,19 +97,13 @@ def cycle(
 
 @app.command("validate")
 def validate_cmd(
-    change: str = typer.Option(..., "--change", "-c", help="Change name or module:name."),
+    change: str = ChangeOpt,
     base: str | None = typer.Option(None, "--base", help="Branch to diff against (default: origin's default branch)."),
     no_run: bool = typer.Option(False, "--no-run", help="Do not run test/lint/typecheck (reported as warnings)."),
     as_json: bool = JsonOpt,
 ) -> None:
     """Final read-only check before close (validate phase): completeness, correctness, coherence (exit 1 on FAIL)."""
-    from ..workflow.validate import GROUPS, summary, validate_change
-
-    ws = workspace(as_json)
-    try:
-        mod, ch = resolve_change(ws, change)
-    except (ChangeError, ConfigError) as exc:
-        fail(str(exc), as_json)
+    ws, mod, ch = require_change(change, as_json)
     checks = validate_change(ws, mod, ch, run=not no_run, base=base)
     result = summary(checks)
     data = {**change_dict(ws, mod, ch), **result, "checks": [c.to_dict() for c in checks]}
@@ -140,22 +125,14 @@ def validate_cmd(
 
 @app.command()
 def close(
-    change: str = typer.Option(..., "--change", "-c", help="Change name or module:name."),
+    change: str = ChangeOpt,
     dry_run: bool = typer.Option(False, "--dry-run", help="Show what would be merged and archived; write nothing."),
     base: str | None = typer.Option(None, "--base", help="Branch to diff against for validate (default: origin's default branch)."),
     no_run: bool = typer.Option(False, "--no-run", help="Validate without running test/lint/typecheck."),
     as_json: bool = JsonOpt,
 ) -> None:
     """Merge the change's delta specs into the living specs, update requirements.md, and archive the change."""
-    from ..specs.check import check_change
-    from ..specs.merge import MergeError, archive_target, close_change, plan_merge
-    from ..workflow.validate import summary, validate_change
-
-    ws = workspace(as_json)
-    try:
-        mod, ch = resolve_change(ws, change)
-    except (ChangeError, ConfigError) as exc:
-        fail(str(exc), as_json)
+    ws, mod, ch = require_change(change, as_json)
     ref = mod.qualify(ch.name)
     result = summary(validate_change(ws, mod, ch, run=not no_run, base=base))
     if result["verdict"] != "PASS":
@@ -191,11 +168,14 @@ def run(
     as_json: bool = JsonOpt,
 ) -> None:
     """Run one of the project's configured commands in the right module folder (exit code passes through)."""
-    ws = workspace(as_json)
+    if change:
+        ws, mod, _ = require_change(change, as_json)
+    else:
+        ws = workspace(as_json)
+        mod = ws.current
     try:
-        mod = resolve_change(ws, change)[0] if change else ws.current
         result = run_command(ws, mod, key, capture=as_json)
-    except (ChangeError, ConfigError, CommandError) as exc:
+    except CommandError as exc:
         fail(str(exc), as_json)
     if as_json:
         typer.echo(

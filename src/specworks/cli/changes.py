@@ -9,7 +9,7 @@ from ..core.config import ConfigError
 from ..specs.tasks import TaskError, read_tasks, set_done
 from ..workflow.artifacts import WorkflowError, artifact_states, instructions
 from .app import app, task_app
-from .output import JsonOpt, change_dict, emit, fail, resolve_change, workspace
+from .output import ChangeOpt, JsonOpt, change_dict, emit, fail, require_change, workspace
 
 
 @app.command()
@@ -29,13 +29,9 @@ def new(
 
 
 @app.command()
-def status(change: str = typer.Option(..., "--change", "-c", help="Change name or module:name."), as_json: bool = JsonOpt) -> None:
+def status(change: str = ChangeOpt, as_json: bool = JsonOpt) -> None:
     """Phase and artifact states (done / ready / blocked) of a change."""
-    ws = workspace(as_json)
-    try:
-        mod, ch = resolve_change(ws, change)
-    except (ChangeError, ConfigError) as exc:
-        fail(str(exc), as_json)
+    ws, mod, ch = require_change(change, as_json)
     states = artifact_states(ch)
     data = {**change_dict(ws, mod, ch), "phases": list(PHASES), "artifacts": states}
     text = "\n".join([f"{mod.qualify(ch.name)} (phase: {ch.phase})"] + [f"  [{s['status']:^7}] {s['generates']}" for s in states])
@@ -49,11 +45,10 @@ def phase(
     as_json: bool = JsonOpt,
 ) -> None:
     """Move a change to another phase."""
-    ws = workspace(as_json)
+    ws, mod, ch = require_change(name, as_json)
     try:
-        mod, ch = resolve_change(ws, name)
         set_phase(ch, to)
-    except (ChangeError, ConfigError) as exc:
+    except ChangeError as exc:
         fail(str(exc), as_json)
     emit(change_dict(ws, mod, ch), as_json, f"{mod.qualify(ch.name)}: phase → {ch.phase}")
 
@@ -61,27 +56,17 @@ def phase(
 @app.command("instructions")
 def instructions_cmd(
     artifact: str,
-    change: str = typer.Option(..., "--change", "-c", help="Change name or module:name."),
+    change: str = ChangeOpt,
     as_json: bool = JsonOpt,
 ) -> None:
     """Template, rules and output path for writing one artifact of a change."""
-    ws = workspace(as_json)
+    ws, mod, ch = require_change(change, as_json)
     try:
-        mod, ch = resolve_change(ws, change)
         data = instructions(ws, mod, ch, artifact)
-    except (ChangeError, ConfigError, WorkflowError) as exc:
+    except (ConfigError, WorkflowError) as exc:
         fail(str(exc), as_json)
     text = f"# {data['artifact']} → {data['outputPath']}\n\n{data['instruction']}\n---\n{data['template']}"
     emit(data, as_json, text)
-
-
-def _task_change(as_json: bool, change: str):
-    ws = workspace(as_json)
-    try:
-        mod, ch = resolve_change(ws, change)
-    except (ChangeError, ConfigError) as exc:
-        fail(str(exc), as_json)
-    return ws, mod, ch
 
 
 def _emit_tasks(ws, mod, ch, tasks, as_json: bool) -> None:
@@ -93,12 +78,12 @@ def _emit_tasks(ws, mod, ch, tasks, as_json: bool) -> None:
 
 @task_app.command("list")
 def task_list(
-    change: str = typer.Option(..., "--change", "-c", help="Change name or module:name."),
+    change: str = ChangeOpt,
     pending: bool = typer.Option(False, "--pending", help="Only tasks not done yet."),
     as_json: bool = JsonOpt,
 ) -> None:
     """List the tasks of a change with their IDs and state."""
-    ws, mod, ch = _task_change(as_json, change)
+    ws, mod, ch = require_change(change, as_json)
     try:
         tasks = read_tasks(ch.path)
     except TaskError as exc:
@@ -107,7 +92,7 @@ def task_list(
 
 
 def _set(change: str, nums: list[str], done: bool, as_json: bool) -> None:
-    ws, mod, ch = _task_change(as_json, change)
+    ws, mod, ch = require_change(change, as_json)
     try:
         set_done(ch.path, nums, done)
         tasks = read_tasks(ch.path)
@@ -119,7 +104,7 @@ def _set(change: str, nums: list[str], done: bool, as_json: bool) -> None:
 @task_app.command("done")
 def task_done(
     nums: list[str] = typer.Argument(..., help="Task numbers, e.g. 1.1 1.2."),
-    change: str = typer.Option(..., "--change", "-c", help="Change name or module:name."),
+    change: str = ChangeOpt,
     as_json: bool = JsonOpt,
 ) -> None:
     """Tick tasks as done (- [x])."""
@@ -129,7 +114,7 @@ def task_done(
 @task_app.command("undo")
 def task_undo(
     nums: list[str] = typer.Argument(..., help="Task numbers, e.g. 1.1 1.2."),
-    change: str = typer.Option(..., "--change", "-c", help="Change name or module:name."),
+    change: str = ChangeOpt,
     as_json: bool = JsonOpt,
 ) -> None:
     """Mark tasks as not done (- [ ])."""

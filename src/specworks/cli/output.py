@@ -15,6 +15,9 @@ from ..tools.skills import TOOLS
 JsonOpt = typer.Option(False, "--json", help="Machine-readable output.")
 
 
+ChangeOpt = typer.Option(..., "--change", "-c", help="Change name or module:name.")
+
+
 AllOpt = typer.Option(False, "--all", help="Include every module of the workspace.")
 
 
@@ -104,3 +107,13 @@ def resolve_change(ws: Workspace, ref: str) -> tuple[Module, Change]:
         refs = ", ".join(m.qualify(name) for m, _ in found)
         raise ChangeError(f"change '{name}' exists in several modules; use one of: {refs}")
     raise ChangeError(f"change '{name}' not found in any module")
+
+
+def require_change(ref: str, as_json: bool) -> tuple[Workspace, Module, Change]:
+    """The workspace and the change ``ref`` names, or exit with the error."""
+    ws = workspace(as_json)
+    try:
+        mod, ch = resolve_change(ws, ref)
+    except (ChangeError, ConfigError) as exc:
+        fail(str(exc), as_json)
+    return ws, mod, ch
