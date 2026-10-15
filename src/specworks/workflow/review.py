@@ -16,13 +16,14 @@ from __future__ import annotations
 
 import re
 import subprocess
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 
 from ..core.changes import Change
 from ..core.workspace import Workspace
 from ..specs.check import ChangeSpecs, check_change
-from ..specs.trace import Tag, build_matrix, gaps, is_test_file, scan_tags, unknown_tags
+from ..specs.trace import Tag, build_matrix, file_classifier, gaps, scan_tags, unknown_tags
 
 CODE_EXTENSIONS = {
     ".py", ".pyi", ".js", ".jsx", ".mjs", ".cjs", ".ts", ".tsx", ".go", ".rs", ".java", ".kt", ".kts",
@@ -122,16 +123,19 @@ def changed_paths(ws: Workspace, base: str) -> list[str]:
     return paths
 
 
-def classify(ws: Workspace, rel: str) -> str | None:
-    """``source``/``test``/``other``; None for files inside a workflow folder (specs, changes)."""
+def classify(ws: Workspace, rel: str, file_kind: Callable[[Path], tuple[bool, bool]]) -> str | None:
+    """``source``/``test``/``other``; None for files inside a workflow folder (specs, changes).
+
+    ``file_kind`` is ``trace.file_classifier(ws)``: the owning module's test_globs and source_globs decide.
+    """
     path = ws.root / rel
     for module in ws.modules():
         if path.is_relative_to(module.root / module.config.dir):
             return None
-    test_globs = [g for m in ws.modules() for g in m.config.test_globs]
-    if is_test_file(rel, test_globs):
+    scanned, is_test = file_kind(path)
+    if is_test:
         return "test"
-    return "source" if path.suffix.lower() in CODE_EXTENSIONS else "other"
+    return "source" if scanned and path.suffix.lower() in CODE_EXTENSIONS else "other"
 
 
 def review_change(ws: Workspace, change: Change, base: str | None = None) -> tuple[ChangeSpecs, ReviewReport]:
@@ -156,8 +160,9 @@ def review_change(ws: Workspace, change: Change, base: str | None = None) -> tup
     for tag in tags:
         tags_by_file.setdefault(tag.file, []).append(tag.id)
     report.changed = []
+    file_kind = file_classifier(ws)
     for rel in paths:
-        kind = classify(ws, rel)
+        kind = classify(ws, rel, file_kind)
         if kind is not None:
             report.changed.append(ChangedFile(path=rel, kind=kind, tags=sorted(set(tags_by_file.get(rel, [])))))
     return specs, report

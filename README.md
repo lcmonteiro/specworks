@@ -82,12 +82,17 @@ The system SHALL email a single-use reset link valid for 30 minutes.
   (`<capability path>/<docs_dir>/spec.md`).
 - Tests and code point back with comment tags in any language:
   `# @ac AC-AUTH-003.1` in a test, `// @req REQ-AUTH-003` in code.
+  Each file follows the module that owns it: `test_globs` (relative to the
+  module's folder) mark its test files, otherwise names like `test_x.py`,
+  `x.test.ts` or a `tests/` folder do; `source_globs`, when set, limit the other
+  files scanned.
 
 | Command | What it does |
 |---|---|
 | `specworks spec list` / `spec show <ref>` | capabilities, their requirements, ID prefix, next free ID and delta path |
 | `specworks check --change <ref>` | checks proposal, delta specs (IDs, SHALL/MUST, scenarios, MODIFIED/REMOVED targets, ID clashes with other changes) and tasks (format, every AC covered) |
 | `specworks diagrams --change <ref> \| --dir <folder> [--check]` | renders `diagrams/*.d2` of a change (or of a living docs folder) to SVG with the workspace theme; `--check` reports missing/outdated SVGs without rendering |
+| `specworks skip-specs --change <ref> [--off]` | marks a change with no behaviour change (refactor, tooling, docs): it needs no delta specs |
 | `specworks task list\|done\|undo --change <ref> [N.M ...]` | lists tasks with their IDs; ticks or unticks checkboxes without touching the rest of `tasks.md` |
 | `specworks gate <phase> --change <ref>` | checks a phase is finished: `specify` (valid specs, tasks cover every AC), `design` (design.md Interfaces recorded, the files it names exist, build/typecheck and the existing tests pass; once the change has `@ac` tests, a red suite is only a warning), `test` (every AC has an `@ac`-tagged test, no tags to unknown IDs), `code` (all tasks done, every requirement has `@req` code, removed ones gone, and `commands.test` passes; `--no-run` skips running it), `review` (`review.md` with no open finding (`--allow-open` in a build), every untagged changed file accounted for, tags complete, tests pass), `validate` (same checks as `specworks validate`) |
 | `specworks close --change <ref> [--dry-run]` | after a passing validate: merges the deltas into each living `spec.md` (ADDED appended, MODIFIED replaced by ID, REMOVED deleted), regenerates `requirements.md` with a History line, marks the change `done` and moves it to `changes/archive/<date>-<name>/` |

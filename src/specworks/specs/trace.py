@@ -5,9 +5,12 @@ Tests and code link back to the specs with comment tags, in any language::
     # @ac AC-AUTH-001.1        (in a test)
     // @req REQ-AUTH-001       (in code)
 
-A file counts as a test when it matches the module's ``test_globs`` or, when
-none are set, when its name or folder looks like a test (``test_x.py``,
-``x_test.go``, ``x.test.ts``, ``x.spec.js``, ``x_spec.rb``, ``tests/``, ``__tests__/``...).
+Each file follows the config of the module that owns it (the nearest one), with
+globs relative to that module's folder. A file counts as a test when it matches
+the module's ``test_globs`` or, when none are set, when its name or folder looks
+like a test (``test_x.py``, ``x_test.go``, ``x.test.ts``, ``x.spec.js``,
+``x_spec.rb``, ``tests/``, ``__tests__/``...). ``source_globs``, when set, limit
+the other files scanned; tests are always scanned.
 """
 
 from __future__ import annotations
@@ -15,6 +18,7 @@ from __future__ import annotations
 import fnmatch
 import os
 import re
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -65,11 +69,24 @@ def is_test_file(rel: str, test_globs: list[str]) -> bool:
     return any(p in TEST_DIRS for p in parts[:-1]) or bool(TEST_NAME_RE.search(parts[-1]))
 
 
+def file_classifier(ws: Workspace) -> Callable[[Path], tuple[bool, bool]]:
+    """``classify(path) -> (scanned, is_test)`` for files of the workspace, by the config of the module owning each one."""
+    deepest_first = sorted(ws.modules(), key=lambda m: len(m.root.parts), reverse=True)
+
+    def classify(path: Path) -> tuple[bool, bool]:
+        module = next(m for m in deepest_first if path.is_relative_to(m.root))
+        rel = path.relative_to(module.root).as_posix()
+        cfg = module.config
+        is_test = is_test_file(rel, cfg.test_globs)
+        return is_test or not cfg.source_globs or any(fnmatch.fnmatch(rel, g) for g in cfg.source_globs), is_test
+
+    return classify
+
+
 def scan_tags(ws: Workspace) -> list[Tag]:
     """Every @req / @ac tag in the workspace, skipping hidden, vendored and workflow folders."""
     skip_roots = {(m.root / m.config.dir).resolve() for m in ws.modules()}
-    globs = [g for m in ws.modules() for g in m.config.source_globs + m.config.test_globs]
-    test_globs = [g for m in ws.modules() for g in m.config.test_globs]
+    classify = file_classifier(ws)
     tags: list[Tag] = []
     for dirpath, dirnames, filenames in os.walk(ws.root):
         here = Path(dirpath)
@@ -78,8 +95,8 @@ def scan_tags(ws: Workspace) -> list[Tag]:
         )
         for name in sorted(filenames):
             path = here / name
-            rel = ws.rel(path)
-            if globs and not any(fnmatch.fnmatch(rel, g) for g in globs):
+            scanned, is_test = classify(path)
+            if not scanned:
                 continue
             try:
                 if path.stat().st_size > MAX_FILE_BYTES:
@@ -89,7 +106,7 @@ def scan_tags(ws: Workspace) -> list[Tag]:
                 continue
             if "@req" not in text and "@ac" not in text:
                 continue
-            is_test = is_test_file(rel, test_globs)
+            rel = ws.rel(path)
             for number, line in enumerate(text.splitlines(), start=1):
                 for match in TAG_RE.finditer(line):
                     tags.append(Tag(id=match.group("id"), kind=match.group("kind"), file=rel, line=number, is_test=is_test))

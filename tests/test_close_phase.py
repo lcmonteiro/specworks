@@ -231,3 +231,24 @@ def test_a_failed_archive_puts_the_living_docs_back(ready, monkeypatch):
     assert snapshot(ready) == before  # living spec, requirements.md and the change's phase untouched
     code, data = run_json("close", "--change", REF, "--base", "main")  # and closing again works
     assert code == 0, data
+
+
+def test_headings_inside_code_fences_are_not_structure():
+    living = (
+        "# user-auth\n\n## Requirements\n\n### Requirement: REQ-AUTH-001 Config\nThe system SHALL read:\n"
+        "```markdown\n## Settings\n### Requirement: REQ-AUTH-099 Not one\n```\n\n"
+        "### Requirement: REQ-AUTH-002 B\nThe system SHALL b.\n\n## Notes\n\nKeep me.\n"
+    )
+    text, _, modified, _ = apply_delta(
+        living, FakeDelta("## MODIFIED Requirements\n\n### Requirement: REQ-AUTH-002 B v2\nThe system SHALL b2.\n")
+    )
+    assert modified == ["REQ-AUTH-002"]
+    assert "## Settings\n### Requirement: REQ-AUTH-099 Not one\n```" in text
+    assert "REQ-AUTH-002 B v2\nThe system SHALL b2.\n\n## Notes\n\nKeep me.\n" in text
+
+
+def test_added_requirements_go_at_the_end_of_the_requirements_section():
+    living = "# user-auth\n\n## Requirements\n\n### Requirement: REQ-AUTH-001 A\nThe system SHALL a.\n\n## Notes\n\nKeep me.\n"
+    text, added, _, _ = apply_delta(living, FakeDelta("## ADDED Requirements\n\n### Requirement: REQ-AUTH-002 B\nThe system SHALL b.\n"))
+    assert added == ["REQ-AUTH-002"]
+    assert text.index("REQ-AUTH-002") < text.index("## Notes") and text.endswith("## Notes\n\nKeep me.\n")

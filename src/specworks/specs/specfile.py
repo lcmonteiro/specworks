@@ -24,9 +24,12 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 
-REQ_ID_RE = re.compile(r"REQ-(?P<prefix>[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)*?)-(?P<num>\d+)\b")
-AC_ID_RE = re.compile(r"AC-(?P<prefix>[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)*?)-(?P<num>\d+)\.(?P<n>\d+)\b")
-ANY_ID_RE = re.compile(r"\b(?:AC-[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)*?-\d+\.\d+|REQ-[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)*?-\d+)\b")
+# An ID ends where no letter, digit or '-' follows, so a prefix segment of digits only
+# (REQ-API-2-001) is part of the prefix, not the number.
+_END = r"(?![\w-])"
+REQ_ID_RE = re.compile(rf"REQ-(?P<prefix>[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)*?)-(?P<num>\d+){_END}")
+AC_ID_RE = re.compile(rf"AC-(?P<prefix>[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)*?)-(?P<num>\d+)\.(?P<n>\d+){_END}")
+ANY_ID_RE = re.compile(rf"\b(?:AC-[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)*?-\d+\.\d+|REQ-[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)*?-\d+){_END}")
 
 H2_RE = re.compile(r"^##\s+(?P<title>.+?)\s*$")
 REQ_HEADER_RE = re.compile(r"^###\s+Requirement:\s*(?P<rest>.*?)\s*$")
@@ -58,6 +61,7 @@ class Requirement:
     section: str  # ADDED / MODIFIED / REMOVED, or "Requirements" in a living spec
     lines: list[str] = field(default_factory=list)  # description: text before the first scenario
     scenarios: list[Scenario] = field(default_factory=list)
+    end: int = 0  # last line of the block (before the next requirement or "## " heading)
 
     @property
     def description(self) -> str:
@@ -74,7 +78,7 @@ class Requirement:
 @dataclass
 class SpecDoc:
     purpose: str = ""
-    sections: list[str] = field(default_factory=list)  # every "## " heading, in order
+    sections: list[tuple[int, str]] = field(default_factory=list)  # every "## " heading (line, title), in order
     requirements: list[Requirement] = field(default_factory=list)
     problems: list[tuple[int, str]] = field(default_factory=list)  # (line, message) found while parsing
 
@@ -115,8 +119,13 @@ def parse_spec(text: str) -> SpecDoc:
     req: Requirement | None = None
     scenario: Scenario | None = None
     in_fence = False
+    lines = text.splitlines()
 
-    for number, line in enumerate(text.splitlines(), start=1):
+    def close_block(last: int) -> None:
+        if req is not None:
+            req.end = last
+
+    for number, line in enumerate(lines, start=1):
         if line.lstrip().startswith("```"):
             in_fence = not in_fence
         if in_fence or line.lstrip().startswith("```"):
@@ -126,12 +135,14 @@ def parse_spec(text: str) -> SpecDoc:
             continue
 
         if h2 := H2_RE.match(line):
-            doc.sections.append(h2.group("title"))
+            doc.sections.append((number, h2.group("title")))
+            close_block(number - 1)
             section = section_kind(h2.group("title"))
             req = scenario = None
             continue
         if header := REQ_HEADER_RE.match(line):
             scenario = None
+            close_block(number - 1)
             if section not in (*DELTA_SECTIONS, LIVING_SECTION):
                 doc.problems.append((number, "requirement outside an ADDED/MODIFIED/REMOVED (or Requirements) section"))
             req_id, title = split_id(header.group("rest"), REQ_ID_RE)
@@ -156,6 +167,7 @@ def parse_spec(text: str) -> SpecDoc:
         elif section == "Purpose":
             purpose.append(line)
 
+    close_block(len(lines))
     doc.purpose = "\n".join(purpose).strip()
     return doc
 

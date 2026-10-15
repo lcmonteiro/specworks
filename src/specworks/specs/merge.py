@@ -25,7 +25,7 @@ from ..core.changes import Change
 from ..core.workspace import Workspace
 from .capabilities import CapabilityRef
 from .check import ChangeSpecs, Delta
-from .specfile import H2_RE, LIVING_SECTION, REQ_HEADER_RE, Requirement, parse_spec, section_kind
+from .specfile import LIVING_SECTION, Requirement, parse_spec, section_kind
 
 REQUIREMENTS_FILE = "requirements.md"
 HISTORY_HEADING = "## History"
@@ -67,24 +67,18 @@ class CapabilityMerge:
 
 
 def _blocks(lines: list[str]) -> tuple[int, int, list[tuple[str | None, int, int]]]:
-    """Locate '## Requirements' and its requirement blocks: (section start, section end, [(id, start, end)])."""
-    section_start = section_end = None
-    for i, line in enumerate(lines):
-        if h2 := H2_RE.match(line):
-            if section_start is not None and section_end is None:
-                section_end = i
-            if section_kind(h2.group("title")) == LIVING_SECTION and section_start is None:
-                section_start = i
-    if section_start is None:
+    """Locate '## Requirements' and its requirement blocks as 0-based line indexes: (section start, section end, [(id, start, end)]).
+
+    The blocks come from ``parse_spec``, so headings inside code fences are not mistaken for structure.
+    """
+    doc = parse_spec("\n".join(lines))
+    starts = [number for number, title in doc.sections if section_kind(title) == LIVING_SECTION]
+    if not starts:
         raise MergeError("the living spec has no '## Requirements' section")
-    section_end = section_end if section_end is not None else len(lines)
-    headers = [(i, m.group("rest")) for i in range(section_start + 1, section_end) if (m := REQ_HEADER_RE.match(lines[i]))]
-    blocks = []
-    for n, (start, rest) in enumerate(headers):
-        end = headers[n + 1][0] if n + 1 < len(headers) else section_end
-        req_id = rest.split()[0] if rest.split() else None
-        blocks.append((req_id, start, end))
-    return section_start, section_end, blocks
+    start = starts[0]
+    end = next((number for number, _ in doc.sections if number > start), len(lines) + 1)
+    blocks = [(r.id, r.line - 1, r.end) for r in doc.requirements if start < r.line < end]
+    return start - 1, end - 1, blocks
 
 
 def _block_lines(req: Requirement) -> list[str]:
@@ -122,13 +116,15 @@ def apply_delta(living_text: str, delta: Delta) -> tuple[str, list[str], list[st
 
     out: list[str] = []
     i = 0
-    while i < len(lines):
-        if i == section_end:
+    while i <= len(lines):
+        if i == section_end:  # ADDED blocks go at the end of '## Requirements'
             if out and out[-1].strip():
                 out.append("")
             for req in delta.doc.section("ADDED"):
                 out += _block_lines(req)
                 added.append(req.id or "?")  # check_change requires IDs before close
+        if i == len(lines):
+            break
         if i in replacements:
             end, new_lines = replacements[i]
             out += new_lines
@@ -136,12 +132,6 @@ def apply_delta(living_text: str, delta: Delta) -> tuple[str, list[str], list[st
             continue
         out.append(lines[i])
         i += 1
-    if section_end >= len(lines):
-        if out and out[-1].strip():
-            out.append("")
-        for req in delta.doc.section("ADDED"):
-            out += _block_lines(req)
-            added.append(req.id or "?")  # check_change requires IDs before close
     text = re.sub(r"\n{3,}", "\n\n", "\n".join(out)).rstrip("\n") + "\n"
     return text, added, modified, removed
 

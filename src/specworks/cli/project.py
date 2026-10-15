@@ -55,11 +55,11 @@ def link_to_parent(root: Path, name: str | None) -> str | None:
         return None
     owner = parent.current
     rel = root.relative_to(owner.root).as_posix()
-    if rel in owner.config.modules.values():
-        return next(n for n, p in owner.config.modules.items() if p == rel)
-    module_name = name or default_module_name(root)
-    add_module_entry(owner.root, module_name, rel)
-    return owner.qualify(module_name) if owner.name else module_name
+    linked = next((n for n, p in owner.config.modules.items() if p == rel), None)
+    if linked is None:
+        linked = name or default_module_name(root)
+        add_module_entry(owner.root, linked, rel)
+    return f"{owner.name}/{linked}" if owner.name else linked  # nested modules are named parent/child
 
 
 @app.command()

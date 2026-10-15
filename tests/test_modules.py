@@ -223,3 +223,26 @@ def test_module_add_rejects_existing_config_with_other_dir(workspace):
     assert code == 1 and "uses docs.yml" in data["error"]
     assert not (other / "spec.yml").exists()
     assert "legacy: libs/legacy" not in (workspace / "spec.yml").read_text()
+
+
+def test_init_in_a_nested_module_reports_its_full_name(workspace, monkeypatch):
+    monkeypatch.chdir(workspace / "services/billing")
+    assert "linked  as module 'billing/vat'" in run("init", "vat", "--no-skills")
+
+
+def test_module_globs_are_relative_to_the_module(workspace, monkeypatch):
+    billing = workspace / "services/billing"
+    cfg = billing / "spec.yml"
+    cfg.write_text(cfg.read_text().replace("test_globs: []", 'test_globs: ["qa/*.py"]'))
+    (billing / "qa").mkdir()
+    (billing / "qa/checks.py").write_text("# @ac AC-BILLING-INVOICES-001.1\n")
+    (workspace / "top.py").write_text("# @req REQ-TOP-001\n")
+    (workspace / "tests").mkdir()
+    (workspace / "tests/test_top.py").write_text("# @ac AC-TOP-001.1\n")
+    monkeypatch.chdir(billing)
+    from specworks.core.workspace import load_workspace
+    from specworks.specs.trace import scan_tags
+
+    tags = {t.file: t.is_test for t in scan_tags(load_workspace())}
+    # billing's glob marks its qa/ tests; the top level keeps its own (default) rules.
+    assert tags == {"services/billing/qa/checks.py": True, "top.py": False, "tests/test_top.py": True}

@@ -25,16 +25,17 @@ go back to.
 
 1. **Pick the change**
 
-   Select it as the other phases do and announce `Using change: <ref>`, then:
-   ```bash
-   specworks phase "<ref>" validate
-   ```
+   Select it as the other phases do and announce `Using change: <ref>`.
 
-2. **Run the measurable checks**
+2. **Run the measurable checks, then move the change to this phase**
 
    ```bash
    specworks validate --change "<ref>" --json      # add --base <branch> if the default is wrong
+   specworks phase "<ref>" validate
    ```
+
+   Validate before moving the phase: one check reads the phase to tell
+   whether the change went through review.
 
    It runs the project's test, lint and typecheck commands and reports three
    groups; each failed check has a `fix` (the phase skill that owns it):

@@ -53,6 +53,20 @@ def phase(
     emit(change_dict(ws, mod, ch), as_json, f"{mod.qualify(ch.name)}: phase → {ch.phase}")
 
 
+@app.command("skip-specs")
+def skip_specs(
+    change: str = ChangeOpt,
+    off: bool = typer.Option(False, "--off", help="The change does change behaviour after all: delta specs are required again."),
+    as_json: bool = JsonOpt,
+) -> None:
+    """Mark a change with no behaviour change (refactor, tooling, docs): it has no delta specs."""
+    ws, mod, ch = require_change(change, as_json)
+    ch.skip_specs = not off
+    ch.save()
+    state = "skips delta specs" if ch.skip_specs else "needs delta specs"
+    emit(change_dict(ws, mod, ch), as_json, f"{mod.qualify(ch.name)}: {state}")
+
+
 @app.command("instructions")
 def instructions_cmd(
     artifact: str,
