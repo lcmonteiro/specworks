@@ -1,7 +1,7 @@
 ---
 name: specworks-specify
 description: Specify phase of spec-driven development - turn a request (or a refinement) into a proposal, delta specs with requirement IDs and acceptance criteria, a design and a task list, validated and traced. Use in a specworks project when the user wants to plan a change before building it, write requirements or acceptance criteria, or says "specify", "spec this", "write the proposal" or "specworks specify".
-allowed-tools: Bash(specworks:*), Bash(uv run specworks:*), Bash(uvx:*), Read, Grep, Glob, Write, Edit
+allowed-tools: Bash(specworks:*), Bash(uv run specworks:*), Bash(uvx --from git+https://github.com/lcmonteiro/specworks specworks:*), Read, Grep, Glob, Write, Edit
 ---
 
 Specify phase: decide WHAT will change and HOW it will be checked, before any

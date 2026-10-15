@@ -1,7 +1,7 @@
 ---
 name: specworks-validate
 description: Validate phase of spec-driven development - a final, read-only pass/fail check that a change is complete, correct and coherent before it is closed, with every failure pointing to the phase that fixes it. Use when a specworks change has been reviewed and the user wants to know if it is ready, or says "validate the change", "is the change ready to close" or "specworks validate".
-allowed-tools: Bash(specworks:*), Bash(uv run specworks:*), Bash(uvx:*), Bash(git diff:*), Bash(git log:*), Bash(git status:*), Read, Grep, Glob
+allowed-tools: Bash(specworks:*), Bash(uv run specworks:*), Bash(uvx --from git+https://github.com/lcmonteiro/specworks specworks:*), Bash(git diff:*), Bash(git log:*), Bash(git status:*), Read, Grep, Glob
 ---
 
 Validate phase: decide, without changing anything, whether the change is ready
