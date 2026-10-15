@@ -55,6 +55,7 @@ def create_change(cfg: Config, name: str) -> Change:
 
 
 def load_change(cfg: Config, name: str) -> Change:
+    validate_kebab(name, "change name", "add-user-auth")  # also keeps refs out of archive/ and other folders
     path = cfg.changes_path / name
     meta_file = path / META_FILE
     if name == "archive" or not meta_file.is_file():

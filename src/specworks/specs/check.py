@@ -124,6 +124,13 @@ def _check_delta(ws: Workspace, change: Change, delta: Delta, seen: dict[str, st
         if not doc.purpose:
             issues.append(Issue("warning", file, 0, f"new capability {cap.ref}: add '## Purpose' (one or two sentences)"))
 
+    if cap.is_new and (owner := ws.prefixes().get(cap.prefix)):
+        err(
+            0,
+            f"new capability {cap.ref} would use the ID prefix {cap.prefix}, already used by {owner}; "
+            f"register it with its own prefix first (specworks capability add {cap.name} --path <code path> --prefix <PREFIX>)",
+        )
+
     others = _other_changes(ws, change, cap)
     taken = others["ADDED"]
     # Each MODIFIED/REMOVED block replaces the whole living block at close, so two changes

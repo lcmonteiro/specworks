@@ -10,7 +10,7 @@ import typer
 from .. import __version__
 from ..core.config import DEFAULT_DIR, Config, ConfigError, config_name, find_config, load_config
 from ..core.config_file import add_capability_entry, add_module_entry, write_default_config
-from ..core.workspace import Workspace, load_module_config, load_workspace, require_workspace
+from ..core.workspace import Workspace, capability_prefix, load_module_config, load_workspace, require_workspace
 from ..specs.capabilities import capability_ref, describe
 from ..tools.skills import install_skills, parse_tools, remove_renamed_skills
 from .app import app, capability_app, module_app
@@ -220,6 +220,10 @@ def capability_add(
     """Register a capability in a module's config (needed before closing a change that creates it)."""
     ws = workspace(as_json)
     target = ws.module(module) if module is not None else ws.current
+    id_prefix = capability_prefix(target.name, name, prefix)
+    owner = ws.prefixes().get(id_prefix)
+    if owner and owner != target.qualify(name):  # the same name is reported as "already exists" below
+        raise ConfigError(f"the ID prefix {id_prefix} is already used by {owner}; choose another with --prefix")
     add_capability_entry(target.root, name, path, prefix=prefix, description=description)
     ws = require_workspace(target.root)
     data = describe(ws, capability_ref(ws.module(target.name), name), with_scenarios=False)

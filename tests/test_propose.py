@@ -505,3 +505,19 @@ def test_skip_specs_change(project):
     assert states["specs"] == "skipped" and states["tasks"] == "ready"
     code, data = run_json("skip-specs", "--change", "tidy-up", "--off")
     assert data["skipSpecs"] is False
+
+
+def test_two_capabilities_with_one_prefix_is_an_error(project):
+    cfg = project / "spec.yml"
+    cfg.write_text(cfg.read_text().replace("    prefix: AUTH\n", "    prefix: AUTH\n  login:\n    path: src/login\n    prefix: AUTH\n", 1))
+    code, data = run_json("spec", "list")
+    assert code == 1 and "user-auth and login both use the ID prefix AUTH" in data["error"]
+
+
+def test_new_capability_may_not_take_a_prefix_in_use(change):
+    path = change / "specs/auth"
+    path.mkdir(parents=True)
+    (path / "spec.md").write_text("## Purpose\n\nAuth.\n\n" + DELTA.split("## MODIFIED")[0].replace("REQ-AUTH-003", "REQ-AUTH-009").replace("AC-AUTH-003", "AC-AUTH-009"))
+    code, data = run_json("check", "--change", "add-password-reset")
+    messages = [i["message"] for i in data["issues"]]
+    assert code == 1 and any("new capability auth would use the ID prefix AUTH, already used by user-auth" in m for m in messages), messages

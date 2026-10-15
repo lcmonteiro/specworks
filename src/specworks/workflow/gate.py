@@ -103,7 +103,7 @@ def existing_tests_pass(ctx: GateContext) -> Check:
 
 
 GATE_CHECKS: dict[str, list[CheckFn]] = {
-    "specify": [c.specs_valid, c.tasks_written, c.acs_have_tasks],
+    "specify": [c.specs_valid, c.tasks_written],  # every criterion having a task is one of specs_valid's errors
     "design": [
         c.specs_valid,
         interfaces_recorded,

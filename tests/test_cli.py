@@ -241,3 +241,12 @@ def test_null_description_is_empty(project):
     cfg.write_text(cfg.read_text().replace("capabilities: {}", "capabilities:\n  user-auth:\n    path: src/auth\n    description:"))
     code, data = run_json("context")
     assert code == 0 and data["capabilities"][0]["description"] == "", data
+
+
+def test_archived_changes_are_not_addressable(project):
+    runner.invoke(app, ["new", "old"])
+    archived = project / "specworks/changes/archive/2026-01-01-old"
+    (project / "specworks/changes/old").rename(archived)
+    code, data = run_json("phase", "archive/2026-01-01-old", "code")
+    assert code == 1 and "must be kebab-case" in data["error"]
+    assert "phase: refine" in (archived / ".change.yaml").read_text()

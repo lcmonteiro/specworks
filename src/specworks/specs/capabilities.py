@@ -23,7 +23,7 @@ from typing import Any
 from ..core.changes import Change, list_changes
 from ..core.config import Capability, ConfigError
 from ..core.validators import validate_capability_name
-from ..core.workspace import Module, Workspace
+from ..core.workspace import Module, Workspace, capability_prefix
 from .specfile import REQ_ID_RE, SpecDoc, find_ids, id_prefix, parse_spec, requirement_number
 
 SPECS_DIR = "specs"
@@ -48,10 +48,7 @@ class CapabilityRef:
 
     @property
     def prefix(self) -> str:
-        if self.capability is not None and self.capability.prefix:
-            return self.capability.prefix
-        parts = [*self.module.name.split("/"), self.name] if self.module.name else [self.name]
-        return "-".join(parts).upper()
+        return capability_prefix(self.module.name, self.name, self.capability.prefix if self.capability else "")
 
     @property
     def delta_path(self) -> str:

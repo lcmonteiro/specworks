@@ -139,3 +139,20 @@ def test_review_artifact_has_instructions(repo):
     code, data = run_json("instructions", "review", "--change", REF)
     assert data["outputPath"] == f"spec/changes/{REF}/review.md"
     assert "## Changed files without tags" in data["template"] and "spec-gap" in data["instruction"]
+
+
+def test_review_lists_changed_files_with_non_ascii_names(repo):
+    # git quotes such names unless asked not to; a quoted name matched no file and the change went unreviewed.
+    (repo / "src/auth/café.py").write_text("x = 1\n")
+    code, data = run_json("review", "--change", REF, "--base", "main")
+    assert findings(data)["untracedSource"] == ["src/auth/café.py"]
+
+
+def test_gate_review_blocks_on_an_open_finding_of_unknown_type_even_in_a_build(repo):
+    write_review(repo, "- [ ] R1 **spec_gap** lockout also logs\n- [ ] R2 **Design-gap** reset returns None\n")
+    code, data = run_json("gate", "review", "--change", REF, "--base", "main", "--allow-open")
+    readable = [c for c in data["checks"] if c["name"].startswith("every finding in review.md is readable")][0]
+    assert code == 1 and len(readable["details"]) == 1 and readable["details"][0].startswith("R1: type 'spec_gap' is not one of")  # R2's is known
+    write_review(repo, "- [ ] R1 **spec_gap** lockout also logs\n  - **Decision**: back to specify: add REQ-AUTH-004\n")
+    code, data = run_json("gate", "review", "--change", REF, "--base", "main", "--allow-open")
+    assert code == 0, data

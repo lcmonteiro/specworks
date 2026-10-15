@@ -90,12 +90,6 @@ def tasks_written(ctx: GateContext) -> Check:
     return Check(f"{TASKS_FILE} is written", found, [] if found else [f"write {TASKS_FILE} (specworks instructions tasks)"])
 
 
-def acs_have_tasks(ctx: GateContext) -> Check | None:
-    if ctx.change.skip_specs:
-        return None
-    return _listed("every acceptance criterion has a task", ctx.analysis.acs_without_tasks)
-
-
 def tasks_done(ctx: GateContext) -> Check:
     specs = ctx.analysis.specs
     pending = [f"{t.num} {t.text}" for t in specs.tasks if not t.done]

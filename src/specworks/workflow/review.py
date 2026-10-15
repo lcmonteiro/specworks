@@ -116,8 +116,9 @@ def changed_paths(ws: Workspace, base: str) -> list[str]:
     """Files changed since the merge base with ``base`` (committed, uncommitted, untracked), relative to the workspace."""
     git_root = Path(_git(ws.root, "rev-parse", "--show-toplevel").strip()).resolve()
     merge_base = _git(ws.root, "merge-base", base, "HEAD").strip()
-    names = set(_git(ws.root, "diff", "--name-only", merge_base).splitlines())
-    names |= set(_git(ws.root, "ls-files", "--others", "--exclude-standard", "--full-name").splitlines())
+    # -z: NUL-separated and never quoted, so names with non-ASCII characters or newlines come through as they are.
+    names = set(_git(ws.root, "diff", "--name-only", "-z", merge_base).split("\0"))
+    names |= set(_git(ws.root, "ls-files", "-z", "--others", "--exclude-standard", "--full-name").split("\0"))
     paths = []
     for name in sorted(n for n in names if n):
         path = (git_root / name).resolve()
@@ -185,7 +186,7 @@ COMMENT_RE = re.compile(r"<!--.*?-->", re.DOTALL)
 # a finding the parser cannot see would let the review gate pass with it open.
 FINDING_RE = re.compile(r"^\s*(?:[-*+]|\d+[.)])\s+\[(?P<mark>[ xX]?)\]\s+(?P<bold>\*\*)?(?P<id>R\d+)\b(?(bold)\*\*)(?P<text>.*)$")
 CHECKBOX_RE = re.compile(r"^\s*(?:[-*+]|\d+[.)])\s*\[[^\]]?\]")
-TYPE_RE = re.compile(r"\*\*(?P<type>[a-z-]+)\*\*")
+TYPE_RE = re.compile(r"\*\*([A-Za-z_-]+)\*\*")
 BACK_RE = re.compile(r"\bback to (?P<phase>specify|design|test|code)\s*:", re.IGNORECASE)
 DONE_RE = re.compile(r"\bdone in (?P<phase>specify|design|test|code)\s*:", re.IGNORECASE)
 # Workflow order of the phases a finding can need, and the phase after each one.
@@ -200,6 +201,7 @@ class Finding:
     type: str  # "" when the finding names none
     text: str  # the finding's line, after its ID
     phase: str  # the phase that resolves it (after ``done_in``, the next one)
+    routed: bool = True  # False: neither a known type nor a "back to"/"done in" phase, so ``phase`` is only a guess
     done_in: str = ""  # the phase that carried out its proposal (``done in <phase>:``), awaiting review
 
     def to_dict(self) -> dict:
@@ -242,13 +244,16 @@ def parse_review(text: str) -> ReviewDoc:
             continue
         if match := FINDING_RE.match(line):
             body = match.group("text").strip()
-            kind = TYPE_RE.search(body)
+            # The first bold word that is a type (any case); else the first bold word, reported below as unknown.
+            bold = [word.lower() for word in TYPE_RE.findall(body)]
+            kind = next((word for word in bold if word in TYPE_PHASE), bold[0] if bold else "")
             current = Finding(
                 id=match.group("id"),
                 done=bool(match.group("mark").strip()),
-                type=kind.group("type") if kind else "",
+                type=kind,
                 text=body,
-                phase=TYPE_PHASE.get(kind.group("type") if kind else "", "code"),
+                phase=TYPE_PHASE.get(kind, "code"),
+                routed=kind in TYPE_PHASE,
             )
             doc.findings.append(current)
         elif CHECKBOX_RE.match(line) and not line.startswith((" ", "\t")):  # indented ones belong to a finding
@@ -257,12 +262,18 @@ def parse_review(text: str) -> ReviewDoc:
         elif current is not None and line.strip() and not line.startswith((" ", "\t")):
             current = None  # back at the top level: the finding's block has ended
         if current is not None and (back := BACK_RE.search(line)):
-            current.phase = back.group("phase").lower()
+            current.phase, current.routed = back.group("phase").lower(), True
         if current is not None and (carried := DONE_RE.search(line)):
-            current.done_in = carried.group("phase").lower()
+            current.done_in, current.routed = carried.group("phase").lower(), True
     for finding in doc.findings:
         if finding.done_in:
             finding.phase = FINDING_PHASES[FINDING_PHASES.index(finding.done_in) + 1]
+        if not finding.done and not finding.routed:
+            # The next build cycle starts from each open finding's phase, so it is never guessed.
+            doc.problems.append(
+                f"{finding.id}: type {finding.type or '(none)'!r} is not one of {', '.join(TYPE_PHASE)}; "
+                f"name one, or add a Decision 'back to <specify|design|test|code>: ...'"
+            )
     doc.accounted = "\n".join(accounted)
     return doc
 
