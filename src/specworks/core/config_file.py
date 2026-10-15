@@ -7,19 +7,8 @@ import json
 import re
 from pathlib import Path
 
-from .config import (
-    Config,
-    ConfigError,
-    config_name,
-    load_config,
-    theme_id,
-    theme_name,
-    validate_capability_name,
-    validate_dir,
-    validate_module_name,
-    validate_prefix,
-    validate_relative,
-)
+from .config import Config, ConfigError, config_name, load_config, theme_id, theme_name
+from .validators import validate_capability_name, validate_dir, validate_module_name, validate_prefix, validate_relative
 
 DEFAULT_CONFIG = """\
 specworks: 1

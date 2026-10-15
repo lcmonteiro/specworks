@@ -21,7 +21,8 @@ from pathlib import Path
 from typing import Any
 
 from ..core.changes import Change, list_changes
-from ..core.config import Capability, ConfigError, validate_capability_name
+from ..core.config import Capability, ConfigError
+from ..core.validators import validate_capability_name
 from ..core.workspace import Module, Workspace
 from .specfile import REQ_ID_RE, SpecDoc, find_ids, id_prefix, parse_spec, requirement_number
 

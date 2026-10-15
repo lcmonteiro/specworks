@@ -8,8 +8,9 @@ from pathlib import Path
 
 import yaml
 
-from .config import Config, validate_kebab
+from .config import Config
 from .errors import SpecworksError
+from .validators import validate_kebab
 
 META_FILE = ".change.yaml"
 # Each phase is driven by the skill of the same name (specworks-<phase>); `close`

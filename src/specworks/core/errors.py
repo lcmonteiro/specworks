@@ -3,3 +3,7 @@
 
 class SpecworksError(Exception):
     """An expected failure with a message for the user: bad config, unknown change, failed merge..."""
+
+
+class ConfigError(SpecworksError):
+    """Raised when a config file is missing or invalid."""
