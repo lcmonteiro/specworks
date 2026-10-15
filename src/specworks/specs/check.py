@@ -10,7 +10,7 @@ from ..core.changes import Change, list_changes
 from ..core.config import ConfigError
 from ..core.workspace import Workspace
 from ..tools.diagrams import diagrams_in, referenced_images, state
-from .capabilities import CapabilityRef, delta_files, read_spec, resolve_delta
+from .capabilities import CapabilityRef, delta_files, read_spec, resolve_delta, retired_ids
 from .specfile import DELTA_SECTIONS, LIVING_SECTION, NORMATIVE_RE, Requirement, SpecDoc, ac_parent, parse_spec
 from .tasks import Task, parse_tasks
 
@@ -120,6 +120,7 @@ def _check_delta(ws: Workspace, change: Change, delta: Delta, seen: dict[str, st
             issues.append(Issue("warning", file, 0, f"new capability {cap.ref}: add '## Purpose' (one or two sentences)"))
 
     taken = _other_changes_adding(ws, change, cap)
+    retired = retired_ids(cap)
     for req in doc.requirements:
         if req.section not in DELTA_SECTIONS:
             continue
@@ -137,6 +138,8 @@ def _check_delta(ws: Workspace, change: Change, delta: Delta, seen: dict[str, st
         if req.section == "ADDED":
             if req.id in living_ids:
                 err(req.line, f"{req.id} already exists in {cap.ref}; use MODIFIED to change it, or take the next free ID")
+            if req.id in retired:
+                err(req.line, f"{req.id} was removed from {cap.ref} (requirements.md History); IDs are never reused, take the next free ID")
             if req.id in taken:
                 err(req.line, f"{req.id} is also added by change {taken[req.id]}; take the next free ID")
         elif delta.living is not None and req.id not in living_ids:
