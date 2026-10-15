@@ -9,15 +9,7 @@ from ..core.config import ConfigError
 from ..specs.tasks import TaskError, read_tasks, set_done
 from ..workflow.artifacts import WorkflowError, artifact_states, instructions
 from .app import app, task_app
-from .output import (
-    ChangeOpt,
-    JsonOpt,
-    change_dict,
-    emit,
-    fail,
-    require_change,
-    workspace,
-)
+from .output import ChangeOpt, JsonOpt, change_dict, emit, fail, require_change, workspace
 
 
 @app.command()

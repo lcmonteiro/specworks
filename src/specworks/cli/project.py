@@ -8,40 +8,13 @@ from pathlib import Path
 import typer
 
 from .. import __version__
-from ..core.config import (
-    DEFAULT_DIR,
-    Config,
-    ConfigError,
-    config_name,
-    find_config,
-    load_config,
-)
-from ..core.config_file import (
-    add_capability_entry,
-    add_module_entry,
-    write_default_config,
-)
-from ..core.workspace import (
-    Workspace,
-    load_module_config,
-    load_workspace,
-    require_workspace,
-)
+from ..core.config import DEFAULT_DIR, Config, ConfigError, config_name, find_config, load_config
+from ..core.config_file import add_capability_entry, add_module_entry, write_default_config
+from ..core.workspace import Workspace, load_module_config, load_workspace, require_workspace
 from ..specs.capabilities import capability_ref, describe
 from ..tools.skills import ToolError, install_skills, parse_tools, remove_renamed_skills
 from .app import app, capability_app, module_app
-from .output import (
-    AllOpt,
-    JsonOpt,
-    ToolsOpt,
-    change_dict,
-    changes_of,
-    emit,
-    fail,
-    missing_dicts,
-    module_dict,
-    workspace,
-)
+from .output import AllOpt, JsonOpt, ToolsOpt, change_dict, changes_of, emit, fail, missing_dicts, module_dict, workspace
 
 
 def default_module_name(path: Path) -> str:

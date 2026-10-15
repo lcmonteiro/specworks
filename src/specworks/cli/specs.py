@@ -9,25 +9,10 @@ import typer
 from ..core.config import DARK_THEMES, THEMES, ConfigError, theme_name
 from ..specs.capabilities import describe, resolve_ref, workspace_capabilities
 from ..specs.check import check_change
-from ..specs.trace import (
-    build_matrix,
-    gaps,
-    scan_tags,
-    to_markdown,
-    unknown_tags,
-    write_traceability,
-)
+from ..specs.trace import build_matrix, gaps, scan_tags, to_markdown, unknown_tags, write_traceability
 from ..tools.diagrams import DiagramError, diagrams_in, find_d2, render, state
 from .app import app, spec_app
-from .output import (
-    ChangeOpt,
-    JsonOpt,
-    change_dict,
-    emit,
-    fail,
-    require_change,
-    workspace,
-)
+from .output import ChangeOpt, JsonOpt, change_dict, emit, fail, require_change, workspace
 
 
 @app.command("check")

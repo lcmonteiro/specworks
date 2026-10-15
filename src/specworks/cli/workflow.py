@@ -14,15 +14,7 @@ from ..workflow.gate import GATES, GateContext, GateError, run_gate
 from ..workflow.review import review_change
 from ..workflow.validate import GROUPS, summary, validate_change
 from .app import app
-from .output import (
-    ChangeOpt,
-    JsonOpt,
-    change_dict,
-    emit,
-    fail,
-    require_change,
-    workspace,
-)
+from .output import ChangeOpt, JsonOpt, change_dict, emit, fail, require_change, workspace
 
 
 @app.command()

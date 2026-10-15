@@ -25,14 +25,7 @@ from ..core.changes import Change
 from ..core.workspace import Workspace
 from .capabilities import CapabilityRef
 from .check import ChangeSpecs, Delta
-from .specfile import (
-    H2_RE,
-    LIVING_SECTION,
-    REQ_HEADER_RE,
-    Requirement,
-    parse_spec,
-    section_kind,
-)
+from .specfile import H2_RE, LIVING_SECTION, REQ_HEADER_RE, Requirement, parse_spec, section_kind
 
 REQUIREMENTS_FILE = "requirements.md"
 HISTORY_HEADING = "## History"

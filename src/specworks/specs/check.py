@@ -11,15 +11,7 @@ from ..core.config import ConfigError
 from ..core.workspace import Workspace
 from ..tools.diagrams import diagrams_in, referenced_images, state
 from .capabilities import CapabilityRef, delta_files, read_spec, resolve_delta
-from .specfile import (
-    DELTA_SECTIONS,
-    LIVING_SECTION,
-    NORMATIVE_RE,
-    Requirement,
-    SpecDoc,
-    ac_parent,
-    parse_spec,
-)
+from .specfile import DELTA_SECTIONS, LIVING_SECTION, NORMATIVE_RE, Requirement, SpecDoc, ac_parent, parse_spec
 from .tasks import Task, parse_tasks
 
 PROPOSAL_SECTIONS = ("Why", "What Changes", "Capabilities")

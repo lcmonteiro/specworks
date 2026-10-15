@@ -46,9 +46,14 @@ testpaths = ["tests"]
 [tool.ruff]
 src = ["src", "tests"]
 target-version = "py311"
+# Long enough that imports stay on one line, grouped stdlib / third party / specworks.
+line-length = 170
 
 [tool.ruff.lint]
 select = ["E4", "E7", "E9", "F", "I", "B", "UP"]
+
+[tool.ruff.lint.isort]
+split-on-trailing-comma = false  # a trailing comma does not keep an import wrapped
 
 [tool.ruff.lint.flake8-bugbear]
 # Typer declares options as default values.

@@ -20,15 +20,7 @@ from collections.abc import Iterator
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from .config import (
-    Capability,
-    Config,
-    ConfigError,
-    config_name,
-    find_config,
-    find_root,
-    load_config,
-)
+from .config import Capability, Config, ConfigError, config_name, find_config, find_root, load_config
 
 SEP = ":"
 
