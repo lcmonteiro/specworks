@@ -21,13 +21,16 @@ def gate(
     change: str = typer.Option(..., "--change", "-c", help="Change name or module:name."),
     no_run: bool = typer.Option(False, "--no-run", help="design/code/review: do not run the project's commands (reported as a warning)."),
     base: str | None = typer.Option(None, "--base", help="review: branch to diff against (default: origin's default branch)."),
+    allow_open: bool = typer.Option(
+        False, "--allow-open", help="review: open findings do not fail the gate (inside /specworks-build they start the next cycle)."
+    ),
     as_json: bool = JsonOpt,
 ) -> None:
     """Check whether a change has finished a phase (exit 1 if a blocking check fails)."""
     ws = workspace(as_json)
     try:
         mod, ch = resolve_change(ws, change)
-        passed, checks = run_gate(ws, mod, ch, phase, run_tests=not no_run, base=base)
+        passed, checks = run_gate(ws, mod, ch, phase, run_tests=not no_run, base=base, allow_open=allow_open)
     except (ChangeError, ConfigError, GateError) as exc:
         fail(str(exc), as_json)
     data = {**change_dict(ws, mod, ch), "gate": phase, "passed": passed, "checks": [c.to_dict() for c in checks]}
@@ -145,7 +148,7 @@ def close(
 ) -> None:
     """Merge the change's delta specs into the living specs, update requirements.md, and archive the change."""
     from ..specs.check import check_change
-    from ..specs.merge import MergeError, archive_change, plan_merge, write_merge
+    from ..specs.merge import MergeError, archive_target, close_change, plan_merge
     from ..workflow.validate import summary, validate_change
 
     ws = workspace(as_json)
@@ -164,6 +167,7 @@ def close(
     specs, _ = check_change(ws, ch)
     try:
         merges = plan_merge(ws, ch, specs, ref)
+        archive_target(ch, mod.config.archive_path)
     except MergeError as exc:
         fail(str(exc), as_json)
     data = {**change_dict(ws, mod, ch), "dryRun": dry_run, "merges": [m.to_dict(ws) for m in merges], "archivedTo": None}
@@ -171,8 +175,7 @@ def close(
     lines = lines or ["no delta specs to merge (skip_specs)"]
     if not dry_run:
         try:
-            write_merge(merges)
-            target = archive_change(ch, mod.config.archive_path)
+            target = close_change(merges, ch, mod.config.archive_path)
         except (MergeError, OSError) as exc:
             fail(str(exc), as_json)
         data["archivedTo"] = ws.rel(target)

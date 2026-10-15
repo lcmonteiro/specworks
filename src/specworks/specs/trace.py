@@ -7,7 +7,7 @@ Tests and code link back to the specs with comment tags, in any language::
 
 A file counts as a test when it matches the module's ``test_globs`` or, when
 none are set, when its name or folder looks like a test (``test_x.py``,
-``x_test.go``, ``x.test.ts``, ``x.spec.js``, ``tests/``, ``__tests__/``...).
+``x_test.go``, ``x.test.ts``, ``x.spec.js``, ``x_spec.rb``, ``tests/``, ``__tests__/``...).
 """
 
 from __future__ import annotations
@@ -20,11 +20,14 @@ from pathlib import Path
 
 from ..core.changes import Change
 from .check import ChangeSpecs
+from .specfile import id_prefix
 from ..core.workspace import Workspace
 
 TAG_RE = re.compile(r"@(?P<kind>req|ac)\s+(?P<id>(?:REQ|AC)-[A-Z0-9][A-Z0-9.-]*[A-Z0-9])")
 SKIP_DIRS = {"node_modules", "__pycache__", "venv", "dist", "build", "target", "out", "vendor", "site-packages"}
-TEST_DIRS = {"test", "tests", "__tests__", "spec", "specs", "testing"}
+# Not "spec"/"specs": they often hold source (spec parsers, OpenAPI specs); RSpec files
+# are still found by name (``*_spec.rb``).
+TEST_DIRS = {"test", "tests", "__tests__", "testing"}
 TEST_NAME_RE = re.compile(r"(^test_|_test\.|\.test\.|\.spec\.|Test\.|Tests\.|_spec\.)")
 MAX_FILE_BYTES = 1_000_000
 
@@ -147,7 +150,7 @@ def unknown_tags(specs: ChangeSpecs, tags: list[Tag]) -> list[Tag]:
         for doc in (delta.doc, delta.living):
             if doc:
                 known |= {r.id for r in doc.requirements} | {s.id for r in doc.requirements for s in r.scenarios}
-    return [t for t in tags if t.id not in known and any(t.id.split("-", 1)[1].startswith(p + "-") for p in prefixes)]
+    return [t for t in tags if t.id not in known and id_prefix(t.id) in prefixes]
 
 
 def to_markdown(change_ref: str, rows: list[Row], found: dict[str, list[str]]) -> str:
