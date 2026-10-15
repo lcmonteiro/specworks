@@ -136,6 +136,10 @@ earliest of those phases (`specworks cycle --change "<ref>"`).
    tags, removed requirements gone, every untagged changed file accounted for,
    and the test suite passing. Fix and re-run until it passes.
 
+   Inside `/specworks-build`, run it with `--allow-open`: the open findings
+   are the hand-off to the next cycle, so they are reported as a warning;
+   every other check must still pass.
+
 7. **Report and stop**
 
    Summarize the findings by type and decision, the spec changes (IDs added or

@@ -124,6 +124,9 @@ it looks easy. When the gate passes, stop and suggest `/specworks-test`.
 
    The existing test suite must still pass: there are no new tests yet, so a
    failure means a stub broke an import, a signature or existing behaviour.
+   In a later build cycle (the change already has `@ac` tests), changing an
+   API turns its tests red on purpose: the gate then reports the suite as a
+   warning, and the code phase makes it green again.
    Fix every failing blocking check and re-run. Warnings: fix them or explain
    them.
 

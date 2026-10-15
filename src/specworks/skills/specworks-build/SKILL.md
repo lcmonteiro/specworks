@@ -83,6 +83,10 @@ fails and cannot be fixed within that phase, when the specs turn out wrong
    `accepted: <reason>` and are ticked. Spec findings (`spec-gap`) are
    recorded open with `back to specify: ...`.
 
+   Gate it with `specworks gate review --change "<ref>" --allow-open`: open
+   findings do not fail it here (step 4 turns them into the next cycle), but
+   every other check (tests pass, untagged files accounted for, tags) must.
+
 4. **After the review: ask about a new cycle**
 
    ```bash

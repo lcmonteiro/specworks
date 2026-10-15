@@ -165,6 +165,16 @@ def requirement_number(req_id: str) -> int:
     return int(match.group("num")) if match else 0
 
 
+def id_prefix(any_id: str) -> str | None:
+    """``REQ-BILLING-INVOICES-001`` / ``AC-BILLING-INVOICES-001.2`` -> ``BILLING-INVOICES``; None if not an ID.
+
+    The number is the last segment, so a prefix that extends another one
+    (``BILLING`` / ``BILLING-INVOICES``) is never mistaken for it.
+    """
+    match = REQ_ID_RE.fullmatch(any_id) or AC_ID_RE.fullmatch(any_id)
+    return match.group("prefix") if match else None
+
+
 def ac_parent(ac_id: str) -> str | None:
     """``AC-AUTH-001.2`` -> ``REQ-AUTH-001``."""
     match = AC_ID_RE.fullmatch(ac_id)

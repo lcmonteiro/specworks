@@ -18,7 +18,7 @@ from pathlib import Path
 
 from ..core.changes import Change, list_changes
 from ..core.config import MODULE_NAME_RE, Capability, ConfigError
-from .specfile import REQ_ID_RE, SpecDoc, parse_spec, requirement_number
+from .specfile import REQ_ID_RE, SpecDoc, id_prefix, parse_spec, requirement_number
 from ..core.workspace import Module, Workspace
 
 SPECS_DIR = "specs"
@@ -58,8 +58,7 @@ class CapabilityRef:
         return self.capability.docs_path(self.module.root, self.module.config.docs_dir) / SPEC_FILE
 
     def id_matches(self, req_id: str) -> bool:
-        match = REQ_ID_RE.fullmatch(req_id)
-        return bool(match) and match.group("prefix") == self.prefix
+        return REQ_ID_RE.fullmatch(req_id) is not None and id_prefix(req_id) == self.prefix
 
 
 def capability_ref(module: Module, name: str) -> CapabilityRef:

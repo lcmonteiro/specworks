@@ -4,7 +4,8 @@ import pytest
 from typer.testing import CliRunner
 
 from specworks.cli import app
-from specworks.specs.specfile import ac_parent, find_ids, parse_spec
+from specworks.specs.specfile import ac_parent, find_ids, id_prefix, parse_spec
+from specworks.specs.trace import is_test_file
 
 runner = CliRunner()
 
@@ -149,6 +150,8 @@ def test_parse_ignores_headers_inside_code_fences():
 def test_ids_helpers():
     assert find_ids("covers AC-BILLING-INVOICES-001.2 and REQ-AUTH-003.") == ["AC-BILLING-INVOICES-001.2", "REQ-AUTH-003"]
     assert ac_parent("AC-BILLING-INVOICES-001.2") == "REQ-BILLING-INVOICES-001"
+    assert id_prefix("REQ-BILLING-INVOICES-001") == "BILLING-INVOICES" == id_prefix("AC-BILLING-INVOICES-001.2")
+    assert id_prefix("REQ-V2-001") == "V2" and id_prefix("REQ-AUTH") is None and id_prefix("nope") is None
 
 
 def test_requirement_markdown_round_trips():
@@ -361,3 +364,26 @@ def test_trace_respects_test_globs(change, project):
     (project / "qa/reset_checks.py").write_text("# @ac AC-AUTH-003.2\n")
     code, data = run_json("trace", "--change", "add-password-reset")
     assert {r["ac"]: r for r in data["rows"]}["AC-AUTH-003.2"]["tests"] == ["qa/reset_checks.py:1"]
+
+
+def test_tags_of_a_capability_with_a_longer_prefix_are_not_unknown(change, project):
+    # The change touches AUTH; REQ-AUTH-ADMIN-001 belongs to another capability (prefix AUTH-ADMIN).
+    (project / "src/admin").mkdir()
+    (project / "src/admin/users.py").write_text("# @req REQ-AUTH-ADMIN-001\n# @req REQ-AUTH-078\n")
+    code, data = run_json("trace", "--change", "add-password-reset")
+    assert data["unknownTags"] == [{"id": "REQ-AUTH-078", "where": "src/admin/users.py:2"}]
+
+
+@pytest.mark.parametrize(
+    "path, is_test",
+    [
+        ("tests/test_x.py", True),
+        ("pkg/__tests__/x.js", True),
+        ("spec/models/user_spec.rb", True),
+        ("web/x.spec.ts", True),
+        ("src/myapp/specs/check.py", False),  # a source package that happens to be called specs
+        ("api/spec/openapi.py", False),
+    ],
+)
+def test_test_file_detection(path, is_test):
+    assert is_test_file(path, []) is is_test

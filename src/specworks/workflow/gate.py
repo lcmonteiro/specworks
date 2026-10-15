@@ -90,7 +90,7 @@ def interface_files(section: str) -> list[str]:
 
 
 def _design(ws: Workspace, module: Module, change: Change, run_tests: bool) -> list[Check]:
-    _, checks = _spec_checks(ws, change)
+    specs, checks = _spec_checks(ws, change)
     section = interfaces_section(change)
     checks.append(
         Check(
@@ -114,7 +114,15 @@ def _design(ws: Workspace, module: Module, change: Change, run_tests: bool) -> l
     for key in ("build", "typecheck"):
         if ws.commands(module).get(key):
             checks.append(_command_passes(ws, module, key, f"the stubs build (commands.{key})", run_tests))
-    checks.append(_command_passes(ws, module, "test", "the existing tests still pass with the stubs (commands.test)", run_tests))
+    tests = _command_passes(ws, module, "test", "the existing tests still pass with the stubs (commands.test)", run_tests)
+    ids = specs_ids(specs)
+    ran = run_tests and bool(ws.commands(module).get("test"))  # a missing command still blocks
+    if ran and not tests.ok and any(t.kind == "ac" and t.is_test and t.id in ids for t in scan_tags(ws)):
+        # The test phase has started (or a later cycle reopened the API): this change's
+        # own tests are red until the code phase, whose gate requires a green suite.
+        tests.blocking = False
+        tests.details.insert(0, "not blocking: this change already has @ac tests, which fail until the code phase")
+    checks.append(tests)
     return checks
 
 
@@ -179,14 +187,15 @@ def _code(ws: Workspace, module: Module, change: Change, run_tests: bool) -> lis
     return checks
 
 
-def _review(ws: Workspace, module: Module, change: Change, run_tests: bool, base: str | None) -> list[Check]:
+def _review(ws: Workspace, module: Module, change: Change, run_tests: bool, base: str | None, allow_open: bool) -> list[Check]:
     specs, report = review_change(ws, change, base)
     found = report.findings()
     exists, open_findings, text = review_findings(change)
     checks = [
         Check("specs and tasks are valid (specworks check)", not report.spec_errors, report.spec_errors),
         Check(f"{REVIEW_FILE} is written", exists, [] if exists else ["write it (specworks instructions review)"]),
-        Check(f"no open finding in {REVIEW_FILE}", exists and not open_findings, open_findings),
+        # In a build, open findings are the hand-off to the next cycle (`specworks cycle`), not a failure.
+        Check(f"no open finding in {REVIEW_FILE}", exists and not open_findings, open_findings, blocking=not allow_open),
         Check("every requirement has code (@req tag)", not found["reqWithoutCode"], found["reqWithoutCode"]),
         Check("every acceptance criterion has a test (@ac tag)", not found["acWithoutTests"], found["acWithoutTests"]),
         Check("no tag refers to an unknown requirement or criterion", not found["unknownTags"], found["unknownTags"]),
@@ -236,7 +245,13 @@ def _ac_tags_outside_tests(ids: set[str], tags: list[Tag]) -> list[Tag]:
 
 
 def run_gate(
-    ws: Workspace, module: Module, change: Change, phase: str, run_tests: bool = True, base: str | None = None
+    ws: Workspace,
+    module: Module,
+    change: Change,
+    phase: str,
+    run_tests: bool = True,
+    base: str | None = None,
+    allow_open: bool = False,
 ) -> tuple[bool, list[Check]]:
     if phase not in GATES:
         raise GateError(f"no gate for phase '{phase}' yet; gates exist for: {', '.join(GATES)}")
@@ -245,7 +260,7 @@ def run_gate(
 
         checks = validate_change(ws, module, change, run_tests, base)
     elif phase == "review":
-        checks = _review(ws, module, change, run_tests, base)
+        checks = _review(ws, module, change, run_tests, base, allow_open)
     elif phase == "code":
         checks = _code(ws, module, change, run_tests)
     elif phase == "design":

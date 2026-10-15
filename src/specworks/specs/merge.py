@@ -205,14 +205,47 @@ def write_merge(merges: list[CapabilityMerge]) -> None:
         merge.requirements_path.write_text(merge.requirements_text, encoding="utf-8")
 
 
-def archive_change(change: Change, archive_root: Path, today: str | None = None) -> Path:
-    """Mark the change done and move it to <archive>/<date>-<name>/."""
-    today = today or date.today().isoformat()
-    target = archive_root / f"{today}-{change.name}"
+def archive_target(change: Change, archive_root: Path, today: str | None = None) -> Path:
+    """Where the change is archived (<archive>/<date>-<name>/); fails if that folder is taken."""
+    target = archive_root / f"{today or date.today().isoformat()}-{change.name}"
     if target.exists():
         raise MergeError(f"{target} already exists")
+    return target
+
+
+def archive_change(change: Change, archive_root: Path, today: str | None = None) -> Path:
+    """Mark the change done and move it to <archive>/<date>-<name>/."""
+    target = archive_target(change, archive_root, today)
+    phase = change.phase
     change.phase = "done"
     change.save()
-    archive_root.mkdir(parents=True, exist_ok=True)
-    shutil.move(str(change.path), str(target))
+    try:
+        archive_root.mkdir(parents=True, exist_ok=True)
+        shutil.move(str(change.path), str(target))
+    except OSError:
+        change.phase = phase
+        change.save()
+        raise
     return target
+
+
+def close_change(merges: list[CapabilityMerge], change: Change, archive_root: Path, today: str | None = None) -> Path:
+    """Write the merged living docs and archive the change, all or nothing.
+
+    The archive folder is checked before anything is written; if writing or
+    archiving fails, every living file is put back as it was.
+    """
+    today = today or date.today().isoformat()
+    archive_target(change, archive_root, today)
+    paths = [p for m in merges for p in (m.spec_path, m.requirements_path)]
+    originals = {p: p.read_text(encoding="utf-8") if p.is_file() else None for p in paths}
+    try:
+        write_merge(merges)
+        return archive_change(change, archive_root, today)
+    except BaseException:
+        for path, text in originals.items():
+            if text is not None:
+                path.write_text(text, encoding="utf-8")
+            elif path.is_file():
+                path.unlink()
+        raise

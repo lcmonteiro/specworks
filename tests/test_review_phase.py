@@ -69,6 +69,17 @@ def test_gate_review_blocks_on_open_findings(repo):
     assert code == 1 and checks(data)["no open finding in review.md"]["details"] == ["R1 **spec-gap** lockout also logs"]
 
 
+def test_gate_review_allow_open_reports_open_findings_as_a_warning(repo):
+    # Inside /specworks-build, open findings start the next cycle instead of failing the review.
+    write_review(repo, "- [ ] R1 **design-gap** reset returns None\n  - **Decision**: back to design: return the token\n")
+    code, data = run_json("gate", "review", "--change", REF, "--base", "main", "--allow-open")
+    open_check = checks(data)["no open finding in review.md"]
+    assert code == 0 and open_check["ok"] is False and open_check["blocking"] is False
+    (repo / "src/auth/audit.py").write_text("def audit(): ...\n")  # everything else still blocks
+    code, data = run_json("gate", "review", "--change", REF, "--base", "main", "--allow-open")
+    assert code == 1
+
+
 def test_gate_review_requires_untagged_files_accounted_for(repo):
     (repo / "src/auth/audit.py").write_text("def audit(): ...\n")
     write_review(repo, "None.\n")
