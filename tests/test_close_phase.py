@@ -9,7 +9,10 @@ from typer.testing import CliRunner
 
 from helpers import REF, run_json
 from specworks.cli import app
-from specworks.specs.merge import MergeError, apply_delta
+from specworks.cli.output import resolve_change
+from specworks.core.workspace import require_workspace
+from specworks.specs.check import check_change
+from specworks.specs.merge import MergeError, apply_delta, close_change, plan_merge
 from specworks.specs.specfile import parse_spec
 
 runner = CliRunner()
@@ -252,3 +255,37 @@ def test_added_requirements_go_at_the_end_of_the_requirements_section():
     text, added, _, _ = apply_delta(living, FakeDelta("## ADDED Requirements\n\n### Requirement: REQ-AUTH-002 B\nThe system SHALL b.\n"))
     assert added == ["REQ-AUTH-002"]
     assert text.index("REQ-AUTH-002") < text.index("## Notes") and text.endswith("## Notes\n\nKeep me.\n")
+
+
+def test_capability_add_rejects_a_prefix_already_in_use(ready):
+    cfg = ready / "spec.yml"
+    before = cfg.read_text()
+    code, data = run_json("capability", "add", "login", "--path", "src/login", "--prefix", "AUTH")
+    assert code == 1 and "AUTH is already used by user-auth" in data["error"]
+    code, data = run_json("capability", "add", "auth", "--path", "src/login")  # derives AUTH too
+    assert code == 1 and "AUTH is already used by user-auth" in data["error"]
+    assert cfg.read_text() == before
+
+
+REMOVE_RESET = "## REMOVED Requirements\n\n### Requirement: REQ-AUTH-003 Password reset\n**Reason**: replaced by SSO\n**Migration**: none\n"
+READD_RESET = "## ADDED Requirements\n\n### Requirement: REQ-AUTH-003 Reset again\nThe system SHALL reset.\n\n#### Scenario: AC-AUTH-003.1 Reset\n- **WHEN** asked\n- **THEN** reset\n"
+
+
+def test_a_removed_requirement_id_is_never_handed_out_again(ready):
+    assert run_json("close", "--change", REF, "--base", "main")[0] == 0  # adds REQ-AUTH-003, the highest
+    for name, delta in (("drop-reset", REMOVE_RESET), ("readd-reset", READD_RESET)):
+        run_json("new", name)
+        (ready / f"spec/changes/{name}/specs/user-auth").mkdir(parents=True)
+        (ready / f"spec/changes/{name}/specs/user-auth/spec.md").write_text(delta)
+
+    # drop-reset closes the way `specworks close` does once validate passes: REQ-AUTH-003 leaves spec.md.
+    ws = require_workspace(ready)
+    module, change = resolve_change(ws, "drop-reset")
+    close_change(plan_merge(ws, change, check_change(ws, change)[0], "drop-reset"), change, module.config.archive_path)
+    assert "REQ-AUTH-003" not in (ready / "src/auth/docs/spec.md").read_text()
+
+    code, data = run_json("spec", "show", "user-auth")
+    assert data["nextId"] == "REQ-AUTH-004"
+    code, data = run_json("check", "--change", "readd-reset")
+    messages = [i["message"] for i in data["issues"]]
+    assert any("REQ-AUTH-003 was REMOVED from user-auth by an earlier change" in m for m in messages), messages

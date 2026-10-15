@@ -8,7 +8,7 @@ from typing import NoReturn
 import typer
 
 from ..core.changes import Change, ChangeError, list_changes, load_change
-from ..core.config import CONFIG_EXT, DEFAULT_DIR, ConfigError, config_name
+from ..core.config import CONFIG_EXT, DEFAULT_DIR, config_name
 from ..core.workspace import Module, Workspace, load_workspace
 from ..tools.skills import TOOLS
 
@@ -32,19 +32,20 @@ def emit(data: dict, as_json: bool, text: str) -> None:
     typer.echo(json.dumps(data, indent=2) if as_json else text)
 
 
-def fail(message: str, as_json: bool, **extra) -> NoReturn:
+def print_error(message: str, as_json: bool, **extra) -> None:
     if as_json:
         typer.echo(json.dumps({"error": message, **extra}, indent=2))
     else:
         typer.echo(f"error: {message}", err=True)
+
+
+def fail(message: str, as_json: bool, **extra) -> NoReturn:
+    print_error(message, as_json, **extra)
     raise typer.Exit(1)
 
 
 def workspace(as_json: bool) -> Workspace:
-    try:
-        ws = load_workspace()
-    except ConfigError as exc:
-        fail(str(exc), as_json)
+    ws = load_workspace()
     if ws is None:
         fail(
             f"no specworks config (<dir>{CONFIG_EXT}, e.g. {config_name(DEFAULT_DIR)}) found in this directory or its parents",
@@ -112,8 +113,5 @@ def resolve_change(ws: Workspace, ref: str) -> tuple[Module, Change]:
 def require_change(ref: str, as_json: bool) -> tuple[Workspace, Module, Change]:
     """The workspace and the change ``ref`` names, or exit with the error."""
     ws = workspace(as_json)
-    try:
-        mod, ch = resolve_change(ws, ref)
-    except (ChangeError, ConfigError) as exc:
-        fail(str(exc), as_json)
+    mod, ch = resolve_change(ws, ref)
     return ws, mod, ch

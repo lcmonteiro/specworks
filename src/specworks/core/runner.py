@@ -5,12 +5,13 @@ from __future__ import annotations
 import subprocess
 from dataclasses import dataclass
 
+from .errors import SpecworksError
 from .workspace import Module, Workspace
 
 TAIL_LINES = 40
 
 
-class CommandError(Exception):
+class CommandError(SpecworksError):
     """Raised when a command is not configured."""
 
 

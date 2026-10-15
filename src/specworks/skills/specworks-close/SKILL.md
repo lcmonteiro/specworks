@@ -44,8 +44,11 @@ here; if something is wrong, go back to the phase that owns it.
 3. **Show the merge plan and get a go-ahead**
 
    ```bash
-   specworks close --change "<ref>" --dry-run
+   specworks close --change "<ref>" --dry-run --no-run
    ```
+
+   `--no-run` skips the test, lint and typecheck commands, which step 1 just
+   ran; the real `close` in step 5 runs them once more before writing.
 
    Show, per capability: the living spec it writes (new or existing) and the
    requirements added, modified and removed. Ask: "Merge and archive?"

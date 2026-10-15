@@ -9,6 +9,9 @@ from ..core.workspace import Module, Workspace
 from ..specs.check import ChangeSpecs
 from .review import REVIEW_FILE, ReviewDoc, ReviewReport
 
+# Validate groups its checks (and each failure names the phase skill that fixes it).
+COMPLETENESS, CORRECTNESS, COHERENCE = "completeness", "correctness", "coherence"
+
 
 @dataclass
 class Check:
@@ -57,3 +60,22 @@ def accounted_check(report: ReviewReport, review: ReviewDoc) -> Check:
 def change_ids(specs: ChangeSpecs) -> set[str]:
     """Every requirement and acceptance-criterion ID in the change's delta specs."""
     return {i for d in specs.deltas for r in d.doc.requirements for i in (r.id, *(s.id for s in r.scenarios)) if i}
+
+
+def tag_checks(found: dict[str, list[str]]) -> list[Check]:
+    """The @req / @ac checks the code and review gates and validate share.
+
+    ``found`` is ``trace.gaps(...)`` plus ``unknownTags`` (``"<id> at <file:line>"``), as ``ReviewReport.findings()`` gives it.
+    """
+    return [
+        Check("every requirement has code (@req tag)", not found["reqWithoutCode"], found["reqWithoutCode"], group=COMPLETENESS, fix="/specworks-code"),
+        Check("every acceptance criterion has a test (@ac tag)", not found["acWithoutTests"], found["acWithoutTests"], group=COMPLETENESS, fix="/specworks-test"),
+        Check("no tag refers to an unknown requirement or criterion", not found["unknownTags"], found["unknownTags"], group=CORRECTNESS, fix="/specworks-review"),
+        Check(
+            "removed requirements are gone from tests and code",
+            not found["removedStillTagged"],
+            found["removedStillTagged"],
+            group=CORRECTNESS,
+            fix="/specworks-code",
+        ),
+    ]

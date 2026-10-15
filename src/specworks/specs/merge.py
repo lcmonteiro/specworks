@@ -22,16 +22,16 @@ from datetime import date
 from pathlib import Path
 
 from ..core.changes import Change
+from ..core.errors import SpecworksError
 from ..core.workspace import Workspace
-from .capabilities import CapabilityRef
+from .capabilities import REQUIREMENTS_FILE, CapabilityRef
 from .check import ChangeSpecs, Delta
 from .specfile import LIVING_SECTION, Requirement, parse_spec, section_kind
 
-REQUIREMENTS_FILE = "requirements.md"
 HISTORY_HEADING = "## History"
 
 
-class MergeError(Exception):
+class MergeError(SpecworksError):
     """Raised when a delta cannot be applied to its living spec."""
 
 

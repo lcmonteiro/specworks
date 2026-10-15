@@ -17,6 +17,8 @@ import pyd2
 import yaml
 from pyd2 import DARK_THEMES, LAYOUTS, LIGHT_THEMES, THEMES  # noqa: F401  (re-exported)
 
+from .errors import SpecworksError
+
 CONFIG_EXT = ".yml"
 CONFIG_VERSION = 1
 MARKER_RE = re.compile(r"^specworks:[ \t]*\d+[ \t]*(#.*)?$", re.MULTILINE)
@@ -30,7 +32,7 @@ CONFIG_KEYS = ("specworks", "context", "docs_dir", "capabilities", "modules", "t
 CAPABILITY_KEYS = ("path", "prefix", "description")
 
 
-class ConfigError(Exception):
+class ConfigError(SpecworksError):
     """Raised when a config file is missing or invalid."""
 
 

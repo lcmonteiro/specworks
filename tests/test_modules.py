@@ -246,3 +246,11 @@ def test_module_globs_are_relative_to_the_module(workspace, monkeypatch):
     tags = {t.file: t.is_test for t in scan_tags(load_workspace())}
     # billing's glob marks its qa/ tests; the top level keeps its own (default) rules.
     assert tags == {"services/billing/qa/checks.py": True, "top.py": False, "tests/test_top.py": True}
+
+
+def test_derived_prefixes_may_not_collide_across_modules(workspace):
+    # billing:invoices derives BILLING-INVOICES; so would a top-level billing-invoices.
+    cfg = workspace / "spec.yml"
+    cfg.write_text(cfg.read_text().replace("capabilities: {}", "capabilities:\n  billing-invoices:\n    path: src/bi"))
+    code, data = run_json("list")
+    assert code == 1 and "both use the ID prefix BILLING-INVOICES" in data["error"]

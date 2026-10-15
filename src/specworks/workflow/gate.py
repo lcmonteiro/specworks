@@ -13,15 +13,16 @@ from collections.abc import Callable
 from dataclasses import dataclass
 
 from ..core.changes import Change
+from ..core.errors import SpecworksError
 from ..core.workspace import Module, Workspace
 from ..specs.check import ChangeSpecs, check_change
 from ..specs.trace import build_matrix, gaps, scan_tags, unknown_tags
-from .checks import Check, accounted_check, change_ids, command_check, tests_pass
-from .review import REVIEW_FILE, read_review, review_change
+from .checks import Check, accounted_check, change_ids, command_check, tag_checks, tests_pass
+from .review import REVIEW_FILE, TYPE_PHASE, read_review, review_change
 from .validate import validate_change
 
 
-class GateError(Exception):
+class GateError(SpecworksError):
     """Raised for a phase without a gate."""
 
 
@@ -50,10 +51,7 @@ def _specify(ctx: GateContext) -> list[Check]:
             [] if specs.tasks_found else ["write tasks.md (specworks instructions tasks)"],
         )
     )
-    if not ctx.change.skip_specs:
-        missing = gaps(build_matrix(specs, []))["acWithoutTasks"]
-        checks.append(Check("every acceptance criterion has a task", not missing, missing))
-    return checks
+    return checks  # every criterion having a task is already one of `specworks check`'s errors
 
 
 INTERFACES_RE = re.compile(r"^## Interfaces[ \t]*\n(?P<body>.*?)(?=^## |\Z)", re.MULTILINE | re.DOTALL)
@@ -141,14 +139,11 @@ def _code(ctx: GateContext) -> list[Check]:
     specs, checks = _spec_checks(ctx)
     pending = [f"{t.num} {t.text}" for t in specs.tasks if not t.done]
     tags = scan_tags(ctx.ws)
-    found = gaps(build_matrix(specs, tags))
-    stray = unknown_tags(specs, tags)
-    return checks + [
+    found = {**gaps(build_matrix(specs, tags)), "unknownTags": [f"{t.id} at {t.where}" for t in unknown_tags(specs, tags)]}
+    return [
+        *checks,
         Check("every task is done (specworks task list --pending)", specs.tasks_found and not pending, pending),
-        Check("every requirement has code (@req tag)", not found["reqWithoutCode"], found["reqWithoutCode"]),
-        Check("every acceptance criterion still has a test (@ac tag)", not found["acWithoutTests"], found["acWithoutTests"]),
-        Check("no tag refers to an unknown requirement or criterion", not stray, [f"{t.id} at {t.where}" for t in stray]),
-        Check("removed requirements are gone from tests and code", not found["removedStillTagged"], found["removedStillTagged"]),
+        *tag_checks(found),
         tests_pass(ctx.ws, ctx.module, ctx.run_tests),
     ]
 
@@ -163,10 +158,13 @@ def _review(ctx: GateContext) -> list[Check]:
         Check(f"{REVIEW_FILE} is written", review.exists, [] if review.exists else ["write it (specworks instructions review)"]),
         # In a build, open findings are the hand-off to the next cycle (`specworks cycle`), not a failure.
         Check(f"no open finding in {REVIEW_FILE}", review.exists and not open_findings, open_findings, blocking=not ctx.allow_open),
-        Check("every requirement has code (@req tag)", not found["reqWithoutCode"], found["reqWithoutCode"]),
-        Check("every acceptance criterion has a test (@ac tag)", not found["acWithoutTests"], found["acWithoutTests"]),
-        Check("no tag refers to an unknown requirement or criterion", not found["unknownTags"], found["unknownTags"]),
-        Check("removed requirements are gone from tests and code", not found["removedStillTagged"], found["removedStillTagged"]),
+        # The next build cycle starts from each open finding's phase, so it must be known, never guessed.
+        Check(
+            f"every open finding has a known type ({', '.join(TYPE_PHASE)}) or a `back to <phase>:`",
+            not review.unrouted,
+            [f"{f.id}: type {f.type or '(none)'!r}" for f in review.unrouted],
+        ),
+        *tag_checks(found),
         accounted_check(report, review),
         tests_pass(ctx.ws, ctx.module, ctx.run_tests),
     ]

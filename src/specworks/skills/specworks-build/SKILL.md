@@ -83,7 +83,8 @@ fails and cannot be fixed within that phase, when the specs turn out wrong
 
    Gate it with `specworks gate review --change "<ref>" --allow-open`: open
    findings do not fail it here (step 4 turns them into the next cycle), but
-   every other check (tests pass, untagged files accounted for, tags) must.
+   every other check (tests pass, untagged files accounted for, tags, a known
+   type or `back to <phase>:` on every open finding) must.
 
 4. **After the review: ask about a new cycle**
 

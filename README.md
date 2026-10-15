@@ -76,8 +76,10 @@ The system SHALL email a single-use reset link valid for 30 minutes.
 - Requirements are `REQ-<prefix>-NNN`; their acceptance criteria are
   `AC-<prefix>-NNN.<n>`. The prefix is the capability name in upper case
   (`billing:invoices` -> `BILLING-INVOICES`) or the capability's `prefix:` in the config.
+  Every capability needs its own prefix: two that share one are a config error.
 - `## MODIFIED Requirements` repeats a whole existing block (same ID);
-  `## REMOVED Requirements` needs **Reason** and **Migration**. IDs are never reused.
+  `## REMOVED Requirements` needs **Reason** and **Migration**. IDs are never reused:
+  `requirements.md` keeps the removed ones, so `nextId` skips them and `check` rejects them.
 - `close` merges the deltas into the living spec next to the code
   (`<capability path>/<docs_dir>/spec.md`).
 - Tests and code point back with comment tags in any language:
@@ -94,7 +96,7 @@ The system SHALL email a single-use reset link valid for 30 minutes.
 | `specworks diagrams --change <ref> \| --dir <folder> [--check]` | renders `diagrams/*.d2` of a change (or of a living docs folder) to SVG with the workspace theme; `--check` reports missing/outdated SVGs without rendering |
 | `specworks skip-specs --change <ref> [--off]` | marks a change with no behaviour change (refactor, tooling, docs): it needs no delta specs |
 | `specworks task list\|done\|undo --change <ref> [N.M ...]` | lists tasks with their IDs; ticks or unticks checkboxes without touching the rest of `tasks.md` |
-| `specworks gate <phase> --change <ref>` | checks a phase is finished: `specify` (valid specs, tasks cover every AC), `design` (design.md Interfaces recorded, the files it names exist, build/typecheck and the existing tests pass; once the change has `@ac` tests, a red suite is only a warning), `test` (every AC has an `@ac`-tagged test, no tags to unknown IDs), `code` (all tasks done, every requirement has `@req` code, removed ones gone, and `commands.test` passes; `--no-run` skips running it), `review` (`review.md` with no open finding (`--allow-open` in a build), every untagged changed file accounted for, tags complete, tests pass), `validate` (same checks as `specworks validate`) |
+| `specworks gate <phase> --change <ref>` | checks a phase is finished: `specify` (valid specs, tasks cover every AC), `design` (design.md Interfaces recorded, the files it names exist, build/typecheck and the existing tests pass; once the change has `@ac` tests, a red suite is only a warning), `test` (every AC has an `@ac`-tagged test, no tags to unknown IDs), `code` (all tasks done, every requirement has `@req` code, removed ones gone, and `commands.test` passes; `--no-run` skips running it), `review` (`review.md` with no open finding (`--allow-open` in a build), every open finding of a known type or with `back to <phase>:`, every untagged changed file accounted for, tags complete, tests pass), `validate` (same checks as `specworks validate`) |
 | `specworks close --change <ref> [--dry-run]` | after a passing validate: merges the deltas into each living `spec.md` (ADDED appended, MODIFIED replaced by ID, REMOVED deleted), regenerates `requirements.md` with a History line, marks the change `done` and moves it to `changes/archive/<date>-<name>/` |
 | `specworks capability add <name> --path <dir> [--module] [--prefix]` | registers a new capability in a module's config (required before closing a change that creates it) |
 | `specworks validate --change <ref> [--base] [--no-run]` | final read-only report in three groups (completeness, correctness, coherence): artifacts, tasks, tags, review, specs valid, test/lint/typecheck pass, untagged files accounted for, diagrams current; each failure names the phase to go back to |

@@ -21,6 +21,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from ..core.changes import Change
+from ..core.errors import SpecworksError
 from ..core.workspace import Workspace
 from ..specs.check import ChangeSpecs, check_change
 from ..specs.trace import Tag, build_matrix, file_classifier, gaps, scan_tags, unknown_tags
@@ -35,7 +36,7 @@ BASE_CANDIDATES = ("origin/main", "main", "origin/master", "master")
 REVIEW_FILE = "review.md"
 
 
-class ReviewError(Exception):
+class ReviewError(SpecworksError):
     """Raised when git cannot tell what changed."""
 
 
@@ -113,8 +114,9 @@ def changed_paths(ws: Workspace, base: str) -> list[str]:
     """Files changed since the merge base with ``base`` (committed, uncommitted, untracked), relative to the workspace."""
     git_root = Path(_git(ws.root, "rev-parse", "--show-toplevel").strip()).resolve()
     merge_base = _git(ws.root, "merge-base", base, "HEAD").strip()
-    names = set(_git(ws.root, "diff", "--name-only", merge_base).splitlines())
-    names |= set(_git(ws.root, "ls-files", "--others", "--exclude-standard", "--full-name").splitlines())
+    # -z: NUL-separated and never quoted, so names with non-ASCII characters or newlines come through as they are.
+    names = set(_git(ws.root, "diff", "--name-only", "-z", merge_base).split("\0"))
+    names |= set(_git(ws.root, "ls-files", "-z", "--others", "--exclude-standard", "--full-name").split("\0"))
     paths = []
     for name in sorted(n for n in names if n):
         path = (git_root / name).resolve()
@@ -186,7 +188,7 @@ TYPE_PHASE = {
 }
 COMMENT_RE = re.compile(r"<!--.*?-->", re.DOTALL)
 FINDING_RE = re.compile(r"^\s*- \[(?P<mark>[ xX]?)\]\s+(?P<id>R\d+)\b(?P<text>.*)$")
-TYPE_RE = re.compile(r"\*\*(?P<type>[a-z-]+)\*\*")
+TYPE_RE = re.compile(r"\*\*([A-Za-z_-]+)\*\*")
 BACK_RE = re.compile(r"\bback to (?P<phase>specify|design|test|code)\s*:", re.IGNORECASE)
 H2_RE = re.compile(r"^##\s+(?P<title>.+?)\s*$")
 ACCOUNTED_SECTION = "changed files without tags"
@@ -199,6 +201,7 @@ class Finding:
     type: str  # "" when the finding names none
     text: str  # the finding's line, after its ID
     phase: str  # the phase that resolves it
+    routed: bool = True  # False: neither a known type nor a "back to <phase>:", so the phase is only a guess (code)
 
     def to_dict(self) -> dict:
         return {"id": self.id, "type": self.type, "text": self.text, "phase": self.phase}
@@ -213,6 +216,11 @@ class ReviewDoc:
     @property
     def open(self) -> list[Finding]:
         return [f for f in self.findings if not f.done]
+
+    @property
+    def unrouted(self) -> list[Finding]:
+        """Open findings with no known type and no ``back to <phase>:``: where they go is unknown."""
+        return [f for f in self.open if not f.routed]
 
     def accounts_for(self, path: str) -> bool:
         """``path`` appears as a whole path under "Changed files without tags" (``src/a.py``, not ``src/a.py.bak``)."""
@@ -234,19 +242,22 @@ def parse_review(text: str) -> ReviewDoc:
             continue
         if match := FINDING_RE.match(line):
             body = match.group("text").strip()
-            kind = TYPE_RE.search(body)
+            # The first bold word that is a type (any case); else the first bold word, reported as unknown.
+            bold = [word.lower() for word in TYPE_RE.findall(body)]
+            kind = next((word for word in bold if word in TYPE_PHASE), bold[0] if bold else "")
             current = Finding(
                 id=match.group("id"),
                 done=bool(match.group("mark").strip()),
-                type=kind.group("type") if kind else "",
+                type=kind,
                 text=body,
-                phase=TYPE_PHASE.get(kind.group("type") if kind else "", "code"),
+                phase=TYPE_PHASE.get(kind, "code"),
+                routed=kind in TYPE_PHASE,
             )
             doc.findings.append(current)
         elif current is not None and line.strip() and not line.startswith((" ", "\t")):
             current = None  # back at the top level: the finding's block has ended
         if current is not None and (back := BACK_RE.search(line)):
-            current.phase = back.group("phase").lower()
+            current.phase, current.routed = back.group("phase").lower(), True
     doc.accounted = "\n".join(accounted)
     return doc
 

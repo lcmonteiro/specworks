@@ -6,7 +6,7 @@ from pathlib import Path
 
 import typer
 
-from ..core.config import DARK_THEMES, THEMES, ConfigError, theme_name
+from ..core.config import DARK_THEMES, THEMES, theme_name
 from ..specs.capabilities import describe, resolve_ref, workspace_capabilities
 from ..specs.check import check_change
 from ..specs.trace import build_matrix, gaps, scan_tags, to_markdown, unknown_tags, write_traceability
@@ -73,10 +73,7 @@ def spec_show(
 ) -> None:
     """A capability's living spec, ID prefix, next free ID and delta path (also for a new capability)."""
     ws = workspace(as_json)
-    try:
-        cap = resolve_ref(ws, ref)
-    except ConfigError as exc:
-        fail(str(exc), as_json)
+    cap = resolve_ref(ws, ref)
     data = describe(ws, cap, with_scenarios=not no_scenarios)
     lines = [
         f"{data['ref']}{'  (new)' if data['new'] else ''}",

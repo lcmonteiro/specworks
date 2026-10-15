@@ -36,12 +36,14 @@ earliest of those phases (`specworks cycle --change "<ref>"`).
 
    ```bash
    specworks context --json
-   specworks gate code --change "<ref>"
+   specworks gate code --change "<ref>" --no-run
    ```
 
    Select the change as the other phases do and announce `Using change: <ref>`.
-   If `gate code` fails (pending tasks, failing tests), stop and suggest
-   `/specworks-code <ref>`; reviewing unfinished work finds noise. Then:
+   `--no-run` skips the test suite here: the code phase's gate just ran it,
+   and `gate review` runs it again at the end. If `gate code` fails (pending
+   tasks, untagged requirements), stop and suggest `/specworks-code <ref>`;
+   reviewing unfinished work finds noise. Then:
    ```bash
    specworks phase "<ref>" review
    ```
@@ -130,7 +132,7 @@ earliest of those phases (`specworks cycle --change "<ref>"`).
    ```
 
    The gate checks: valid specs, `review.md` written with no open finding,
-   every requirement with code and every criterion with a test, no unknown
+   every open finding with a known type (or a `back to <phase>:`), every requirement with code and every criterion with a test, no unknown
    tags, removed requirements gone, every untagged changed file accounted for,
    and the test suite passing. Fix and re-run until it passes.
 

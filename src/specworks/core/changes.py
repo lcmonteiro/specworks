@@ -10,6 +10,7 @@ from pathlib import Path
 import yaml
 
 from .config import Config
+from .errors import SpecworksError
 
 META_FILE = ".change.yaml"
 # Each phase is driven by the skill of the same name (specworks-<phase>); `close`
@@ -20,7 +21,7 @@ OLD_PHASES = {"propose": "specify", "interface": "design", "implement": "code", 
 NAME_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 
 
-class ChangeError(Exception):
+class ChangeError(SpecworksError):
     """Raised for invalid change names or missing changes."""
 
 
@@ -56,15 +57,21 @@ def create_change(cfg: Config, name: str) -> Change:
 
 
 def load_change(cfg: Config, name: str) -> Change:
+    validate_name(name)  # also keeps refs out of archive/ and other folders
     path = cfg.changes_path / name
     meta_file = path / META_FILE
     if name == "archive" or not meta_file.is_file():
         raise ChangeError(f"change '{name}' not found in {cfg.changes_dir}")
-    meta = yaml.safe_load(meta_file.read_text(encoding="utf-8")) or {}
+    try:
+        meta = yaml.safe_load(meta_file.read_text(encoding="utf-8")) or {}
+    except yaml.YAMLError as exc:
+        raise ChangeError(f"{cfg.changes_dir}/{name}/{META_FILE} is not valid YAML: {exc}") from None
+    if not isinstance(meta, dict):
+        raise ChangeError(f"{cfg.changes_dir}/{name}/{META_FILE} must be a YAML mapping (name, created, phase)")
     phase = meta.get("phase", "refine")
     phase = OLD_PHASES.get(phase, phase)
     if phase not in PHASES:
-        raise ChangeError(f"change '{name}' has unknown phase '{phase}'")
+        raise ChangeError(f"change '{name}' has unknown phase '{phase}'; set phase: to one of {', '.join(PHASES)} in {cfg.changes_dir}/{name}/{META_FILE}")
     return Change(
         name=name,
         path=path,

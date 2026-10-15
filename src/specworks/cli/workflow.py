@@ -6,11 +6,11 @@ import json
 
 import typer
 
-from ..core.runner import CommandError, run_command
+from ..core.runner import run_command
 from ..specs.check import check_change
-from ..specs.merge import MergeError, archive_target, close_change, plan_merge
+from ..specs.merge import archive_target, close_change, plan_merge
 from ..workflow.cycle import next_cycle
-from ..workflow.gate import GATES, GateContext, GateError, run_gate
+from ..workflow.gate import GATES, GateContext, run_gate
 from ..workflow.review import review_change
 from ..workflow.validate import GROUPS, summary, validate_change
 from .app import app
@@ -30,10 +30,7 @@ def gate(
 ) -> None:
     """Check whether a change has finished a phase (exit 1 if a blocking check fails)."""
     ws, mod, ch = require_change(change, as_json)
-    try:
-        passed, checks = run_gate(GateContext(ws, mod, ch, run_tests=not no_run, base=base, allow_open=allow_open), phase)
-    except GateError as exc:
-        fail(str(exc), as_json)
+    passed, checks = run_gate(GateContext(ws, mod, ch, run_tests=not no_run, base=base, allow_open=allow_open), phase)
     data = {**change_dict(ws, mod, ch), "gate": phase, "passed": passed, "checks": [c.to_dict() for c in checks]}
     lines = []
     for c in checks:
@@ -142,18 +139,15 @@ def close(
             goBackTo=result["goBackTo"],
         )
     specs, _ = check_change(ws, ch)
-    try:
-        merges = plan_merge(ws, ch, specs, ref)
-        archive_target(ch, mod.config.archive_path)
-    except MergeError as exc:
-        fail(str(exc), as_json)
+    merges = plan_merge(ws, ch, specs, ref)
+    archive_target(ch, mod.config.archive_path)
     data = {**change_dict(ws, mod, ch), "dryRun": dry_run, "merges": [m.to_dict(ws) for m in merges], "archivedTo": None}
     lines = [f"{'would merge' if dry_run else 'merged'} {m.cap.ref} -> {ws.rel(m.spec_path)}{' (new)' if m.created else ''}: {m.summary()}" for m in merges]
     lines = lines or ["no delta specs to merge (skip_specs)"]
     if not dry_run:
         try:
             target = close_change(merges, ch, mod.config.archive_path)
-        except (MergeError, OSError) as exc:
+        except OSError as exc:
             fail(str(exc), as_json)
         data["archivedTo"] = ws.rel(target)
         data["phase"] = "done"
@@ -173,10 +167,7 @@ def run(
     else:
         ws = workspace(as_json)
         mod = ws.current
-    try:
-        result = run_command(ws, mod, key, capture=as_json)
-    except CommandError as exc:
-        fail(str(exc), as_json)
+    result = run_command(ws, mod, key, capture=as_json)
     if as_json:
         typer.echo(
             json.dumps(

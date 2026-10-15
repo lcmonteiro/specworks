@@ -119,6 +119,10 @@ def _check_delta(ws: Workspace, change: Change, delta: Delta, seen: dict[str, st
         if not doc.purpose:
             issues.append(Issue("warning", file, 0, f"new capability {cap.ref}: add '## Purpose' (one or two sentences)"))
 
+    if cap.is_new and (owner := ws.prefixes().get(cap.prefix)):
+        err(0, f"new capability {cap.ref} would use the ID prefix {cap.prefix}, already used by {owner}; "
+               f"register it with its own prefix first (specworks capability add {cap.name} --path <code path> --prefix <PREFIX>)")
+    retired = cap.history_ids() - living_ids
     taken = _other_changes_adding(ws, change, cap)
     for req in doc.requirements:
         if req.section not in DELTA_SECTIONS:
@@ -137,6 +141,8 @@ def _check_delta(ws: Workspace, change: Change, delta: Delta, seen: dict[str, st
         if req.section == "ADDED":
             if req.id in living_ids:
                 err(req.line, f"{req.id} already exists in {cap.ref}; use MODIFIED to change it, or take the next free ID")
+            if req.id in retired:
+                err(req.line, f"{req.id} was REMOVED from {cap.ref} by an earlier change and IDs are never reused; take the next free ID")
             if req.id in taken:
                 err(req.line, f"{req.id} is also added by change {taken[req.id]}; take the next free ID")
         elif delta.living is not None and req.id not in living_ids:

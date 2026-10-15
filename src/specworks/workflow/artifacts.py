@@ -10,6 +10,7 @@ import yaml
 
 from ..core.changes import Change
 from ..core.config import ConfigError
+from ..core.errors import SpecworksError
 from ..core.workspace import Module, Workspace
 from ..specs.capabilities import delta_files, describe, resolve_delta, workspace_capabilities
 
@@ -34,7 +35,7 @@ class Artifact:
         return (change.path / self.generates).is_file()
 
 
-class WorkflowError(Exception):
+class WorkflowError(SpecworksError):
     """Raised for unknown artifacts."""
 
 
