@@ -108,7 +108,8 @@ earliest of those phases (`specworks cycle --change "<ref>"`).
    specworks phase "<ref>" <specify|design|test|code>
    ```
    and suggest the matching skill. When the change comes back to review,
-   check that the proposal was carried out and close the finding.
+   check that the proposal was carried out (a `done in <phase>: ...` line
+   under the finding says what changed) and close the finding.
    - **accepted**: only with the user's explicit agreement, with the reason.
 
 5. **Write `review.md`**

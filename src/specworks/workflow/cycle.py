@@ -5,15 +5,17 @@ one phase: its Decision's ``back to <phase>:`` when it says so, otherwise the
 phase its type belongs to (see ``review.parse_review``). The next cycle starts
 at the earliest of them and runs every later phase up to review again. A spec
 finding is outside the cycle: the change goes back to specify and the build stops.
+Once specify has carried it out (``done in specify: ...``), it needs the cycle from
+design on, so the build can resume.
 """
 
 from __future__ import annotations
 
 from ..core.changes import Change
-from .review import parse_review, read_review
+from .review import FINDING_PHASES, parse_review, read_review
 
-CYCLE = ("design", "test", "code", "review")
-ORDER = ("specify", *CYCLE)
+CYCLE = FINDING_PHASES[1:]  # design, test, code, review
+ORDER = FINDING_PHASES
 
 
 def open_findings(text: str) -> list[dict]:

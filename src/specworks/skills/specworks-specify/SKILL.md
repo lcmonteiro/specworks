@@ -55,6 +55,17 @@ When the artifacts are done, stop and suggest `/specworks-design`.
    open questions drive the proposal. If a planning artifact already exists,
    continue from it instead of overwriting it.
 
+   **Back from review**: if the change has a `review.md`, list its open
+   findings with `specworks cycle --change "<ref>" --json`. Those with
+   `"phase": "specify"` are why the change is back here: carry out the agreed
+   proposal in each one's Decision (`back to specify: ...`) in the delta
+   specs, tasks and design.md, and nothing more. Once `gate specify` passes
+   (step 8), add a line under each of those findings in review.md:
+   `  - done in specify: <what changed, with the IDs added or modified>`.
+   Leave its box open (`- [ ]`): review ticks it once tests and code follow,
+   and `specworks cycle` now starts the next build cycle at design instead of
+   handing the change back to specify.
+
    Inspect the code, tests and docs the change touches (read-only), and the
    living specs of related capabilities:
    ```bash
@@ -167,7 +178,8 @@ When the artifacts are done, stop and suggest `/specworks-design`.
 
    Summarize: change and location; each artifact in one line (and design
    skipped, if so); the number of requirements and acceptance criteria per
-   capability; assumptions made. End with: "The plan is ready for review.
+   capability; assumptions made; review findings marked `done in specify`.
+   End with: "The plan is ready for review.
    When you are ready, run `/specworks-design <ref>` to decide the API and
    create it as stubs."
 
