@@ -98,6 +98,14 @@ def test_phase_moves_and_validates(project):
     assert code == 1
 
 
+def test_only_close_makes_a_change_done(project):
+    run_json("new", "add-login")
+    code, data = run_json("phase", "add-login", "done")
+    assert code == 1 and "only through `specworks close`" in data["error"]
+    code, data = run_json("list")
+    assert [c["phase"] for c in data["changes"]] == ["refine"]
+
+
 @pytest.mark.parametrize("folder", ["spec", "docs", "context", "specworks"])
 def test_init_with_custom_dir_names_config_after_folder(tmp_path, monkeypatch, folder):
     monkeypatch.chdir(tmp_path)
@@ -177,7 +185,7 @@ def test_phases_follow_the_workflow(project):
     run_json("new", "add-login")
     code, data = run_json("status", "--change", "add-login")
     assert data["phases"] == ["refine", "specify", "design", "test", "code", "review", "validate", "close", "done"]
-    for phase in ("code", "specify", "done"):  # moving back is allowed
+    for phase in ("code", "specify", "close"):  # moving back is allowed; done is close's alone
         code, data = run_json("phase", "add-login", phase)
         assert code == 0 and data["phase"] == phase
 

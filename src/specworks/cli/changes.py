@@ -41,7 +41,7 @@ def status(change: str = ChangeOpt, as_json: bool = JsonOpt) -> None:
 @app.command()
 def phase(
     name: str = typer.Argument(..., help="Change name or module:name."),
-    to: str = typer.Argument(..., help=f"One of: {', '.join(PHASES)}"),
+    to: str = typer.Argument(..., help=f"One of: {', '.join(p for p in PHASES if p != 'done')} (done is set by `specworks close`)."),
     as_json: bool = JsonOpt,
 ) -> None:
     """Move a change to another phase."""
