@@ -43,7 +43,7 @@ ones are applied there with you, larger ones go back to `code`, `specify` or
 transition the skills and gates use (source:
 [`docs/diagrams/workflow.d2`](docs/diagrams/workflow.d2)).
 Each phase skill enters its phase with `specworks start <phase> --change <ref>`, which moves the change only
-once the gates it depends on pass; `specworks phase <change> <phase>` moves a change to any phase unchecked.
+once the gates it depends on pass; `specworks phase <change> <phase>` moves a change to any phase unchecked, except `done`, which only `specworks close` sets once it has merged and archived the change.
 
 ## Layout
 

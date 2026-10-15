@@ -97,5 +97,8 @@ def list_changes(cfg: Config) -> list[Change]:
 def set_phase(change: Change, phase: str) -> None:
     if phase not in PHASES:
         raise ChangeError(f"unknown phase '{phase}'; expected one of {', '.join(PHASES)}")
+    if phase == "done":
+        # `done` means merged into the living specs and archived; only `specworks close` does that.
+        raise ChangeError("a change becomes done only through `specworks close`, which merges its specs and archives it")
     change.phase = phase
     change.save()
