@@ -157,3 +157,10 @@ def test_skills_pick_the_change_by_one_shared_rule(name):
     text = read_skill(name)
     assert "**Picking the change**" in text and "Pick the change (above)" in text
     assert "as the other phases do" not in text and "as in `/specworks-specify`" not in text
+
+
+def test_close_runs_the_project_commands_once_before_writing():
+    # validate (step 1) and the real close (step 5) run them; the dry run in between must not.
+    text = read_skill("specworks-close")
+    assert 'specworks close --change "<ref>" --dry-run --no-run' in text
+    assert 'specworks validate --change "<ref>"' in text and '\n   specworks close --change "<ref>"\n' in text
