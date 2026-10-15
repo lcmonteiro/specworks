@@ -232,8 +232,10 @@ artifacts:
       (only with the user's agreement). A finding sent back to an earlier
       phase stays open (`- [ ]`) with `back to <specify|design|test|code>:
       <the agreed proposal>` until the change returns to review and it is
-      done; `specworks cycle` reads these to pick where the next build cycle
-      starts.
+      done. The phase that carries out the proposal adds `done in <phase>:
+      <what changed>` under it (the box stays open until review confirms).
+      `specworks cycle` reads these to pick where the next build cycle
+      starts: the phase a finding needs, or the one after its `done in`.
 
       "Changed files without tags" accounts for every file `specworks review`
       lists under untracedSource / untracedTests: why it needs no tag, or the

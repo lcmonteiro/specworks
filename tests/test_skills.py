@@ -129,3 +129,9 @@ def test_validate_enters_its_phase_through_the_review_gate():
     text = read_skill("specworks-validate")
     assert 'specworks start validate --change "<ref>"' in text
     assert 'specworks phase "<ref>" validate' not in text
+
+
+def test_specify_marks_the_review_findings_it_carried_out():
+    # Without the mark, `specworks cycle` keeps handing a spec finding back to specify and the build never resumes.
+    assert "done in specify:" in read_skill("specworks-specify")
+    assert "done in specify:" in read_skill("specworks-build")

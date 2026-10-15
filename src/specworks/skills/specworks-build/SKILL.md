@@ -59,7 +59,9 @@ fails and cannot be fixed within that phase, when the specs turn out wrong
    review.md** that belong to it (`specworks cycle --change "<ref>" --json`
    lists each finding with its phase): carry out the agreed proposal in the
    finding's Decision, plus whatever the later phases need to follow it (a
-   new API needs its tests and code). Do not redo untouched work.
+   new API needs its tests and code). A finding marked `done in <phase>:` has
+   that phase's part done already (e.g. the spec change from specify): carry
+   out what it means for this phase. Do not redo untouched work.
 
    If a gate fails, fix it inside the phase as its skill says. If it cannot
    be fixed there (the specs are wrong, the user must decide something
@@ -95,7 +97,8 @@ fails and cannot be fixed within that phase, when the specs turn out wrong
    - **A spec finding** (`handOver` is `/specworks-specify`): stop the build.
      Explain which requirement is missing or wrong, and suggest
      `/specworks-specify <ref>` to fix the specs, then `/specworks-build <ref>`
-     to continue (it resumes from the open findings).
+     to continue. Specify marks each finding it carried out `done in specify:
+     ...`, so `cycle` then starts at design and the build resumes there.
    - **Otherwise** show the open findings and where each one is resolved,
      then ask:
 
@@ -116,7 +119,8 @@ fails and cannot be fixed within that phase, when the specs turn out wrong
    The cycle starts at the earliest phase any finding needs: code findings
    (`code-gap`, `tag`, `quality`) → code, review; test findings → test, code,
    review; design/API findings → design, test, code, review. A
-   `back to <phase>: ...` in a finding's Decision overrides its type.
+   `back to <phase>: ...` in a finding's Decision overrides its type, and a
+   `done in <phase>: ...` line moves it on to the phase after that one.
 
    After the third cycle, say how many cycles have run and what keeps coming
    back before asking again: repeated findings usually mean the spec or the

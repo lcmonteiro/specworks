@@ -59,6 +59,26 @@ def test_a_spec_finding_hands_over_to_specify(project):
     assert data["startAt"] == "specify" and data["phases"] == [] and data["handOver"] == "/specworks-specify"
 
 
+def test_a_spec_finding_carried_out_in_specify_resumes_the_build_at_design(project):
+    # The finding stays open until review confirms it; it must not hand over to specify again.
+    write_review(
+        project,
+        "- [ ] R1 **spec-gap** lockout also emails the user\n"
+        "  - **Decision**: back to specify: add REQ-AUTH-004 for the lockout email\n"
+        "  - done in specify: REQ-AUTH-004 added with AC-AUTH-004.1, task 3.1\n"
+        "- [ ] R2 **code-gap** x\n  - **Decision**: back to code: y",
+    )
+    data = cycle()
+    assert data["handOver"] is None and data["startAt"] == "design" and data["phases"] == ["design", "test", "code", "review"]
+    assert data["open"][0]["doneIn"] == "specify" and "doneIn" not in data["open"][1]
+
+
+@pytest.mark.parametrize("done_in, start", [("design", "test"), ("code", "review")])
+def test_a_finding_done_in_a_phase_needs_the_phases_after_it(project, done_in, start):
+    write_review(project, f"- [ ] R1 **design-gap** x\n  - **Decision**: back to design: y\n  - done in {done_in}: z")
+    assert cycle()["startAt"] == start
+
+
 def test_open_findings_parsing():
     text = (
         "## Findings\n\n- [ ] R1 **test-gap** weak assert\n  - **Decision**: back to TEST: assert the body\n"

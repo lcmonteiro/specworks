@@ -167,7 +167,10 @@ def review_change(ws: Workspace, change: Change, base: str | None = None) -> tup
 # Findings are checkboxes (``- [ ] R<n> **<type>** ...``, ``- [x]`` once resolved);
 # lines indented under one belong to it (its Decision). A Decision saying
 # ``back to <phase>: <proposal>`` sends the finding to that phase; otherwise its
-# type decides. Untagged changed files are accounted for under their own heading.
+# type decides. A phase that carried out the proposal adds ``done in <phase>: <what
+# changed>``: the finding stays open until review confirms it, but the work left is
+# in the phases after that one. Untagged changed files are accounted for under their
+# own heading.
 
 # The phase that resolves each finding type, in workflow order (specify comes first).
 TYPE_PHASE = {
@@ -182,6 +185,9 @@ COMMENT_RE = re.compile(r"<!--.*?-->", re.DOTALL)
 FINDING_RE = re.compile(r"^\s*- \[(?P<mark>[ xX]?)\]\s+(?P<id>R\d+)\b(?P<text>.*)$")
 TYPE_RE = re.compile(r"\*\*(?P<type>[a-z-]+)\*\*")
 BACK_RE = re.compile(r"\bback to (?P<phase>specify|design|test|code)\s*:", re.IGNORECASE)
+DONE_RE = re.compile(r"\bdone in (?P<phase>specify|design|test|code)\s*:", re.IGNORECASE)
+# Workflow order of the phases a finding can need, and the phase after each one.
+FINDING_PHASES = ("specify", "design", "test", "code", "review")
 H2_RE = re.compile(r"^##\s+(?P<title>.+?)\s*$")
 ACCOUNTED_SECTION = "changed files without tags"
 
@@ -192,10 +198,14 @@ class Finding:
     done: bool
     type: str  # "" when the finding names none
     text: str  # the finding's line, after its ID
-    phase: str  # the phase that resolves it
+    phase: str  # the phase that resolves it (after ``done_in``, the next one)
+    done_in: str = ""  # the phase that carried out its proposal (``done in <phase>:``), awaiting review
 
     def to_dict(self) -> dict:
-        return {"id": self.id, "type": self.type, "text": self.text, "phase": self.phase}
+        data = {"id": self.id, "type": self.type, "text": self.text, "phase": self.phase}
+        if self.done_in:
+            data["doneIn"] = self.done_in
+        return data
 
 
 @dataclass
@@ -241,6 +251,11 @@ def parse_review(text: str) -> ReviewDoc:
             current = None  # back at the top level: the finding's block has ended
         if current is not None and (back := BACK_RE.search(line)):
             current.phase = back.group("phase").lower()
+        if current is not None and (carried := DONE_RE.search(line)):
+            current.done_in = carried.group("phase").lower()
+    for finding in doc.findings:
+        if finding.done_in:
+            finding.phase = FINDING_PHASES[FINDING_PHASES.index(finding.done_in) + 1]
     doc.accounted = "\n".join(accounted)
     return doc
 
