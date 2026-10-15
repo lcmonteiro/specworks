@@ -84,6 +84,14 @@ def test_propose_gate_fails_without_tasks(project):
     assert code == 1 and checks(data)["tasks.md is written"]["ok"] is False
 
 
+def test_propose_gate_reports_a_criterion_without_a_task_once(project):
+    tasks = project / "spec/changes" / REF / "tasks.md"
+    tasks.write_text("\n".join(line for line in tasks.read_text().splitlines() if "AUTH-003" not in line) + "\n")
+    code, data = run_json("gate", "specify", "--change", REF)
+    details = [d for c in data["checks"] for d in c["details"] if "AC-AUTH-003.1" in d]
+    assert code == 1 and len(details) == 1 and "is not covered by any task" in details[0]
+
+
 def test_test_gate_lists_criteria_without_tests(project):
     write_tests(project, "AC-AUTH-003.1")
     code, data = run_json("gate", "test", "--change", REF)

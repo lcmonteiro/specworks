@@ -19,11 +19,12 @@ from typing import Any
 
 from ..core.changes import Change, list_changes
 from ..core.config import MODULE_NAME_RE, Capability, ConfigError
-from ..core.workspace import Module, Workspace
-from .specfile import REQ_ID_RE, SpecDoc, id_prefix, parse_spec, requirement_number
+from ..core.workspace import Module, Workspace, capability_prefix
+from .specfile import REQ_ID_RE, SpecDoc, find_ids, id_prefix, parse_spec, requirement_number
 
 SPECS_DIR = "specs"
 SPEC_FILE = "spec.md"
+REQUIREMENTS_FILE = "requirements.md"  # written by close next to spec.md: index and History
 
 
 @dataclass
@@ -42,10 +43,7 @@ class CapabilityRef:
 
     @property
     def prefix(self) -> str:
-        if self.capability is not None and self.capability.prefix:
-            return self.capability.prefix
-        parts = [*self.module.name.split("/"), self.name] if self.module.name else [self.name]
-        return "-".join(parts).upper()
+        return capability_prefix(self.module.name, self.name, self.capability.prefix if self.capability else "")
 
     @property
     def delta_path(self) -> str:
@@ -57,6 +55,14 @@ class CapabilityRef:
         if self.capability is None:
             return None
         return self.capability.docs_path(self.module.root, self.module.config.docs_dir) / SPEC_FILE
+
+    def history_ids(self) -> set[str]:
+        """Requirement IDs requirements.md records: current ones and the ones earlier changes REMOVED (never reused)."""
+        living = self.living_spec()
+        path = living.parent / REQUIREMENTS_FILE if living else None
+        if path is None or not path.is_file():
+            return set()
+        return {i for i in find_ids(path.read_text(encoding="utf-8")) if self.id_matches(i)}
 
     def id_matches(self, req_id: str) -> bool:
         return REQ_ID_RE.fullmatch(req_id) is not None and id_prefix(req_id) == self.prefix
@@ -113,8 +119,8 @@ def read_spec(path: Path | None) -> SpecDoc | None:
 
 
 def used_numbers(ws: Workspace, cap: CapabilityRef) -> set[int]:
-    """Requirement numbers taken by the living spec and by every active change's delta."""
-    numbers: set[int] = set()
+    """Requirement numbers taken by the living spec, by every active change's delta, and by removed requirements."""
+    numbers = {requirement_number(i) for i in cap.history_ids()}
     docs = [read_spec(cap.living_spec())]
     for module in ws.modules():
         for change in list_changes(module.config):

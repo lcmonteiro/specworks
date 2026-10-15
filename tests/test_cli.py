@@ -200,3 +200,29 @@ def test_null_description_is_empty(project):
     cfg.write_text(cfg.read_text().replace("capabilities: {}", "capabilities:\n  user-auth:\n    path: src/auth\n    description:"))
     code, data = run_json("context")
     assert code == 0 and data["capabilities"][0]["description"] == "", data
+
+
+@pytest.mark.parametrize(
+    "meta, message",
+    [
+        ("phase: bogus\n", "change 'broken' has unknown phase 'bogus'; set phase: to one of"),
+        ("[1, 2]\n", ".change.yaml must be a YAML mapping"),
+        ("phase: [\n", ".change.yaml is not valid YAML"),
+    ],
+)
+def test_a_broken_change_is_a_clear_error_not_a_crash(project, meta, message):
+    runner.invoke(app, ["new", "broken"])
+    (project / "specworks/changes/broken/.change.yaml").write_text(meta)
+    code, data = run_json("list")  # JSON, as --json promises, instead of a traceback
+    assert code == 1 and message in data["error"]
+    result = runner.invoke(app, ["list"])
+    assert result.exit_code == 1 and isinstance(result.exception, SystemExit) and result.output.startswith("error: ")
+
+
+def test_archived_changes_are_not_addressable(project):
+    runner.invoke(app, ["new", "old"])
+    archived = project / "specworks/changes/archive/2026-01-01-old"
+    (project / "specworks/changes/old").rename(archived)
+    code, data = run_json("phase", "archive/2026-01-01-old", "code")
+    assert code == 1 and "not found" in data["error"]
+    assert "phase: refine" in (archived / ".change.yaml").read_text()

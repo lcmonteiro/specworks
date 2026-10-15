@@ -6,6 +6,7 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
+from ..core.errors import SpecworksError
 from .specfile import find_ids
 
 TASKS_FILE = "tasks.md"
@@ -14,7 +15,7 @@ TASKISH_RE = re.compile(r"^\s*[-*]\s*\[")
 FOLLOW_UP_RE = re.compile(r"^##\s+Workflow follow-up\s*$", re.IGNORECASE)
 
 
-class TaskError(Exception):
+class TaskError(SpecworksError):
     """Raised for a missing tasks.md or an unknown task number."""
 
 

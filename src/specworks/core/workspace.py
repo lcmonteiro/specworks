@@ -25,6 +25,14 @@ from .config import Capability, Config, ConfigError, config_name, find_config, f
 SEP = ":"
 
 
+def capability_prefix(module_name: str, name: str, prefix: str = "") -> str:
+    """The ID prefix (REQ-<prefix>-NNN) of a capability: its own ``prefix:``, else its module path and name in upper case.
+
+    ``billing/tax`` + ``rates`` -> ``BILLING-TAX-RATES``.
+    """
+    return prefix or "-".join([*module_name.split("/"), name] if module_name else [name]).upper()
+
+
 @dataclass
 class Module:
     name: str  # "" for the top level, "billing" or "billing/tax" below it
@@ -121,6 +129,23 @@ class Workspace:
     def capabilities(self) -> list[tuple[Module, Capability]]:
         return [(m, cap) for m in self.modules() for cap in m.config.capabilities.values()]
 
+    def prefixes(self) -> dict[str, str]:
+        """ID prefix -> the registered capability (``module:name``) that uses it."""
+        return {capability_prefix(m.name, cap.name, cap.prefix): m.qualify(cap.name) for m, cap in self.capabilities()}
+
+
+def _check_prefixes(ws: Workspace) -> None:
+    """Every capability has its own ID prefix, or two of them would hand out the same requirement IDs."""
+    owners: dict[str, str] = {}
+    for module, cap in ws.capabilities():
+        prefix, ref = capability_prefix(module.name, cap.name, cap.prefix), module.qualify(cap.name)
+        if prefix in owners:
+            raise ConfigError(
+                f"capabilities {owners[prefix]} and {ref} both use the ID prefix {prefix}; "
+                f"give one of them its own 'prefix:' in its config (IDs already written keep the prefix they have)"
+            )
+        owners[prefix] = ref
+
 
 def _links_to(parent: Config, child_root: Path) -> str | None:
     """Name under which ``parent`` lists ``child_root`` as a module, if it does."""
@@ -186,4 +211,6 @@ def load_workspace(start: Path | None = None) -> Workspace | None:
     missing: list[MissingModule] = []
     top = _load_tree(load_config(top_root), "", None, missing)
     current = next(m for m in top.walk() if m.root == nearest)
-    return Workspace(top=top, current=current, missing=missing)
+    ws = Workspace(top=top, current=current, missing=missing)
+    _check_prefixes(ws)
+    return ws

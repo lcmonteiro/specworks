@@ -4,6 +4,7 @@ import pytest
 
 from helpers import REF, run_json
 from specworks.workflow.cycle import open_findings
+from specworks.workflow.review import parse_review
 
 
 def write_review(root, body):
@@ -84,3 +85,9 @@ def test_back_to_needs_the_decision_form_and_stays_in_its_finding():
         "  - not indented under R1 any more, so it is not R1's Decision\n"
     )
     assert [f["phase"] for f in open_findings(text)] == ["code"]
+
+
+def test_finding_types_match_in_any_case_and_after_other_bold_words():
+    text = "- [ ] R1 **BREAKING** **Spec-Gap** reset changes\n- [ ] R2 **spec_gap** typo\n"
+    found = [(f.type, f.phase, f.routed) for f in parse_review(text).findings]
+    assert found == [("spec-gap", "specify", True), ("spec_gap", "code", False)]

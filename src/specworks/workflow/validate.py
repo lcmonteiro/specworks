@@ -11,10 +11,9 @@ from __future__ import annotations
 from ..core.changes import Change
 from ..core.workspace import Module, Workspace
 from ..tools.diagrams import diagrams_in, state
-from .checks import Check, accounted_check, command_check, tests_pass
+from .checks import COHERENCE, COMPLETENESS, CORRECTNESS, Check, accounted_check, command_check, tag_checks, tests_pass
 from .review import REVIEW_FILE, read_review, review_change
 
-COMPLETENESS, CORRECTNESS, COHERENCE = "completeness", "correctness", "coherence"
 GROUPS = (COMPLETENESS, CORRECTNESS, COHERENCE)
 REVIEWED_PHASES = ("review", "validate", "close")
 
@@ -42,8 +41,6 @@ def validate_change(ws: Workspace, module: Module, change: Change, run: bool = T
     checks.append(_check(COMPLETENESS, "/specworks-specify", "planning artifacts exist (proposal, specs, tasks)", not missing_artifacts, missing_artifacts))
     pending = [f"{t.num} {t.text}" for t in specs.tasks if not t.done]
     checks.append(_check(COMPLETENESS, "/specworks-code", "every task is done", specs.tasks_found and not pending, pending))
-    checks.append(_check(COMPLETENESS, "/specworks-code", "every requirement has code (@req)", not found["reqWithoutCode"], found["reqWithoutCode"]))
-    checks.append(_check(COMPLETENESS, "/specworks-test", "every acceptance criterion has a test (@ac)", not found["acWithoutTests"], found["acWithoutTests"]))
     review_details = [] if reviewed else [f"{REVIEW_FILE} is missing"]
     checks.append(
         _check(COMPLETENESS, "/specworks-review", f"review done ({REVIEW_FILE} with no open finding)", reviewed and not open_findings, review_details + open_findings)
@@ -55,8 +52,7 @@ def validate_change(ws: Workspace, module: Module, change: Change, run: bool = T
     for key in ("lint", "typecheck"):
         command = command_check(ws, module, key, f"{key} passes (commands.{key})", run, optional=True)
         checks.append(_grouped(command, CORRECTNESS, "/specworks-code"))
-    checks.append(_check(CORRECTNESS, "/specworks-review", "no tag refers to an unknown requirement or criterion", not found["unknownTags"], found["unknownTags"]))
-    checks.append(_check(CORRECTNESS, "/specworks-code", "removed requirements are gone from tests and code", not found["removedStillTagged"], found["removedStillTagged"]))
+    checks += tag_checks(found)  # @req code and @ac tests (completeness), unknown and removed tags (correctness)
 
     # Coherence: code, specs, review and design tell the same story.
     checks.append(_grouped(accounted_check(report, review), COHERENCE, "/specworks-review"))
