@@ -10,7 +10,7 @@ the review is clean (or the user stops). Each phase is done exactly as its
 own skill says; this skill only chains them and decides where a new cycle
 starts.
 
-It covers phases three to six of `refine → specify → design → test → code → review → validate → close`.
+It covers phases three to six of the workflow: design, test, code and review.
 
 **Phase skills**: `specworks-design`, `specworks-test`, `specworks-code` and
 `specworks-review`, installed next to this skill (`../specworks-<phase>/SKILL.md`).
@@ -23,7 +23,7 @@ a one-line result instead and go on to the next phase.
 fails and cannot be fixed within that phase, when the specs turn out wrong
 (spec findings go to `/specworks-specify`), or when the user says stop.
 
-<!-- specworks:include running-cli -->
+<!-- specworks:include workflow -->
 
 ---
 
@@ -38,7 +38,7 @@ fails and cannot be fixed within that phase, when the specs turn out wrong
    specworks cycle --change "<ref>" --json
    ```
 
-   - Select the change as the phase skills do; announce `Using change: <ref>`.
+   - Select the change (see **Selecting the change**).
    - If `gate specify` fails, stop and suggest `/specworks-specify <ref>`.
    - Start point:
      - a previous review left open findings (`cycle` returns `startAt`):

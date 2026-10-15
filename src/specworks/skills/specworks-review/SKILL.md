@@ -11,8 +11,6 @@ change to the others: the **code**, the **spec** or the **design/API**.
 Small, local changes are applied here with the user; larger ones send the
 change back to the phase that owns them. Every decision goes in `review.md`.
 
-It is the sixth phase of `refine → specify → design → test → code → review → validate → close`.
-
 **Phase boundary**: this phase may change code, tests, the change's delta
 specs and design.md, but only to remove drift, and only in small, local
 steps. Larger changes go back to `/specworks-specify`, `/specworks-design`
@@ -26,7 +24,7 @@ that needs work as open, with the agreed proposal as `back to
 <specify|design|test|code>: ...`; the build starts the next cycle from the
 earliest of those phases (`specworks cycle --change "<ref>"`).
 
-<!-- specworks:include running-cli -->
+<!-- specworks:include workflow -->
 
 ---
 
@@ -39,7 +37,7 @@ earliest of those phases (`specworks cycle --change "<ref>"`).
    specworks gate code --change "<ref>"
    ```
 
-   Select the change as the other phases do and announce `Using change: <ref>`.
+   Select the change (see **Selecting the change**).
    If `gate code` fails (pending tasks, failing tests), stop and suggest
    `/specworks-code <ref>`; reviewing unfinished work finds noise. Then:
    ```bash

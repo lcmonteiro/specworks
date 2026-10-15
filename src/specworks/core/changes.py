@@ -2,14 +2,13 @@
 
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
 
 import yaml
 
-from .config import Config
+from .config import Config, validate_kebab
 from .errors import SpecworksError
 
 META_FILE = ".change.yaml"
@@ -18,7 +17,6 @@ META_FILE = ".change.yaml"
 PHASES = ("refine", "specify", "design", "test", "code", "review", "validate", "close", "done")
 # Phase names before the rename; .change.yaml files that still use them load as the new names.
 OLD_PHASES = {"propose": "specify", "interface": "design", "implement": "code", "verify": "validate"}
-NAME_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 
 
 class ChangeError(SpecworksError):
@@ -40,13 +38,8 @@ class Change:
         (self.path / META_FILE).write_text(yaml.safe_dump(data, sort_keys=False), encoding="utf-8")
 
 
-def validate_name(name: str) -> None:
-    if not NAME_RE.match(name):
-        raise ChangeError(f"change name '{name}' must be kebab-case (e.g. add-user-auth)")
-
-
 def create_change(cfg: Config, name: str) -> Change:
-    validate_name(name)
+    validate_kebab(name, "change name", "add-user-auth")
     path = cfg.changes_path / name
     if path.exists():
         raise ChangeError(f"change '{name}' already exists at {path.relative_to(cfg.root)}")

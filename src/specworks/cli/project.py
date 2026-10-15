@@ -59,6 +59,12 @@ def link_to_parent(root: Path, name: str | None) -> str | None:
     return f"{owner.name}/{linked}" if owner.name else linked  # nested modules are named parent/child
 
 
+def module_lines(ws: Workspace, indent: str = "") -> list[str]:
+    """One line per module (the current one marked *), then the missing ones."""
+    lines = [f"{indent}{m.label:<24} {ws.rel(m.root)}{'  *' if m is ws.current else ''}" for m in ws.modules()]
+    return lines + [f"{indent}{m.name:<24} MISSING ({m.path})" for m in ws.missing]
+
+
 @app.command()
 def version() -> None:
     """Print the specworks version."""
@@ -152,9 +158,7 @@ def context(as_json: bool = JsonOpt, all_modules: bool = AllOpt) -> None:
         "capabilities": capabilities,
         "changes": [change_dict(ws, m, c) for m, c in changes],
     }
-    lines = [f"root:    {ws.root}", f"module:  {ws.current.label}", "modules:"]
-    lines += [f"  {m.label:<24} {ws.rel(m.root)}{'  *' if m is ws.current else ''}" for m in ws.modules()]
-    lines += [f"  {m.name:<24} MISSING ({m.path})" for m in ws.missing]
+    lines = [f"root:    {ws.root}", f"module:  {ws.current.label}", "modules:", *module_lines(ws, "  ")]
     lines += ["capabilities:"] + ([f"  {c['name']:<24} {c['path']}" for c in capabilities] or ["  (none)"])
     lines += ["changes:"] + ([f"  {m.qualify(c.name):<24} {c.phase}" for m, c in changes] or ["  (none)"])
     emit(data, as_json, "\n".join(lines))
@@ -200,9 +204,7 @@ def module_list(as_json: bool = JsonOpt) -> None:
         "modules": [module_dict(ws, m) for m in ws.modules()],
         "missingModules": missing_dicts(ws),
     }
-    lines = [f"{m.label:<24} {ws.rel(m.root)}{'  *' if m is ws.current else ''}" for m in ws.modules()]
-    lines += [f"{m.name:<24} MISSING ({m.path})" for m in ws.missing]
-    emit(data, as_json, "\n".join(lines))
+    emit(data, as_json, "\n".join(module_lines(ws)))
 
 
 @capability_app.command("add")

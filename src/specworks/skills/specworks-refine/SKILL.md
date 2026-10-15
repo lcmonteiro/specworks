@@ -5,14 +5,14 @@ allowed-tools: Bash(specworks:*), Bash(uv run specworks:*), Bash(uvx:*), Read, G
 ---
 
 Refinement phase: build a shared understanding of the problem and its possible
-solutions, then record it in `refinement.md`. This is the first phase of
-`refine → specify → design → test → code → review → validate → close`.
+solutions, then record it in `refinement.md`. This is the first phase of the
+workflow.
 
 **Phase boundary**: this phase writes `refinement.md` only. Do not write
 requirements, tasks, tests or code, even if the user asks to "build" something.
 When refinement is done, stop and suggest `/specworks-specify`.
 
-<!-- specworks:include running-cli -->
+<!-- specworks:include workflow -->
 
 ---
 

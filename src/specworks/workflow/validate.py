@@ -8,6 +8,9 @@ test, lint and typecheck commands.
 
 from __future__ import annotations
 
+from ..specs.capabilities import SPECS_DIR
+from ..specs.check import PROPOSAL_FILE
+from ..specs.tasks import TASKS_FILE
 from ..tools.diagrams import diagrams_in, state
 from . import checks as c
 from .checks import Check, CheckFn, GateContext
@@ -19,9 +22,9 @@ SPECIFY, TEST, CODE, REVIEW = "/specworks-specify", "/specworks-test", "/specwor
 
 
 def planning_artifacts(ctx: GateContext) -> Check:
-    missing = [n for n in ("proposal.md", "tasks.md") if not (ctx.change.path / n).is_file()]
+    missing = [n for n in (PROPOSAL_FILE, TASKS_FILE) if not (ctx.change.path / n).is_file()]
     if not ctx.change.skip_specs and not ctx.analysis.specs.deltas:
-        missing.append("specs/")
+        missing.append(f"{SPECS_DIR}/")
     return Check("planning artifacts exist (proposal, specs, tasks)", not missing, missing)
 
 

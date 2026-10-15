@@ -105,27 +105,20 @@ def tasks_done(ctx: GateContext) -> Check:
 # --- tags ------------------------------------------------------------------------
 
 
-def reqs_have_code(ctx: GateContext) -> Check:
-    return _listed("every requirement has code (@req tag)", ctx.analysis.gaps["reqWithoutCode"])
+def _gap(name: str, key: str, blocking: bool = True) -> CheckFn:
+    """A check that passes when the traceability gap ``key`` (trace.gaps) is empty."""
+    return lambda ctx: _listed(name, ctx.analysis.gaps[key], blocking)
 
 
-def acs_have_tests(ctx: GateContext) -> Check:
-    return _listed("every acceptance criterion has a test (@ac tag)", ctx.analysis.gaps["acWithoutTests"])
+reqs_have_code = _gap("every requirement has code (@req tag)", "reqWithoutCode")
+acs_have_tests = _gap("every acceptance criterion has a test (@ac tag)", "acWithoutTests")
+removed_gone = _gap("removed requirements are gone from tests and code", "removedStillTagged")
+# Before the code phase, the code of a removed requirement may still be there.
+removed_gone_warning = _gap("removed requirements are gone from tests and code", "removedStillTagged", blocking=False)
 
 
 def no_unknown_tags(ctx: GateContext) -> Check:
     return _listed("no tag refers to an unknown requirement or criterion", [t.at for t in ctx.analysis.unknown_tags])
-
-
-def removed_gone(ctx: GateContext) -> Check:
-    return _listed("removed requirements are gone from tests and code", ctx.analysis.gaps["removedStillTagged"])
-
-
-def removed_gone_warning(ctx: GateContext) -> Check:
-    """Before the code phase the code of a removed requirement may still be there."""
-    check = removed_gone(ctx)
-    check.blocking = False
-    return check
 
 
 def acs_in_test_files(ctx: GateContext) -> Check:

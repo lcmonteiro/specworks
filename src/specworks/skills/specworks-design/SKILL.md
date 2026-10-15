@@ -10,14 +10,12 @@ phase can write tests against the real names and signatures.
 At the end the API is decided, recorded under `## Interfaces` in design.md,
 and present in the code as stubs that compile and break nothing.
 
-It is the third phase of `refine → specify → design → test → code → review → validate → close`.
-
 **Phase boundary**: interfaces only. A stub has the real public signature
 (names, parameters, types, errors, doc comments) and a body that only
 signals "not implemented". No tests, no behaviour, no partial logic, even if
 it looks easy. When the gate passes, stop and suggest `/specworks-test`.
 
-<!-- specworks:include running-cli -->
+<!-- specworks:include workflow -->
 
 ---
 
@@ -30,8 +28,7 @@ it looks easy. When the gate passes, stop and suggest `/specworks-test`.
    specworks gate specify --change "<ref>"
    ```
 
-   - Select the change as in `/specworks-specify` (named by the user, or the
-     single active one; ask if ambiguous). Announce `Using change: <ref>`.
+   - Select the change (see **Selecting the change**).
    - If `gate specify` fails, stop: show the failing checks and suggest
      `/specworks-specify <ref>` to finish the plan.
    - Otherwise move the change to this phase:

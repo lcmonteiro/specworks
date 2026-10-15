@@ -8,14 +8,12 @@ Code phase: make the failing tests from the test phase pass by writing
 the code the tasks describe, and nothing more. Every requirement ends up with
 code tagged `@req <REQ-ID>`, every task ticked, and the whole test suite green.
 
-It is the fifth phase of `refine → specify → design → test → code → review → validate → close`.
-
 **Phase boundary**: implement what the specs and tasks say. The specs, the
 acceptance criteria and the tests from the test phase are the contract: do not
 change them to make the code easier. When the gate passes, stop and suggest
 `/specworks-review`.
 
-<!-- specworks:include running-cli -->
+<!-- specworks:include workflow -->
 
 ---
 
@@ -28,7 +26,7 @@ change them to make the code easier. When the gate passes, stop and suggest
    specworks gate test --change "<ref>"
    ```
 
-   - Select the change as the other phases do; announce `Using change: <ref>`.
+   - Select the change (see **Selecting the change**).
    - If `gate test` fails because criteria have no tests, stop and suggest
      `/specworks-test <ref>`. If the user explicitly wants to implement without
      tests first, say what that loses (no executable proof per criterion) and

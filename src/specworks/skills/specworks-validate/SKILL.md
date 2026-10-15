@@ -9,15 +9,13 @@ to close. The CLI checks what can be measured; you check what needs reading.
 The result is a clear PASS or FAIL, and every failure says which phase fixes
 it.
 
-It is the seventh phase of `refine → specify → design → test → code → review → validate → close`.
-
 **Phase boundary**: read-only. Do not edit code, tests, specs, tasks, design or
 review.md, and do not fix what you find, even when it is a one-line fix: report
 it and point to the phase that owns it. The only write allowed is moving the
 change's phase marker. On PASS suggest `/specworks-close`; on FAIL, the phase to
 go back to.
 
-<!-- specworks:include running-cli -->
+<!-- specworks:include workflow -->
 
 ---
 
@@ -25,7 +23,7 @@ go back to.
 
 1. **Pick the change**
 
-   Select it as the other phases do and announce `Using change: <ref>`.
+   Select the change (see **Selecting the change**).
 
 2. **Run the measurable checks, then move the change to this phase**
 

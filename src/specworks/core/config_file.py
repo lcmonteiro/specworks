@@ -7,7 +7,19 @@ import json
 import re
 from pathlib import Path
 
-from .config import MODULE_NAME_RE, PREFIX_RE, Config, ConfigError, config_name, load_config, theme_id, theme_name, validate_dir, validate_module_name, validate_relative
+from .config import (
+    Config,
+    ConfigError,
+    config_name,
+    load_config,
+    theme_id,
+    theme_name,
+    validate_capability_name,
+    validate_dir,
+    validate_module_name,
+    validate_prefix,
+    validate_relative,
+)
 
 DEFAULT_CONFIG = """\
 specworks: 1
@@ -140,11 +152,9 @@ def _insert_entry(root: Path, key: str, entry: list[str], applied) -> None:
 
 def add_capability_entry(root: Path, name: str, path: str, prefix: str = "", description: str = "") -> None:
     """Register a capability (name -> code path) in the config at ``root``, keeping the user's comments."""
-    if not MODULE_NAME_RE.match(name):
-        raise ConfigError(f"capability name '{name}' must be kebab-case (e.g. user-auth)")
+    validate_capability_name(name)
     path = validate_relative(path, f"capability '{name}' path")
-    if prefix and not PREFIX_RE.match(prefix):
-        raise ConfigError(f"prefix '{prefix}' must be upper-case letters/digits (e.g. AUTH)")
+    validate_prefix(prefix)
     if name in load_config(root).capabilities:
         raise ConfigError(f"capability '{name}' already exists")
     entry = [f"  {name}:", f"    path: {path}"]

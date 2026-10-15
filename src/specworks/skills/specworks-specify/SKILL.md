@@ -13,13 +13,11 @@ test or code is written. It produces, inside the change folder:
 - `tasks.md`: ordered checklist, every task naming the IDs it serves
 - `traceability.md`: generated matrix REQ → AC → tasks (→ tests → code later)
 
-It is the second phase of `refine → specify → design → test → code → review → validate → close`.
-
 **Phase boundary**: planning only. Do not write tests or code and do not edit
 files outside the change folder, even if the request says "build" or "fix".
 When the artifacts are done, stop and suggest `/specworks-design`.
 
-<!-- specworks:include running-cli -->
+<!-- specworks:include workflow -->
 
 ---
 
@@ -35,11 +33,11 @@ When the artifacts are done, stop and suggest `/specworks-design`.
      `specworks init`. Do not create files by hand.
    - Apply `context` as constraints (it is already merged top level → module);
      never copy it into an artifact.
-   - If the user named a change, or one in `changes` matches the request, use
-     it. Otherwise create one as `/specworks-refine` does (kebab-case name,
-     owning module, `specworks new "<name>" [--module <m>] --json`); refinement
-     is optional for small changes.
-   - Announce `Using change: <ref>` and move it to this phase:
+   - Select the change (see **Selecting the change**). When none fits, create
+     one as `/specworks-refine` does (kebab-case name, owning module,
+     `specworks new "<name>" [--module <m>] --json`); refinement is optional
+     for small changes.
+   - Move it to this phase:
      ```bash
      specworks phase "<ref>" specify
      ```

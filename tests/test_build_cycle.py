@@ -3,7 +3,7 @@
 import pytest
 
 from helpers import REF, run_json
-from specworks.workflow.cycle import open_findings
+from specworks.workflow.review import parse_review
 
 
 def write_review(root, body):
@@ -65,7 +65,7 @@ def test_open_findings_parsing():
         "- [x] R2 **design-gap** done\n  - **Decision**: back to design: was done\n"
         "- [ ] R3 untyped finding\n\n## Changed files without tags\n\n- `x.py`: back to code is not a decision here\n"
     )
-    assert open_findings(text) == [
+    assert [f.to_dict() for f in parse_review(text).open] == [
         {"id": "R1", "type": "test-gap", "text": "**test-gap** weak assert", "phase": "test"},
         {"id": "R3", "type": "", "text": "untyped finding", "phase": "code"},
     ]
@@ -73,7 +73,7 @@ def test_open_findings_parsing():
 
 def test_back_to_on_the_finding_line_counts():
     text = "- [ ] R1 **code-gap** reset returns None. **Decision**: back to design: return the token\n"
-    assert [f["phase"] for f in open_findings(text)] == ["design"]
+    assert [f["phase"] for f in [f.to_dict() for f in parse_review(text).open]] == ["design"]
 
 
 def test_back_to_needs_the_decision_form_and_stays_in_its_finding():
@@ -83,4 +83,4 @@ def test_back_to_needs_the_decision_form_and_stays_in_its_finding():
         "Back to design: a stray line outside any finding\n"
         "  - not indented under R1 any more, so it is not R1's Decision\n"
     )
-    assert [f["phase"] for f in open_findings(text)] == ["code"]
+    assert [f["phase"] for f in [f.to_dict() for f in parse_review(text).open]] == ["code"]

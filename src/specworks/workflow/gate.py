@@ -12,6 +12,7 @@ import re
 
 from ..core.changes import Change
 from ..core.errors import SpecworksError
+from ..specs.check import DESIGN_FILE
 from . import checks as c
 from .checks import Check, CheckFn, GateContext, run_checks
 from .validate import validate_change
@@ -27,7 +28,7 @@ CODE_SPAN_RE = re.compile(r"`([^`\s]+)`")
 
 def interfaces_section(change: Change) -> str | None:
     """The text of design.md's Interfaces section without HTML comments, or None if there is none."""
-    design = change.path / "design.md"
+    design = change.path / DESIGN_FILE
     if not design.is_file():
         return None
     match = INTERFACES_RE.search(design.read_text(encoding="utf-8"))

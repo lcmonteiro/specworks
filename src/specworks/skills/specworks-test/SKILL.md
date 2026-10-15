@@ -11,14 +11,12 @@ At the end every acceptance criterion has at least one test tagged
 `@ac <AC-ID>`, and those tests **fail for the right reason** (not implemented
 yet), not because they cannot compile or import.
 
-It is the fourth phase of `refine → specify → design → test → code → review → validate → close`.
-
 **Phase boundary**: write tests only, against the interfaces recorded in
 design.md. Do not add or change public interfaces here: if a test needs one,
 go back to `/specworks-design`. No behaviour, no partial logic, even if it
 looks easy. When the gate passes, stop and suggest `/specworks-code`.
 
-<!-- specworks:include running-cli -->
+<!-- specworks:include workflow -->
 
 ---
 
@@ -31,8 +29,7 @@ looks easy. When the gate passes, stop and suggest `/specworks-code`.
    specworks gate design --change "<ref>"
    ```
 
-   - Select the change as in `/specworks-specify` (named by the user, or the
-     single active one; ask if ambiguous). Announce `Using change: <ref>`.
+   - Select the change (see **Selecting the change**).
    - If `gate design` fails, stop: show the failing checks and suggest
      `/specworks-design <ref>` (or `/specworks-specify <ref>` when the specs
      themselves fail). Tests built on an undecided API test the wrong thing.

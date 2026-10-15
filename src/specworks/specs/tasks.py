@@ -54,8 +54,8 @@ def read_tasks(change_path: Path) -> list[Task]:
     return parse_tasks(path.read_text(encoding="utf-8"))[0]
 
 
-def set_done(change_path: Path, nums: list[str], done: bool) -> list[Task]:
-    """Tick (or untick) tasks by number, editing only their checkbox; returns the updated tasks."""
+def set_done(change_path: Path, nums: list[str], done: bool) -> None:
+    """Tick (or untick) tasks by number, editing only their checkbox."""
     path = change_path / TASKS_FILE
     tasks = {t.num: t for t in read_tasks(change_path)}
     unknown = [n for n in nums if n not in tasks]
@@ -70,5 +70,3 @@ def set_done(change_path: Path, nums: list[str], done: bool) -> list[Task]:
         mark = "x" if done else " "
         lines[index] = f"{match.group('lead')}{mark}{match.group('close')}{match.group('num')} {match.group('text')}{ending}"
     path.write_text("".join(lines), encoding="utf-8")
-    updated = {t.num: t for t in read_tasks(change_path)}
-    return [updated[n] for n in nums]
