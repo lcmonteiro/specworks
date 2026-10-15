@@ -22,6 +22,9 @@ refine -> specify -> design -> test -> code -> review -> validate -> close
 | validate  | `/specworks-validate`  | **read-only** PASS/FAIL report (completeness, correctness, coherence); every failure names the phase that fixes it |
 | close     | `/specworks-close`     | deltas merged into the living `spec.md`, `requirements.md` regenerated, design / architecture / diagrams updated in `<capability-path>/docs/`, change archived (phase `done`) |
 
+[`docs/walkthrough.md`](docs/walkthrough.md) follows one small change through every phase, with the real output of
+each step.
+
 **`/specworks-build`** runs design → test → code → review in one go, each
 phase exactly as its own skill. When the review has findings, it asks
 whether to start a new cycle, and starts it at the earliest phase the
@@ -205,7 +208,8 @@ same code: same command and folder, same commit, same uncommitted and untracked
 files (the workflow folder, with specs, tasks and `review.md`, does not count).
 A reused result says so (`same code as the run at ...`). The cache is kept in
 `.git/specworks-runs.json`; without git, or with `SPECWORKS_RUN_CACHE=0`, every run
-is real. `specworks run` always runs. Files git ignores (installed dependencies, a local
+is real. `specworks run` always runs. Keep files the commands themselves create (`__pycache__/`,
+`.pytest_cache/`, `node_modules/`, build output) in `.gitignore`, or every run changes the fingerprint. Files git ignores (installed dependencies, a local
 `.env`) are not part of the fingerprint: after changing only those, run once with
 `SPECWORKS_RUN_CACHE=0` (a tracked lockfile change already counts).
 
