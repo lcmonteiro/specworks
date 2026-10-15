@@ -10,6 +10,13 @@ which is printed as ``root``.
 
 from __future__ import annotations
 
+import json
+import sys
+
+import typer
+
+from ..core.changes import ChangeError
+from ..core.config import ConfigError
 from .app import app
 
 # Importing the command modules registers their commands; this order is the order of `--help`.
@@ -24,4 +31,12 @@ __all__ = ["app", "main"]
 
 
 def main() -> None:
-    app()
+    """Run the CLI; a broken config or change file anywhere in the workspace is an error message, not a traceback."""
+    try:
+        app()
+    except (ConfigError, ChangeError) as exc:
+        if "--json" in sys.argv[1:]:
+            typer.echo(json.dumps({"error": str(exc)}, indent=2))
+        else:
+            typer.echo(f"error: {exc}", err=True)
+        sys.exit(1)
