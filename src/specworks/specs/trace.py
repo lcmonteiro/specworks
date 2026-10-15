@@ -11,6 +11,10 @@ whether it is scanned and whether it is a test. A file counts as a test when
 it matches the module's ``test_globs`` or, when none are set, when its name or
 folder looks like a test (``test_x.py``, ``x_test.go``, ``x.test.ts``,
 ``x.spec.js``, ``x_spec.rb``, ``tests/``, ``__tests__/``...).
+
+Without globs, documentation (``.md``, ``.rst``, ``.txt``, ...) is not scanned:
+a tag quoted in a README or a note is not code or a test. Globs that name such
+files scan them.
 """
 
 from __future__ import annotations
@@ -33,6 +37,7 @@ SKIP_DIRS = {"node_modules", "__pycache__", "venv", "dist", "build", "target", "
 TEST_DIRS = {"test", "tests", "__tests__", "testing"}
 TEST_NAME_RE = re.compile(r"(^test_|_test\.|\.test\.|\.spec\.|Test\.|Tests\.|_spec\.)")
 MAX_FILE_BYTES = 1_000_000
+DOC_EXTENSIONS = {".md", ".markdown", ".mdx", ".rst", ".txt", ".adoc", ".asciidoc", ".org"}
 
 
 @dataclass
@@ -87,7 +92,10 @@ def scan_tags(ws: Workspace) -> list[Tag]:
         for name in sorted(filenames):
             path = here / name
             rel = ws.rel(path)
-            if globs and not any(fnmatch.fnmatch(path.relative_to(module.root).as_posix(), g) for g in globs):
+            if globs:
+                if not any(fnmatch.fnmatch(path.relative_to(module.root).as_posix(), g) for g in globs):
+                    continue
+            elif path.suffix.lower() in DOC_EXTENSIONS:
                 continue
             try:
                 if path.stat().st_size > MAX_FILE_BYTES:
