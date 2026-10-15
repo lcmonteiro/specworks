@@ -11,13 +11,14 @@ from __future__ import annotations
 import re
 from collections.abc import Callable
 from dataclasses import dataclass
+from pathlib import PurePosixPath
 
 from ..core.changes import PHASES, Change, set_phase
 from ..core.workspace import Module, Workspace
 from ..specs.check import ChangeSpecs, check_change
 from ..specs.trace import build_matrix, gaps, scan_tags, unknown_tags
 from .checks import Check, accounted_check, change_ids, command_check, tests_pass
-from .review import REVIEW_FILE, read_review, review_change
+from .review import CODE_EXTENSIONS, REVIEW_FILE, read_review, review_change
 from .validate import validate_change
 
 
@@ -70,11 +71,16 @@ def interfaces_section(change: Change) -> str | None:
 
 
 def interface_files(section: str) -> list[str]:
-    """File paths named in code spans (`src/auth/reset.py`, `src/auth/reset.py:ResetService`)."""
+    """File paths named in code spans (`src/auth/reset.py`, `src/auth/reset.py:ResetService`, `main.py`).
+
+    A name without a folder counts only with a code extension, so `ResetService.request_reset` is not a file.
+    """
     paths = []
     for span in CODE_SPAN_RE.findall(section):
         path = re.split(r"[:#(]", span, maxsplit=1)[0]
-        if "/" in path and "." in path.rsplit("/", 1)[-1] and path not in paths:
+        name = path.rsplit("/", 1)[-1]
+        is_file = "." in name if "/" in path else PurePosixPath(name).suffix.lower() in CODE_EXTENSIONS
+        if is_file and path not in paths:
             paths.append(path)
     return paths
 
