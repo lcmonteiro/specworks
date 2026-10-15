@@ -182,7 +182,11 @@ TYPE_PHASE = {
     "quality": "code",
 }
 COMMENT_RE = re.compile(r"<!--.*?-->", re.DOTALL)
-FINDING_RE = re.compile(r"^\s*- \[(?P<mark>[ xX]?)\]\s+(?P<id>R\d+)\b(?P<text>.*)$")
+# A finding is a checkbox with its ID first: ``- [ ] R1 ...``; ``*``/``+``/``1.`` bullets
+# and a bold ``**R1**`` are read too. Any other checkbox is reported, never skipped:
+# a finding the parser cannot see would let the review gate pass with it open.
+FINDING_RE = re.compile(r"^\s*(?:[-*+]|\d+[.)])\s+\[(?P<mark>[ xX]?)\]\s+(?P<bold>\*\*)?(?P<id>R\d+)\b(?(bold)\*\*)(?P<text>.*)$")
+CHECKBOX_RE = re.compile(r"^\s*(?:[-*+]|\d+[.)])\s*\[[^\]]?\]")
 TYPE_RE = re.compile(r"\*\*(?P<type>[a-z-]+)\*\*")
 BACK_RE = re.compile(r"\bback to (?P<phase>specify|design|test|code)\s*:", re.IGNORECASE)
 DONE_RE = re.compile(r"\bdone in (?P<phase>specify|design|test|code)\s*:", re.IGNORECASE)
@@ -213,6 +217,7 @@ class ReviewDoc:
     exists: bool
     findings: list[Finding] = field(default_factory=list)
     accounted: str = ""  # text of "## Changed files without tags"
+    problems: list[str] = field(default_factory=list)  # checkbox lines that are not readable findings
 
     @property
     def open(self) -> list[Finding]:
@@ -229,7 +234,9 @@ def parse_review(text: str) -> ReviewDoc:
     current: Finding | None = None
     section = ""
     accounted: list[str] = []
-    for line in COMMENT_RE.sub("", text).splitlines():
+    # Comments are blanked line for line, so reported line numbers stay those of the file.
+    uncommented = COMMENT_RE.sub(lambda m: "\n" * m.group(0).count("\n"), text)
+    for number, line in enumerate(uncommented.splitlines(), start=1):
         if h2 := H2_RE.match(line):
             section, current = h2.group("title").strip().lower(), None
             continue
@@ -247,6 +254,9 @@ def parse_review(text: str) -> ReviewDoc:
                 phase=TYPE_PHASE.get(kind.group("type") if kind else "", "code"),
             )
             doc.findings.append(current)
+        elif CHECKBOX_RE.match(line) and not line.startswith((" ", "\t")):  # indented ones belong to a finding
+            doc.problems.append(f"line {number}: {line.strip()!r} is not a finding; write it as '- [ ] R<n> **<type>** ...'")
+            current = None
         elif current is not None and line.strip() and not line.startswith((" ", "\t")):
             current = None  # back at the top level: the finding's block has ended
         if current is not None and (back := BACK_RE.search(line)):

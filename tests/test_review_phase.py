@@ -1,5 +1,7 @@
 """Review phase support: drift candidates (`specworks review`) and the review gate."""
 
+import pytest
+
 from helpers import REF, run_json
 
 
@@ -68,6 +70,24 @@ def test_gate_review_blocks_on_open_findings(repo):
     write_review(repo, "- [ ] R1 **spec-gap** lockout also logs\n  - **Decision**: pending\n- [x] R2 **tag** fixed\n")
     code, data = run_json("gate", "review", "--change", REF, "--base", "main")
     assert code == 1 and checks(data)["no open finding in review.md"]["details"] == ["R1 **spec-gap** lockout also logs"]
+
+
+@pytest.mark.parametrize("line", ["* [ ] R1 **code-gap** reset ignores case", "- [ ] **R1** **code-gap** reset ignores case", "1. [ ] R1 **code-gap** x"])
+def test_gate_review_reads_common_finding_variants(repo, line):
+    write_review(repo, line + "\n  - **Decision**: pending\n")
+    code, data = run_json("gate", "review", "--change", REF, "--base", "main")
+    assert code == 1 and checks(data)["no open finding in review.md"]["details"][0].startswith("R1 ")
+
+
+def test_an_unreadable_finding_blocks_review_and_validate(repo):
+    # Silently skipping it would let the gate pass with the finding open, even inside a build.
+    write_review(repo, "- [ ] **R1 code-gap** reset ignores case\n  - **Decision**: pending\n")
+    code, data = run_json("gate", "review", "--change", REF, "--base", "main", "--allow-open")
+    readable = checks(data)["every finding in review.md is readable (- [ ] R<n> ...)"]
+    assert code == 1 and readable["blocking"] and "is not a finding" in readable["details"][0]
+    code, data = run_json("validate", "--change", REF, "--base", "main")
+    review_done = {c["name"]: c for c in data["checks"]}["review done (review.md with no open finding)"]
+    assert code == 1 and not review_done["ok"] and any("is not a finding" in d for d in review_done["details"])
 
 
 def test_gate_review_allow_open_reports_open_findings_as_a_warning(repo):

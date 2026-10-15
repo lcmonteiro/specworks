@@ -162,6 +162,7 @@ def _review(ctx: GateContext) -> list[Check]:
         Check("specs and tasks are valid (specworks check)", not report.spec_errors, report.spec_errors),
         Check(f"{REVIEW_FILE} is written", review.exists, [] if review.exists else ["write it (specworks instructions review)"]),
         # In a build, open findings are the hand-off to the next cycle (`specworks cycle`), not a failure.
+        Check(f"every finding in {REVIEW_FILE} is readable (- [ ] R<n> ...)", not review.problems, review.problems),
         Check(f"no open finding in {REVIEW_FILE}", review.exists and not open_findings, open_findings, blocking=not ctx.allow_open),
         Check("every requirement has code (@req tag)", not found["reqWithoutCode"], found["reqWithoutCode"]),
         Check("every acceptance criterion has a test (@ac tag)", not found["acWithoutTests"], found["acWithoutTests"]),

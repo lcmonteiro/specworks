@@ -32,7 +32,8 @@ def validate_change(ws: Workspace, module: Module, change: Change, run: bool = T
     specs, report = review_change(ws, change, base)
     found = report.findings()
     review = read_review(change)
-    reviewed, open_findings = review.exists, [f"{f.id} {f.text}" for f in review.open]
+    # An unreadable checkbox may be an open finding, so it counts as one.
+    reviewed, open_findings = review.exists, [f"{f.id} {f.text}" for f in review.open] + review.problems
     checks: list[Check] = []
 
     # Completeness: everything the plan asked for exists and is done.

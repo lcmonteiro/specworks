@@ -4,6 +4,7 @@ import pytest
 
 from helpers import REF, run_json
 from specworks.workflow.cycle import open_findings
+from specworks.workflow.review import parse_review
 
 
 def write_review(root, body):
@@ -104,3 +105,8 @@ def test_back_to_needs_the_decision_form_and_stays_in_its_finding():
         "  - not indented under R1 any more, so it is not R1's Decision\n"
     )
     assert [f["phase"] for f in open_findings(text)] == ["code"]
+
+
+def test_a_checkbox_inside_a_finding_is_part_of_it():
+    text = "## Findings\n\n- [ ] R1 **code-gap** x\n  - **Decision**: back to code: y\n  - [x] sub-step done\n"
+    assert [f["phase"] for f in open_findings(text)] == ["code"] and parse_review(text).problems == []

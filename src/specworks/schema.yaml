@@ -211,7 +211,7 @@ artifacts:
       and /specworks-close rely on.
 
       Findings (`- [ ] R<n>` open, `- [x] R<n>` resolved), one per drift, with
-      a type:
+      a type (a top-level checkbox not in this form fails `specworks gate review`):
       - **spec-gap**: the code does something no requirement describes, or does
         it differently from the spec (extra behaviour, other error codes,
         different limits).
