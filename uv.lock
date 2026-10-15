@@ -333,7 +333,7 @@ wheels = [
 [[package]]
 name = "pyd2"
 version = "0.7.1"
-source = { git = "https://github.com/lcmonteiro/pyd2?rev=main#3f82c049daada03a0c8ab6e0a6fd5d8fe75c69cb" }
+source = { git = "https://github.com/lcmonteiro/pyd2?rev=3f82c049daada03a0c8ab6e0a6fd5d8fe75c69cb#3f82c049daada03a0c8ab6e0a6fd5d8fe75c69cb" }
 
 [[package]]
 name = "pygments"
@@ -482,7 +482,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "pyd2", git = "https://github.com/lcmonteiro/pyd2?rev=main" },
+    { name = "pyd2", git = "https://github.com/lcmonteiro/pyd2?rev=3f82c049daada03a0c8ab6e0a6fd5d8fe75c69cb" },
     { name = "pyyaml", specifier = ">=6.0.3" },
     { name = "typer", specifier = ">=0.27.3" },
 ]

@@ -174,8 +174,8 @@ cd your-project && specworks init --dir spec   # writes spec.yml, spec/ and the 
 ```
 
 The install includes [D2](https://d2lang.com) for diagrams through the
-[`pyd2`](https://github.com/lcmonteiro/pyd2) dependency, taken straight from the
-`main` branch of its git repository. Installing builds it for your platform
+[`pyd2`](https://github.com/lcmonteiro/pyd2) dependency, pinned to one commit of
+its git repository. Installing builds it for your platform
 (Linux, macOS and Windows on x86-64 and ARM64): it downloads the official D2
 release it pins, checks its SHA-256, and packages it; the archive is cached,
 so reinstalling does not download it again.
@@ -184,16 +184,15 @@ so reinstalling does not download it again.
 |---|---|
 | `SPECWORKS_D2` | use this `d2` instead of the one from `pyd2` |
 
-`uv.lock` pins the pyd2 commit, so `uv sync` and CI always use the same one.
-To take what is on pyd2's `main` now (a newer D2, API changes, fixes):
+`pyproject.toml` names that commit, so `uv sync`, CI and
+`uv tool install git+https://github.com/lcmonteiro/specworks` (which does not
+read `uv.lock`) all build the same pyd2 and D2. To take a newer pyd2 (a newer
+D2, API changes, fixes), put its commit in `pyproject.toml`, then:
 
 ```bash
-uv lock --upgrade-package pyd2   # moves the pin to pyd2's latest main
-uv run pytest                    # then commit uv.lock
+uv lock                          # updates uv.lock to that commit
+uv run pytest                    # then commit pyproject.toml and uv.lock
 ```
-
-`uv tool install git+https://github.com/lcmonteiro/specworks` does not read
-`uv.lock`, so it builds against pyd2's `main` as it is at install time.
 
 ## Project commands
 

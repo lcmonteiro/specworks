@@ -1,10 +1,17 @@
 import re
+import shlex
+from importlib import resources
 
 import pytest
+import typer.main
 from typer.testing import CliRunner
 
 from specworks.cli import app
+from specworks.core.changes import PHASES
+from specworks.core.config import COMMAND_KEYS
 from specworks.tools.skills import packaged_skills, read_skill
+from specworks.workflow.artifacts import load_artifacts
+from specworks.workflow.gate import GATES
 
 runner = CliRunner()
 SKILL = "specworks-refine"
@@ -164,3 +171,76 @@ def test_close_runs_the_project_commands_once_before_writing():
     text = read_skill("specworks-close")
     assert 'specworks close --change "<ref>" --dry-run --no-run' in text
     assert 'specworks validate --change "<ref>"' in text and '\n   specworks close --change "<ref>"\n' in text
+
+
+# Every `specworks ...` call a skill shows in code (a span or a fenced block) must be one the CLI
+# accepts: a real command and subcommand, real flags, and a known value where a command takes one.
+CALL_RE = re.compile(r"(?<![/\w-])specworks ([a-z][a-z-]*(?: [^`\n#]*)?)")
+KNOWN_VALUES = {
+    "instructions": set(load_artifacts()),
+    "gate": set(GATES),
+    "start": set(PHASES) - {"done"},
+    "phase": set(PHASES) - {"done"},  # `phase` takes the change first, then the phase
+    "run": set(COMMAND_KEYS),
+}
+
+
+def code_in(text):
+    """The code spans and fenced-block lines of a markdown text."""
+    code, inside = [], False
+    for line in text.splitlines():
+        if line.lstrip().startswith("```"):
+            inside = not inside
+        elif inside:
+            code.append(line)
+        else:
+            code += re.findall(r"`([^`]+)`", line)
+    return code
+
+
+def skill_calls():
+    skills = resources.files("specworks").joinpath("skills")
+    for folder in skills.iterdir():
+        for doc in (f for f in folder.iterdir() if f.name.endswith(".md")):
+            for code in code_in(doc.read_text(encoding="utf-8")):
+                yield from ((folder.name, m.group(1).strip()) for m in CALL_RE.finditer(code))
+
+
+def call_problems(call: str) -> list[str]:
+    command = typer.main.get_command(app)
+    words = shlex.split(call.replace("|", " "), posix=True) if call.count('"') % 2 == 0 else call.split()
+    name, args = words[0], words[1:]
+    if name not in command.commands:  # type: ignore[attr-defined]
+        return [f"unknown command {name!r}"]
+    cmd = command.commands[name]  # type: ignore[attr-defined]
+    if hasattr(cmd, "commands") and args:  # a group: spec, task, capability, module
+        if args[0] not in cmd.commands:
+            return [f"unknown command {name} {args[0]!r}"]
+        cmd, args = cmd.commands[args[0]], args[1:]
+    options = {opt for param in cmd.params for opt in param.opts}
+    problems = [f"{name}: unknown option {word}" for word in args if word.startswith("--") and word.strip("[]") not in options]
+    plain = [w for w in args if re.fullmatch(r"[a-z][a-z-]*", w)]  # placeholders (<ref>, "<ref>") and flags are skipped
+    if name in KNOWN_VALUES and plain and plain[0] not in KNOWN_VALUES[name]:
+        problems.append(f"{name}: unknown value {plain[0]!r}")
+    return problems
+
+
+def test_skills_only_show_cli_calls_that_exist():
+    calls = sorted(set(skill_calls()))
+    assert len(calls) > 50  # the extraction still finds the skills' calls
+    problems = [f"{skill}: specworks {call}: {problem}" for skill, call in calls for problem in call_problems(call)]
+    assert problems == []
+
+
+@pytest.mark.parametrize(
+    "call, problem",
+    [
+        ("chek --change x", "unknown command 'chek'"),
+        ("task tick 1.1 --change x", "unknown command task 'tick'"),
+        ("gate review --change x --allow-opened", "gate: unknown option --allow-opened"),
+        ("instructions proposals --change x", "instructions: unknown value 'proposals'"),
+        ('phase "<ref>" implement', "phase: unknown value 'implement'"),
+    ],
+)
+def test_the_skill_call_check_catches_drift(call, problem):
+    assert problem in call_problems(call)

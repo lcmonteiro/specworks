@@ -250,3 +250,11 @@ def test_archived_changes_are_not_addressable(project):
     code, data = run_json("phase", "archive/2026-01-01-old", "code")
     assert code == 1 and "must be kebab-case" in data["error"]
     assert "phase: refine" in (archived / ".change.yaml").read_text()
+
+
+@pytest.mark.parametrize("pad", ["true", "-1", "'24'"])
+def test_diagram_pad_must_be_a_non_negative_number(project, pad):
+    cfg = project / "specworks.yml"
+    cfg.write_text(cfg.read_text().replace("diagrams:\n", f"diagrams:\n  pad: {pad}\n", 1))
+    code, data = run_json("context")
+    assert code == 1 and "'diagrams.pad' a non-negative number" in data["error"], data

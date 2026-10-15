@@ -5,6 +5,7 @@ from typer.testing import CliRunner
 
 from specworks.cli import app
 from specworks.specs.specfile import ac_parent, find_ids, id_prefix, parse_spec
+from specworks.specs.tasks import parse_tasks
 from specworks.specs.trace import is_test_file
 
 runner = CliRunner()
@@ -521,3 +522,9 @@ def test_new_capability_may_not_take_a_prefix_in_use(change):
     code, data = run_json("check", "--change", "add-password-reset")
     messages = [i["message"] for i in data["issues"]]
     assert code == 1 and any("new capability auth would use the ID prefix AUTH, already used by user-auth" in m for m in messages), messages
+
+
+def test_tasks_in_a_code_fence_are_examples_not_tasks():
+    text = "## 1. Reset\n\n- [ ] 1.1 Add reset (REQ-AUTH-003)\n\n```markdown\n- [ ] 9.9 an example task\n- [x] bad example\n```\n"
+    tasks, problems = parse_tasks(text)
+    assert [t.num for t in tasks] == ["1.1"] and problems == []
