@@ -8,11 +8,11 @@ from pathlib import Path
 
 from ..core.changes import Change, list_changes
 from ..core.config import ConfigError
-from ..tools.diagrams import diagrams_in, referenced_images, state
-from .specfile import DELTA_SECTIONS, LIVING_SECTION, NORMATIVE_RE, Requirement, SpecDoc, ac_parent
-from .capabilities import CapabilityRef, delta_files, read_spec, resolve_delta
-from .tasks import Task, parse_tasks
 from ..core.workspace import Workspace
+from ..tools.diagrams import diagrams_in, referenced_images, state
+from .capabilities import CapabilityRef, delta_files, read_spec, resolve_delta
+from .specfile import DELTA_SECTIONS, LIVING_SECTION, NORMATIVE_RE, Requirement, SpecDoc, ac_parent, parse_spec
+from .tasks import Task, parse_tasks
 
 PROPOSAL_SECTIONS = ("Why", "What Changes", "Capabilities")
 MAX_DESCRIPTION = 1000
@@ -63,7 +63,7 @@ def collect(ws: Workspace, change: Change) -> ChangeSpecs:
         except ConfigError as exc:
             result.issues.append(Issue("error", ws.rel(path), 0, str(exc)))
             continue
-        doc = read_spec(path)
+        doc = parse_spec(path.read_text(encoding="utf-8"))
         result.deltas.append(Delta(cap=cap, path=path, doc=doc, living=read_spec(cap.living_spec())))
     tasks_file = change.path / "tasks.md"
     if tasks_file.is_file():

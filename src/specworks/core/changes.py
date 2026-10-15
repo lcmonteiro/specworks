@@ -33,7 +33,7 @@ class Change:
     skip_specs: bool = False
 
     def save(self) -> None:
-        data = {"name": self.name, "created": self.created, "phase": self.phase}
+        data: dict[str, object] = {"name": self.name, "created": self.created, "phase": self.phase}
         if self.skip_specs:
             data["skip_specs"] = True
         (self.path / META_FILE).write_text(yaml.safe_dump(data, sort_keys=False), encoding="utf-8")

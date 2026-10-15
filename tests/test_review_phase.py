@@ -2,6 +2,7 @@
 
 from helpers import REF, run_json
 
+
 def findings(data):
     return data["findings"]
 
@@ -69,6 +70,17 @@ def test_gate_review_blocks_on_open_findings(repo):
     assert code == 1 and checks(data)["no open finding in review.md"]["details"] == ["R1 **spec-gap** lockout also logs"]
 
 
+def test_gate_review_allow_open_reports_open_findings_as_a_warning(repo):
+    # Inside /specworks-build, open findings start the next cycle instead of failing the review.
+    write_review(repo, "- [ ] R1 **design-gap** reset returns None\n  - **Decision**: back to design: return the token\n")
+    code, data = run_json("gate", "review", "--change", REF, "--base", "main", "--allow-open")
+    open_check = checks(data)["no open finding in review.md"]
+    assert code == 0 and open_check["ok"] is False and open_check["blocking"] is False
+    (repo / "src/auth/audit.py").write_text("def audit(): ...\n")  # everything else still blocks
+    code, data = run_json("gate", "review", "--change", REF, "--base", "main", "--allow-open")
+    assert code == 1
+
+
 def test_gate_review_requires_untagged_files_accounted_for(repo):
     (repo / "src/auth/audit.py").write_text("def audit(): ...\n")
     write_review(repo, "None.\n")
@@ -78,6 +90,22 @@ def test_gate_review_requires_untagged_files_accounted_for(repo):
     write_review(repo, "None.\n\n## Changed files without tags\n\n- `src/auth/audit.py`: logging helper, no behaviour\n")
     code, data = run_json("gate", "review", "--change", REF, "--base", "main")
     assert code == 0 and data["passed"] is True
+
+
+def test_untagged_files_count_only_as_whole_paths_under_their_heading(repo):
+    (repo / "src/auth/audit.py").write_text("def audit(): ...\n")
+    not_accounted = [
+        "- [x] R1 **quality** `src/auth/audit.py` logs passwords\n  - **Decision**: code fixed\n",  # in a finding only
+        "None.\n\n## Changed files without tags\n\n<!-- e.g. `src/auth/audit.py`: helper -->\n",  # in a comment
+        "None.\n\n## Changed files without tags\n\n- `src/auth/audit.py.bak`: backup\n",  # a longer path
+    ]
+    for body in not_accounted:
+        write_review(repo, body)
+        code, data = run_json("gate", "review", "--change", REF, "--base", "main")
+        assert checks(data)["changed files without tags are accounted for in review.md"]["details"] == ["src/auth/audit.py"], body
+    write_review(repo, "None.\n\n## Changed files without tags\n\n- src/auth/audit.py (helper of R1, no behaviour)\n")
+    code, data = run_json("gate", "review", "--change", REF, "--base", "main")
+    assert code == 0, data
 
 
 def test_gate_review_passes_when_clean(repo):

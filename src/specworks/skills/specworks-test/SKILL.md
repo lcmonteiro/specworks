@@ -1,6 +1,6 @@
 ---
 name: specworks-test
-description: Test phase of spec-driven development - turn a change's acceptance criteria into failing tests (tagged @ac) written against the API agreed in the design phase, before any implementation. Use when a change has its interfaces and the user wants to write the tests first, or says "test", "write the tests", "TDD" or "specworks test".
+description: Test phase of spec-driven development - turn a change's acceptance criteria into failing tests (tagged @ac) written against the API agreed in the design phase, before any implementation. Use when a specworks change has its interfaces and the user wants to write its acceptance tests first, or says "write the acceptance tests" or "specworks test".
 allowed-tools: Bash(specworks:*), Bash(uv run specworks:*), Bash(uvx:*), Read, Grep, Glob, Write, Edit
 ---
 
@@ -18,9 +18,7 @@ design.md. Do not add or change public interfaces here: if a test needs one,
 go back to `/specworks-design`. No behaviour, no partial logic, even if it
 looks easy. When the gate passes, stop and suggest `/specworks-code`.
 
-**Running the CLI**: use `specworks <cmd>`. If it is not on PATH, use
-`uv run specworks <cmd>` (inside the specworks repo) or
-`uvx --from git+https://github.com/lcmonteiro/specworks specworks <cmd>`.
+<!-- specworks:include running-cli -->
 
 ---
 
@@ -107,8 +105,9 @@ looks easy. When the gate passes, stop and suggest `/specworks-code`.
    ```bash
    specworks run test --change "<ref>"
    ```
-   (runs `commands.test` in the change's module; run the test tool directly
-   to narrow it to the new tests when the suite is slow). Expected:
+   (runs `commands.test` in the change's module; when the suite is slow you
+   may run the test tool directly on the new tests, which asks the user to
+   approve that command). Expected:
    - every new or updated test **fails**, because the stub is not implemented
      or the assertion does not hold yet;
    - **no** syntax, compile, import or collection errors: fix those now, they

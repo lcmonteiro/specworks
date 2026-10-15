@@ -4,9 +4,9 @@ import json
 import re
 import sys
 
-from helpers import REF, run_json, write_tests
 from typer.testing import CliRunner
 
+from helpers import REF, run_json, write_tests
 from specworks.cli import app
 
 runner = CliRunner()

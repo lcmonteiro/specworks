@@ -89,7 +89,7 @@ The system SHALL email a single-use reset link valid for 30 minutes.
 | `specworks check --change <ref>` | checks proposal, delta specs (IDs, SHALL/MUST, scenarios, MODIFIED/REMOVED targets, ID clashes with other changes) and tasks (format, every AC covered) |
 | `specworks diagrams --change <ref> \| --dir <folder> [--check]` | renders `diagrams/*.d2` of a change (or of a living docs folder) to SVG with the workspace theme; `--check` reports missing/outdated SVGs without rendering |
 | `specworks task list\|done\|undo --change <ref> [N.M ...]` | lists tasks with their IDs; ticks or unticks checkboxes without touching the rest of `tasks.md` |
-| `specworks gate <phase> --change <ref>` | checks a phase is finished: `specify` (valid specs, tasks cover every AC), `design` (design.md Interfaces recorded, the files it names exist, build/typecheck and the existing tests pass), `test` (every AC has an `@ac`-tagged test, no tags to unknown IDs), `code` (all tasks done, every requirement has `@req` code, removed ones gone, and `commands.test` passes; `--no-run` skips running it), `review` (`review.md` with no open finding, every untagged changed file accounted for, tags complete, tests pass), `validate` (same checks as `specworks validate`) |
+| `specworks gate <phase> --change <ref>` | checks a phase is finished: `specify` (valid specs, tasks cover every AC), `design` (design.md Interfaces recorded, the files it names exist, build/typecheck and the existing tests pass; once the change has `@ac` tests, a red suite is only a warning), `test` (every AC has an `@ac`-tagged test, no tags to unknown IDs), `code` (all tasks done, every requirement has `@req` code, removed ones gone, and `commands.test` passes; `--no-run` skips running it), `review` (`review.md` with no open finding (`--allow-open` in a build), every untagged changed file accounted for, tags complete, tests pass), `validate` (same checks as `specworks validate`) |
 | `specworks close --change <ref> [--dry-run]` | after a passing validate: merges the deltas into each living `spec.md` (ADDED appended, MODIFIED replaced by ID, REMOVED deleted), regenerates `requirements.md` with a History line, marks the change `done` and moves it to `changes/archive/<date>-<name>/` |
 | `specworks capability add <name> --path <dir> [--module] [--prefix]` | registers a new capability in a module's config (required before closing a change that creates it) |
 | `specworks validate --change <ref> [--base] [--no-run]` | final read-only report in three groups (completeness, correctness, coherence): artifacts, tasks, tags, review, specs valid, test/lint/typecheck pass, untagged files accounted for, diagrams current; each failure names the phase to go back to |
@@ -222,6 +222,8 @@ terminal access (Copilot agent mode, Claude Code).
 ```bash
 uv sync
 uv run pytest
+uv run ruff check src tests   # lint (CI runs both)
+uv run mypy                   # typecheck
 uv run specworks --help
 ```
 
@@ -232,7 +234,8 @@ Code layout (`src/specworks/`):
 | `cli/` | the `specworks` command: `app.py` (Typer app and command groups), `output.py` (options, JSON/text output, resolving changes), and one module per area: `project.py`, `changes.py`, `specs.py`, `workflow.py` |
 | `core/` | `config.py` (find and read `<dir>.yml`), `config_file.py` (write it), `workspace.py` (modules), `changes.py` (changes and phases), `runner.py` (project commands) |
 | `specs/` | `specfile.py` (parse specs), `capabilities.py`, `check.py` (`specworks check`), `tasks.py`, `trace.py`, `merge.py` (close) |
-| `workflow/` | `artifacts.py` (artifacts and instructions, `schema.yaml`), `gate.py`, `review.py`, `cycle.py`, `validate.py` (`specworks validate`) |
+| `workflow/` | `artifacts.py` (artifacts and instructions, `schema.yaml`), `checks.py` (checks shared by gates and validate), `gate.py`, `review.py` (drift and `review.md`), `cycle.py`, `validate.py` (`specworks validate`) |
 | `tools/` | `diagrams.py` (D2 via pyd2), `skills.py` (install the skills) |
 
-`schema.yaml`, `templates/` and `skills/` are package data next to them.
+`schema.yaml`, `templates/` and `skills/` are package data next to them. Text several skills share lives once in
+`skills/_shared/<name>.md`; a skill marks its place with `<!-- specworks:include <name> -->`, filled in on install.

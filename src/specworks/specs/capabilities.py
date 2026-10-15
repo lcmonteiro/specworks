@@ -15,11 +15,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 from ..core.changes import Change, list_changes
 from ..core.config import MODULE_NAME_RE, Capability, ConfigError
-from .specfile import REQ_ID_RE, SpecDoc, parse_spec, requirement_number
 from ..core.workspace import Module, Workspace
+from .specfile import REQ_ID_RE, SpecDoc, id_prefix, parse_spec, requirement_number
 
 SPECS_DIR = "specs"
 SPEC_FILE = "spec.md"
@@ -58,8 +59,7 @@ class CapabilityRef:
         return self.capability.docs_path(self.module.root, self.module.config.docs_dir) / SPEC_FILE
 
     def id_matches(self, req_id: str) -> bool:
-        match = REQ_ID_RE.fullmatch(req_id)
-        return bool(match) and match.group("prefix") == self.prefix
+        return REQ_ID_RE.fullmatch(req_id) is not None and id_prefix(req_id) == self.prefix
 
 
 def capability_ref(module: Module, name: str) -> CapabilityRef:
@@ -134,7 +134,7 @@ def describe(ws: Workspace, cap: CapabilityRef, with_scenarios: bool = True) -> 
     """Capability summary for agents: where its delta goes, its ID prefix and current requirements."""
     living = cap.living_spec()
     doc = read_spec(living)
-    data = {
+    data: dict[str, Any] = {
         "ref": cap.ref,
         "module": cap.module.label,
         "name": cap.name,
@@ -149,7 +149,7 @@ def describe(ws: Workspace, cap: CapabilityRef, with_scenarios: bool = True) -> 
         "requirements": [],
     }
     for req in doc.requirements if doc else []:
-        item = {"id": req.id, "title": req.title}
+        item: dict[str, Any] = {"id": req.id, "title": req.title}
         if with_scenarios:
             item["description"] = req.description
             item["scenarios"] = [{"id": s.id, "title": s.title, "text": s.text} for s in req.scenarios]

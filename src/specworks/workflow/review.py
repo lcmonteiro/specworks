@@ -20,9 +20,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from ..core.changes import Change
-from ..specs.trace import Tag, build_matrix, gaps, is_test_file, scan_tags, unknown_tags
-from ..specs.check import ChangeSpecs, check_change
 from ..core.workspace import Workspace
+from ..specs.check import ChangeSpecs, check_change
+from ..specs.trace import Tag, build_matrix, gaps, is_test_file, scan_tags, unknown_tags
 
 CODE_EXTENSIONS = {
     ".py", ".pyi", ".js", ".jsx", ".mjs", ".cjs", ".ts", ".tsx", ".go", ".rs", ".java", ".kt", ".kts",
@@ -31,6 +31,7 @@ CODE_EXTENSIONS = {
     ".sql", ".vue", ".svelte", ".zig", ".nim", ".r", ".jl",
 }  # fmt: skip
 BASE_CANDIDATES = ("origin/main", "main", "origin/master", "master")
+REVIEW_FILE = "review.md"
 
 
 class ReviewError(Exception):
@@ -162,16 +163,89 @@ def review_change(ws: Workspace, change: Change, base: str | None = None) -> tup
     return specs, report
 
 
-REVIEW_FILE = "review.md"
+# --- review.md ----------------------------------------------------------------
+#
+# Findings are checkboxes (``- [ ] R<n> **<type>** ...``, ``- [x]`` once resolved);
+# lines indented under one belong to it (its Decision). A Decision saying
+# ``back to <phase>: <proposal>`` sends the finding to that phase; otherwise its
+# type decides. Untagged changed files are accounted for under their own heading.
+
+# The phase that resolves each finding type, in workflow order (specify comes first).
+TYPE_PHASE = {
+    "spec-gap": "specify",
+    "design-gap": "design",
+    "test-gap": "test",
+    "code-gap": "code",
+    "tag": "code",
+    "quality": "code",
+}
+COMMENT_RE = re.compile(r"<!--.*?-->", re.DOTALL)
+FINDING_RE = re.compile(r"^\s*- \[(?P<mark>[ xX]?)\]\s+(?P<id>R\d+)\b(?P<text>.*)$")
+TYPE_RE = re.compile(r"\*\*(?P<type>[a-z-]+)\*\*")
+BACK_RE = re.compile(r"\bback to (?P<phase>specify|design|test|code)\s*:", re.IGNORECASE)
+H2_RE = re.compile(r"^##\s+(?P<title>.+?)\s*$")
+ACCOUNTED_SECTION = "changed files without tags"
 
 
-OPEN_FINDING_RE = re.compile(r"(?m)^\s*- \[\s*\]\s+(R\d+\b.*)$")
+@dataclass
+class Finding:
+    id: str
+    done: bool
+    type: str  # "" when the finding names none
+    text: str  # the finding's line, after its ID
+    phase: str  # the phase that resolves it
+
+    def to_dict(self) -> dict:
+        return {"id": self.id, "type": self.type, "text": self.text, "phase": self.phase}
 
 
-def review_findings(change: Change) -> tuple[bool, list[str], str]:
-    """(review.md exists, open findings, review.md text); findings are '- [ ] R<n> ...' checkboxes."""
+@dataclass
+class ReviewDoc:
+    exists: bool
+    findings: list[Finding] = field(default_factory=list)
+    accounted: str = ""  # text of "## Changed files without tags"
+
+    @property
+    def open(self) -> list[Finding]:
+        return [f for f in self.findings if not f.done]
+
+    def accounts_for(self, path: str) -> bool:
+        """``path`` appears as a whole path under "Changed files without tags" (``src/a.py``, not ``src/a.py.bak``)."""
+        return re.search(rf"(?<![\w./-]){re.escape(path)}(?![\w./-])", self.accounted) is not None
+
+
+def parse_review(text: str) -> ReviewDoc:
+    """Findings and the "Changed files without tags" section of review.md; HTML comments are ignored."""
+    doc = ReviewDoc(exists=True)
+    current: Finding | None = None
+    section = ""
+    accounted: list[str] = []
+    for line in COMMENT_RE.sub("", text).splitlines():
+        if h2 := H2_RE.match(line):
+            section, current = h2.group("title").strip().lower(), None
+            continue
+        if section == ACCOUNTED_SECTION:
+            accounted.append(line)
+            continue
+        if match := FINDING_RE.match(line):
+            body = match.group("text").strip()
+            kind = TYPE_RE.search(body)
+            current = Finding(
+                id=match.group("id"),
+                done=bool(match.group("mark").strip()),
+                type=kind.group("type") if kind else "",
+                text=body,
+                phase=TYPE_PHASE.get(kind.group("type") if kind else "", "code"),
+            )
+            doc.findings.append(current)
+        elif current is not None and line.strip() and not line.startswith((" ", "\t")):
+            current = None  # back at the top level: the finding's block has ended
+        if current is not None and (back := BACK_RE.search(line)):
+            current.phase = back.group("phase").lower()
+    doc.accounted = "\n".join(accounted)
+    return doc
+
+
+def read_review(change: Change) -> ReviewDoc:
     path = change.path / REVIEW_FILE
-    if not path.is_file():
-        return False, [], ""
-    text = path.read_text(encoding="utf-8")
-    return True, [m.group(1).strip() for m in OPEN_FINDING_RE.finditer(text)], text
+    return parse_review(path.read_text(encoding="utf-8")) if path.is_file() else ReviewDoc(exists=False)

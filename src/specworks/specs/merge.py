@@ -22,10 +22,10 @@ from datetime import date
 from pathlib import Path
 
 from ..core.changes import Change
-from .specfile import H2_RE, LIVING_SECTION, REQ_HEADER_RE, Requirement, parse_spec, section_kind
+from ..core.workspace import Workspace
 from .capabilities import CapabilityRef
 from .check import ChangeSpecs, Delta
-from ..core.workspace import Workspace
+from .specfile import H2_RE, LIVING_SECTION, REQ_HEADER_RE, Requirement, parse_spec, section_kind
 
 REQUIREMENTS_FILE = "requirements.md"
 HISTORY_HEADING = "## History"
@@ -44,8 +44,11 @@ class CapabilityMerge:
     modified: list[str] = field(default_factory=list)
     removed: list[str] = field(default_factory=list)
     spec_text: str = ""
-    requirements_path: Path | None = None
     requirements_text: str = ""
+
+    @property
+    def requirements_path(self) -> Path:
+        return self.spec_path.parent / REQUIREMENTS_FILE
 
     def summary(self) -> str:
         parts = [f"{kind} {', '.join(ids)}" for kind, ids in (("ADDED", self.added), ("MODIFIED", self.modified), ("REMOVED", self.removed)) if ids]
@@ -55,7 +58,7 @@ class CapabilityMerge:
         return {
             "capability": self.cap.ref,
             "spec": ws.rel(self.spec_path),
-            "requirements": ws.rel(self.requirements_path) if self.requirements_path else None,
+            "requirements": ws.rel(self.requirements_path),
             "created": self.created,
             "added": self.added,
             "modified": self.modified,
@@ -75,11 +78,10 @@ def _blocks(lines: list[str]) -> tuple[int, int, list[tuple[str | None, int, int
     if section_start is None:
         raise MergeError("the living spec has no '## Requirements' section")
     section_end = section_end if section_end is not None else len(lines)
-    starts = [i for i in range(section_start + 1, section_end) if REQ_HEADER_RE.match(lines[i])]
+    headers = [(i, m.group("rest")) for i in range(section_start + 1, section_end) if (m := REQ_HEADER_RE.match(lines[i]))]
     blocks = []
-    for n, start in enumerate(starts):
-        end = starts[n + 1] if n + 1 < len(starts) else section_end
-        rest = REQ_HEADER_RE.match(lines[start]).group("rest")
+    for n, (start, rest) in enumerate(headers):
+        end = headers[n + 1][0] if n + 1 < len(headers) else section_end
         req_id = rest.split()[0] if rest.split() else None
         blocks.append((req_id, start, end))
     return section_start, section_end, blocks
@@ -126,7 +128,7 @@ def apply_delta(living_text: str, delta: Delta) -> tuple[str, list[str], list[st
                 out.append("")
             for req in delta.doc.section("ADDED"):
                 out += _block_lines(req)
-                added.append(req.id)
+                added.append(req.id or "?")  # check_change requires IDs before close
         if i in replacements:
             end, new_lines = replacements[i]
             out += new_lines
@@ -139,7 +141,7 @@ def apply_delta(living_text: str, delta: Delta) -> tuple[str, list[str], list[st
             out.append("")
         for req in delta.doc.section("ADDED"):
             out += _block_lines(req)
-            added.append(req.id)
+            added.append(req.id or "?")  # check_change requires IDs before close
     text = re.sub(r"\n{3,}", "\n\n", "\n".join(out)).rstrip("\n") + "\n"
     return text, added, modified, removed
 
@@ -184,6 +186,7 @@ def plan_merge(ws: Workspace, change: Change, specs: ChangeSpecs, change_ref: st
     merges = []
     for delta in specs.deltas:
         spec_path = delta.cap.living_spec()
+        assert spec_path is not None  # every capability is registered (checked above)
         created = not spec_path.is_file()
         living = spec_path.read_text(encoding="utf-8") if not created else new_spec_text(delta.cap, delta.doc.purpose)
         try:
@@ -191,7 +194,6 @@ def plan_merge(ws: Workspace, change: Change, specs: ChangeSpecs, change_ref: st
         except MergeError as exc:
             raise MergeError(f"{ws.rel(spec_path)}: {exc}") from None
         merge = CapabilityMerge(delta.cap, spec_path, created, added, modified, removed, text)
-        merge.requirements_path = spec_path.parent / REQUIREMENTS_FILE
         history = _history(merge.requirements_path) + [f"- {today} `{change_ref}`: {merge.summary() or 'no requirement changes'}"]
         merge.requirements_text = requirements_index(delta.cap, text, history)
         merges.append(merge)
@@ -205,14 +207,47 @@ def write_merge(merges: list[CapabilityMerge]) -> None:
         merge.requirements_path.write_text(merge.requirements_text, encoding="utf-8")
 
 
-def archive_change(change: Change, archive_root: Path, today: str | None = None) -> Path:
-    """Mark the change done and move it to <archive>/<date>-<name>/."""
-    today = today or date.today().isoformat()
-    target = archive_root / f"{today}-{change.name}"
+def archive_target(change: Change, archive_root: Path, today: str | None = None) -> Path:
+    """Where the change is archived (<archive>/<date>-<name>/); fails if that folder is taken."""
+    target = archive_root / f"{today or date.today().isoformat()}-{change.name}"
     if target.exists():
         raise MergeError(f"{target} already exists")
+    return target
+
+
+def archive_change(change: Change, archive_root: Path, today: str | None = None) -> Path:
+    """Mark the change done and move it to <archive>/<date>-<name>/."""
+    target = archive_target(change, archive_root, today)
+    phase = change.phase
     change.phase = "done"
     change.save()
-    archive_root.mkdir(parents=True, exist_ok=True)
-    shutil.move(str(change.path), str(target))
+    try:
+        archive_root.mkdir(parents=True, exist_ok=True)
+        shutil.move(str(change.path), str(target))
+    except OSError:
+        change.phase = phase
+        change.save()
+        raise
     return target
+
+
+def close_change(merges: list[CapabilityMerge], change: Change, archive_root: Path, today: str | None = None) -> Path:
+    """Write the merged living docs and archive the change, all or nothing.
+
+    The archive folder is checked before anything is written; if writing or
+    archiving fails, every living file is put back as it was.
+    """
+    today = today or date.today().isoformat()
+    archive_target(change, archive_root, today)
+    paths = [p for m in merges for p in (m.spec_path, m.requirements_path)]
+    originals = {p: p.read_text(encoding="utf-8") if p.is_file() else None for p in paths}
+    try:
+        write_merge(merges)
+        return archive_change(change, archive_root, today)
+    except BaseException:
+        for path, text in originals.items():
+            if text is not None:
+                path.write_text(text, encoding="utf-8")
+            elif path.is_file():
+                path.unlink()
+        raise

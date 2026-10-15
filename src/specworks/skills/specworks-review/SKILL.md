@@ -1,6 +1,6 @@
 ---
 name: specworks-review
-description: Review phase of spec-driven development - compare a change's code with its specs in both directions, find drift (behaviour no requirement describes, requirements the code misses, tests that do not really check their criterion, an API or design the code proved wrong, wrong tags), propose for each one a change to the code, the spec or the design/API, apply it with the user or send the change back to the phase that owns it, and record every decision in review.md. Use after implementing a change, or when the user says "review", "sync code and spec", "check for drift" or "specworks review".
+description: Review phase of spec-driven development - compare a change's code with its specs in both directions, find drift (behaviour no requirement describes, requirements the code misses, tests that do not really check their criterion, an API or design the code proved wrong, wrong tags), propose for each one a change to the code, the spec or the design/API, apply it with the user or send the change back to the phase that owns it, and record every decision in review.md. Use after the code phase of a specworks change, or when the user says "review the change", "sync code and spec", "check for drift" or "specworks review".
 allowed-tools: Bash(specworks:*), Bash(uv run specworks:*), Bash(uvx:*), Bash(git diff:*), Bash(git log:*), Bash(git status:*), Read, Grep, Glob, Write, Edit
 ---
 
@@ -26,9 +26,7 @@ that needs work as open, with the agreed proposal as `back to
 <specify|design|test|code>: ...`; the build starts the next cycle from the
 earliest of those phases (`specworks cycle --change "<ref>"`).
 
-**Running the CLI**: use `specworks <cmd>`. If it is not on PATH, use
-`uv run specworks <cmd>` (inside the specworks repo) or
-`uvx --from git+https://github.com/lcmonteiro/specworks specworks <cmd>`.
+<!-- specworks:include running-cli -->
 
 ---
 
@@ -135,6 +133,10 @@ earliest of those phases (`specworks cycle --change "<ref>"`).
    every requirement with code and every criterion with a test, no unknown
    tags, removed requirements gone, every untagged changed file accounted for,
    and the test suite passing. Fix and re-run until it passes.
+
+   Inside `/specworks-build`, run it with `--allow-open`: the open findings
+   are the hand-off to the next cycle, so they are reported as a warning;
+   every other check must still pass.
 
 7. **Report and stop**
 

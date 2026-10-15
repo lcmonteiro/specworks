@@ -5,9 +5,9 @@ import sys
 from datetime import date
 
 import pytest
-from helpers import REF, run_json
 from typer.testing import CliRunner
 
+from helpers import REF, run_json
 from specworks.cli import app
 from specworks.specs.merge import MergeError, apply_delta
 from specworks.specs.specfile import parse_spec
@@ -180,3 +180,33 @@ def test_diagrams_in_a_docs_folder(ready, monkeypatch):
     assert code == 0 and data["dir"] == "src/auth/docs" and data["diagrams"][0]["status"] == "rendered"
     code, data = run_json("diagrams")
     assert code == 1 and "--change" in data["error"]
+
+
+def test_a_taken_archive_folder_fails_before_anything_is_written(ready):
+    # e.g. a change with the same name was already closed today
+    (ready / f"spec/changes/archive/{date.today().isoformat()}-{REF}").mkdir(parents=True)
+    before = snapshot(ready)
+    for extra in (["--dry-run"], []):
+        code, data = run_json("close", "--change", REF, "--base", "main", *extra)
+        assert code == 1 and "already exists" in data["error"]
+    assert snapshot(ready) == before
+
+
+def test_a_failed_archive_puts_the_living_docs_back(ready, monkeypatch):
+    import shutil
+
+    before = snapshot(ready)
+    real_move, calls = shutil.move, []
+
+    def move_failing_once(src, dst):
+        calls.append(src)
+        if len(calls) == 1:
+            raise OSError("disk full")
+        return real_move(src, dst)
+
+    monkeypatch.setattr(shutil, "move", move_failing_once)
+    code, data = run_json("close", "--change", REF, "--base", "main")
+    assert code == 1 and "disk full" in data["error"]
+    assert snapshot(ready) == before  # living spec, requirements.md and the change's phase untouched
+    code, data = run_json("close", "--change", REF, "--base", "main")  # and closing again works
+    assert code == 0, data

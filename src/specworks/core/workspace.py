@@ -16,9 +16,9 @@ nearest to the working directory, but see the whole tree:
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Iterator
 
 from .config import Capability, Config, ConfigError, config_name, find_config, find_root, load_config
 
@@ -155,6 +155,14 @@ def _load_tree(config: Config, name: str, parent: Module | None, missing: list[M
             continue
         module.children.append(_load_tree(child_config, full_name, module, missing))
     return module
+
+
+def require_workspace(start: Path) -> Workspace:
+    """The workspace containing ``start``, which must exist (e.g. right after writing its config)."""
+    ws = load_workspace(start)
+    if ws is None:
+        raise ConfigError(f"no specworks config in {start} or its parents")
+    return ws
 
 
 def load_workspace(start: Path | None = None) -> Workspace | None:

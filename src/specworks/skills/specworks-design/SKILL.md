@@ -1,6 +1,6 @@
 ---
 name: specworks-design
-description: Design phase of spec-driven development - decide with the user the API a change adds or extends (classes, functions, signatures, data shapes, errors), record it in design.md, and create it as empty stubs that compile, before any test or behaviour is written. Use when a change has been proposed and the user wants to define the interfaces/API first, or says "design", "interface", "API", "stubs", "signatures" or "specworks design".
+description: Design phase of spec-driven development - decide with the user the API a change adds or extends (classes, functions, signatures, data shapes, errors), record it in design.md, and create it as empty stubs that compile, before any test or behaviour is written. Use when a specworks change has been specified and the user wants to define its interfaces/API first, or says "design the API", "create the stubs" or "specworks design".
 allowed-tools: Bash(specworks:*), Bash(uv run specworks:*), Bash(uvx:*), Read, Grep, Glob, Write, Edit
 ---
 
@@ -17,9 +17,7 @@ It is the third phase of `refine → specify → design → test → code → re
 signals "not implemented". No tests, no behaviour, no partial logic, even if
 it looks easy. When the gate passes, stop and suggest `/specworks-test`.
 
-**Running the CLI**: use `specworks <cmd>`. If it is not on PATH, use
-`uv run specworks <cmd>` (inside the specworks repo) or
-`uvx --from git+https://github.com/lcmonteiro/specworks specworks <cmd>`.
+<!-- specworks:include running-cli -->
 
 ---
 
@@ -124,6 +122,9 @@ it looks easy. When the gate passes, stop and suggest `/specworks-test`.
 
    The existing test suite must still pass: there are no new tests yet, so a
    failure means a stub broke an import, a signature or existing behaviour.
+   In a later build cycle (the change already has `@ac` tests), changing an
+   API turns its tests red on purpose: the gate then reports the suite as a
+   warning, and the code phase makes it green again.
    Fix every failing blocking check and re-run. Warnings: fix them or explain
    them.
 

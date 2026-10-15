@@ -8,35 +8,13 @@ from pathlib import Path
 import typer
 
 from .. import __version__
-from ..core.config import (
-    DEFAULT_DIR,
-    Config,
-    ConfigError,
-    config_name,
-    find_config,
-    load_config,
-)
-from ..core.config_file import (
-    add_capability_entry,
-    add_module_entry,
-    write_default_config,
-)
-from ..core.workspace import Workspace, load_module_config, load_workspace
+from ..core.config import DEFAULT_DIR, Config, ConfigError, config_name, find_config, load_config
+from ..core.config_file import add_capability_entry, add_module_entry, write_default_config
+from ..core.workspace import Workspace, load_module_config, load_workspace, require_workspace
 from ..specs.capabilities import capability_ref, describe
 from ..tools.skills import ToolError, install_skills, parse_tools, remove_renamed_skills
 from .app import app, capability_app, module_app
-from .output import (
-    AllOpt,
-    JsonOpt,
-    ToolsOpt,
-    change_dict,
-    changes_of,
-    emit,
-    fail,
-    missing_dicts,
-    module_dict,
-    workspace,
-)
+from .output import AllOpt, JsonOpt, ToolsOpt, change_dict, changes_of, emit, fail, missing_dicts, module_dict, workspace
 
 
 def default_module_name(path: Path) -> str:
@@ -61,14 +39,13 @@ def ensure_module_config(root: Path, name: str, workspace_dir: str) -> tuple[Con
 
     Fails before writing anything if the folder already has a config under another name.
     """
-    cfg = load_module_config(root, name, workspace_dir)
-    created = cfg is None
-    if created:
+    existing = load_module_config(root, name, workspace_dir)
+    if existing is None:
         root.mkdir(parents=True, exist_ok=True)
         write_default_config(root, workspace_dir)
-        cfg = load_config(root, workspace_dir)
+    cfg = existing or load_config(root, workspace_dir)
     cfg.archive_path.mkdir(parents=True, exist_ok=True)
-    return cfg, created
+    return cfg, existing is None
 
 
 def link_to_parent(root: Path, name: str | None) -> str | None:
@@ -137,7 +114,7 @@ def init(
         if parent is not None:
             linked = link_to_parent(root, name)
             typer.echo(f"linked  as module '{linked}' of the parent project")
-        ws = load_workspace(root)
+        ws = require_workspace(root)
     except ConfigError as exc:
         fail(str(exc), False)
     if not no_skills:
@@ -220,7 +197,7 @@ def module_add(
         module_name = name or default_module_name(root)
         ensure_module_config(root, module_name, ws.top.config.dir)
         add_module_entry(owner.root, module_name, root.relative_to(owner.root).as_posix())
-        ws = load_workspace(root)
+        ws = require_workspace(root)
     except ConfigError as exc:
         fail(str(exc), as_json)
     emit(module_dict(ws, ws.current), as_json, f"linked  {ws.rel(root)} as module '{ws.current.label}'")
@@ -254,7 +231,7 @@ def capability_add(
     try:
         target = ws.module(module) if module is not None else ws.current
         add_capability_entry(target.root, name, path, prefix=prefix, description=description)
-        ws = load_workspace(target.root)
+        ws = require_workspace(target.root)
         data = describe(ws, capability_ref(ws.module(target.name), name), with_scenarios=False)
     except ConfigError as exc:
         fail(str(exc), as_json)

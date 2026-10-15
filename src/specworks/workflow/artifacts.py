@@ -10,8 +10,8 @@ import yaml
 
 from ..core.changes import Change
 from ..core.config import ConfigError
-from ..specs.capabilities import delta_files, describe, resolve_delta, workspace_capabilities
 from ..core.workspace import Module, Workspace
+from ..specs.capabilities import delta_files, describe, resolve_delta, workspace_capabilities
 
 
 @dataclass

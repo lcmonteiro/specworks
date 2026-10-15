@@ -1,7 +1,7 @@
 [project]
 name = "specworks"
 version = "0.1.0"
-description = "Spec-driven development workflow (refine → propose → test → implement → review → verify → close) for AI coding agents"
+description = "Spec-driven development workflow (refine → specify → design → test → code → review → validate → close) for AI coding agents"
 readme = "README.md"
 authors = [
     { name = "lcmonteiro", email = "monteiro.lcm@gmail.com" }
@@ -34,8 +34,37 @@ allow-direct-references = true
 
 [dependency-groups]
 dev = [
+    "mypy>=2.4.0",
     "pytest>=9.1.1",
+    "ruff>=0.17.0",
+    "types-pyyaml>=6.0.12.20260906",
 ]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.ruff]
+src = ["src", "tests"]
+target-version = "py311"
+# Long enough that imports stay on one line, grouped stdlib / third party / specworks.
+line-length = 170
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I", "B", "UP"]
+
+[tool.ruff.lint.isort]
+split-on-trailing-comma = false  # a trailing comma does not keep an import wrapped
+
+[tool.ruff.lint.flake8-bugbear]
+# Typer declares options as default values.
+extend-immutable-calls = ["typer.Argument", "typer.Option"]
+
+[tool.mypy]
+files = ["src/specworks"]
+python_version = "3.11"
+check_untyped_defs = true
+
+[[tool.mypy.overrides]]
+# pyd2 has no py.typed marker yet; analyse it anyway.
+module = ["pyd2", "pyd2.*"]
+follow_untyped_imports = true

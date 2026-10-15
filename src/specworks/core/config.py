@@ -8,6 +8,7 @@ an unrelated ``docs.yml`` is never mistaken for one.
 
 from __future__ import annotations
 
+import json
 import re
 from dataclasses import dataclass, field
 from pathlib import Path, PurePosixPath
@@ -58,17 +59,24 @@ class Capability:
         }
 
 
-def theme_id(value: object, key: str, allow_none: bool = False) -> int | None:
+def theme_id(value: object, key: str) -> int:
     """A theme given by name (``c4``, ``Colorblind Clear``) or number -> its D2 number."""
-    if allow_none and (value is None or (isinstance(value, str) and value.strip().lower() in ("none", "same"))):
-        return None
     try:
+        if isinstance(value, bool) or not isinstance(value, (int, str)):
+            raise ValueError(value)
         return pyd2.theme_id(value)
     except ValueError:
-        raise ConfigError(
-            f"'{key}': unknown theme {value!r}; use a name ({', '.join(THEMES)}) or a number from `d2 themes`"
-            + (", or none to use the light theme in dark mode too" if allow_none else "")
-        ) from None
+        raise ConfigError(f"'{key}': unknown theme {value!r}; use a name ({', '.join(THEMES)}) or a number from `d2 themes`") from None
+
+
+def dark_theme_id(value: object, key: str) -> int | None:
+    """Like ``theme_id``; ``none`` (or ``same``) means the light theme is used in dark mode too."""
+    if value is None or (isinstance(value, str) and value.strip().lower() in ("none", "same")):
+        return None
+    try:
+        return theme_id(value, key)
+    except ConfigError as exc:
+        raise ConfigError(f"{exc}, or none to use the light theme in dark mode too") from None
 
 
 def theme_name(number: int | None) -> str:
@@ -112,6 +120,17 @@ def load_commands(raw: object) -> dict[str, str]:
     return commands
 
 
+def load_globs(raw: object, key: str) -> list[str]:
+    """A list of glob strings; a single string is a common slip, so it gets its own message."""
+    if raw is None:
+        return []
+    if isinstance(raw, str):
+        raise ConfigError(f"'{key}' must be a list of globs, e.g. {key}: [{json.dumps(raw)}]")
+    if not isinstance(raw, list) or not all(isinstance(g, str) and g.strip() for g in raw):
+        raise ConfigError(f"'{key}' must be a list of glob strings")
+    return [g.strip() for g in raw]
+
+
 def load_diagram_settings(raw: object) -> DiagramSettings:
     if raw is None:
         return DiagramSettings()
@@ -122,7 +141,7 @@ def load_diagram_settings(raw: object) -> DiagramSettings:
         raise ConfigError(f"'diagrams' has unknown keys: {', '.join(sorted(unknown))}")
     settings = DiagramSettings(**raw)
     settings.theme = theme_id(raw.get("theme", 0), "diagrams.theme")
-    settings.dark_theme = theme_id(raw.get("dark_theme", 200), "diagrams.dark_theme", allow_none=True)
+    settings.dark_theme = dark_theme_id(raw.get("dark_theme", 200), "diagrams.dark_theme")
     if settings.layout not in LAYOUTS:
         raise ConfigError("'diagrams.layout' must be elk or dagre")
     if not isinstance(settings.sketch, bool) or not isinstance(settings.pad, int) or settings.pad < 0:
@@ -246,8 +265,11 @@ def load_config(root: Path, dir: str | None = None) -> Config:
     if len(context.encode("utf-8")) > MAX_CONTEXT_BYTES:
         raise ConfigError(f"'context' is larger than {MAX_CONTEXT_BYTES} bytes")
 
+    raw_capabilities = raw.get("capabilities") or {}
+    if not isinstance(raw_capabilities, dict):
+        raise ConfigError("'capabilities' must be a mapping of name: path (or name: {path, prefix, description})")
     capabilities = {}
-    for name, value in (raw.get("capabilities") or {}).items():
+    for name, value in raw_capabilities.items():
         if not isinstance(name, str) or not MODULE_NAME_RE.match(name):
             raise ConfigError(f"capability name '{name}' must be kebab-case (e.g. user-auth)")
         if isinstance(value, str):
@@ -276,11 +298,12 @@ def load_config(root: Path, dir: str | None = None) -> Config:
         root=root,
         context=context,
         dir=validate_dir(path.stem),
-        docs_dir=raw.get("docs_dir", DEFAULT_DOCS_DIR),
+        # Joined to each capability's path, so it must stay inside it.
+        docs_dir=validate_relative(raw.get("docs_dir", DEFAULT_DOCS_DIR), "'docs_dir'"),
         capabilities=capabilities,
         modules=modules,
-        test_globs=list(raw.get("test_globs") or []),
-        source_globs=list(raw.get("source_globs") or []),
+        test_globs=load_globs(raw.get("test_globs"), "test_globs"),
+        source_globs=load_globs(raw.get("source_globs"), "source_globs"),
         commands=load_commands(raw.get("commands")),
         diagrams=load_diagram_settings(raw.get("diagrams")),
     )

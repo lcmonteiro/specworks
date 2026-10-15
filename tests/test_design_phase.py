@@ -5,8 +5,8 @@ import re
 import sys
 
 import pytest
-from helpers import REF, run_json
 
+from helpers import REF, run_json
 from specworks.workflow.gate import interface_files
 
 PASS = f'"{sys.executable}" -c "print(\'all green\')"'
@@ -122,3 +122,18 @@ def test_invalid_specs_fail_the_gate(planned):
 )
 def test_interface_files(section, files):
     assert interface_files(section) == files
+
+
+def test_red_suite_is_only_a_warning_once_the_change_has_tests(planned):
+    # `/specworks-test` re-checks `gate design`, and a later build cycle reopens the API:
+    # by then this change's own @ac tests are red on purpose.
+    write_design(planned, "None.")
+    set_commands(planned, test=FAIL)
+    (planned / "tests").mkdir()
+    (planned / "tests/test_other.py").write_text("# @ac AC-OTHER-001.1\ndef test_other(): ...\n")  # not this change
+    code, checks = gate()
+    assert code == 1 and checks[TESTS]["blocking"] is True
+    (planned / "tests/test_reset.py").write_text("# @ac AC-AUTH-003.1\ndef test_request(): assert False\n")
+    code, checks = gate()
+    assert code == 0 and checks[TESTS]["ok"] is False and checks[TESTS]["blocking"] is False
+    assert "already has @ac tests" in checks[TESTS]["details"][0]
