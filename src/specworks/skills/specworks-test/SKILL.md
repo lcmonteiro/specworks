@@ -1,7 +1,7 @@
 ---
 name: specworks-test
 description: Test phase of spec-driven development - turn a change's acceptance criteria into failing tests (tagged @ac) written against the API agreed in the design phase, before any implementation. Use when a specworks change has its interfaces and the user wants to write its acceptance tests first, or says "write the acceptance tests" or "specworks test".
-allowed-tools: Bash(specworks:*), Bash(uv run specworks:*), Bash(uvx:*), Read, Grep, Glob, Write, Edit
+allowed-tools: Bash(specworks:*), Bash(uv run specworks:*), Bash(uvx --from git+https://github.com/lcmonteiro/specworks specworks:*), Read, Grep, Glob, Write, Edit
 ---
 
 Test phase: write the tests that prove each acceptance criterion, through the

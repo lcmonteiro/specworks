@@ -1,3 +1,5 @@
+import re
+
 import pytest
 from typer.testing import CliRunner
 
@@ -135,3 +137,15 @@ def test_specify_marks_the_review_findings_it_carried_out():
     # Without the mark, `specworks cycle` keeps handing a spec finding back to specify and the build never resumes.
     assert "done in specify:" in read_skill("specworks-specify")
     assert "done in specify:" in read_skill("specworks-build")
+
+
+UVX = "uvx --from git+https://github.com/lcmonteiro/specworks specworks"
+
+
+@pytest.mark.parametrize("name", packaged_skills())
+def test_skills_pre_approve_only_specworks_and_read_only_git(name):
+    # A bare `Bash(uvx:*)` would let the skill run any package without asking.
+    allowed = re.search(r"^allowed-tools: (.*)$", read_skill(name), re.MULTILINE).group(1)
+    commands = re.findall(r"Bash\(([^)]*):\*\)", allowed)
+    assert set(commands) <= {"specworks", "uv run specworks", UVX, "git diff", "git log", "git status"}, commands
+    assert UVX in commands and f"`{UVX} <cmd>`" in read_skill(name)  # the rule matches the command the skill documents
