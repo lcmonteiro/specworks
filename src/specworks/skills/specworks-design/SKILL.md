@@ -23,21 +23,20 @@ it looks easy. When the gate passes, stop and suggest `/specworks-test`.
 
 ## Steps
 
-1. **Pick the change and check the plan is ready**
+1. **Pick the change and start the phase once the plan is ready**
 
    ```bash
    specworks context --json
-   specworks gate specify --change "<ref>"
    ```
 
-   - Select the change as in `/specworks-specify` (named by the user, or the
-     single active one; ask if ambiguous). Announce `Using change: <ref>`.
-   - If `gate specify` fails, stop: show the failing checks and suggest
-     `/specworks-specify <ref>` to finish the plan.
-   - Otherwise move the change to this phase:
-     ```bash
-     specworks phase "<ref>" design
-     ```
+   Select the change as in `/specworks-specify` (named by the user, or the
+   single active one; ask if ambiguous). Announce `Using change: <ref>`, then:
+   ```bash
+   specworks start design --change "<ref>"
+   ```
+   It runs `gate specify` and moves the change to design only if it passes.
+   If it fails, stop: show the failing checks and suggest
+   `/specworks-specify <ref>` to finish the plan.
 
 2. **Load the plan and the code it touches**
 
