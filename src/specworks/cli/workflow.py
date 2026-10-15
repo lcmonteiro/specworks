@@ -1,4 +1,4 @@
-"""Workflow commands: gates, review, cycle, validate, close and the project's own commands."""
+"""Workflow commands: gates, starting a phase, review, cycle, validate, close and the project's own commands."""
 
 from __future__ import annotations
 
@@ -6,11 +6,13 @@ import json
 
 import typer
 
+from ..core.changes import PHASES
 from ..core.runner import CommandError, run_command
 from ..specs.check import check_change
 from ..specs.merge import MergeError, archive_target, close_change, plan_merge
+from ..workflow.checks import Check
 from ..workflow.cycle import next_cycle
-from ..workflow.gate import GATES, GateContext, GateError, run_gate
+from ..workflow.gate import GATES, GateContext, GateError, run_gate, start_phase
 from ..workflow.review import review_change
 from ..workflow.validate import GROUPS, summary, validate_change
 from .app import app
@@ -35,14 +37,52 @@ def gate(
     except GateError as exc:
         fail(str(exc), as_json)
     data = {**change_dict(ws, mod, ch), "gate": phase, "passed": passed, "checks": [c.to_dict() for c in checks]}
+    emit(data, as_json, "\n".join(_check_lines(checks) + [f"gate {phase}: {'passed' if passed else 'NOT passed'}"]))
+    if not passed:
+        raise typer.Exit(1)
+
+
+def _check_lines(checks: list[Check]) -> list[str]:
     lines = []
     for c in checks:
         mark = "ok  " if c.ok else ("FAIL" if c.blocking else "warn")
         lines.append(f"[{mark}] {c.name}")
         lines += [f"         {d}" for d in c.details]
-    lines.append(f"gate {phase}: {'passed' if passed else 'NOT passed'}")
+    return lines
+
+
+@app.command()
+def start(
+    phase: str = typer.Argument(..., help=f"Phase to start: {', '.join(p for p in PHASES if p != 'done')}."),
+    change: str = ChangeOpt,
+    no_run: bool = typer.Option(False, "--no-run", help="Do not run the project's commands in the gates (reported as a warning)."),
+    base: str | None = typer.Option(None, "--base", help="Branch the review and validate gates diff against (default: origin's default branch)."),
+    as_json: bool = JsonOpt,
+) -> None:
+    """Move a change to a phase once the gates it depends on pass (exit 1, phase unchanged, if one fails).
+
+    Moving forward, every phase left behind must pass its gate; going back to a
+    phase (or re-entering it) needs the gate of the phase just before it.
+    """
+    ws, mod, ch = require_change(change, as_json)
+    before = ch.phase
+    try:
+        started, gates = start_phase(GateContext(ws, mod, ch, run_tests=not no_run, base=base), phase)
+    except GateError as exc:
+        fail(str(exc), as_json)
+    data = {
+        **change_dict(ws, mod, ch),
+        "from": before,
+        "started": started,
+        "gates": [{"gate": g, "passed": all(c.ok for c in checks if c.blocking), "checks": [c.to_dict() for c in checks]} for g, checks in gates],
+    }
+    lines = []
+    for g, checks in gates:
+        lines += [f"gate {g}:"] + _check_lines(checks)
+    ref = mod.qualify(ch.name)
+    lines.append(f"{ref}: phase {before} → {phase}" if started else f"{ref}: stays in {before}; gate {gates[-1][0]} NOT passed")
     emit(data, as_json, "\n".join(lines))
-    if not passed:
+    if not started:
         raise typer.Exit(1)
 
 

@@ -32,19 +32,19 @@ earliest of those phases (`specworks cycle --change "<ref>"`).
 
 ## Steps
 
-1. **Pick the change and check it is implemented**
+1. **Pick the change and start the phase once it is implemented**
 
    ```bash
    specworks context --json
-   specworks gate code --change "<ref>"
    ```
 
-   Select the change as the other phases do and announce `Using change: <ref>`.
-   If `gate code` fails (pending tasks, failing tests), stop and suggest
-   `/specworks-code <ref>`; reviewing unfinished work finds noise. Then:
+   Select the change as the other phases do and announce `Using change: <ref>`, then:
    ```bash
-   specworks phase "<ref>" review
+   specworks start review --change "<ref>"
    ```
+   It runs `gate code` and moves the change to review only if it passes.
+   If it fails (pending tasks, failing tests), stop and suggest
+   `/specworks-code <ref>`; reviewing unfinished work finds noise.
 
 2. **Collect the drift candidates**
 

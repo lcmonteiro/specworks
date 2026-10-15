@@ -24,22 +24,23 @@ looks easy. When the gate passes, stop and suggest `/specworks-code`.
 
 ## Steps
 
-1. **Pick the change and check the interfaces are ready**
+1. **Pick the change and start the phase once the interfaces are ready**
 
    ```bash
    specworks context --json
-   specworks gate design --change "<ref>"
    ```
 
    - Select the change as in `/specworks-specify` (named by the user, or the
-     single active one; ask if ambiguous). Announce `Using change: <ref>`.
-   - If `gate design` fails, stop: show the failing checks and suggest
+     single active one; ask if ambiguous). Announce `Using change: <ref>`, then:
+     ```bash
+     specworks start test --change "<ref>"
+     ```
+     It runs the gates of the phases left behind (`gate design`, and
+     `gate specify` too if the change skips design) and moves the change to
+     test only if they pass.
+   - If a gate fails, stop: show the failing checks and suggest
      `/specworks-design <ref>` (or `/specworks-specify <ref>` when the specs
      themselves fail). Tests built on an undecided API test the wrong thing.
-   - Otherwise move the change to this phase:
-     ```bash
-     specworks phase "<ref>" test
-     ```
    - `commands.test` in the context is how this project runs its tests. If it
      is empty, find the test command from the repository (pyproject, package.json,
      go.mod, Cargo.toml, CMake, Makefile, CI config), confirm it with the user,

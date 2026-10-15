@@ -51,7 +51,7 @@ fails and cannot be fixed within that phase, when the specs turn out wrong
 2. **Run the cycle's phases in order**
 
    For each phase of the cycle, announce `Cycle <n> · <phase>`, then follow
-   that phase's skill (it moves the change with `specworks phase`, does the
+   that phase's skill (it moves the change with `specworks start`, does the
    work, and runs its gate). After its gate passes, report one line (what was
    decided or changed, gate passed) and continue with the next phase.
 
@@ -107,8 +107,9 @@ fails and cannot be fixed within that phase, when the specs turn out wrong
      Start cycle 2 from design: design → test → code → review?
      ```
 
-     - **Yes**: `specworks phase "<ref>" <startAt>` and go back to step 2 with
-       the next cycle number.
+     - **Yes**: go back to step 2 with the next cycle number, starting at
+       `startAt`; that phase's skill moves the change back with
+       `specworks start <startAt>`.
      - **No**: stop. The findings stay open in review.md; the user can run a
        single phase skill, or `/specworks-build <ref>` later to resume.
 

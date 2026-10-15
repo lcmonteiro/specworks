@@ -39,7 +39,8 @@ ones are applied there with you, larger ones go back to `code`, `specify` or
 `design`. The diagram shows every
 transition the skills and gates use (source:
 [`docs/diagrams/workflow.d2`](docs/diagrams/workflow.d2)).
-`specworks phase <change> <phase>` moves a change to any phase.
+Each phase skill enters its phase with `specworks start <phase> --change <ref>`, which moves the change only
+once the gates it depends on pass; `specworks phase <change> <phase>` moves a change to any phase unchecked.
 
 ## Layout
 
@@ -90,6 +91,7 @@ The system SHALL email a single-use reset link valid for 30 minutes.
 | `specworks diagrams --change <ref> \| --dir <folder> [--check]` | renders `diagrams/*.d2` of a change (or of a living docs folder) to SVG with the workspace theme; `--check` reports missing/outdated SVGs without rendering |
 | `specworks task list\|done\|undo --change <ref> [N.M ...]` | lists tasks with their IDs; ticks or unticks checkboxes without touching the rest of `tasks.md` |
 | `specworks gate <phase> --change <ref>` | checks a phase is finished: `specify` (valid specs, tasks cover every AC), `design` (design.md Interfaces recorded, the files it names exist, build/typecheck and the existing tests pass; once the change has `@ac` tests, a red suite is only a warning), `test` (every AC has an `@ac`-tagged test, no tags to unknown IDs), `code` (all tasks done, every requirement has `@req` code, removed ones gone, and `commands.test` passes; `--no-run` skips running it), `review` (`review.md` with no open finding (`--allow-open` in a build), every untagged changed file accounted for, tags complete, tests pass), `validate` (same checks as `specworks validate`) |
+| `specworks start <phase> --change <ref> [--no-run] [--base]` | moves a change to a phase once the gates it depends on pass, and leaves it where it is (exit 1) when one fails: moving forward, every phase left behind must pass its gate; going back or re-entering needs the gate of the phase just before |
 | `specworks close --change <ref> [--dry-run]` | after a passing validate: merges the deltas into each living `spec.md` (ADDED appended, MODIFIED replaced by ID, REMOVED deleted), regenerates `requirements.md` with a History line, marks the change `done` and moves it to `changes/archive/<date>-<name>/` |
 | `specworks capability add <name> --path <dir> [--module] [--prefix]` | registers a new capability in a module's config (required before closing a change that creates it) |
 | `specworks validate --change <ref> [--base] [--no-run]` | final read-only report in three groups (completeness, correctness, coherence): artifacts, tasks, tags, review, specs valid, test/lint/typecheck pass, untagged files accounted for, diagrams current; each failure names the phase to go back to |

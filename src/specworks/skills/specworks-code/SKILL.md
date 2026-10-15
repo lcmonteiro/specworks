@@ -21,22 +21,22 @@ change them to make the code easier. When the gate passes, stop and suggest
 
 ## Steps
 
-1. **Pick the change and check the tests are in place**
+1. **Pick the change and start the phase once the tests are in place**
 
    ```bash
    specworks context --json
-   specworks gate test --change "<ref>"
    ```
 
-   - Select the change as the other phases do; announce `Using change: <ref>`.
-   - If `gate test` fails because criteria have no tests, stop and suggest
+   - Select the change as the other phases do; announce `Using change: <ref>`, then:
+     ```bash
+     specworks start code --change "<ref>"
+     ```
+     It runs `gate test` and moves the change to code only if it passes.
+   - If it fails because criteria have no tests, stop and suggest
      `/specworks-test <ref>`. If the user explicitly wants to implement without
      tests first, say what that loses (no executable proof per criterion) and
-     go on only with their agreement.
-   - Move the change to this phase:
-     ```bash
-     specworks phase "<ref>" code
-     ```
+     go on only with their agreement, moving the change by hand:
+     `specworks phase "<ref>" code`.
    - `commands` in the context are this project's tools; `specworks run test`
      (and `run lint`, `run typecheck` when configured) runs them in the right
      folder. If `test` is not configured, find it, confirm it with the user and

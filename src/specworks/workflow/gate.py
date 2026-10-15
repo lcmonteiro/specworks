@@ -12,7 +12,7 @@ import re
 from collections.abc import Callable
 from dataclasses import dataclass
 
-from ..core.changes import Change
+from ..core.changes import PHASES, Change, set_phase
 from ..core.workspace import Module, Workspace
 from ..specs.check import ChangeSpecs, check_change
 from ..specs.trace import build_matrix, gaps, scan_tags, unknown_tags
@@ -192,3 +192,34 @@ def run_gate(ctx: GateContext, phase: str) -> tuple[bool, list[Check]]:
         raise GateError(f"no gate for phase '{phase}' yet; gates exist for: {', '.join(GATES)}")
     checks = GATE_CHECKS[phase](ctx)
     return all(c.ok for c in checks if c.blocking), checks
+
+
+def gates_to_start(current: str, phase: str) -> list[str]:
+    """Gates that must pass before a change in ``current`` starts ``phase``.
+
+    Moving forward, every phase left behind must be finished (its gate, when it
+    has one). Re-entering a phase, or going back to one for rework, needs only
+    the gate of the phase just before it.
+    """
+    if phase not in PHASES or phase == "done":
+        startable = ", ".join(p for p in PHASES if p != "done")
+        raise GateError(f"cannot start '{phase}'; phases are {startable} (`specworks close` finishes a change)")
+    target = PHASES.index(phase)
+    first = PHASES.index(current) if PHASES.index(current) < target else target - 1
+    return [p for p in PHASES[max(first, 0) : target] if p in GATE_CHECKS]
+
+
+def start_phase(ctx: GateContext, phase: str) -> tuple[bool, list[tuple[str, list[Check]]]]:
+    """Run the gates ``phase`` depends on, in order, and move the change to it if they all pass.
+
+    Stops at the first gate that does not pass; returns whether the change
+    moved and each gate that ran with its checks.
+    """
+    ran: list[tuple[str, list[Check]]] = []
+    for gate in gates_to_start(ctx.change.phase, phase):
+        passed, checks = run_gate(ctx, gate)
+        ran.append((gate, checks))
+        if not passed:
+            return False, ran
+    set_phase(ctx.change, phase)
+    return True, ran
