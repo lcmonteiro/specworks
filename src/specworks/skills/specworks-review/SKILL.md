@@ -28,6 +28,8 @@ earliest of those phases (`specworks cycle --change "<ref>"`).
 
 <!-- specworks:include running-cli -->
 
+<!-- specworks:include picking-the-change -->
+
 ---
 
 ## Steps
@@ -39,7 +41,7 @@ earliest of those phases (`specworks cycle --change "<ref>"`).
    specworks gate code --change "<ref>" --no-run
    ```
 
-   Select the change as the other phases do and announce `Using change: <ref>`.
+   Pick the change (see **Picking the change** above).
    `--no-run` skips the test suite here: the code phase's gate just ran it,
    and `gate review` runs it again at the end. If `gate code` fails (pending
    tasks, untagged requirements), stop and suggest `/specworks-code <ref>`;
@@ -160,4 +162,3 @@ earliest of those phases (`specworks cycle --change "<ref>"`).
 - Do not weaken tests or delete failing ones to pass the gate.
 - Keep IDs stable: a changed behaviour is a MODIFIED requirement with the same
   ID; new behaviour gets the next free ID.
-- Re-read specs, design, tasks and review.md from disk before relying on them.

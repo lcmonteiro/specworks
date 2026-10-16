@@ -19,13 +19,15 @@ go back to.
 
 <!-- specworks:include running-cli -->
 
+<!-- specworks:include picking-the-change -->
+
 ---
 
 ## Steps
 
 1. **Pick the change**
 
-   Select it as the other phases do and announce `Using change: <ref>`.
+   See **Picking the change** above.
 
 2. **Run the measurable checks, then move the change to this phase**
 
@@ -86,4 +88,3 @@ go back to.
 - A FAIL from `specworks validate` is never overridden by your judgement; your
   reading can only add issues.
 - Be specific: every issue names the check or file and the phase that fixes it.
-- Re-read artifacts from disk; the user may have changed them since review.

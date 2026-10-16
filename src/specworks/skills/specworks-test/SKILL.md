@@ -20,6 +20,8 @@ looks easy. When the gate passes, stop and suggest `/specworks-code`.
 
 <!-- specworks:include running-cli -->
 
+<!-- specworks:include picking-the-change -->
+
 ---
 
 ## Steps
@@ -28,11 +30,12 @@ looks easy. When the gate passes, stop and suggest `/specworks-code`.
 
    ```bash
    specworks context --json
-   specworks gate design --change "<ref>"
+   specworks gate design --change "<ref>" --no-run
    ```
 
-   - Select the change as in `/specworks-specify` (named by the user, or the
-     single active one; ask if ambiguous). Announce `Using change: <ref>`.
+   - Pick the change (see **Picking the change** above).
+   - `--no-run` skips building and running the suite: the design phase's gate
+     just did, and step 5 runs the tests again.
    - If `gate design` fails, stop: show the failing checks and suggest
      `/specworks-design <ref>` (or `/specworks-specify <ref>` when the specs
      themselves fail). Tests built on an undecided API test the wrong thing.
@@ -159,4 +162,3 @@ looks easy. When the gate passes, stop and suggest `/specworks-code`.
   another change.
 - Do not skip, disable, or mark tests as expected failures, and do not loosen
   assertions, to reach the expected state.
-- Re-read the specs, design and tasks from disk before using them.

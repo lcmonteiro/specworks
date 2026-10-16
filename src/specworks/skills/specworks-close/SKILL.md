@@ -17,12 +17,15 @@ here; if something is wrong, go back to the phase that owns it.
 
 <!-- specworks:include running-cli -->
 
+<!-- specworks:include picking-the-change -->
+
 ---
 
 ## Steps
 
 1. **Pick the change and confirm it passes validate**
 
+   Pick the change (see **Picking the change** above), then:
    ```bash
    specworks validate --change "<ref>"
    ```

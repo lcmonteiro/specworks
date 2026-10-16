@@ -21,6 +21,8 @@ When the artifacts are done, stop and suggest `/specworks-design`.
 
 <!-- specworks:include running-cli -->
 
+<!-- specworks:include picking-the-change -->
+
 ---
 
 ## Steps
@@ -31,12 +33,8 @@ When the artifacts are done, stop and suggest `/specworks-design`.
    specworks context --json
    ```
 
-   - `"root": null`: the project is not set up. Stop and ask whether to run
-     `specworks init`. Do not create files by hand.
-   - Apply `context` as constraints (it is already merged top level → module);
-     never copy it into an artifact.
-   - If the user named a change, or one in `changes` matches the request, use
-     it. Otherwise create one as `/specworks-refine` does (kebab-case name,
+   - Pick the change (see **Picking the change** above). If none fits, create
+     one as `/specworks-refine` does (kebab-case name,
      owning module, `specworks new "<name>" [--module <m>] --json`); refinement
      is optional for small changes.
    - Announce `Using change: <ref>` and move it to this phase:
@@ -181,7 +179,6 @@ When the artifacts are done, stop and suggest `/specworks-design`.
 - IDs, prefixes and delta paths come from the CLI (`nextId`, `prefix`,
   `deltaPath`). Never renumber or reuse an existing ID; a removed requirement's
   ID is retired.
-- Always re-read artifacts from disk before building on them.
 - Do not invent requirements to satisfy validation. A change with no behaviour
   change has no delta specs and is marked with
   `specworks skip-specs --change "<ref>"`.

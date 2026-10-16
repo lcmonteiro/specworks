@@ -104,6 +104,7 @@ jobs:
           test -f .github/skills/specworks-validate/SKILL.md
           test -f .github/skills/specworks-close/SKILL.md
           grep -q 'Running the CLI' .claude/skills/specworks-refine/SKILL.md
+          grep -q 'Picking the change' .claude/skills/specworks-code/SKILL.md
           if grep -rq 'specworks:include' .claude .github; then echo 'unfilled include in an installed skill'; exit 1; fi
           mkdir -p spec/changes/add-example/diagrams
           printf 'shape: sequence_diagram\nuser -> api: "POST /reset {email}"\n' > spec/changes/add-example/diagrams/flow.d2
