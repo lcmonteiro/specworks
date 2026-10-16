@@ -167,10 +167,10 @@ def test_skills_pick_the_change_by_one_shared_rule(name):
 
 
 def test_close_runs_the_project_commands_once_before_writing():
-    # validate (step 1) and the real close (step 5) run them; the dry run in between must not.
+    # start close (step 1, gate validate) and the real close (step 5) run them; the dry run in between must not.
     text = read_skill("specworks-close")
     assert 'specworks close --change "<ref>" --dry-run --no-run' in text
-    assert 'specworks validate --change "<ref>"' in text and '\n   specworks close --change "<ref>"\n' in text
+    assert 'specworks start close --change "<ref>"' in text and '\n   specworks close --change "<ref>"\n' in text
 
 
 # Every `specworks ...` call a skill shows in code (a span or a fenced block) must be one the CLI

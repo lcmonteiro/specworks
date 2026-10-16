@@ -5,7 +5,8 @@ import json
 import re
 import sys
 
-from helpers import REF, run_json
+from helpers import REF, run_json, runner
+from specworks.cli import app
 
 FAIL = f'"{sys.executable}" -c "import sys; print(\'lint: 1 error\'); sys.exit(1)"'
 PASS = f'"{sys.executable}" -c "print(\'ok\')"'
@@ -107,3 +108,13 @@ def test_gate_verify_matches_verify(repo):
     (repo / "spec/changes" / REF / "review.md").write_text("- [ ] R1 open\n")
     code, data = run_json("gate", "validate", "--change", REF, "--base", "main")
     assert code == 1
+
+
+def test_start_close_names_the_phase_that_fixes_each_failed_check(repo):
+    # The close skill enters its phase with `start close`; its text output must still say where to go back.
+    run_json("phase", "validate", "--change", REF)
+    run_json("task", "undo", "1.2", "--change", REF)
+    result = runner.invoke(app, ["start", "close", "--change", REF, "--base", "main"])
+    assert result.exit_code == 1
+    assert "[FAIL] every task is done (specworks task list --pending)  -> /specworks-code" in result.output
+    assert "-> /specworks" not in next(line for line in result.output.splitlines() if line.startswith("[ok  ]"))

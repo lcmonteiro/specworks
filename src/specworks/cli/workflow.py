@@ -42,7 +42,7 @@ def gate(
 def _check_lines(checks: list[Check]) -> list[str]:
     lines = []
     for c in checks:
-        lines.append(f"[{c.mark}] {c.name}")
+        lines.append(f"[{c.mark}] {c.name}" + (f"  -> {c.fix}" if c.fix and not c.ok else ""))
         lines += [f"         {d}" for d in c.details]
     return lines
 

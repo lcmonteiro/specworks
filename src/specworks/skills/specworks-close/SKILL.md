@@ -23,14 +23,16 @@ here; if something is wrong, go back to the phase that owns it.
 
 ## Steps
 
-1. **Pick the change and confirm it passes validate**
+1. **Pick the change and start the phase once it passes validate**
 
    Pick the change (above), then:
    ```bash
-   specworks validate --change "<ref>"
+   specworks start close --change "<ref>"
    ```
 
-   If it fails, stop and point to the phases it names (`/specworks-validate`
+   It runs `gate validate` (the same checks as `specworks validate`) and moves
+   the change to close only if it passes. If it fails, stop and point to the
+   phase each failed check names (`-> /specworks-<phase>`; `/specworks-validate`
    explains them). `specworks close` refuses a change that does not pass.
 
 2. **Register new capabilities**
