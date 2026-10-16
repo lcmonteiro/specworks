@@ -39,9 +39,11 @@ The flow is not strictly linear (dashed arrows): `test` goes back to
 `validate` names the phase that fixes each problem. `review` proposes, for
 each drift, a change to the code, the spec or the design/API: small, local
 ones are applied there with you, larger ones go back to `code`, `specify` or
-`design`. The diagram shows every
-transition the skills and gates use (source:
-[`docs/diagrams/workflow.d2`](docs/diagrams/workflow.d2)).
+`design`. The diagram shows every transition the skills and gates use: the
+upper dashed lane goes back to `specify`, the lower one to the phase that
+fixes a problem. It is a hand-written SVG
+([`docs/diagrams/workflow.svg`](docs/diagrams/workflow.svg)), with light and
+dark colours; edit it directly.
 Each phase skill enters its phase with `specworks start <phase> --change <ref>`, which moves the change only
 once the gates it depends on pass; `specworks phase <change> <phase>` moves a change to any phase unchecked, except `done`, which only `specworks close` sets once it has merged and archived the change.
 
