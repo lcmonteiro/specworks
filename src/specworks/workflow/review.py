@@ -93,7 +93,9 @@ class ReviewReport:
 
 
 def _git(cwd: Path, *args: str) -> str:
-    proc = subprocess.run(["git", *args], cwd=cwd, capture_output=True, text=True, check=False)
+    # git writes paths as UTF-8 whatever the platform; the default (the locale's code page on
+    # Windows) would garble non-ASCII names into paths that do not exist.
+    proc = subprocess.run(["git", *args], cwd=cwd, capture_output=True, text=True, encoding="utf-8", errors="surrogateescape", check=False)
     if proc.returncode != 0:
         raise ReviewError((proc.stderr or proc.stdout).strip() or f"git {' '.join(args)} failed")
     return proc.stdout

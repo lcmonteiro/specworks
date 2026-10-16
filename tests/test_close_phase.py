@@ -2,13 +2,12 @@
 
 import hashlib
 import shutil
-import sys
 from datetime import date
 
 import pytest
 from typer.testing import CliRunner
 
-from helpers import REF, run_json
+from helpers import REF, fake_executable, run_json
 from specworks.cli import app
 from specworks.core.changes import load_change
 from specworks.core.workspace import load_workspace
@@ -203,11 +202,7 @@ def test_headings_in_a_code_fence_are_text_when_merging():
 
 
 def test_diagrams_in_a_docs_folder(ready, monkeypatch):
-    fake = ready / "fake_d2.py"
-    fake.write_text("import sys, pathlib\npathlib.Path(sys.argv[-1]).write_text('<?xml version=\"1.0\"?><svg/>')\n")
-    script = ready / "d2"
-    script.write_text(f"#!{sys.executable}\nexec(open({str(fake)!r}).read())\n")
-    script.chmod(0o755)
+    script = fake_executable(ready, "d2", "import sys, pathlib\npathlib.Path(sys.argv[-1]).write_text('<?xml version=\"1.0\"?><svg/>')\n")
     monkeypatch.setenv("SPECWORKS_D2", str(script))
     folder = ready / "src/auth/docs/diagrams"
     folder.mkdir(parents=True)

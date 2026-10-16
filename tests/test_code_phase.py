@@ -138,3 +138,9 @@ def test_tag_scan_follows_a_symlink_to_a_file_outside_the_workspace(project, tmp
     code, data = run_json("trace", "--change", REF)
     assert "REQ-AUTH-003" not in data["gaps"]["reqWithoutCode"]
     assert any("src/auth/reset.py:1" in code_at for row in data["rows"] for code_at in row["code"])
+
+
+def test_a_command_writing_bytes_that_are_not_text_does_not_crash_the_gate(project):
+    set_test_command(project, f'"{sys.executable}" -c "import sys; sys.stdout.buffer.write(bytes([0xff, 0xfe, 10])); sys.exit(1)"')
+    code, data = run_json("gate", "code", "--change", REF)
+    assert code == 1 and not checks(data)["the test suite passes (commands.test)"]["ok"]

@@ -60,6 +60,7 @@ def run_command(ws: Workspace, module: Module, key: str, capture: bool = True) -
         shell=True,
         cwd=module.root,
         text=True,
+        errors="replace",  # a tool's output may be in any encoding; a stray byte must not crash the gate
         stdout=subprocess.PIPE if capture else None,
         stderr=subprocess.STDOUT if capture else None,
         check=False,
