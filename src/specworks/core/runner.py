@@ -76,6 +76,17 @@ def _git(cwd: Path, *args: str) -> bytes | None:
     return proc.stdout if proc.returncode == 0 else None
 
 
+def _untracked_in_submodule(root: Path, excluded: list[str]) -> bool:
+    """A submodule holds untracked files: git lists none of them, so the tree cannot be fingerprinted."""
+    if not (root / ".gitmodules").is_file():
+        return False
+    status = _git(root, "status", "--porcelain=v2", "--ignore-submodules=none", "--", ".", *excluded)
+    if status is None:
+        return True
+    # Changed entries are "1 <XY> <sub> ..."; <sub> is "S<C><M><U>" for a submodule, U meaning untracked content.
+    return any(len(f := line.split(b" ")) > 2 and f[0] in (b"1", b"2") and f[2][:1] == b"S" and f[2][3:4] == b"U" for line in status.splitlines())
+
+
 def tree_fingerprint(ws: Workspace, module: Module, command: str) -> tuple[str, Path] | None:
     """(digest of the command and the working tree, cache file), or None when git cannot tell."""
     top = _git(module.root, "rev-parse", "--show-toplevel")
@@ -86,9 +97,10 @@ def tree_fingerprint(ws: Workspace, module: Module, command: str) -> tuple[str, 
     root = Path(top.decode().strip())
     excluded = [f":(exclude){(m.root / m.config.dir).resolve().relative_to(root).as_posix()}" for m in ws.modules()
                 if (m.root / m.config.dir).resolve().is_relative_to(root)]
-    diff = _git(root, "diff", "HEAD", "--binary", "--", ".", *excluded)
+    # --submodule=diff: a dirty submodule shows its edits, not only "<commit>-dirty".
+    diff = _git(root, "diff", "HEAD", "--binary", "--submodule=diff", "--", ".", *excluded)
     untracked = _git(root, "ls-files", "--others", "--exclude-standard", "-z", "--", ".", *excluded)
-    if diff is None or untracked is None:
+    if diff is None or untracked is None or _untracked_in_submodule(root, excluded):
         return None
     digest = hashlib.sha256("\0".join([command, str(module.root.resolve()), head.decode().strip()]).encode())
     digest.update(diff)

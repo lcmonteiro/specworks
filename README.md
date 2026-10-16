@@ -224,7 +224,7 @@ A reused result says so (`same code as the run at ...`). The cache is kept in
 is real. `specworks run` always runs. Keep files the commands themselves create (`__pycache__/`,
 `.pytest_cache/`, `node_modules/`, build output) in `.gitignore`, or every run changes the fingerprint. Files git ignores (installed dependencies, a local
 `.env`) are not part of the fingerprint: after changing only those, run once with
-`SPECWORKS_RUN_CACHE=0` (a tracked lockfile change already counts).
+`SPECWORKS_RUN_CACHE=0` (a tracked lockfile change already counts). Edits inside git submodules count too; while a submodule holds untracked files, nothing is reused.
 
 ## AI tools
 
