@@ -7,7 +7,7 @@ import json
 import typer
 
 from ..core.changes import PHASES
-from ..core.runner import run_command
+from ..core.runner import cached_run
 from ..specs.merge import archive_target, close_change, plan_merge
 from ..specs.trace import Analysis
 from ..workflow.checks import Check, GateContext, passed
@@ -166,7 +166,8 @@ def close(
     """Merge the change's delta specs into the living specs, update requirements.md, and archive the change."""
     ws, mod, ch = require_change(change, as_json)
     ref = mod.qualify(ch.name)
-    ctx = GateContext(ws, mod, ch, run_tests=not no_run, base=base)
+    # The real close is the last check before the living docs change: it runs the commands, never reuses a result.
+    ctx = GateContext(ws, mod, ch, run_tests=not no_run, base=base, reuse_runs=dry_run)
     result = summary(validate_change(ctx))
     if result["verdict"] != "PASS":
         fail(
@@ -202,7 +203,7 @@ def run(
     else:
         ws = workspace(as_json)
         mod = ws.current
-    result = run_command(ws, mod, key, capture=as_json)
+    result = cached_run(ws, mod, key, reuse=False, capture=as_json)
     if as_json:
         typer.echo(
             json.dumps(
