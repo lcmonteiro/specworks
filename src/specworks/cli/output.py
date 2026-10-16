@@ -7,7 +7,7 @@ from typing import NoReturn
 
 import typer
 
-from ..core.changes import Change, ChangeError, list_changes, load_change
+from ..core.changes import Change, ChangeError, ChangeNotFound, list_changes, load_change
 from ..core.config import CONFIG_EXT, DEFAULT_DIR, config_name
 from ..core.workspace import Module, Workspace, load_workspace
 from ..tools.skills import TOOLS
@@ -82,9 +82,14 @@ def missing_dicts(ws: Workspace) -> list[dict]:
     return [{"name": m.name, "path": ws.rel(m.path)} for m in ws.missing]
 
 
-def changes_of(ws: Workspace, all_modules: bool) -> list[tuple[Module, Change]]:
-    modules = ws.modules() if all_modules else [ws.current]
-    return [(m, c) for m in modules for c in list_changes(m.config)]
+def changes_of(ws: Workspace, all_modules: bool) -> tuple[list[tuple[Module, Change]], list[dict]]:
+    """Active changes of the current module (or every module), and the ones whose .change.yaml cannot be read."""
+    changes, broken = [], []
+    for module in ws.modules() if all_modules else [ws.current]:
+        errors: list[tuple[str, str]] = []
+        changes += [(module, c) for c in list_changes(module.config, errors)]
+        broken += [{"ref": module.qualify(name), "error": error} for name, error in errors]
+    return changes, broken
 
 
 def resolve_change(ws: Workspace, ref: str) -> tuple[Module, Change]:
@@ -94,13 +99,13 @@ def resolve_change(ws: Workspace, ref: str) -> tuple[Module, Change]:
         return module, load_change(module.config, name)
     try:
         return ws.current, load_change(ws.current.config, name)
-    except ChangeError:
+    except ChangeNotFound:  # a change that exists but cannot be read is reported as it is
         pass
     found = []
     for mod in ws.modules():
         try:
             found.append((mod, load_change(mod.config, name)))
-        except ChangeError:
+        except ChangeNotFound:
             continue
     if len(found) == 1:
         return found[0]

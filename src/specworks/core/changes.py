@@ -22,7 +22,11 @@ NAME_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 
 
 class ChangeError(SpecworksError):
-    """Raised for invalid change names or missing changes."""
+    """Raised for invalid change names, missing changes and unreadable .change.yaml files."""
+
+
+class ChangeNotFound(ChangeError):
+    """Raised when no change of that name exists (as opposed to one that exists but cannot be read)."""
 
 
 @dataclass
@@ -61,7 +65,7 @@ def load_change(cfg: Config, name: str) -> Change:
     path = cfg.changes_path / name
     meta_file = path / META_FILE
     if name == "archive" or not meta_file.is_file():
-        raise ChangeError(f"change '{name}' not found in {cfg.changes_dir}")
+        raise ChangeNotFound(f"change '{name}' not found in {cfg.changes_dir}")
     try:
         meta = yaml.safe_load(meta_file.read_text(encoding="utf-8")) or {}
     except yaml.YAMLError as exc:
@@ -81,14 +85,25 @@ def load_change(cfg: Config, name: str) -> Change:
     )
 
 
-def list_changes(cfg: Config) -> list[Change]:
+def change_dirs(cfg: Config) -> list[Path]:
+    """Folders of the active changes (each with a .change.yaml), without reading their metadata."""
     if not cfg.changes_path.is_dir():
         return []
-    return [
-        load_change(cfg, entry.name)
-        for entry in sorted(cfg.changes_path.iterdir())
-        if entry.is_dir() and entry.name != "archive" and (entry / META_FILE).is_file()
-    ]
+    return [entry for entry in sorted(cfg.changes_path.iterdir()) if entry.is_dir() and entry.name != "archive" and (entry / META_FILE).is_file()]
+
+
+def list_changes(cfg: Config, broken: list[tuple[str, str]] | None = None) -> list[Change]:
+    """The active changes. One whose .change.yaml cannot be read raises, or, given ``broken``,
+    is left out and recorded there as ``(name, error)`` so it does not hide the others."""
+    changes = []
+    for path in change_dirs(cfg):
+        try:
+            changes.append(load_change(cfg, path.name))
+        except ChangeError as exc:
+            if broken is None:
+                raise
+            broken.append((path.name, str(exc)))
+    return changes
 
 
 def set_phase(change: Change, phase: str) -> None:

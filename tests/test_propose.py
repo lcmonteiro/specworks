@@ -3,92 +3,13 @@ import json
 import pytest
 from typer.testing import CliRunner
 
+from helpers import DELTA, LIVING, PROPOSAL, TASKS
 from specworks.cli import app
 from specworks.specs.specfile import ac_parent, find_ids, id_prefix, parse_spec
-from specworks.specs.trace import is_test_file
+from specworks.specs.tasks import parse_tasks
+from specworks.specs.trace import glob_match, is_test_file
 
 runner = CliRunner()
-
-LIVING = """\
-# user-auth
-
-## Purpose
-
-Lets users prove who they are.
-
-## Requirements
-
-### Requirement: REQ-AUTH-001 Password login
-The system SHALL let a user log in with email and password.
-
-#### Scenario: AC-AUTH-001.1 Valid password
-- **WHEN** a user submits a correct password
-- **THEN** a session is created
-
-### Requirement: REQ-AUTH-002 Lockout
-The system SHALL lock an account after 5 failed attempts.
-
-#### Scenario: AC-AUTH-002.1 Fifth failure
-- **WHEN** the fifth wrong password is submitted
-- **THEN** the account is locked
-"""
-
-DELTA = """\
-# Spec Delta: user-auth
-
-## ADDED Requirements
-
-### Requirement: REQ-AUTH-003 Password reset
-The system SHALL email a single-use reset link valid for 30 minutes.
-
-#### Scenario: AC-AUTH-003.1 Request reset
-- **WHEN** a user asks for a reset with a known email
-- **THEN** a reset link is emailed
-
-#### Scenario: AC-AUTH-003.2 Expired link
-- **GIVEN** a link older than 30 minutes
-- **WHEN** it is opened
-- **THEN** the user is told it expired
-
-## MODIFIED Requirements
-
-### Requirement: REQ-AUTH-002 Lockout after failures
-The system SHALL lock an account after 3 failed attempts.
-
-#### Scenario: AC-AUTH-002.1 Third failure
-- **WHEN** the third wrong password is submitted
-- **THEN** the account is locked
-"""
-
-PROPOSAL = """\
-# Proposal: add-password-reset
-
-## Why
-Users get locked out.
-
-## What Changes
-- Password reset by email
-
-## Capabilities
-### Modified Capabilities
-- `user-auth`: reset + stricter lockout
-
-## Impact
-auth service
-"""
-
-TASKS = """\
-# Tasks
-
-## 1. Reset
-
-- [ ] 1.1 Write failing tests for AC-AUTH-003.1 and AC-AUTH-003.2; verify they fail
-- [ ] 1.2 Implement reset links (REQ-AUTH-003); verify 1.1 passes
-
-## 2. Lockout
-
-- [x] 2.1 Lower the lockout threshold (REQ-AUTH-002); verify AC-AUTH-002.1 test passes
-"""
 
 
 def run_json(*args):
@@ -449,3 +370,84 @@ def test_new_capability_may_not_take_a_prefix_in_use(change):
     code, data = run_json("check", "--change", "add-password-reset")
     messages = [i["message"] for i in data["issues"]]
     assert code == 1 and any("new capability auth would use the ID prefix AUTH, already used by user-auth" in m for m in messages), messages
+
+
+MODIFY_LOCKOUT = """\
+## MODIFIED Requirements
+
+### Requirement: REQ-AUTH-002 Lockout
+The system SHALL lock an account after 10 failed attempts.
+
+#### Scenario: AC-AUTH-002.1 Tenth failure
+- **WHEN** the tenth wrong password is submitted
+- **THEN** the account is locked
+"""
+
+
+def test_two_changes_editing_one_requirement(change, project):
+    # Closing the second would overwrite the first's edit with its copy of the old block,
+    # so the change started later waits; the earlier one may close first.
+    run_json("new", "other-change")
+    other = project / "spec/changes/other-change/specs/user-auth"
+    other.mkdir(parents=True)
+    (other / "spec.md").write_text(MODIFY_LOCKOUT)
+    code, data = run_json("check", "--change", "other-change")
+    assert any("REQ-AUTH-002 is also MODIFIED by change add-password-reset, started earlier; close add-password-reset first" in m for m in errors(data))
+    code, data = run_json("check", "--change", "add-password-reset")
+    assert code == 0 and any("REQ-AUTH-002 is also MODIFIED by change other-change" in i["message"] for i in data["issues"])
+    (project / "spec/changes/archive").mkdir(exist_ok=True)
+    change.rename(project / "spec/changes/archive/2026-01-01-add-password-reset")  # the earlier change closed
+    code, data = run_json("check", "--change", "other-change")
+    assert not any("is also MODIFIED" in m for m in errors(data))
+
+
+def test_a_broken_change_does_not_block_checking_the_others(change, project):
+    run_json("new", "broken")
+    broken = project / "spec/changes/broken"
+    (broken / ".change.yaml").write_text("phase: bogus\n")
+    (broken / "specs/user-auth").mkdir(parents=True)
+    (broken / "specs/user-auth/spec.md").write_text(DELTA.replace("REQ-AUTH-003", "REQ-AUTH-007").replace("AC-AUTH-003", "AC-AUTH-007"))
+    code, data = run_json("check", "--change", "add-password-reset")
+    assert code == 0 and any("cannot read change broken" in i["message"] for i in data["issues"] if i["level"] == "warning")
+    code, data = run_json("spec", "show", "user-auth")
+    assert data["nextId"] == "REQ-AUTH-008"  # the broken change's IDs stay taken
+
+
+def test_examples_in_code_blocks_are_not_tasks():
+    text = "## 1. Group\n\n```markdown\n- [ ] 9.9 an example\n```\n~~~\n- [ ] 9.8 another\n~~~\n- [x] 1.1 real (REQ-AUTH-001)\n"
+    tasks, problems = parse_tasks(text)
+    assert [t.num for t in tasks] == ["1.1"] and problems == []
+
+
+def test_tilde_fences_hide_headings_in_specs():
+    doc = parse_spec("## ADDED Requirements\n\n### Requirement: REQ-A-001 x\nSHALL\n~~~\n## not a heading\n~~~\n\n#### Scenario: AC-A-001.1 y\n- **WHEN** a\n- **THEN** b\n")
+    assert [title for _, title in doc.sections] == ["ADDED Requirements"] and len(doc.requirements[0].scenarios) == 1
+
+
+def test_a_tag_may_name_several_ids(change, project):
+    (project / "tests").mkdir()
+    (project / "tests/test_reset.py").write_text("# @ac AC-AUTH-003.1, AC-AUTH-003.2 AC-AUTH-002.1\ndef test_reset(): ...\n")
+    code, data = run_json("trace", "--change", "add-password-reset")
+    tested = {r["ac"]: r["tests"] for r in data["rows"]}
+    assert tested == {"AC-AUTH-003.1": ["tests/test_reset.py:1"], "AC-AUTH-003.2": ["tests/test_reset.py:1"], "AC-AUTH-002.1": ["tests/test_reset.py:1"]}
+
+
+def test_tags_in_documentation_are_not_code(change, project):
+    (project / "README.md").write_text("Tag code like this: `# @req REQ-AUTH-003`\n")
+    (project / "tests").mkdir()
+    (project / "tests/README.md").write_text("# @ac AC-AUTH-003.1\n")
+    code, data = run_json("trace", "--change", "add-password-reset")
+    assert "REQ-AUTH-003" in data["gaps"]["reqWithoutCode"] and "AC-AUTH-003.1" in data["gaps"]["acWithoutTests"]
+
+
+@pytest.mark.parametrize(
+    "rel, globs, matches",
+    [
+        ("test_x.py", ["**/test_*.py"], True),  # a leading **/ also matches at the top
+        ("a/b/test_x.py", ["**/test_*.py"], True),
+        ("tests/a/b.py", ["tests/*.py"], True),  # * also matches /
+        ("src/x.py", ["**/test_*.py"], False),
+    ],
+)
+def test_glob_match(rel, globs, matches):
+    assert glob_match(rel, globs) is matches

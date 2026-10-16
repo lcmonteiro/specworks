@@ -138,7 +138,7 @@ def context(as_json: bool = JsonOpt, all_modules: bool = AllOpt) -> None:
                 "deltaPath": ref.delta_path,
             }
         )
-    changes = changes_of(ws, all_modules)
+    changes, broken = changes_of(ws, all_modules)
     data = {
         "root": str(ws.root),
         "module": ws.current.label,
@@ -151,12 +151,14 @@ def context(as_json: bool = JsonOpt, all_modules: bool = AllOpt) -> None:
         "missingModules": missing_dicts(ws),
         "capabilities": capabilities,
         "changes": [change_dict(ws, m, c) for m, c in changes],
+        "brokenChanges": broken,
     }
     lines = [f"root:    {ws.root}", f"module:  {ws.current.label}", "modules:"]
     lines += [f"  {m.label:<24} {ws.rel(m.root)}{'  *' if m is ws.current else ''}" for m in ws.modules()]
     lines += [f"  {m.name:<24} MISSING ({m.path})" for m in ws.missing]
     lines += ["capabilities:"] + ([f"  {c['name']:<24} {c['path']}" for c in capabilities] or ["  (none)"])
     lines += ["changes:"] + ([f"  {m.qualify(c.name):<24} {c.phase}" for m, c in changes] or ["  (none)"])
+    lines += [f"  {b['ref']:<24} BROKEN: {b['error']}" for b in broken]
     emit(data, as_json, "\n".join(lines))
 
 
@@ -164,9 +166,10 @@ def context(as_json: bool = JsonOpt, all_modules: bool = AllOpt) -> None:
 def list_cmd(as_json: bool = JsonOpt, all_modules: bool = AllOpt) -> None:
     """List active changes of the current module (or all modules with --all)."""
     ws = workspace(as_json)
-    changes = changes_of(ws, all_modules)
-    text = "\n".join(f"{m.qualify(c.name):<32} {c.phase}" for m, c in changes) or "no active changes"
-    emit({"root": str(ws.root), "module": ws.current.label, "changes": [change_dict(ws, m, c) for m, c in changes]}, as_json, text)
+    changes, broken = changes_of(ws, all_modules)
+    lines = [f"{m.qualify(c.name):<32} {c.phase}" for m, c in changes] + [f"{b['ref']:<32} BROKEN: {b['error']}" for b in broken]
+    data = {"root": str(ws.root), "module": ws.current.label, "changes": [change_dict(ws, m, c) for m, c in changes], "brokenChanges": broken}
+    emit(data, as_json, "\n".join(lines) or "no active changes")
 
 
 @module_app.command("add")

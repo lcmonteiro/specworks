@@ -52,15 +52,6 @@ class Capability:
     def docs_path(self, root: Path, docs_dir: str) -> Path:
         return root / self.path / docs_dir
 
-    def to_dict(self, root: Path, docs_dir: str) -> dict:
-        docs = self.docs_path(root, docs_dir)
-        return {
-            "name": self.name,
-            "path": self.path,
-            "description": self.description,
-            "docsPath": str(docs.relative_to(root)),
-            "hasSpec": (docs / "spec.md").is_file(),
-        }
 
 
 def theme_id(value: object, key: str) -> int:

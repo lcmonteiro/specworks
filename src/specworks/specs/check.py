@@ -84,18 +84,32 @@ def _check_proposal(ws: Workspace, change: Change, issues: list[Issue]) -> None:
             issues.append(Issue("error", ws.rel(path), 0, f"missing section '## {section}'"))
 
 
-def _other_changes_adding(ws: Workspace, change: Change, cap: CapabilityRef) -> dict[str, str]:
-    """IDs that other active changes ADD to the same capability -> the change adding them."""
-    taken = {}
+@dataclass
+class OtherChanges:
+    """What the other active changes do to a capability's requirements, for clashes between changes."""
+
+    sections: dict[str, list[tuple[str, Change, str]]] = field(default_factory=dict)  # ID -> [(section, change, module:name)]
+    broken: list[str] = field(default_factory=list)  # changes whose .change.yaml cannot be read
+
+
+def _other_changes(ws: Workspace, change: Change, cap: CapabilityRef) -> OtherChanges:
+    found = OtherChanges()
     for module in ws.modules():
-        for other in list_changes(module.config):
+        broken: list[tuple[str, str]] = []
+        for other in list_changes(module.config, broken):
             if other.path == change.path:
                 continue
             doc = read_spec(other.path / cap.delta_path)
-            for req in doc.section("ADDED") if doc else []:
-                if req.id:
-                    taken[req.id] = module.qualify(other.name)
-    return taken
+            for req in doc.requirements if doc else []:
+                if req.id and req.section in DELTA_SECTIONS:
+                    found.sections.setdefault(req.id, []).append((req.section, other, module.qualify(other.name)))
+        found.broken += [f"{module.qualify(name)}: {error}" for name, error in broken]
+    return found
+
+
+def _started_before(a: Change, b: Change) -> bool:
+    """``a`` was created before ``b`` (by date, then name), so it closes first."""
+    return (a.created, a.name) < (b.created, b.name)
 
 
 def _check_delta(ws: Workspace, change: Change, delta: Delta, seen: dict[str, str], issues: list[Issue]) -> None:
@@ -123,7 +137,9 @@ def _check_delta(ws: Workspace, change: Change, delta: Delta, seen: dict[str, st
         err(0, f"new capability {cap.ref} would use the ID prefix {cap.prefix}, already used by {owner}; "
                f"register it with its own prefix first (specworks capability add {cap.name} --path <code path> --prefix <PREFIX>)")
     retired = cap.history_ids() - living_ids
-    taken = _other_changes_adding(ws, change, cap)
+    others = _other_changes(ws, change, cap)
+    for problem in others.broken:
+        issues.append(Issue("warning", file, 0, f"cannot read change {problem}; its specs are not checked against this one"))
     for req in doc.requirements:
         if req.section not in DELTA_SECTIONS:
             continue
@@ -143,10 +159,23 @@ def _check_delta(ws: Workspace, change: Change, delta: Delta, seen: dict[str, st
                 err(req.line, f"{req.id} already exists in {cap.ref}; use MODIFIED to change it, or take the next free ID")
             if req.id in retired:
                 err(req.line, f"{req.id} was REMOVED from {cap.ref} by an earlier change and IDs are never reused; take the next free ID")
-            if req.id in taken:
-                err(req.line, f"{req.id} is also added by change {taken[req.id]}; take the next free ID")
+            for section, _, ref in others.sections.get(req.id, []):
+                if section == "ADDED":
+                    err(req.line, f"{req.id} is also added by change {ref}; take the next free ID")
         elif delta.living is not None and req.id not in living_ids:
             err(req.line, f"{req.id} is not in the living spec of {cap.ref}, so it cannot be {req.section}")
+        else:
+            # Two changes editing one requirement: the one closed second would overwrite the first's
+            # edit with its copy of the old block. The earlier change goes first; the later one waits.
+            for section, other, ref in others.sections.get(req.id, []):
+                if section not in ("MODIFIED", "REMOVED"):
+                    continue
+                if _started_before(other, change):
+                    err(req.line, f"{req.id} is also {section} by change {ref}, started earlier; close {ref} first, "
+                                  f"then copy the block again from the living spec")
+                else:
+                    issues.append(Issue("warning", file, req.line, f"{req.id} is also {section} by change {ref}; close this change first, "
+                                                                  f"then {ref} copies the block again"))
 
         if req.section == "REMOVED":
             if "reason" not in req.description.lower() or "migration" not in req.description.lower():

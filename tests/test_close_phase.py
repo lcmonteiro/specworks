@@ -289,3 +289,12 @@ def test_a_removed_requirement_id_is_never_handed_out_again(ready):
     code, data = run_json("check", "--change", "readd-reset")
     messages = [i["message"] for i in data["issues"]]
     assert any("REQ-AUTH-003 was REMOVED from user-auth by an earlier change" in m for m in messages), messages
+
+
+def test_close_runs_the_project_commands(ready):
+    # --no-run is only for the dry run: a real close never turns a red suite into a warning.
+    code, data = run_json("close", "--change", REF, "--base", "main", "--no-run")
+    assert code == 1 and "--no-run only goes with --dry-run" in data["error"]
+    assert (ready / CHANGE_DIR).is_dir()
+    code, data = run_json("close", "--change", REF, "--base", "main", "--no-run", "--dry-run")
+    assert code == 0 and data["dryRun"] is True

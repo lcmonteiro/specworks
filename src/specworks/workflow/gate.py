@@ -16,9 +16,9 @@ from ..core.changes import Change
 from ..core.errors import SpecworksError
 from ..core.workspace import Module, Workspace
 from ..specs.check import ChangeSpecs, check_change
-from ..specs.trace import build_matrix, gaps, scan_tags, unknown_tags
-from .checks import Check, accounted_check, change_ids, command_check, tag_checks, tests_pass
-from .review import REVIEW_FILE, TYPE_PHASE, read_review, review_change
+from ..specs.trace import scan_tags, trace_change
+from .checks import Check, change_ids, command_check, reviewed_checks, spec_check, tag_checks, tests_pass
+from .review import read_review, review_change
 from .validate import validate_change
 
 
@@ -38,8 +38,7 @@ class GateContext:
 
 def _spec_checks(ctx: GateContext) -> tuple[ChangeSpecs, list[Check]]:
     specs, issues = check_change(ctx.ws, ctx.change)
-    errors = [str(i) for i in issues if i.level == "error"]
-    return specs, [Check("specs and tasks are valid (specworks check)", not errors, errors)]
+    return specs, [spec_check([str(i) for i in issues if i.level == "error"])]
 
 
 def _specify(ctx: GateContext) -> list[Check]:
@@ -116,15 +115,14 @@ def _design(ctx: GateContext) -> list[Check]:
 
 
 def _test(ctx: GateContext) -> list[Check]:
-    specs, checks = _spec_checks(ctx)
-    tags = scan_tags(ctx.ws)
-    found = gaps(build_matrix(specs, tags))
-    stray = unknown_tags(specs, tags)
-    ids = change_ids(specs)
-    misplaced = [t for t in tags if t.kind == "ac" and not t.is_test and t.id in ids]
-    return checks + [
+    trace = trace_change(ctx.ws, ctx.change)
+    found = trace.findings()
+    ids = change_ids(trace.specs)
+    misplaced = [t for t in trace.tags if t.kind == "ac" and not t.is_test and t.id in ids]
+    return [
+        spec_check(trace.spec_errors),
         Check("every acceptance criterion has a test (@ac tag in a test file)", not found["acWithoutTests"], found["acWithoutTests"]),
-        Check("no tag refers to an unknown requirement or criterion", not stray, [f"{t.id} at {t.where}" for t in stray]),
+        Check("no tag refers to an unknown requirement or criterion", not found["unknownTags"], found["unknownTags"]),
         Check(
             "@ac tags are in test files (configure test_globs if your tests live elsewhere)",
             not misplaced,
@@ -136,38 +134,20 @@ def _test(ctx: GateContext) -> list[Check]:
 
 
 def _code(ctx: GateContext) -> list[Check]:
-    specs, checks = _spec_checks(ctx)
+    trace = trace_change(ctx.ws, ctx.change)
+    specs = trace.specs
     pending = [f"{t.num} {t.text}" for t in specs.tasks if not t.done]
-    tags = scan_tags(ctx.ws)
-    found = {**gaps(build_matrix(specs, tags)), "unknownTags": [f"{t.id} at {t.where}" for t in unknown_tags(specs, tags)]}
     return [
-        *checks,
+        spec_check(trace.spec_errors),
         Check("every task is done (specworks task list --pending)", specs.tasks_found and not pending, pending),
-        *tag_checks(found),
+        *tag_checks(trace.findings()),
         tests_pass(ctx.ws, ctx.module, ctx.run_tests),
     ]
 
 
 def _review(ctx: GateContext) -> list[Check]:
-    _, report = review_change(ctx.ws, ctx.change, ctx.base)
-    found = report.findings()
-    review = read_review(ctx.change)
-    open_findings = [f"{f.id} {f.text}" for f in review.open]
-    return [
-        Check("specs and tasks are valid (specworks check)", not report.spec_errors, report.spec_errors),
-        Check(f"{REVIEW_FILE} is written", review.exists, [] if review.exists else ["write it (specworks instructions review)"]),
-        # In a build, open findings are the hand-off to the next cycle (`specworks cycle`), not a failure.
-        Check(f"no open finding in {REVIEW_FILE}", review.exists and not open_findings, open_findings, blocking=not ctx.allow_open),
-        # The next build cycle starts from each open finding's phase, so it must be known, never guessed.
-        Check(
-            f"every open finding has a known type ({', '.join(TYPE_PHASE)}) or a `back to <phase>:`",
-            not review.unrouted,
-            [f"{f.id}: type {f.type or '(none)'!r}" for f in review.unrouted],
-        ),
-        *tag_checks(found),
-        accounted_check(report, review),
-        tests_pass(ctx.ws, ctx.module, ctx.run_tests),
-    ]
+    report = review_change(ctx.ws, ctx.change, ctx.base)
+    return reviewed_checks(ctx.ws, ctx.module, report, read_review(ctx.change), ctx.run_tests, ctx.allow_open)
 
 
 def _validate(ctx: GateContext) -> list[Check]:

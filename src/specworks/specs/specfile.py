@@ -22,6 +22,7 @@ numbered under their requirement: AC-<prefix>-<num>.<n>.
 from __future__ import annotations
 
 import re
+from collections.abc import Iterator
 from dataclasses import dataclass, field
 
 # An ID ends where no letter, digit or '-' follows, so a prefix segment of digits only
@@ -39,6 +40,27 @@ MISPLACED_SCENARIO_RE = re.compile(r"^(?:#{1,3}|#{5,})\s+Scenario:|^\s*[-*]\s+\*
 DELTA_SECTIONS = ("ADDED", "MODIFIED", "REMOVED")
 LIVING_SECTION = "Requirements"
 NORMATIVE_RE = re.compile(r"\b(SHALL|MUST)\b")
+FENCE_RE = re.compile(r"^\s{0,3}(?P<fence>`{3,}|~{3,})")
+
+
+def markdown_lines(text: str) -> Iterator[tuple[int, str, bool]]:
+    """``(number, line, fenced)`` for each line; ``fenced`` is True inside a code block and on its fences.
+
+    A block opened with ```` ``` ```` or ``~~~`` closes with the same character, at least as long,
+    so examples in a block never read as headings, tasks or findings.
+    """
+    fence = ""
+    for number, line in enumerate(text.splitlines(), start=1):
+        match = FENCE_RE.match(line)
+        if fence:
+            if match and match.group("fence")[0] == fence[0] and len(match.group("fence")) >= len(fence) and not line.strip().strip(fence[0]):
+                fence = ""
+            yield number, line, True
+        elif match:
+            fence = match.group("fence")
+            yield number, line, True
+        else:
+            yield number, line, False
 
 
 @dataclass
@@ -118,17 +140,15 @@ def parse_spec(text: str) -> SpecDoc:
     purpose: list[str] = []
     req: Requirement | None = None
     scenario: Scenario | None = None
-    in_fence = False
-    lines = text.splitlines()
+    last = 0
 
     def close_block(last: int) -> None:
         if req is not None:
             req.end = last
 
-    for number, line in enumerate(lines, start=1):
-        if line.lstrip().startswith("```"):
-            in_fence = not in_fence
-        if in_fence or line.lstrip().startswith("```"):
+    for number, line, fenced in markdown_lines(text):
+        last = number
+        if fenced:
             target = scenario.lines if scenario else req.lines if req else purpose if section == "Purpose" else None
             if target is not None:
                 target.append(line)
@@ -167,7 +187,7 @@ def parse_spec(text: str) -> SpecDoc:
         elif section == "Purpose":
             purpose.append(line)
 
-    close_block(len(lines))
+    close_block(last)
     doc.purpose = "\n".join(purpose).strip()
     return doc
 

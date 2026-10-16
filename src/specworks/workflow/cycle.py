@@ -10,15 +10,10 @@ finding is outside the cycle: the change goes back to specify and the build stop
 from __future__ import annotations
 
 from ..core.changes import Change
-from .review import parse_review, read_review
+from .review import read_review
 
 CYCLE = ("design", "test", "code", "review")
 ORDER = ("specify", *CYCLE)
-
-
-def open_findings(text: str) -> list[dict]:
-    """Open findings of a review.md text with their type and the phase that resolves each one."""
-    return [f.to_dict() for f in parse_review(text).open]
 
 
 def next_cycle(change: Change) -> dict:

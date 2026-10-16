@@ -9,7 +9,7 @@ import typer
 from ..core.config import DARK_THEMES, THEMES, theme_name
 from ..specs.capabilities import describe, resolve_ref, workspace_capabilities
 from ..specs.check import check_change
-from ..specs.trace import build_matrix, gaps, scan_tags, to_markdown, unknown_tags, write_traceability
+from ..specs.trace import to_markdown, trace_change, write_traceability
 from ..tools.diagrams import DiagramError, diagrams_in, find_d2, render, state
 from .app import app, spec_app
 from .output import ChangeOpt, JsonOpt, change_dict, emit, fail, require_change, workspace
@@ -47,18 +47,15 @@ def trace(
 ) -> None:
     """Requirement -> acceptance criterion -> task -> test (@ac) -> code (@req) matrix of a change."""
     ws, mod, ch = require_change(change, as_json)
-    specs, issues = check_change(ws, ch)
-    tags = scan_tags(ws)
-    rows = build_matrix(specs, tags)
-    found = gaps(rows)
-    markdown = to_markdown(mod.qualify(ch.name), rows, found)
+    traced = trace_change(ws, ch)
+    markdown = to_markdown(mod.qualify(ch.name), traced.rows, traced.gaps)
     written = ws.rel(write_traceability(ch, markdown)) if write else None
     data = {
         **change_dict(ws, mod, ch),
-        "rows": [vars(r) for r in rows],
-        "gaps": found,
-        "unknownTags": [{"id": t.id, "where": t.where} for t in unknown_tags(specs, tags)],
-        "specErrors": sum(i.level == "error" for i in issues),
+        "rows": [vars(r) for r in traced.rows],
+        "gaps": traced.gaps,
+        "unknownTags": [{"id": t.id, "where": t.where} for t in traced.unknown],
+        "specErrors": len(traced.spec_errors),
         "written": written,
     }
     text = markdown + (f"\nwrote {written}" if written else "")

@@ -60,7 +60,7 @@ def test_verify_names_the_phase_to_go_back_to(repo):
     checks = by_name(data)
     assert checks["every task is done"]["fix"] == "/specworks-code"
     assert checks["every requirement has code (@req tag)"]["details"] == ["REQ-AUTH-002"]
-    assert checks["review done (review.md with no open finding)"]["details"] == ["review.md is missing"]
+    assert checks["review.md is written"]["details"] == ["write it (specworks instructions review)"]
     assert data["goBackTo"] == ["/specworks-code", "/specworks-review"]
 
 
@@ -92,11 +92,12 @@ def test_outdated_diagram_fails_coherence(repo):
     assert code == 1 and check["group"] == "coherence" and check["details"] == [f"spec/changes/{REF}/diagrams/flow.svg (missing)"]
 
 
-def test_skipping_the_review_phase_is_a_warning(repo):
-    (repo / "spec/changes" / REF / "review.md").write_text("None.\n")
-    code, data = run_json("validate", "--change", REF, "--base", "main")
-    phase = by_name(data)["the change went through review"]
-    assert code == 0 and phase["ok"] is False and phase["blocking"] is False and phase["details"] == ["phase is refine"]
+def test_validate_runs_every_check_of_the_review_gate(repo):
+    # One set of checks: validate is the review gate plus completeness, lint/typecheck and diagrams.
+    reviewed(repo)
+    _, review = run_json("gate", "review", "--change", REF, "--base", "main")
+    _, validate = run_json("validate", "--change", REF, "--base", "main")
+    assert set(by_name(review)) <= set(by_name(validate))
 
 
 def test_gate_verify_matches_verify(repo):

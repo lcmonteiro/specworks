@@ -10,7 +10,12 @@ globs relative to that module's folder. A file counts as a test when it matches
 the module's ``test_globs`` or, when none are set, when its name or folder looks
 like a test (``test_x.py``, ``x_test.go``, ``x.test.ts``, ``x.spec.js``,
 ``x_spec.rb``, ``tests/``, ``__tests__/``...). ``source_globs``, when set, limit
-the other files scanned; tests are always scanned.
+the other files scanned; tests are always scanned. Documentation (``.md``,
+``.rst``, ...) is never scanned: a tag quoted in a README is not code.
+
+Globs are matched against the path relative to the module's folder; ``*``
+also matches ``/``, and a leading ``**/`` also matches files at the top
+(``**/test_*.py`` matches ``test_x.py`` and ``a/b/test_x.py``).
 """
 
 from __future__ import annotations
@@ -24,10 +29,14 @@ from pathlib import Path
 
 from ..core.changes import Change
 from ..core.workspace import Workspace
-from .check import ChangeSpecs
+from .check import ChangeSpecs, Issue, check_change
 from .specfile import id_prefix
 
-TAG_RE = re.compile(r"@(?P<kind>req|ac)\s+(?P<id>(?:REQ|AC)-[A-Z0-9][A-Z0-9.-]*[A-Z0-9])")
+_TAG_ID = r"(?:REQ|AC)-[A-Z0-9][A-Z0-9.-]*[A-Z0-9]"
+TAG_ID_RE = re.compile(_TAG_ID)
+# A tag names one ID or several, separated by spaces or commas: `@ac AC-A-001.1, AC-A-001.2`.
+TAG_RE = re.compile(rf"@(?P<kind>req|ac)\s+(?P<ids>{_TAG_ID}(?:\s*,\s*{_TAG_ID}|\s+{_TAG_ID})*)")
+DOC_EXTENSIONS = {".md", ".markdown", ".mdx", ".rst", ".adoc", ".txt"}
 SKIP_DIRS = {"node_modules", "__pycache__", "venv", "dist", "build", "target", "out", "vendor", "site-packages"}
 # Not "spec"/"specs": they often hold source (spec parsers, OpenAPI specs); RSpec files
 # are still found by name (``*_spec.rb``).
@@ -62,23 +71,33 @@ class Row:
     code: list[str] = field(default_factory=list)
 
 
+def glob_match(rel: str, globs: list[str]) -> bool:
+    """``rel`` matches one of ``globs``; a leading ``**/`` also matches at the top level."""
+    return any(fnmatch.fnmatch(rel, g) or (g.startswith("**/") and fnmatch.fnmatch(rel, g[3:])) for g in globs)
+
+
 def is_test_file(rel: str, test_globs: list[str]) -> bool:
     if test_globs:
-        return any(fnmatch.fnmatch(rel, g) for g in test_globs)
+        return glob_match(rel, test_globs)
     parts = rel.split("/")
     return any(p in TEST_DIRS for p in parts[:-1]) or bool(TEST_NAME_RE.search(parts[-1]))
 
 
 def file_classifier(ws: Workspace) -> Callable[[Path], tuple[bool, bool]]:
-    """``classify(path) -> (scanned, is_test)`` for files of the workspace, by the config of the module owning each one."""
+    """``classify(path) -> (scanned, is_test)`` for files of the workspace, by the config of the module owning each one.
+
+    Documentation is neither scanned nor a test.
+    """
     deepest_first = sorted(ws.modules(), key=lambda m: len(m.root.parts), reverse=True)
 
     def classify(path: Path) -> tuple[bool, bool]:
+        if path.suffix.lower() in DOC_EXTENSIONS:
+            return False, False
         module = next(m for m in deepest_first if path.is_relative_to(m.root))
         rel = path.relative_to(module.root).as_posix()
         cfg = module.config
         is_test = is_test_file(rel, cfg.test_globs)
-        return is_test or not cfg.source_globs or any(fnmatch.fnmatch(rel, g) for g in cfg.source_globs), is_test
+        return is_test or not cfg.source_globs or glob_match(rel, cfg.source_globs), is_test
 
     return classify
 
@@ -109,7 +128,8 @@ def scan_tags(ws: Workspace) -> list[Tag]:
             rel = ws.rel(path)
             for number, line in enumerate(text.splitlines(), start=1):
                 for match in TAG_RE.finditer(line):
-                    tags.append(Tag(id=match.group("id"), kind=match.group("kind"), file=rel, line=number, is_test=is_test))
+                    for tag_id in TAG_ID_RE.findall(match.group("ids")):
+                        tags.append(Tag(id=tag_id, kind=match.group("kind"), file=rel, line=number, is_test=is_test))
     return tags
 
 
@@ -170,6 +190,38 @@ def unknown_tags(specs: ChangeSpecs, tags: list[Tag]) -> list[Tag]:
             if doc:
                 known |= {r.id for r in doc.requirements} | {s.id for r in doc.requirements for s in r.scenarios}
     return [t for t in tags if t.id not in known and id_prefix(t.id) in prefixes]
+
+
+@dataclass
+class Trace:
+    """A change's specs checked and traced to the tags in the workspace, computed once for gates, review and trace."""
+
+    specs: ChangeSpecs
+    issues: list[Issue]
+    tags: list[Tag]
+    rows: list[Row]
+    gaps: dict[str, list[str]]
+    unknown: list[Tag]
+
+    @property
+    def spec_errors(self) -> list[str]:
+        return [str(i) for i in self.issues if i.level == "error"]
+
+    def findings(self) -> dict[str, list[str]]:
+        """The @req / @ac findings: gaps between specs and tags, and tags to unknown IDs."""
+        return {
+            "reqWithoutCode": self.gaps["reqWithoutCode"],
+            "acWithoutTests": self.gaps["acWithoutTests"],
+            "removedStillTagged": self.gaps["removedStillTagged"],
+            "unknownTags": [f"{t.id} at {t.where}" for t in self.unknown],
+        }
+
+
+def trace_change(ws: Workspace, change: Change) -> Trace:
+    specs, issues = check_change(ws, change)
+    tags = scan_tags(ws)
+    rows = build_matrix(specs, tags)
+    return Trace(specs, issues, tags, rows, gaps(rows), unknown_tags(specs, tags))
 
 
 def to_markdown(change_ref: str, rows: list[Row], found: dict[str, list[str]]) -> str:

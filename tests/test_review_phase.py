@@ -1,6 +1,7 @@
 """Review phase support: drift candidates (`specworks review`) and the review gate."""
 
 from helpers import REF, run_json
+from specworks.workflow.review import parse_review
 
 
 def findings(data):
@@ -135,3 +136,8 @@ def test_gate_review_blocks_on_an_open_finding_of_unknown_type_even_in_a_build(r
     write_review(repo, "- [ ] R1 **spec_gap** lockout also logs\n  - **Decision**: back to specify: add REQ-AUTH-004\n")
     code, data = run_json("gate", "review", "--change", REF, "--base", "main", "--allow-open")
     assert code == 0, data
+
+
+def test_findings_in_a_code_block_are_examples():
+    doc = parse_review("## Findings\n\n```markdown\n- [ ] R9 **code-gap** an example\n```\n- [x] R1 **tag** fixed\n")
+    assert [f.id for f in doc.findings] == ["R1"] and doc.open == []
