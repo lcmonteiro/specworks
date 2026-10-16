@@ -113,10 +113,11 @@ def scan_tags(ws: Workspace) -> list[Tag]:
         module = ws.owner(here)
         for name in sorted(filenames):
             path = here / name
-            rel = ws.rel(path)
             scanned, is_test = scan_rule(module, path)
             if not scanned:
                 continue
+            # The path as walked, not resolved: a symlink to a file outside the workspace is not a crash.
+            rel = path.relative_to(ws.root).as_posix()
             try:
                 if path.stat().st_size > MAX_FILE_BYTES:
                     continue
