@@ -10,7 +10,7 @@ from ..core.changes import PHASES
 from ..core.runner import run_command
 from ..specs.merge import archive_target, close_change, plan_merge
 from ..specs.trace import Analysis
-from ..workflow.checks import Check, GateContext
+from ..workflow.checks import Check, GateContext, passed
 from ..workflow.cycle import next_cycle
 from ..workflow.gate import GATES, run_gate, start_phase
 from ..workflow.review import review_change
@@ -67,7 +67,7 @@ def start(
         **change_dict(ws, mod, ch),
         "from": before,
         "started": started,
-        "gates": [{"gate": g, "passed": all(c.ok for c in checks if c.blocking), "checks": [c.to_dict() for c in checks]} for g, checks in gates],
+        "gates": [{"gate": g, "passed": passed(checks), "checks": [c.to_dict() for c in checks]} for g, checks in gates],
     }
     lines = []
     for g, checks in gates:

@@ -69,6 +69,11 @@ class GateContext:
 CheckFn = Callable[[GateContext], "Check | None"]
 
 
+def passed(checks: list[Check]) -> bool:
+    """A gate passes when none of its blocking checks fails; warnings never block."""
+    return all(c.ok for c in checks if c.blocking)
+
+
 def run_checks(ctx: GateContext, checks: Iterable[CheckFn]) -> list[Check]:
     return [c for check in checks if (c := check(ctx)) is not None]
 

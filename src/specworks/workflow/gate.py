@@ -17,7 +17,7 @@ from ..core.files import read_text
 from ..specs.check import DESIGN_FILE
 from ..specs.specfile import COMMENT_RE, H2_RE, fenced
 from . import checks as c
-from .checks import Check, CheckFn, GateContext, run_checks
+from .checks import Check, CheckFn, GateContext, passed, run_checks
 from .review import CODE_EXTENSIONS
 from .validate import validate_change
 
@@ -149,7 +149,7 @@ def run_gate(ctx: GateContext, phase: str) -> tuple[bool, list[Check]]:
     if phase not in GATES:
         raise GateError(f"no gate for phase '{phase}' yet; gates exist for: {', '.join(GATES)}")
     checks = validate_change(ctx) if phase == "validate" else run_checks(ctx, GATE_CHECKS[phase])
-    return all(check.ok for check in checks if check.blocking), checks
+    return passed(checks), checks
 
 
 def gates_to_start(current: str, phase: str) -> list[str]:
