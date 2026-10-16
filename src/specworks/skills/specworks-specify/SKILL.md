@@ -35,7 +35,7 @@ When the artifacts are done, stop and suggest `/specworks-design`.
      for small changes.
    - Move it to this phase:
      ```bash
-     specworks phase "<ref>" specify
+     specworks phase specify --change "<ref>"
      ```
 
 2. **Load what exists**
@@ -193,4 +193,4 @@ When the artifacts are done, stop and suggest `/specworks-design`.
   `specworks skip-specs --change "<ref>"`.
 - Do not move past step 5 without the user's confirmation.
 - If the specs reveal that the refinement was wrong, say so and suggest going
-  back (`specworks phase "<ref>" refine`) rather than silently changing scope.
+  back (`specworks phase refine --change "<ref>"`) rather than silently changing scope.

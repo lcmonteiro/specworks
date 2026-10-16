@@ -7,7 +7,9 @@ import sys
 import pytest
 
 from helpers import REF, run_json
-from specworks.workflow.gate import interface_files
+from specworks.core.changes import load_change
+from specworks.core.config import load_config
+from specworks.workflow.gate import interface_files, interfaces_section
 
 PASS = f'"{sys.executable}" -c "print(\'all green\')"'
 FAIL = f'"{sys.executable}" -c "import sys; print(\'ImportError: cannot import ResetService\'); sys.exit(1)"'
@@ -27,6 +29,10 @@ def write_design(root, body):
     (root / "spec/changes" / REF / "design.md").write_text(INTERFACES.format(body=body))
 
 
+def change(root):
+    return load_change(load_config(root), REF)
+
+
 def gate(*extra):
     code, data = run_json("gate", "design", "--change", REF, *extra)
     return code, {c["name"]: c for c in data["checks"]}
@@ -44,7 +50,7 @@ def planned(project):
 
 
 def test_phase_order_has_interface_between_propose_and_test(planned):
-    code, data = run_json("phase", REF, "design")
+    code, data = run_json("phase", "design", "--change", REF)
     assert code == 0 and data["phase"] == "design"
     code, data = run_json("status", "--change", REF)
     assert data["phase"] == "design" and data["phases"].index("specify") < data["phases"].index("design") < data["phases"].index("test")
@@ -138,3 +144,27 @@ def test_red_suite_is_only_a_warning_once_the_change_has_tests(planned):
     code, checks = gate()
     assert code == 0 and checks[TESTS]["ok"] is False and checks[TESTS]["blocking"] is False
     assert "already has @ac tests" in checks[TESTS]["details"][0]
+
+
+@pytest.mark.parametrize(
+    "design, files",
+    [
+        # Any case and any qualifier after "Interfaces".
+        ("## Decisions\n\nx\n\n## Interfaces (API)\n\n- `src/auth/reset.py`: `reset()`\n\n## Risks\n\n- `src/other/x.py`\n", ["src/auth/reset.py"]),
+        ("## interfaces\n\n- `src/auth/reset.py`: `reset()`\n", ["src/auth/reset.py"]),
+        # A "## " line inside a code fence does not end the section.
+        ("## Interfaces\n\n```md\n## Example\n```\n\n- `src/auth/reset.py`: `reset()`\n\n## Risks\n", ["src/auth/reset.py"]),
+    ],
+)
+def test_interfaces_section_is_found_by_its_heading(planned, design, files):
+    (planned / "spec/changes" / REF / "design.md").write_text(f"# Design\n\n{design}")
+    (planned / "src/auth/reset.py").write_text("def reset(): raise NotImplementedError\n")
+    code, checks = gate()
+    assert checks[SECTION]["ok"] is True
+    assert interface_files(interfaces_section(change(planned))) == files
+
+
+def test_no_interfaces_heading_means_no_section(planned):
+    (planned / "spec/changes" / REF / "design.md").write_text("# Design\n\n## Interfaced systems\n\n- `src/auth/reset.py`\n")
+    code, checks = gate()
+    assert checks[SECTION]["ok"] is False

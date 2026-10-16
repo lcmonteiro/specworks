@@ -56,7 +56,7 @@ def test_skipping_ahead_stops_at_the_first_failing_gate(project):
 
 
 def test_going_back_for_rework_needs_only_the_gate_before(repo):
-    run_json("phase", REF, "review")
+    run_json("phase", "review", "--change", REF)
     code, data = start("code", "--no-run")
     assert code == 0 and [g["gate"] for g in data["gates"]] == ["test"] and phase_now() == "code"
 

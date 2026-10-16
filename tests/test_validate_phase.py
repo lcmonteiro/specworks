@@ -13,7 +13,7 @@ PASS = f'"{sys.executable}" -c "print(\'ok\')"'
 
 def reviewed(repo):
     (repo / "spec/changes" / REF / "review.md").write_text(f"# Review: {REF}\n\n## Findings\n\nNone.\n")
-    run_json("phase", REF, "review")
+    run_json("phase", "review", "--change", REF)
     return repo
 
 
