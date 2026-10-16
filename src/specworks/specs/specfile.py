@@ -32,6 +32,7 @@ ANY_ID_RE = re.compile(r"\b(?:AC-[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)*?-\d+\.\d+|REQ-[A-
 
 H2_RE = re.compile(r"^##\s+(?P<title>.+?)\s*$")
 REQ_HEADER_RE = re.compile(r"^###\s+Requirement:\s*(?P<rest>.*?)\s*$")
+H3_RE = re.compile(r"^###(?!#)\s+\S")
 SCENARIO_HEADER_RE = re.compile(r"^####\s+Scenario:\s*(?P<rest>.*?)\s*$")
 MISPLACED_SCENARIO_RE = re.compile(r"^(?:#{1,3}|#{5,})\s+Scenario:|^\s*[-*]\s+\**Scenario:", re.IGNORECASE)
 
@@ -169,6 +170,16 @@ def parse_spec(text: str) -> SpecDoc:
                 doc.problems.append((number, "scenario outside a requirement"))
             else:
                 req.scenarios.append(scenario)
+            continue
+        if H3_RE.match(line) and not MISPLACED_SCENARIO_RE.match(line) and section in (*DELTA_SECTIONS, LIVING_SECTION):
+            # Another "### " heading ends the requirement before it: replacing or removing that
+            # block at close must not take the heading and its text along.
+            close_block(number - 1)
+            req = scenario = None
+            doc.problems.append(
+                (number, f"'{line.strip()}' is not a requirement: a requirements section holds only '### Requirement:' blocks "
+                         "(use '####' inside a requirement, or a '## ' section of its own)")
+            )
             continue
         if MISPLACED_SCENARIO_RE.match(line):
             doc.problems.append((number, "scenario headers must use exactly four hashes: '#### Scenario: AC-... title'"))
