@@ -260,3 +260,13 @@ def test_a_removed_id_is_never_handed_out_again(project):
     assert "REMOVED REQ-AUTH-002" in (project / "src/auth/docs/requirements.md").read_text()
     code, data = run_json("spec", "show", "user-auth")
     assert [r["id"] for r in data["requirements"]] == ["REQ-AUTH-001"] and data["nextId"] == "REQ-AUTH-003"
+
+
+def test_capability_add_rejects_a_prefix_already_in_use(ready):
+    cfg = ready / "spec.yml"
+    before = cfg.read_text()
+    code, data = run_json("capability", "add", "login", "--path", "src/login", "--prefix", "AUTH")
+    assert code == 1 and "AUTH is already used by user-auth" in data["error"]
+    code, data = run_json("capability", "add", "auth", "--path", "src/login")  # derives AUTH too
+    assert code == 1 and "AUTH is already used by user-auth" in data["error"]
+    assert cfg.read_text() == before

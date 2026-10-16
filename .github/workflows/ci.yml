@@ -68,12 +68,13 @@ jobs:
       - name: Build
         run: uv build
 
-      - name: Wheel is pure Python and requires pyd2
+      # Pinned to a commit, not a branch: `uv tool install` does not read uv.lock.
+      - name: Wheel is pure Python and requires pyd2 at a pinned commit
         run: |
           wheel="$(ls dist/*.whl)"
           echo "$wheel"
           case "$wheel" in *-py3-none-any.whl) ;; *) echo "unexpected wheel tag"; exit 1 ;; esac
-          unzip -p "$wheel" '*/METADATA' | grep -qx 'Requires-Dist: pyd2 @ git+https://github.com/lcmonteiro/pyd2@main'
+          unzip -p "$wheel" '*/METADATA' | grep -qxE 'Requires-Dist: pyd2 @ git\+https://github.com/lcmonteiro/pyd2@[0-9a-f]{40}'
 
       # The CLI reads schema.yaml, templates/ and skills/ (with skills/_shared/,
       # filled into each skill on install) from the installed package, so check

@@ -113,3 +113,9 @@ def test_back_to_needs_the_decision_form_and_stays_in_its_finding():
 def test_a_checkbox_inside_a_finding_is_part_of_it():
     text = "## Findings\n\n- [ ] R1 **code-gap** x\n  - **Decision**: back to code: y\n  - [x] sub-step done\n"
     assert [f["phase"] for f in open_findings(text)] == ["code"] and parse_review(text).problems == []
+
+
+def test_finding_types_match_in_any_case_and_after_other_bold_words():
+    text = "- [ ] R1 **BREAKING** **Spec-Gap** reset changes\n- [ ] R2 **spec_gap** typo\n"
+    found = [(f.type, f.phase, f.routed) for f in parse_review(text).findings]
+    assert found == [("spec-gap", "specify", True), ("spec_gap", "code", False)]

@@ -260,3 +260,11 @@ def test_test_globs_are_relative_to_their_module_and_apply_only_to_it(workspace)
 def test_init_in_a_nested_module_reports_its_full_name(workspace, monkeypatch):
     monkeypatch.chdir(workspace / "services/billing")
     assert "as module 'billing/vat'" in run("init", "vat", "--no-skills")
+
+
+def test_derived_prefixes_may_not_collide_across_modules(workspace):
+    # billing:invoices derives BILLING-INVOICES; so would a top-level billing-invoices.
+    cfg = workspace / "spec.yml"
+    cfg.write_text(cfg.read_text().replace("capabilities: {}", "capabilities:\n  billing-invoices:\n    path: src/bi"))
+    code, data = run_json("list")
+    assert code == 1 and "both use the ID prefix BILLING-INVOICES" in data["error"]

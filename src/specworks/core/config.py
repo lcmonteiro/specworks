@@ -129,7 +129,7 @@ def load_diagram_settings(raw: object) -> DiagramSettings:
     settings.dark_theme = dark_theme_id(settings.dark_theme, "diagrams.dark_theme")
     if settings.layout not in LAYOUTS:
         raise ConfigError("'diagrams.layout' must be elk or dagre")
-    if not isinstance(settings.sketch, bool) or not isinstance(settings.pad, int) or settings.pad < 0:
+    if not isinstance(settings.sketch, bool) or isinstance(settings.pad, bool) or not isinstance(settings.pad, int) or settings.pad < 0:
         raise ConfigError("'diagrams.sketch' must be true/false and 'diagrams.pad' a non-negative number")
     return settings
 

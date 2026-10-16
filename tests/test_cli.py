@@ -241,3 +241,52 @@ def test_null_description_is_empty(project):
     cfg.write_text(cfg.read_text().replace("capabilities: {}", "capabilities:\n  user-auth:\n    path: src/auth\n    description:"))
     code, data = run_json("context")
     assert code == 0 and data["capabilities"][0]["description"] == "", data
+
+
+def test_archived_changes_are_not_addressable(project):
+    runner.invoke(app, ["new", "old"])
+    archived = project / "specworks/changes/archive/2026-01-01-old"
+    (project / "specworks/changes/old").rename(archived)
+    code, data = run_json("phase", "archive/2026-01-01-old", "code")
+    assert code == 1 and "must be kebab-case" in data["error"]
+    assert "phase: refine" in (archived / ".change.yaml").read_text()
+
+
+@pytest.mark.parametrize("pad", ["true", "-1", "'24'"])
+def test_diagram_pad_must_be_a_non_negative_number(project, pad):
+    cfg = project / "specworks.yml"
+    cfg.write_text(cfg.read_text().replace("diagrams:\n", f"diagrams:\n  pad: {pad}\n", 1))
+    code, data = run_json("context")
+    assert code == 1 and "'diagrams.pad' a non-negative number" in data["error"], data
+
+
+@pytest.mark.parametrize(
+    "config, message",
+    [
+        ("specworks: 2\n", "unsupported config version specworks: 2 (expected 1)"),
+        ("specworks: 1\ncontext: [\n", "cannot read"),
+        ("specworks: 1\ncontext: [a, b]\n", "'context' must be a string"),
+        (f"specworks: 1\ncontext: {'x' * (50 * 1024 + 1)}\n", "'context' is larger than 51200 bytes"),
+        ("specworks: 1\ncommands: [uv run pytest]\n", "'commands' must be a mapping of test, lint, typecheck, build, format"),
+        ("specworks: 1\ncommands:\n  test: [uv, run, pytest]\n", "'commands.test' must be a shell command string"),
+        ("specworks: 1\nmodules: [billing]\n", "'modules' must be a mapping of name: path"),
+        ("specworks: 1\ndiagrams:\n  theme: true\n", "'diagrams.theme': unknown theme True"),
+        ("specworks: 1\ndiagrams:\n  dark_theme: nope\n", "or none to use the light theme in dark mode too"),
+    ],
+)
+def test_invalid_config_values_are_clear_errors(project, config, message):
+    (project / "specworks.yml").write_text(config)
+    code, data = run_json("context")
+    assert code == 1 and message in data["error"], data
+
+
+def test_a_capability_can_be_given_as_name_and_path(project):
+    (project / "specworks.yml").write_text("specworks: 1\ncapabilities:\n  user-auth: src/auth/\n")
+    code, data = run_json("context")
+    assert code == 0 and [(c["name"], c["path"], c["prefix"]) for c in data["capabilities"]] == [("user-auth", "src/auth", "USER-AUTH")]
+
+
+def test_a_yml_file_that_is_not_text_is_never_taken_for_a_config(project):
+    (project / "logo.yml").write_bytes(b"\xff\xfe specworks: 1\n")  # not UTF-8: skipped, not an error
+    code, data = run_json("context")
+    assert code == 0 and data["root"] == str(project)

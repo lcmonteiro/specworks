@@ -115,23 +115,31 @@ def section_kind(title: str) -> str | None:
     return None
 
 
+def fenced(lines: list[str]) -> list[bool]:
+    """For each line, whether it belongs to a ``` code fence (the fence lines included): examples, not structure."""
+    flags, inside = [], False
+    for line in lines:
+        is_fence = line.lstrip().startswith("```")
+        inside ^= is_fence
+        flags.append(inside or is_fence)
+    return flags
+
+
 def parse_spec(text: str) -> SpecDoc:
     doc = SpecDoc()
     section: str | None = None
     purpose: list[str] = []
     req: Requirement | None = None
     scenario: Scenario | None = None
-    in_fence = False
     lines = text.splitlines()
+    in_fence = fenced(lines)
 
     def close_block(last: int) -> None:
         if req is not None:
             req.end = last
 
     for number, line in enumerate(lines, start=1):
-        if line.lstrip().startswith("```"):
-            in_fence = not in_fence
-        if in_fence or line.lstrip().startswith("```"):
+        if in_fence[number - 1]:
             target = scenario.lines if scenario else req.lines if req else purpose if section == "Purpose" else None
             if target is not None:
                 target.append(line)

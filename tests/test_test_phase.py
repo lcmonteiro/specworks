@@ -124,3 +124,11 @@ def test_test_gate_also_requires_valid_specs(project):
 def test_unknown_gate(project):
     code, data = run_json("gate", "deploy", "--change", REF)
     assert code == 1 and "no gate for phase 'deploy'" in data["error"]
+
+
+def test_propose_gate_reports_a_criterion_without_a_task_once(project):
+    tasks = project / "spec/changes" / REF / "tasks.md"
+    tasks.write_text("\n".join(line for line in tasks.read_text().splitlines() if "AUTH-003" not in line) + "\n")
+    code, data = run_json("gate", "specify", "--change", REF)
+    details = [d for c in data["checks"] for d in c["details"] if "AC-AUTH-003.1" in d]
+    assert code == 1 and len(details) == 1 and "is not covered by any task" in details[0]

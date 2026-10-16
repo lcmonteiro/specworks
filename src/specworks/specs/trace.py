@@ -253,11 +253,6 @@ class Analysis:
     def gaps(self) -> dict[str, list[str]]:
         return gaps(self.rows)
 
-    @property
-    def acs_without_tasks(self) -> list[str]:
-        """Needs no tag scan: tasks come from tasks.md."""
-        return gaps(build_matrix(self.specs, []))["acWithoutTasks"]
-
     @cached_property
     def unknown_tags(self) -> list[Tag]:
         return unknown_tags(self.specs, self.tags)

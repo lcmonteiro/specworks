@@ -3,92 +3,13 @@ import json
 import pytest
 from typer.testing import CliRunner
 
+from samples import DELTA, LIVING, PROPOSAL, TASKS
 from specworks.cli import app
 from specworks.specs.specfile import ac_parent, find_ids, id_prefix, parse_spec
+from specworks.specs.tasks import parse_tasks
 from specworks.specs.trace import is_test_file
 
 runner = CliRunner()
-
-LIVING = """\
-# user-auth
-
-## Purpose
-
-Lets users prove who they are.
-
-## Requirements
-
-### Requirement: REQ-AUTH-001 Password login
-The system SHALL let a user log in with email and password.
-
-#### Scenario: AC-AUTH-001.1 Valid password
-- **WHEN** a user submits a correct password
-- **THEN** a session is created
-
-### Requirement: REQ-AUTH-002 Lockout
-The system SHALL lock an account after 5 failed attempts.
-
-#### Scenario: AC-AUTH-002.1 Fifth failure
-- **WHEN** the fifth wrong password is submitted
-- **THEN** the account is locked
-"""
-
-DELTA = """\
-# Spec Delta: user-auth
-
-## ADDED Requirements
-
-### Requirement: REQ-AUTH-003 Password reset
-The system SHALL email a single-use reset link valid for 30 minutes.
-
-#### Scenario: AC-AUTH-003.1 Request reset
-- **WHEN** a user asks for a reset with a known email
-- **THEN** a reset link is emailed
-
-#### Scenario: AC-AUTH-003.2 Expired link
-- **GIVEN** a link older than 30 minutes
-- **WHEN** it is opened
-- **THEN** the user is told it expired
-
-## MODIFIED Requirements
-
-### Requirement: REQ-AUTH-002 Lockout after failures
-The system SHALL lock an account after 3 failed attempts.
-
-#### Scenario: AC-AUTH-002.1 Third failure
-- **WHEN** the third wrong password is submitted
-- **THEN** the account is locked
-"""
-
-PROPOSAL = """\
-# Proposal: add-password-reset
-
-## Why
-Users get locked out.
-
-## What Changes
-- Password reset by email
-
-## Capabilities
-### Modified Capabilities
-- `user-auth`: reset + stricter lockout
-
-## Impact
-auth service
-"""
-
-TASKS = """\
-# Tasks
-
-## 1. Reset
-
-- [ ] 1.1 Write failing tests for AC-AUTH-003.1 and AC-AUTH-003.2; verify they fail
-- [ ] 1.2 Implement reset links (REQ-AUTH-003); verify 1.1 passes
-
-## 2. Lockout
-
-- [x] 2.1 Lower the lockout threshold (REQ-AUTH-002); verify AC-AUTH-002.1 test passes
-"""
 
 
 def run_json(*args):
@@ -505,3 +426,25 @@ def test_skip_specs_change(project):
     assert states["specs"] == "skipped" and states["tasks"] == "ready"
     code, data = run_json("skip-specs", "--change", "tidy-up", "--off")
     assert data["skipSpecs"] is False
+
+
+def test_two_capabilities_with_one_prefix_is_an_error(project):
+    cfg = project / "spec.yml"
+    cfg.write_text(cfg.read_text().replace("    prefix: AUTH\n", "    prefix: AUTH\n  login:\n    path: src/login\n    prefix: AUTH\n", 1))
+    code, data = run_json("spec", "list")
+    assert code == 1 and "user-auth and login both use the ID prefix AUTH" in data["error"]
+
+
+def test_new_capability_may_not_take_a_prefix_in_use(change):
+    path = change / "specs/auth"
+    path.mkdir(parents=True)
+    (path / "spec.md").write_text("## Purpose\n\nAuth.\n\n" + DELTA.split("## MODIFIED")[0].replace("REQ-AUTH-003", "REQ-AUTH-009").replace("AC-AUTH-003", "AC-AUTH-009"))
+    code, data = run_json("check", "--change", "add-password-reset")
+    messages = [i["message"] for i in data["issues"]]
+    assert code == 1 and any("new capability auth would use the ID prefix AUTH, already used by user-auth" in m for m in messages), messages
+
+
+def test_tasks_in_a_code_fence_are_examples_not_tasks():
+    text = "## 1. Reset\n\n- [ ] 1.1 Add reset (REQ-AUTH-003)\n\n```markdown\n- [ ] 9.9 an example task\n- [x] bad example\n```\n"
+    tasks, problems = parse_tasks(text)
+    assert [t.num for t in tasks] == ["1.1"] and problems == []

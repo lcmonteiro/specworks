@@ -8,9 +8,9 @@ authors = [
 ]
 requires-python = ">=3.11"
 dependencies = [
-    # D2 and its Python API, from pyd2's main branch. uv.lock pins the commit;
-    # `uv lock --upgrade-package pyd2` moves it to the latest main.
-    "pyd2 @ git+https://github.com/lcmonteiro/pyd2@main",
+    # D2 and its Python API, pinned to a pyd2 commit so every install (uv tool install too,
+    # which does not read uv.lock) gets the same D2. To upgrade, put a newer commit here and run `uv lock`.
+    "pyd2 @ git+https://github.com/lcmonteiro/pyd2@3f82c049daada03a0c8ab6e0a6fd5d8fe75c69cb",
     "pyyaml>=6.0.3",
     "typer>=0.27.3",
 ]
