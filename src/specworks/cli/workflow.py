@@ -9,12 +9,17 @@ import typer
 from ..core.runner import run_command
 from ..specs.check import check_change
 from ..specs.merge import archive_target, close_change, plan_merge
+from ..workflow.checks import Check
 from ..workflow.cycle import next_cycle
 from ..workflow.gate import GATES, GateContext, run_gate
 from ..workflow.review import review_change
 from ..workflow.validate import GROUPS, summary, validate_change
 from .app import app
 from .output import ChangeOpt, JsonOpt, change_dict, emit, fail, require_change, workspace
+
+
+def _mark(check: Check) -> str:
+    return "ok  " if check.ok else ("FAIL" if check.blocking else "warn")
 
 
 @app.command()
@@ -34,8 +39,7 @@ def gate(
     data = {**change_dict(ws, mod, ch), "gate": phase, "passed": passed, "checks": [c.to_dict() for c in checks]}
     lines = []
     for c in checks:
-        mark = "ok  " if c.ok else ("FAIL" if c.blocking else "warn")
-        lines.append(f"[{mark}] {c.name}")
+        lines.append(f"[{_mark(c)}] {c.name}")
         lines += [f"         {d}" for d in c.details]
     lines.append(f"gate {phase}: {'passed' if passed else 'NOT passed'}")
     emit(data, as_json, "\n".join(lines))
@@ -51,7 +55,7 @@ def review(
 ) -> None:
     """Drift candidates between a change's specs and its code, in both directions."""
     ws, mod, ch = require_change(change, as_json)
-    _, report = review_change(ws, ch, base)
+    report = review_change(ws, ch, base)
     data = {**change_dict(ws, mod, ch), **report.to_dict()}
     labels = {
         "reqWithoutCode": "requirements without code (@req)",
@@ -109,8 +113,7 @@ def validate_cmd(
         counts = result["groups"][group]
         lines.append(f"{group.capitalize()} ({counts['passed']}/{counts['total']})")
         for c in (c for c in checks if c.group == group):
-            mark = "ok  " if c.ok else ("FAIL" if c.blocking else "warn")
-            lines.append(f"  [{mark}] {c.name}" + ("" if c.ok else f"  -> {c.fix}"))
+            lines.append(f"  [{_mark(c)}] {c.name}" + ("" if c.ok else f"  -> {c.fix}"))
             lines += [f"           {d}" for d in c.details if not c.ok or d.startswith("$ ")]
     lines.append(f"{mod.qualify(ch.name)}: {result['verdict']} ({result['critical']} critical, {result['warnings']} warnings)")
     if result["goBackTo"]:
@@ -125,10 +128,13 @@ def close(
     change: str = ChangeOpt,
     dry_run: bool = typer.Option(False, "--dry-run", help="Show what would be merged and archived; write nothing."),
     base: str | None = typer.Option(None, "--base", help="Branch to diff against for validate (default: origin's default branch)."),
-    no_run: bool = typer.Option(False, "--no-run", help="Validate without running test/lint/typecheck."),
+    no_run: bool = typer.Option(False, "--no-run", help="With --dry-run: validate without running test/lint/typecheck."),
     as_json: bool = JsonOpt,
 ) -> None:
     """Merge the change's delta specs into the living specs, update requirements.md, and archive the change."""
+    if no_run and not dry_run:
+        # A real close runs the project's commands: --no-run would turn a red suite into a warning.
+        fail("--no-run only goes with --dry-run; closing runs the project's test, lint and typecheck commands", as_json)
     ws, mod, ch = require_change(change, as_json)
     ref = mod.qualify(ch.name)
     result = summary(validate_change(ws, mod, ch, run=not no_run, base=base))

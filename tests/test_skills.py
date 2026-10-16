@@ -1,8 +1,13 @@
+import re
+from importlib import resources
+from pathlib import Path
+
 import pytest
+from typer.main import get_command
 from typer.testing import CliRunner
 
 from specworks.cli import app
-from specworks.tools.skills import packaged_skills
+from specworks.tools.skills import packaged_skills, read_skill
 
 runner = CliRunner()
 SKILL = "specworks-refine"
@@ -122,3 +127,37 @@ def test_skill_triggers_name_specworks(tmp_path, monkeypatch):
         description = next(line for line in frontmatter(tmp_path / f".claude/skills/{name}/SKILL.md").splitlines() if line.startswith("description:"))
         use_when = description.split("Use ", 1)[1]
         assert "specworks" in use_when and f'"{name.replace("-", " ")}"' in use_when, name
+
+
+def _documented_commands():
+    """``(source, words, flags)`` for every ``specworks <command> ... --flag`` in the skills, schema.yaml and README."""
+    schema = resources.files("specworks").joinpath("schema.yaml").read_text(encoding="utf-8")
+    readme = (Path(__file__).parent.parent / "README.md").read_text(encoding="utf-8")
+    texts = {**{name: read_skill(name) for name in packaged_skills()}, "schema.yaml": schema, "README.md": readme}
+    for source, text in texts.items():
+        for match in re.finditer(r"specworks ((?:[a-z][a-z-]*\s?){1,2})([^`\n]*)", text):
+            yield source, match.group(1).split(), re.findall(r"(?<![\w-])(--[a-z][a-z-]*)", match.group(2).split("#")[0])
+
+
+def test_skills_only_use_commands_and_flags_the_cli_has():
+    # The skills drive the CLI: a renamed command or flag must not leave them calling one that is gone.
+    root = get_command(app)
+    unknown = []
+    for source, words, flags in _documented_commands():
+        command, used = root, []
+        for word in words:
+            subcommands = getattr(command, "commands", {})
+            if word not in subcommands:
+                break
+            command, used = subcommands[word], [*used, word]
+        if not used:
+            continue  # prose ("specworks project"), not a command
+        options = {opt for param in command.params for opt in getattr(param, "opts", [])} | {"--help"}
+        unknown += [f"{source}: specworks {' '.join(used)} {flag}" for flag in flags if flag not in options]
+    assert unknown == []
+
+
+def test_every_skill_that_acts_on_a_change_includes_how_to_pick_it():
+    for name in packaged_skills():
+        if name != "specworks-refine":  # refine creates the change and explains the context itself
+            assert "**Picking the change**" in read_skill(name), name

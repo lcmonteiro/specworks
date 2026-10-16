@@ -212,11 +212,18 @@ def test_null_description_is_empty(project):
 )
 def test_a_broken_change_is_a_clear_error_not_a_crash(project, meta, message):
     runner.invoke(app, ["new", "broken"])
+    runner.invoke(app, ["new", "fine"])
     (project / "specworks/changes/broken/.change.yaml").write_text(meta)
-    code, data = run_json("list")  # JSON, as --json promises, instead of a traceback
+    code, data = run_json("status", "--change", "broken")  # JSON, as --json promises, instead of a traceback
     assert code == 1 and message in data["error"]
-    result = runner.invoke(app, ["list"])
+    result = runner.invoke(app, ["status", "--change", "broken"])
     assert result.exit_code == 1 and isinstance(result.exception, SystemExit) and result.output.startswith("error: ")
+    # It does not hide the other changes: list and context show them, and name the broken one.
+    for command in ("list", "context"):
+        code, data = run_json(command)
+        assert code == 0 and [c["name"] for c in data["changes"]] == ["fine"]
+        assert data["brokenChanges"][0]["ref"] == "broken" and message in data["brokenChanges"][0]["error"]
+    assert "broken" in runner.invoke(app, ["list"]).output and "BROKEN" in runner.invoke(app, ["list"]).output
 
 
 def test_archived_changes_are_not_addressable(project):
@@ -224,5 +231,5 @@ def test_archived_changes_are_not_addressable(project):
     archived = project / "specworks/changes/archive/2026-01-01-old"
     (project / "specworks/changes/old").rename(archived)
     code, data = run_json("phase", "archive/2026-01-01-old", "code")
-    assert code == 1 and "not found" in data["error"]
+    assert code == 1 and "must be kebab-case" in data["error"]
     assert "phase: refine" in (archived / ".change.yaml").read_text()

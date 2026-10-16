@@ -1,13 +1,12 @@
 """Close phase: capability registration, delta merge into living specs, requirements index, archive."""
 
 import hashlib
-import sys
 from datetime import date
 
 import pytest
 from typer.testing import CliRunner
 
-from helpers import REF, run_json
+from helpers import REF, fake_executable, run_json
 from specworks.cli import app
 from specworks.cli.output import resolve_change
 from specworks.core.workspace import require_workspace
@@ -191,11 +190,7 @@ def test_removed_requirement_is_deleted_and_other_sections_kept():
 
 
 def test_diagrams_in_a_docs_folder(ready, monkeypatch):
-    fake = ready / "fake_d2.py"
-    fake.write_text("import sys, pathlib\npathlib.Path(sys.argv[-1]).write_text('<?xml version=\"1.0\"?><svg/>')\n")
-    script = ready / "d2"
-    script.write_text(f"#!{sys.executable}\nexec(open({str(fake)!r}).read())\n")
-    script.chmod(0o755)
+    script = fake_executable(ready, "d2", "import sys, pathlib\npathlib.Path(sys.argv[-1]).write_text('<?xml version=\"1.0\"?><svg/>')\n")
     monkeypatch.setenv("SPECWORKS_D2", str(script))
     folder = ready / "src/auth/docs/diagrams"
     folder.mkdir(parents=True)
@@ -289,3 +284,12 @@ def test_a_removed_requirement_id_is_never_handed_out_again(ready):
     code, data = run_json("check", "--change", "readd-reset")
     messages = [i["message"] for i in data["issues"]]
     assert any("REQ-AUTH-003 was REMOVED from user-auth by an earlier change" in m for m in messages), messages
+
+
+def test_close_runs_the_project_commands(ready):
+    # --no-run is only for the dry run: a real close never turns a red suite into a warning.
+    code, data = run_json("close", "--change", REF, "--base", "main", "--no-run")
+    assert code == 1 and "--no-run only goes with --dry-run" in data["error"]
+    assert (ready / CHANGE_DIR).is_dir()
+    code, data = run_json("close", "--change", REF, "--base", "main", "--no-run", "--dry-run")
+    assert code == 0 and data["dryRun"] is True

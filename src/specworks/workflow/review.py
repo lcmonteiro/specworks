@@ -23,8 +23,8 @@ from pathlib import Path
 from ..core.changes import Change
 from ..core.errors import SpecworksError
 from ..core.workspace import Workspace
-from ..specs.check import ChangeSpecs, check_change
-from ..specs.trace import Tag, build_matrix, file_classifier, gaps, scan_tags, unknown_tags
+from ..specs.specfile import markdown_lines
+from ..specs.trace import Trace, file_classifier, trace_change
 
 CODE_EXTENSIONS = {
     ".py", ".pyi", ".js", ".jsx", ".mjs", ".cjs", ".ts", ".tsx", ".go", ".rs", ".java", ".kt", ".kts",
@@ -54,10 +54,12 @@ class ChangedFile:
 class ReviewReport:
     base: str | None
     changed: list[ChangedFile] | None  # None when git is not available
-    gaps: dict[str, list[str]]
-    unknown_tags: list[Tag]
-    spec_errors: list[str]
+    trace: Trace
     note: str = ""
+
+    @property
+    def spec_errors(self) -> list[str]:
+        return self.trace.spec_errors
 
     @property
     def untraced_source(self) -> list[str]:
@@ -68,14 +70,7 @@ class ReviewReport:
         return [f.path for f in self.changed or [] if f.kind == "test" and not any(t.startswith("AC-") for t in f.tags)]
 
     def findings(self) -> dict[str, list[str]]:
-        return {
-            "reqWithoutCode": self.gaps["reqWithoutCode"],
-            "acWithoutTests": self.gaps["acWithoutTests"],
-            "removedStillTagged": self.gaps["removedStillTagged"],
-            "unknownTags": [f"{t.id} at {t.where}" for t in self.unknown_tags],
-            "untracedSource": self.untraced_source,
-            "untracedTests": self.untraced_tests,
-        }
+        return {**self.trace.findings(), "untracedSource": self.untraced_source, "untracedTests": self.untraced_tests}
 
     def to_dict(self) -> dict:
         found = self.findings()
@@ -90,7 +85,9 @@ class ReviewReport:
 
 
 def _git(cwd: Path, *args: str) -> str:
-    proc = subprocess.run(["git", *args], cwd=cwd, capture_output=True, text=True, check=False)
+    # git writes paths as UTF-8 whatever the platform; the default (the locale's code page on
+    # Windows) would garble non-ASCII names into paths that do not exist.
+    proc = subprocess.run(["git", *args], cwd=cwd, capture_output=True, text=True, encoding="utf-8", errors="surrogateescape", check=False)
     if proc.returncode != 0:
         raise ReviewError((proc.stderr or proc.stdout).strip() or f"git {' '.join(args)} failed")
     return proc.stdout
@@ -140,26 +137,17 @@ def classify(ws: Workspace, rel: str, file_kind: Callable[[Path], tuple[bool, bo
     return "source" if scanned and path.suffix.lower() in CODE_EXTENSIONS else "other"
 
 
-def review_change(ws: Workspace, change: Change, base: str | None = None) -> tuple[ChangeSpecs, ReviewReport]:
-    specs, issues = check_change(ws, change)
-    tags = scan_tags(ws)
-    found = gaps(build_matrix(specs, tags))
-    report = ReviewReport(
-        base=None,
-        changed=None,
-        gaps=found,
-        unknown_tags=unknown_tags(specs, tags),
-        spec_errors=[str(i) for i in issues if i.level == "error"],
-    )
+def review_change(ws: Workspace, change: Change, base: str | None = None) -> ReviewReport:
+    report = ReviewReport(base=None, changed=None, trace=trace_change(ws, change))
     try:
         report.base = base or detect_base(ws.root)
         paths = changed_paths(ws, report.base)
     except (ReviewError, OSError) as exc:
         report.note = f"changed files unknown ({exc}); only spec -> code drift was checked"
-        return specs, report
+        return report
 
     tags_by_file: dict[str, list[str]] = {}
-    for tag in tags:
+    for tag in report.trace.tags:
         tags_by_file.setdefault(tag.file, []).append(tag.id)
     report.changed = []
     file_kind = file_classifier(ws)
@@ -167,7 +155,7 @@ def review_change(ws: Workspace, change: Change, base: str | None = None) -> tup
         kind = classify(ws, rel, file_kind)
         if kind is not None:
             report.changed.append(ChangedFile(path=rel, kind=kind, tags=sorted(set(tags_by_file.get(rel, [])))))
-    return specs, report
+    return report
 
 
 # --- review.md ----------------------------------------------------------------
@@ -233,7 +221,11 @@ def parse_review(text: str) -> ReviewDoc:
     current: Finding | None = None
     section = ""
     accounted: list[str] = []
-    for line in COMMENT_RE.sub("", text).splitlines():
+    for _, line, fenced in markdown_lines(COMMENT_RE.sub("", text)):
+        if fenced:  # examples in a code block are neither headings nor findings
+            if section == ACCOUNTED_SECTION:
+                accounted.append(line)
+            continue
         if h2 := H2_RE.match(line):
             section, current = h2.group("title").strip().lower(), None
             continue

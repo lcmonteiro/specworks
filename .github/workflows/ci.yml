@@ -15,12 +15,24 @@ concurrency:
 
 jobs:
   test:
-    name: Tests (Python ${{ matrix.python-version }})
-    runs-on: ubuntu-latest
+    name: Tests (${{ matrix.os }}, Python ${{ matrix.python-version }})
+    runs-on: ${{ matrix.os }}
+    # Windows is not verified yet (the fake d2 in the diagram tests is a shebang script):
+    # its job reports without failing the run until the suite is made portable.
+    continue-on-error: ${{ matrix.experimental }}
     strategy:
       fail-fast: false
       matrix:
+        os: [ubuntu-latest]
         python-version: ["3.11", "3.12", "3.13"]
+        experimental: [false]
+        include:
+          - os: macos-latest
+            python-version: "3.13"
+            experimental: false
+          - os: windows-latest
+            python-version: "3.13"
+            experimental: true
     steps:
       - uses: actions/checkout@v4
 
@@ -68,12 +80,12 @@ jobs:
       - name: Build
         run: uv build
 
-      - name: Wheel is pure Python and requires pyd2
+      - name: Wheel is pure Python and requires pyd2 at a pinned commit
         run: |
           wheel="$(ls dist/*.whl)"
           echo "$wheel"
           case "$wheel" in *-py3-none-any.whl) ;; *) echo "unexpected wheel tag"; exit 1 ;; esac
-          unzip -p "$wheel" '*/METADATA' | grep -qx 'Requires-Dist: pyd2 @ git+https://github.com/lcmonteiro/pyd2@main'
+          unzip -p "$wheel" '*/METADATA' | grep -qx 'Requires-Dist: pyd2 @ git+https://github.com/lcmonteiro/pyd2@[0-9a-f]\{40\}'
 
       # The CLI reads schema.yaml, templates/ and skills/ (with skills/_shared/,
       # filled into each skill on install) from the installed package, so check
@@ -104,6 +116,7 @@ jobs:
           test -f .github/skills/specworks-validate/SKILL.md
           test -f .github/skills/specworks-close/SKILL.md
           grep -q 'Running the CLI' .claude/skills/specworks-refine/SKILL.md
+          grep -q 'Picking the change' .claude/skills/specworks-code/SKILL.md
           if grep -rq 'specworks:include' .claude .github; then echo 'unfilled include in an installed skill'; exit 1; fi
           mkdir -p spec/changes/add-example/diagrams
           printf 'shape: sequence_diagram\nuser -> api: "POST /reset {email}"\n' > spec/changes/add-example/diagrams/flow.d2

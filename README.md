@@ -83,21 +83,28 @@ The system SHALL email a single-use reset link valid for 30 minutes.
 - `close` merges the deltas into the living spec next to the code
   (`<capability path>/<docs_dir>/spec.md`).
 - Tests and code point back with comment tags in any language:
-  `# @ac AC-AUTH-003.1` in a test, `// @req REQ-AUTH-003` in code.
+  `# @ac AC-AUTH-003.1` in a test, `// @req REQ-AUTH-003` in code. One tag may
+  name several IDs (`# @ac AC-AUTH-003.1, AC-AUTH-003.2`). Documentation files
+  (`.md`, `.rst`, `.txt`, ...) are not scanned, so a tag quoted in a README never counts.
   Each file follows the module that owns it: `test_globs` (relative to the
   module's folder) mark its test files, otherwise names like `test_x.py`,
   `x.test.ts` or a `tests/` folder do; `source_globs`, when set, limit the other
-  files scanned.
+  files scanned. In these globs `*` also matches `/`, and a leading `**/` also
+  matches at the top (`**/test_*.py` matches `test_x.py`).
+- Two active changes may not both MODIFY or REMOVE the same requirement at once:
+  the one closed second would overwrite the first's edit. `check` makes the
+  change started later wait until the earlier one is closed, then it copies the
+  block again from the living spec.
 
 | Command | What it does |
 |---|---|
 | `specworks spec list` / `spec show <ref>` | capabilities, their requirements, ID prefix, next free ID and delta path |
-| `specworks check --change <ref>` | checks proposal, delta specs (IDs, SHALL/MUST, scenarios, MODIFIED/REMOVED targets, ID clashes with other changes) and tasks (format, every AC covered) |
+| `specworks check --change <ref>` | checks proposal, delta specs (IDs, SHALL/MUST, scenarios, MODIFIED/REMOVED targets, ID clashes with other changes, a requirement another change also modifies) and tasks (format, every AC covered) |
 | `specworks diagrams --change <ref> \| --dir <folder> [--check]` | renders `diagrams/*.d2` of a change (or of a living docs folder) to SVG with the workspace theme; `--check` reports missing/outdated SVGs without rendering |
 | `specworks skip-specs --change <ref> [--off]` | marks a change with no behaviour change (refactor, tooling, docs): it needs no delta specs |
 | `specworks task list\|done\|undo --change <ref> [N.M ...]` | lists tasks with their IDs; ticks or unticks checkboxes without touching the rest of `tasks.md` |
 | `specworks gate <phase> --change <ref>` | checks a phase is finished: `specify` (valid specs, tasks cover every AC), `design` (design.md Interfaces recorded, the files it names exist, build/typecheck and the existing tests pass; once the change has `@ac` tests, a red suite is only a warning), `test` (every AC has an `@ac`-tagged test, no tags to unknown IDs), `code` (all tasks done, every requirement has `@req` code, removed ones gone, and `commands.test` passes; `--no-run` skips running it), `review` (`review.md` with no open finding (`--allow-open` in a build), every open finding of a known type or with `back to <phase>:`, every untagged changed file accounted for, tags complete, tests pass), `validate` (same checks as `specworks validate`) |
-| `specworks close --change <ref> [--dry-run]` | after a passing validate: merges the deltas into each living `spec.md` (ADDED appended, MODIFIED replaced by ID, REMOVED deleted), regenerates `requirements.md` with a History line, marks the change `done` and moves it to `changes/archive/<date>-<name>/` |
+| `specworks close --change <ref> [--dry-run [--no-run]]` | after a passing validate (it runs the project's commands; `--no-run` only with `--dry-run`): merges the deltas into each living `spec.md` (ADDED appended, MODIFIED replaced by ID, REMOVED deleted), regenerates `requirements.md` with a History line, marks the change `done` and moves it to `changes/archive/<date>-<name>/` |
 | `specworks capability add <name> --path <dir> [--module] [--prefix]` | registers a new capability in a module's config (required before closing a change that creates it) |
 | `specworks validate --change <ref> [--base] [--no-run]` | final read-only report in three groups (completeness, correctness, coherence): artifacts, tasks, tags, review, specs valid, test/lint/typecheck pass, untagged files accounted for, diagrams current; each failure names the phase to go back to |
 | `specworks review --change <ref> [--base <branch>]` | drift candidates: requirements without code, criteria without tests, bad tags, and files changed on the branch (git) with no `@req`/`@ac` tag |
@@ -173,8 +180,8 @@ cd your-project && specworks init --dir spec   # writes spec.yml, spec/ and the 
 ```
 
 The install includes [D2](https://d2lang.com) for diagrams through the
-[`pyd2`](https://github.com/lcmonteiro/pyd2) dependency, taken straight from the
-`main` branch of its git repository. Installing builds it for your platform
+[`pyd2`](https://github.com/lcmonteiro/pyd2) dependency, pinned to one commit of its
+git repository (pyd2 has no releases yet). Installing builds it for your platform
 (Linux, macOS and Windows on x86-64 and ARM64): it downloads the official D2
 release it pins, checks its SHA-256, and packages it; the archive is cached,
 so reinstalling does not download it again.
@@ -183,16 +190,15 @@ so reinstalling does not download it again.
 |---|---|
 | `SPECWORKS_D2` | use this `d2` instead of the one from `pyd2` |
 
-`uv.lock` pins the pyd2 commit, so `uv sync` and CI always use the same one.
-To take what is on pyd2's `main` now (a newer D2, API changes, fixes):
+The pin is in `pyproject.toml`, so `uv sync`, CI and
+`uv tool install git+https://github.com/lcmonteiro/specworks` all build the same
+pyd2. To take a newer one (a newer D2, API changes, fixes), change the commit
+there, then:
 
 ```bash
-uv lock --upgrade-package pyd2   # moves the pin to pyd2's latest main
-uv run pytest                    # then commit uv.lock
+uv lock          # moves uv.lock to the new commit
+uv run pytest    # then commit pyproject.toml and uv.lock
 ```
-
-`uv tool install git+https://github.com/lcmonteiro/specworks` does not read
-`uv.lock`, so it builds against pyd2's `main` as it is at install time.
 
 ## Project commands
 

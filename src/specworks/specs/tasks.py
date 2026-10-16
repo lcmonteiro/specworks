@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from ..core.errors import SpecworksError
-from .specfile import find_ids
+from .specfile import find_ids, markdown_lines
 
 TASKS_FILE = "tasks.md"
 TASK_RE = re.compile(r"^(?P<lead>\s*- \[)(?P<mark>[^\]]*)(?P<close>\]\s+)(?P<num>\d+\.\d+)\s+(?P<text>\S.*)$")
@@ -36,7 +36,9 @@ class Task:
 
 def parse_tasks(text: str) -> tuple[list[Task], list[tuple[int, str]]]:
     tasks, problems = [], []
-    for number, line in enumerate(text.splitlines(), start=1):
+    for number, line, fenced in markdown_lines(text):
+        if fenced:
+            continue  # an example in a code block is not a task
         if FOLLOW_UP_RE.match(line):
             break  # plain follow-up bullets are not tracked tasks
         if match := TASK_RE.match(line):

@@ -17,7 +17,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from ..core.changes import Change, list_changes
+from ..core.changes import Change, change_dirs
 from ..core.config import MODULE_NAME_RE, Capability, ConfigError
 from ..core.workspace import Module, Workspace, capability_prefix
 from .specfile import REQ_ID_RE, SpecDoc, find_ids, id_prefix, parse_spec, requirement_number
@@ -122,9 +122,9 @@ def used_numbers(ws: Workspace, cap: CapabilityRef) -> set[int]:
     """Requirement numbers taken by the living spec, by every active change's delta, and by removed requirements."""
     numbers = {requirement_number(i) for i in cap.history_ids()}
     docs = [read_spec(cap.living_spec())]
-    for module in ws.modules():
-        for change in list_changes(module.config):
-            docs.append(read_spec(change.path / cap.delta_path))
+    for module in ws.modules():  # every change folder, even one whose metadata is broken: its IDs are still taken
+        for path in change_dirs(module.config):
+            docs.append(read_spec(path / cap.delta_path))
     for doc in docs:
         if doc is None:
             continue

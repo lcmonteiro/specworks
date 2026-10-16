@@ -19,6 +19,8 @@ it looks easy. When the gate passes, stop and suggest `/specworks-test`.
 
 <!-- specworks:include running-cli -->
 
+<!-- specworks:include picking-the-change -->
+
 ---
 
 ## Steps
@@ -30,8 +32,7 @@ it looks easy. When the gate passes, stop and suggest `/specworks-test`.
    specworks gate specify --change "<ref>"
    ```
 
-   - Select the change as in `/specworks-specify` (named by the user, or the
-     single active one; ask if ambiguous). Announce `Using change: <ref>`.
+   - Pick the change (see **Picking the change** above).
    - If `gate specify` fails, stop: show the failing checks and suggest
      `/specworks-specify <ref>` to finish the plan.
    - Otherwise move the change to this phase:
@@ -155,4 +156,3 @@ it looks easy. When the gate passes, stop and suggest `/specworks-test`.
 - Decide with the user before writing code; design.md's Interfaces is the
   record of that decision, and the code must match it.
 - IDs come from the specs. Never invent a requirement ID.
-- Re-read the specs, design and tasks from disk before using them.

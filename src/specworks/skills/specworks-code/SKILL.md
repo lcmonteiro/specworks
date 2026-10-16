@@ -17,6 +17,8 @@ change them to make the code easier. When the gate passes, stop and suggest
 
 <!-- specworks:include running-cli -->
 
+<!-- specworks:include picking-the-change -->
+
 ---
 
 ## Steps
@@ -28,7 +30,7 @@ change them to make the code easier. When the gate passes, stop and suggest
    specworks gate test --change "<ref>"
    ```
 
-   - Select the change as the other phases do; announce `Using change: <ref>`.
+   - Pick the change (see **Picking the change** above).
    - If `gate test` fails because criteria have no tests, stop and suggest
      `/specworks-test <ref>`. If the user explicitly wants to implement without
      tests first, say what that loses (no executable proof per criterion) and
@@ -132,5 +134,3 @@ change them to make the code easier. When the gate passes, stop and suggest
   for. Note ideas for later instead.
 - Tick a task only after its verification passed; never tick ahead.
 - `@req` tags mark real implementations, never stubs or unrelated code.
-- Re-read specs, design and tasks from disk before relying on them; the user
-  may have edited them.

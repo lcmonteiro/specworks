@@ -19,13 +19,15 @@ go back to.
 
 <!-- specworks:include running-cli -->
 
+<!-- specworks:include picking-the-change -->
+
 ---
 
 ## Steps
 
 1. **Pick the change**
 
-   Select it as the other phases do and announce `Using change: <ref>`.
+   See **Picking the change** above.
 
 2. **Run the measurable checks, then move the change to this phase**
 
@@ -34,18 +36,17 @@ go back to.
    specworks phase "<ref>" validate
    ```
 
-   Validate before moving the phase: one check reads the phase to tell
-   whether the change went through review.
-
    It runs the project's test, lint and typecheck commands and reports three
    groups; each failed check has a `fix` (the phase skill that owns it):
    - **Completeness**: proposal, specs and tasks exist; every task done; every
-     requirement has `@req` code; every criterion has an `@ac` test; review done
-     (`review.md` with no open finding).
+     requirement has `@req` code; every criterion has an `@ac` test;
+     `review.md` written with no open finding.
    - **Correctness**: specs valid; tests, lint and typecheck pass; no tags to
-     unknown IDs; removed requirements gone.
+     unknown IDs; removed requirements gone; every open finding routed to a phase.
    - **Coherence**: every untagged changed file accounted for in `review.md`;
-     diagram SVGs up to date; the change went through review.
+     diagram SVGs up to date.
+
+   It runs every check of `specworks gate review`, plus the ones above.
 
 3. **Check what needs reading (still read-only)**
 
@@ -87,4 +88,3 @@ go back to.
 - A FAIL from `specworks validate` is never overridden by your judgement; your
   reading can only add issues.
 - Be specific: every issue names the check or file and the phase that fixes it.
-- Re-read artifacts from disk; the user may have changed them since review.

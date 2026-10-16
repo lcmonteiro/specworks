@@ -25,6 +25,8 @@ fails and cannot be fixed within that phase, when the specs turn out wrong
 
 <!-- specworks:include running-cli -->
 
+<!-- specworks:include picking-the-change -->
+
 ---
 
 ## Steps
@@ -38,7 +40,7 @@ fails and cannot be fixed within that phase, when the specs turn out wrong
    specworks cycle --change "<ref>" --json
    ```
 
-   - Select the change as the phase skills do; announce `Using change: <ref>`.
+   - Pick the change (see **Picking the change** above).
    - If `gate specify` fails, stop and suggest `/specworks-specify <ref>`.
    - Start point:
      - a previous review left open findings (`cycle` returns `startAt`):
