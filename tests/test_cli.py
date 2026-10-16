@@ -286,6 +286,7 @@ def test_diagram_pad_must_be_a_non_negative_number(project, pad):
         ("specworks: 1\ndiagrams:\n  theme: true\n", "'diagrams.theme': unknown theme True"),
         ("specworks: 1\ndiagrams:\n  dark_theme: nope\n", "or none to use the light theme in dark mode too"),
     ],
+    ids=lambda value: value[:40],  # the test ID goes into an environment variable, which Windows caps at 32767 characters
 )
 def test_invalid_config_values_are_clear_errors(project, config, message):
     (project / "specworks.yml").write_text(config)

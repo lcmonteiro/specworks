@@ -5,6 +5,7 @@ Each step writes what the phase's skill has the agent write, then moves on with
 command that breaks the documented flow fails here.
 """
 
+import json
 import re
 import subprocess
 import sys
@@ -150,8 +151,9 @@ def test_walkthrough(tmp_path, monkeypatch):
     # Set up: config, test command, the capability, a baseline commit.
     sw("init", "--dir", "spec", "--no-skills")
     cfg = tmp_path / "spec.yml"
-    test_command = f'"{sys.executable}" -m pytest -q -p no:cacheprovider --rootdir . tests'
-    cfg.write_text(re.sub(r"(?m)^  test:$", lambda _: f"  test: PYTHONPATH=src {test_command}", cfg.read_text(), count=1))
+    # pytest's own pythonpath option, not a PYTHONPATH=src prefix, which Windows' shell cannot run.
+    test_command = f'"{sys.executable}" -m pytest -q -p no:cacheprovider --rootdir . -o pythonpath=src tests'
+    cfg.write_text(re.sub(r"(?m)^  test:$", lambda _: f"  test: {json.dumps(test_command)}", cfg.read_text(), count=1))
     sw("capability", "add", "slugify", "--path", "src/textkit", "--prefix", "SLUG")
     git("init", "-q", "-b", "main")
     git("add", "-A")
