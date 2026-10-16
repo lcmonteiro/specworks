@@ -17,21 +17,16 @@ jobs:
   test:
     name: Tests (${{ matrix.os }}, Python ${{ matrix.python-version }})
     runs-on: ${{ matrix.os }}
-    # Windows reports without failing the run until its job has been seen green.
-    continue-on-error: ${{ matrix.experimental }}
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest]
         python-version: ["3.11", "3.12", "3.13"]
-        experimental: [false]
         include:
           - os: macos-latest
             python-version: "3.13"
-            experimental: false
           - os: windows-latest
             python-version: "3.13"
-            experimental: true
     steps:
       - uses: actions/checkout@v4
 
