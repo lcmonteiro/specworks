@@ -109,7 +109,7 @@ change them to make the code easier. When the gate passes, stop and suggest
 
    The gate checks that the specs are still valid, every task is ticked,
    every requirement has `@req` code, every criterion still has a test, no
-   tag points to an unknown ID, removed requirements are gone, and the test
+   tag points to an unknown ID, removed requirements and criteria are gone, and the test
    suite passes (it runs `commands.test`). Fix every failing check and re-run.
 
 6. **Report and stop**

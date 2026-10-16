@@ -96,8 +96,9 @@ looks easy. When the gate passes, stop and suggest `/specworks-code`.
      filesystem the way the project already does.
 
    MODIFIED criteria: update the existing tests found in step 2 to the new
-   behaviour and keep their `@ac` tags. REMOVED requirements: delete their
-   tests (they would fail once the behaviour is removed) and say which ones.
+   behaviour and keep their `@ac` tags. REMOVED requirements, and criteria a
+   MODIFIED block leaves out: delete their tests (they would fail once the
+   behaviour is removed) and say which ones.
 
 5. **Run the tests and confirm they fail for the right reason**
 

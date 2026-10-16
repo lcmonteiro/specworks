@@ -117,9 +117,9 @@ def _gap(name: str, key: str, blocking: bool = True) -> CheckFn:
 
 reqs_have_code = _gap("every requirement has code (@req tag)", "reqWithoutCode")
 acs_have_tests = _gap("every acceptance criterion has a test (@ac tag)", "acWithoutTests")
-removed_gone = _gap("removed requirements are gone from tests and code", "removedStillTagged")
-# Before the code phase, the code of a removed requirement may still be there.
-removed_gone_warning = _gap("removed requirements are gone from tests and code", "removedStillTagged", blocking=False)
+removed_gone = _gap("removed requirements and criteria are gone from tests and code", "removedStillTagged")
+# Before the code phase, the code of a removed requirement (or criterion) may still be there.
+removed_gone_warning = _gap("removed requirements and criteria are gone from tests and code", "removedStillTagged", blocking=False)
 
 
 def no_unknown_tags(ctx: GateContext) -> Check:

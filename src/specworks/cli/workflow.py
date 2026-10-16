@@ -92,7 +92,7 @@ def review(
     labels = {
         "reqWithoutCode": "requirements without code (@req)",
         "acWithoutTests": "acceptance criteria without tests (@ac)",
-        "removedStillTagged": "removed requirements still tagged",
+        "removedStillTagged": "removed requirements or criteria still tagged",
         "unknownTags": "tags to unknown IDs",
         "untracedSource": "changed code files without @req tags",
         "untracedTests": "changed test files without @ac tags",

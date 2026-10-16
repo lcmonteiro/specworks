@@ -117,8 +117,26 @@ def test_removed_requirement_still_tagged_blocks_implement(project):
     tasks.write_text(tasks.read_text() + "- [x] 2.2 Remove password login (REQ-AUTH-001)\n")
     (project / "src/auth/login.py").write_text("# @req REQ-AUTH-001\n")
     code, data = run_json("gate", "code", "--change", REF)
-    assert code == 1 and checks(data)["removed requirements are gone from tests and code"]["details"] == ["REQ-AUTH-001"]
+    assert code == 1 and checks(data)["removed requirements and criteria are gone from tests and code"]["details"] == ["REQ-AUTH-001"]
 
+
+
+def test_criterion_a_modified_requirement_drops_must_lose_its_tests(project):
+    # The living REQ-AUTH-002 has AC-AUTH-002.2; the change's MODIFIED block keeps only .1.
+    living = project / "src/auth/docs/spec.md"
+    living.write_text(living.read_text() + "\n#### Scenario: AC-AUTH-002.2 Unlock by email\n- **WHEN** the user follows the email link\n- **THEN** the account is unlocked\n")
+    set_test_command(project, PASS)
+    implement_everything(project)
+    (project / "tests/test_unlock.py").write_text("# @ac AC-AUTH-002.2\ndef test_unlock(): ...\n")
+    code, data = run_json("gate", "test", "--change", REF)
+    assert code == 0 and checks(data)["removed requirements and criteria are gone from tests and code"]["details"] == ["AC-AUTH-002.2"]
+    code, data = run_json("gate", "code", "--change", REF)
+    assert code == 1 and checks(data)["removed requirements and criteria are gone from tests and code"]["details"] == ["AC-AUTH-002.2"]
+    code, data = run_json("trace", "--change", REF)
+    assert data["gaps"]["acWithoutTests"] == []  # a dropped criterion needs no test
+    (project / "tests/test_unlock.py").unlink()
+    code, data = run_json("gate", "code", "--change", REF)
+    assert code == 0, data
 
 def test_tag_scan_skips_files_too_large_or_not_text(project):
     (project / "src/auth/lockout.py").write_text("# @req REQ-AUTH-002\nLIMIT = 3\n")
