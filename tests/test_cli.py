@@ -290,3 +290,36 @@ def test_a_yml_file_that_is_not_text_is_never_taken_for_a_config(project):
     (project / "logo.yml").write_bytes(b"\xff\xfe specworks: 1\n")  # not UTF-8: skipped, not an error
     code, data = run_json("context")
     assert code == 0 and data["root"] == str(project)
+
+
+def test_a_broken_unrelated_outer_config_does_not_break_an_inner_project(tmp_path, monkeypatch):
+    (tmp_path / "spec.yml").write_text("specworks: 1\nbogus: true\n")
+    inner = tmp_path / "inner"
+    inner.mkdir()
+    monkeypatch.chdir(inner)
+    assert runner.invoke(app, ["init", "--no-link", "--no-skills"]).exit_code == 0
+    code, data = run_json("list")
+    assert code == 0 and data["changes"] == []
+
+
+def test_a_broken_parent_that_links_this_module_is_still_an_error(tmp_path, monkeypatch):
+    (tmp_path / "spec.yml").write_text("specworks: 1\nbogus: true\nmodules:\n  inner: inner\n")
+    (tmp_path / "inner").mkdir()
+    (tmp_path / "inner/spec.yml").write_text("specworks: 1\n")
+    monkeypatch.chdir(tmp_path / "inner")
+    code, data = run_json("list")
+    assert code == 1 and "bogus" in data["error"]
+
+
+def test_diagram_theme_on_an_existing_project_says_it_is_not_applied(project):
+    result = runner.invoke(app, ["init", "--no-skills", "--diagram-theme", "c4"])
+    assert result.exit_code == 0 and "--diagram-theme not applied" in result.output
+
+
+def test_task_numbered_twice_is_not_ticked(project):
+    run_json("new", "dup")
+    tasks = project / "specworks/changes/dup/tasks.md"
+    tasks.write_text("- [ ] 1.1 first\n- [ ] 1.1 second\n")
+    code, data = run_json("task", "done", "1.1", "--change", "dup")
+    assert code == 1 and "numbered more than once" in data["error"]
+    assert "[x]" not in tasks.read_text()

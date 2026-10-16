@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from ..core.errors import SpecworksError
+from ..core.files import read_text
 from .specfile import fenced, find_ids
 
 TASKS_FILE = "tasks.md"
@@ -54,17 +55,21 @@ def read_tasks(change_path: Path) -> list[Task]:
     path = change_path / TASKS_FILE
     if not path.is_file():
         raise TaskError(f"{TASKS_FILE} is not written yet")
-    return parse_tasks(path.read_text(encoding="utf-8"))[0]
+    return parse_tasks(read_text(path))[0]
 
 
 def set_done(change_path: Path, nums: list[str], done: bool) -> None:
     """Tick (or untick) tasks by number, editing only their checkbox."""
     path = change_path / TASKS_FILE
-    tasks = {t.num: t for t in read_tasks(change_path)}
+    found = read_tasks(change_path)
+    tasks = {t.num: t for t in found}
     unknown = [n for n in nums if n not in tasks]
     if unknown:
         raise TaskError(f"unknown task {', '.join(unknown)} (tasks: {', '.join(tasks) or 'none'})")
-    lines = path.read_text(encoding="utf-8").splitlines(keepends=True)
+    twice = sorted({n for n in nums if sum(t.num == n for t in found) > 1})
+    if twice:
+        raise TaskError(f"task {', '.join(twice)} is numbered more than once in {TASKS_FILE}; renumber it first")
+    lines = read_text(path).splitlines(keepends=True)
     for num in nums:
         index = tasks[num].line - 1
         ending = lines[index][len(lines[index].rstrip("\r\n")) :]

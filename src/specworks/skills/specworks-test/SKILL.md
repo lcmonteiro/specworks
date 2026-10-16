@@ -87,7 +87,8 @@ looks easy. When the gate passes, stop and suggest `/specworks-code`.
      // @ac AC-AUTH-003.2
      it("AC-AUTH-003.2 rejects an expired link", ...)
      ```
-     One test may carry several `@ac` tags when it truly checks several criteria.
+     One test may carry several criteria (`# @ac AC-AUTH-003.1, AC-AUTH-003.2`)
+     when it truly checks all of them.
    - Pick the level the criterion needs: unit for logic, integration for
      storage, APIs and wiring, end-to-end only when the criterion is about the
      whole flow.

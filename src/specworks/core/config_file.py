@@ -8,6 +8,7 @@ import re
 from pathlib import Path
 
 from .config import Config, ConfigError, config_name, load_config, theme_id, theme_name
+from .files import read_text
 from .validators import validate_capability_name, validate_dir, validate_module_name, validate_prefix, validate_relative
 
 DEFAULT_CONFIG = """\
@@ -46,6 +47,8 @@ modules: {}
 # this file's folder; they apply to this project's files, not to its modules'.
 # Empty means "scan everything that is not in the workflow folder", except
 # documentation (.md, .rst, .txt, ...): a tag quoted in a doc is not code or a test.
+# In a glob * and ? stay within one folder and ** spans any number of folders,
+# e.g. test_globs: ["tests/**/*.py"] or source_globs: ["src/**"].
 test_globs: []
 source_globs: []
 
@@ -109,7 +112,7 @@ def _insert_entry(root: Path, key: str, entry: list[str], applied) -> None:
     cfg = load_config(root)
     before = dict(getattr(cfg, key))
     config_file = cfg.config_path
-    original = config_file.read_text(encoding="utf-8")
+    original = read_text(config_file)
     lines = original.splitlines()
     pattern = re.compile(rf"^{key}:\s*(\{{\s*\}})?\s*(#.*)?$")
     for i, line in enumerate(lines):

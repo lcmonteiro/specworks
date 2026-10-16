@@ -51,6 +51,7 @@ VALIDATE: list[tuple[str, str, CheckFn]] = [
     (COMPLETENESS, REVIEW, c.review_closed),
     # Correctness: the specs are well-formed and the code does what they say.
     (CORRECTNESS, SPECIFY, c.specs_valid),
+    (CORRECTNESS, SPECIFY, c.specs_warnings),
     (CORRECTNESS, CODE, c.tests_pass),
     (CORRECTNESS, CODE, c.optional_command("lint", "lint passes (commands.lint)")),
     (CORRECTNESS, CODE, c.optional_command("typecheck", "typecheck passes (commands.typecheck)")),

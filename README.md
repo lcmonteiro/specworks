@@ -89,7 +89,16 @@ The system SHALL email a single-use reset link valid for 30 minutes.
 - `close` merges the deltas into the living spec next to the code
   (`<capability path>/<docs_dir>/spec.md`).
 - Tests and code point back with comment tags in any language:
-  `# @ac AC-AUTH-003.1` in a test, `// @req REQ-AUTH-003` in code.
+  `# @ac AC-AUTH-003.1` in a test, `// @req REQ-AUTH-003` in code; one tag may
+  list several IDs (`# @ac AC-AUTH-003.1, AC-AUTH-003.2`).
+- `test_globs` / `source_globs` (in the config, relative to its folder) choose the
+  files scanned for tags: `*` and `?` stay within one folder, `**` spans any number
+  of folders (`tests/**/*.py` includes `tests/test_x.py`; `src/*` does not include
+  `src/auth/x.py`, `src/**` does).
+- `check` also warns when a `MODIFIED` block drops acceptance criteria the living
+  spec has, and when a close recorded in `requirements.md` modified the
+  requirement after this change started (re-copy the block, or closing undoes
+  that edit). Gates and validate show `check`'s warnings without blocking on them.
 
 | Command | What it does |
 |---|---|
@@ -251,7 +260,7 @@ Code layout (`src/specworks/`):
 | Package | What it holds |
 |---|---|
 | `cli/` | the `specworks` command: `app.py` (Typer app and command groups), `output.py` (options, JSON/text output, resolving changes), and one module per area: `project.py`, `changes.py`, `specs.py`, `workflow.py` |
-| `core/` | `config.py` (find and read `<dir>.yml`), `config_file.py` (write it), `workspace.py` (modules), `changes.py` (changes and phases), `runner.py` (project commands), `validators.py` (folder, name and prefix rules), `errors.py` (`SpecworksError`, the base of every error the CLI reports, and `ConfigError`) |
+| `core/` | `config.py` (find and read `<dir>.yml`), `config_file.py` (write it), `workspace.py` (modules), `changes.py` (changes and phases), `runner.py` (project commands), `files.py` (reading project files), `validators.py` (folder, name and prefix rules), `errors.py` (`SpecworksError`, the base of every error the CLI reports, and `ConfigError`) |
 | `specs/` | `specfile.py` (parse specs), `capabilities.py`, `check.py` (`specworks check`), `tasks.py`, `trace.py` (tags, matrix, and `Analysis`: everything known about a change, computed once), `merge.py` (close) |
 | `workflow/` | `artifacts.py` (artifacts and instructions, `schema.yaml`), `checks.py` (every check, each defined once; gates and validate are lists of them), `gate.py`, `review.py` (drift and `review.md`), `cycle.py`, `validate.py` (`specworks validate`) |
 | `tools/` | `diagrams.py` (D2 via pyd2), `skills.py` (install the skills) |

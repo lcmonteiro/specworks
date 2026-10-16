@@ -110,6 +110,8 @@ def init(
     linked = link_to_parent(root, name) if parent is not None else None
     ws = require_workspace(root)
     # Paths relative to the workspace root, like every other command's output.
+    if diagram_theme is not None and (parent is not None or not created):
+        typer.echo(f"note    --diagram-theme not applied: set diagrams.theme in {ws.rel(ws.top.config.config_path)} (the top level's diagrams apply everywhere)")
     if created:
         typer.echo(f"created {ws.rel(cfg.config_path)}")
     typer.echo(f"ready   {ws.rel(cfg.changes_path)}/")

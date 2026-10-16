@@ -23,6 +23,7 @@ from pathlib import Path
 
 from ..core.changes import Change
 from ..core.errors import SpecworksError
+from ..core.files import read_text
 from ..core.workspace import Workspace
 from .capabilities import HISTORY_HEADING, REQUIREMENTS_FILE, CapabilityRef, history_lines
 from .check import ChangeSpecs, Delta
@@ -164,7 +165,7 @@ def plan_merge(ws: Workspace, change: Change, specs: ChangeSpecs, change_ref: st
         spec_path = delta.cap.living_spec()
         assert spec_path is not None  # every capability is registered (checked above)
         created = not spec_path.is_file()
-        living = spec_path.read_text(encoding="utf-8") if not created else new_spec_text(delta.cap, delta.doc.purpose)
+        living = read_text(spec_path) if not created else new_spec_text(delta.cap, delta.doc.purpose)
         try:
             text, added, modified, removed = apply_delta(living, delta)
         except MergeError as exc:
@@ -216,7 +217,7 @@ def close_change(merges: list[CapabilityMerge], change: Change, archive_root: Pa
     today = today or date.today().isoformat()
     archive_target(change, archive_root, today)
     paths = [p for m in merges for p in (m.spec_path, m.requirements_path)]
-    originals = {p: p.read_text(encoding="utf-8") if p.is_file() else None for p in paths}
+    originals = {p: read_text(p) if p.is_file() else None for p in paths}
     try:
         write_merge(merges)
         return archive_change(change, archive_root, today)

@@ -15,7 +15,7 @@ from pathlib import Path
 
 import pyd2
 import yaml
-from pyd2 import DARK_THEMES, LAYOUTS, LIGHT_THEMES, THEMES  # noqa: F401  (re-exported)
+from pyd2 import LAYOUTS, THEMES
 
 from .errors import ConfigError
 from .validators import check_keys, validate_capability_name, validate_dir, validate_module_name, validate_prefix, validate_relative
@@ -208,7 +208,7 @@ def load_config(root: Path, dir: str | None = None) -> Config:
         path = found
     try:
         raw = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
-    except (OSError, yaml.YAMLError) as exc:
+    except (OSError, UnicodeDecodeError, yaml.YAMLError) as exc:
         raise ConfigError(f"cannot read {path}: {exc}") from exc
     if not isinstance(raw, dict):
         raise ConfigError(f"{path} must contain a YAML mapping")

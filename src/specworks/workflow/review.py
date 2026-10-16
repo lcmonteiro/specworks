@@ -21,8 +21,9 @@ from pathlib import Path
 
 from ..core.changes import Change
 from ..core.errors import SpecworksError
+from ..core.files import read_text
 from ..core.workspace import Workspace
-from ..specs.specfile import H2_RE
+from ..specs.specfile import COMMENT_RE, H2_RE
 from ..specs.trace import Analysis, scan_rule
 
 CODE_EXTENSIONS = {
@@ -180,7 +181,6 @@ TYPE_PHASE = {
     "tag": "code",
     "quality": "code",
 }
-COMMENT_RE = re.compile(r"<!--.*?-->", re.DOTALL)
 # A finding is a checkbox with its ID first: ``- [ ] R1 ...``; ``*``/``+``/``1.`` bullets
 # and a bold ``**R1**`` are read too. Any other checkbox is reported, never skipped:
 # a finding the parser cannot see would let the review gate pass with it open.
@@ -280,4 +280,4 @@ def parse_review(text: str) -> ReviewDoc:
 
 def read_review(change: Change) -> ReviewDoc:
     path = change.path / REVIEW_FILE
-    return parse_review(path.read_text(encoding="utf-8")) if path.is_file() else ReviewDoc(exists=False)
+    return parse_review(read_text(path)) if path.is_file() else ReviewDoc(exists=False)

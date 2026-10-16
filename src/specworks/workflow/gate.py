@@ -13,7 +13,9 @@ from pathlib import PurePosixPath
 
 from ..core.changes import PHASES, Change, set_phase
 from ..core.errors import SpecworksError
+from ..core.files import read_text
 from ..specs.check import DESIGN_FILE
+from ..specs.specfile import COMMENT_RE
 from . import checks as c
 from .checks import Check, CheckFn, GateContext, run_checks
 from .review import CODE_EXTENSIONS
@@ -33,8 +35,8 @@ def interfaces_section(change: Change) -> str | None:
     design = change.path / DESIGN_FILE
     if not design.is_file():
         return None
-    match = INTERFACES_RE.search(design.read_text(encoding="utf-8"))
-    return re.sub(r"<!--.*?-->", "", match.group("body"), flags=re.DOTALL).strip() if match else None
+    match = INTERFACES_RE.search(read_text(design))
+    return COMMENT_RE.sub("", match.group("body")).strip() if match else None
 
 
 def interface_files(section: str) -> list[str]:
@@ -103,9 +105,10 @@ def existing_tests_pass(ctx: GateContext) -> Check:
 
 
 GATE_CHECKS: dict[str, list[CheckFn]] = {
-    "specify": [c.specs_valid, c.tasks_written],  # every criterion having a task is one of specs_valid's errors
+    "specify": [c.specs_valid, c.specs_warnings, c.tasks_written],  # every criterion having a task is one of specs_valid's errors
     "design": [
         c.specs_valid,
+        c.specs_warnings,
         interfaces_recorded,
         interface_files_exist,
         interface_files_named,
@@ -113,10 +116,11 @@ GATE_CHECKS: dict[str, list[CheckFn]] = {
         stubs_build("typecheck"),
         existing_tests_pass,
     ],
-    "test": [c.specs_valid, c.acs_have_tests, c.no_unknown_tags, c.acs_in_test_files, c.removed_gone_warning],
-    "code": [c.specs_valid, c.tasks_done, c.reqs_have_code, c.acs_have_tests, c.no_unknown_tags, c.removed_gone, c.tests_pass],
+    "test": [c.specs_valid, c.specs_warnings, c.acs_have_tests, c.no_unknown_tags, c.acs_in_test_files, c.removed_gone_warning],
+    "code": [c.specs_valid, c.specs_warnings, c.tasks_done, c.reqs_have_code, c.acs_have_tests, c.no_unknown_tags, c.removed_gone, c.tests_pass],
     "review": [
         c.specs_valid,
+        c.specs_warnings,
         c.review_written,
         c.review_readable,
         c.review_closed,

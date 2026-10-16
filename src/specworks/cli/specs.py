@@ -5,8 +5,9 @@ from __future__ import annotations
 from pathlib import Path
 
 import typer
+from pyd2 import DARK_THEMES, THEMES
 
-from ..core.config import DARK_THEMES, THEMES, theme_name
+from ..core.config import theme_name
 from ..specs.capabilities import describe, resolve_ref, workspace_capabilities
 from ..specs.trace import Analysis, to_markdown, write_traceability
 from ..tools.diagrams import DiagramError, diagrams_in, find_d2, render, state

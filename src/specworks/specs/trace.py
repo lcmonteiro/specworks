@@ -15,11 +15,14 @@ folder looks like a test (``test_x.py``, ``x_test.go``, ``x.test.ts``,
 Tests are always scanned; ``source_globs``, when set, limit the other files. Without ``source_globs``, documentation (``.md``,
 ``.rst``, ``.txt``, ...) is not scanned: a tag quoted in a README or a note is
 not code or a test. Globs that name such files scan them.
+
+Globs follow the usual rules: ``*`` and ``?`` stay within one folder, ``**``
+spans any number of folders (``tests/**/*.py`` includes ``tests/test_x.py``).
+A tag may list several IDs: ``# @ac AC-AUTH-001.1, AC-AUTH-001.2``.
 """
 
 from __future__ import annotations
 
-import fnmatch
 import os
 import re
 from dataclasses import dataclass, field
@@ -31,7 +34,8 @@ from ..core.workspace import Module, Workspace
 from .check import ChangeSpecs, Issue, check_change
 from .specfile import id_prefix
 
-TAG_RE = re.compile(r"@(?P<kind>req|ac)\s+(?P<id>(?:REQ|AC)-[A-Z0-9][A-Z0-9.-]*[A-Z0-9])")
+TAG_ID = r"(?:REQ|AC)-[A-Z0-9][A-Z0-9.-]*[A-Z0-9]"
+TAG_RE = re.compile(rf"@(?P<kind>req|ac)\s+(?P<ids>{TAG_ID}(?:\s*,\s*{TAG_ID})*)")
 SKIP_DIRS = {"node_modules", "__pycache__", "venv", "dist", "build", "target", "out", "vendor", "site-packages"}
 # Not "spec"/"specs": they often hold source (spec parsers, OpenAPI specs); RSpec files
 # are still found by name (``*_spec.rb``).
@@ -71,9 +75,15 @@ class Row:
     code: list[str] = field(default_factory=list)
 
 
+def glob_match(rel: str, pattern: str) -> bool:
+    """``rel`` (a posix path) matches ``pattern``: ``*``/``?`` within one folder, ``**`` across folders."""
+    regex = re.escape(pattern).replace(r"\*\*/", "(?:.*/)?").replace(r"\*\*", ".*").replace(r"\*", "[^/]*").replace(r"\?", "[^/]")
+    return re.fullmatch(regex, rel) is not None
+
+
 def is_test_file(rel: str, test_globs: list[str]) -> bool:
     if test_globs:
-        return any(fnmatch.fnmatch(rel, g) for g in test_globs)
+        return any(glob_match(rel, g) for g in test_globs)
     parts = rel.split("/")
     return any(p in TEST_DIRS for p in parts[:-1]) or bool(TEST_NAME_RE.search(parts[-1]))
 
@@ -87,7 +97,7 @@ def scan_rule(module: Module, path: Path) -> tuple[bool, bool]:
     if is_test_file(rel, cfg.test_globs) and (cfg.test_globs or not is_doc):
         return True, True
     if cfg.source_globs:
-        return any(fnmatch.fnmatch(rel, g) for g in cfg.source_globs), False
+        return any(glob_match(rel, g) for g in cfg.source_globs), False
     return not is_doc, False
 
 
@@ -117,7 +127,8 @@ def scan_tags(ws: Workspace) -> list[Tag]:
                 continue
             for number, line in enumerate(text.splitlines(), start=1):
                 for match in TAG_RE.finditer(line):
-                    tags.append(Tag(id=match.group("id"), kind=match.group("kind"), file=rel, line=number, is_test=is_test))
+                    for tag_id in re.findall(TAG_ID, match.group("ids")):
+                        tags.append(Tag(id=tag_id, kind=match.group("kind"), file=rel, line=number, is_test=is_test))
     return tags
 
 
@@ -240,6 +251,10 @@ class Analysis:
     @property
     def spec_errors(self) -> list[str]:
         return [str(i) for i in self.issues if i.level == "error"]
+
+    @property
+    def spec_warnings(self) -> list[str]:
+        return [str(i) for i in self.issues if i.level == "warning"]
 
     @cached_property
     def tags(self) -> list[Tag]:
