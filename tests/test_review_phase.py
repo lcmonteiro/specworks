@@ -2,7 +2,7 @@
 
 import pytest
 
-from helpers import REF, run_json
+from helpers import REF, git, run_json
 
 
 def findings(data):
@@ -48,6 +48,18 @@ def test_review_without_git_checks_only_the_spec_side(project):
 def test_review_unknown_base(repo):
     code, data = run_json("review", "--change", REF, "--base", "nope")
     assert data["changedFiles"] is None and "nope" in data["note"]
+
+
+def test_review_finds_a_local_main_when_origin_has_no_head(repo):
+    # The repo has no remote, so origin/HEAD and origin/main are missing: the local main is the base.
+    code, data = run_json("review", "--change", REF)
+    assert data["base"] == "main" and data["changedFiles"] is not None
+
+
+def test_review_without_any_base_branch_says_to_pass_one(repo):
+    git(repo, "branch", "-m", "main", "trunk")
+    code, data = run_json("review", "--change", REF)
+    assert data["changedFiles"] is None and "pass --base <branch>" in data["note"]
 
 
 # --- gate review ------------------------------------------------------------

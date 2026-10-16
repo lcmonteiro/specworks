@@ -127,8 +127,8 @@ def changed_paths(ws: Workspace, base: str) -> list[str]:
     return paths
 
 
-def classify(ws: Workspace, rel: str) -> str | None:
-    """``source``/``test``/``other``; None for files inside a workflow folder (specs, changes)."""
+def changed_file_kind(ws: Workspace, rel: str) -> str | None:
+    """The ``ChangedFile.kind`` of a changed file (``source``, ``test`` or ``other``); None inside a workflow folder (specs, changes)."""
     path = ws.root / rel
     for module in ws.modules():
         if path.is_relative_to(module.root / module.config.dir):
@@ -155,7 +155,7 @@ def review_change(analysis: Analysis, base: str | None = None) -> ReviewReport:
         tags_by_file.setdefault(tag.file, []).append(tag.id)
     report.changed = []
     for rel in paths:
-        kind = classify(ws, rel)
+        kind = changed_file_kind(ws, rel)
         if kind is not None:
             report.changed.append(ChangedFile(path=rel, kind=kind, tags=sorted(set(tags_by_file.get(rel, [])))))
     return report

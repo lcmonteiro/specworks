@@ -117,3 +117,11 @@ def test_removed_requirement_still_tagged_blocks_implement(project):
     (project / "src/auth/login.py").write_text("# @req REQ-AUTH-001\n")
     code, data = run_json("gate", "code", "--change", REF)
     assert code == 1 and checks(data)["removed requirements are gone from tests and code"]["details"] == ["REQ-AUTH-001"]
+
+
+def test_tag_scan_skips_files_too_large_or_not_text(project):
+    (project / "src/auth/lockout.py").write_text("# @req REQ-AUTH-002\nLIMIT = 3\n")
+    (project / "src/auth/big.py").write_text("# @req REQ-AUTH-003\n" + "x = 1\n" * 200_000)  # over 1 MB: not read
+    (project / "src/auth/legacy.py").write_bytes("# @req REQ-AUTH-003 café\n".encode("latin-1"))  # not UTF-8: not read
+    code, data = run_json("trace", "--change", REF)
+    assert data["gaps"]["reqWithoutCode"] == ["REQ-AUTH-003"]

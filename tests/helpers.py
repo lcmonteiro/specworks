@@ -8,8 +8,8 @@ import sys
 import pytest
 from typer.testing import CliRunner
 
+from samples import DELTA, LIVING, PROPOSAL, TASKS
 from specworks.cli import app
-from test_propose import DELTA, LIVING, PROPOSAL, TASKS
 
 runner = CliRunner()
 REF = "add-password-reset"
