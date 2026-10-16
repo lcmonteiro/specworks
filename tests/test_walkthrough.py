@@ -195,7 +195,7 @@ def test_walkthrough(tmp_path, monkeypatch):
     sw("gate", "review", "--change", REF, "--base", "main")
 
     # validate and close.
-    sw("phase", REF, "validate")
+    sw("phase", "validate", "--change", REF)
     assert "PASS" in sw("validate", "--change", REF, "--base", "main")
     assert "(new): ADDED REQ-SLUG-001" in sw("close", "--change", REF, "--base", "main", "--dry-run")
     closed = sw("close", "--change", REF, "--base", "main")

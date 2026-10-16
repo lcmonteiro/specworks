@@ -92,15 +92,28 @@ def test_context_lists_capabilities_with_docs_path(project):
 
 def test_phase_moves_and_validates(project):
     run_json("new", "add-login")
-    code, data = run_json("phase", "add-login", "specify")
+    code, data = run_json("phase", "specify", "--change", "add-login")
     assert code == 0 and data["phase"] == "specify"
-    code, data = run_json("phase", "add-login", "shipping")
+    code, data = run_json("phase", "shipping", "--change", "add-login")
     assert code == 1
+
+
+@pytest.mark.parametrize(
+    "args, hint",
+    [
+        (["add-login", "specify"], "specworks phase specify --change add-login"),  # the order before --change
+        (["specify"], "specworks phase specify --change <ref>"),
+    ],
+)
+def test_phase_takes_the_change_like_start_and_gate(project, args, hint):
+    run_json("new", "add-login")
+    code, data = run_json("phase", *args)
+    assert code == 1 and hint in data["error"]
 
 
 def test_only_close_makes_a_change_done(project):
     run_json("new", "add-login")
-    code, data = run_json("phase", "add-login", "done")
+    code, data = run_json("phase", "done", "--change", "add-login")
     assert code == 1 and "only through `specworks close`" in data["error"]
     code, data = run_json("list")
     assert [c["phase"] for c in data["changes"]] == ["refine"]
@@ -189,7 +202,7 @@ def test_phases_follow_the_workflow(project):
     code, data = run_json("status", "--change", "add-login")
     assert data["phases"] == ["refine", "specify", "design", "test", "code", "review", "validate", "close", "done"]
     for phase in ("code", "specify", "close"):  # moving back is allowed; done is close's alone
-        code, data = run_json("phase", "add-login", phase)
+        code, data = run_json("phase", phase, "--change", "add-login")
         assert code == 0 and data["phase"] == phase
 
 
@@ -247,7 +260,7 @@ def test_archived_changes_are_not_addressable(project):
     runner.invoke(app, ["new", "old"])
     archived = project / "specworks/changes/archive/2026-01-01-old"
     (project / "specworks/changes/old").rename(archived)
-    code, data = run_json("phase", "archive/2026-01-01-old", "code")
+    code, data = run_json("phase", "code", "--change", "archive/2026-01-01-old")
     assert code == 1 and "must be kebab-case" in data["error"]
     assert "phase: refine" in (archived / ".change.yaml").read_text()
 

@@ -104,6 +104,19 @@ def _other_changes(ws: Workspace, change: Change, cap: CapabilityRef) -> dict[st
     return claimed
 
 
+REMOVAL_FIELDS = ("Reason", "Migration")
+
+
+def _removal_fields(description: str) -> set[str]:
+    """Labels of the ``Reason: ...`` / ``**Migration**: ...`` lines (bold and a bullet allowed) that have text after them."""
+    found = set()
+    for line in description.splitlines():
+        label, colon, text = line.replace("*", "").strip().removeprefix("- ").partition(":")
+        if colon and text.strip() and label.strip().lower() in ("reason", "migration"):
+            found.add(label.strip().lower())
+    return found
+
+
 def _check_delta(ws: Workspace, change: Change, delta: Delta, seen: dict[str, str], issues: list[Issue]) -> None:
     cap, doc, file = delta.cap, delta.doc, ws.rel(delta.path)
 
@@ -183,8 +196,9 @@ def _check_delta(ws: Workspace, change: Change, delta: Delta, seen: dict[str, st
                                "from the living spec, or drop a criterion only on purpose (with its tests)")
 
         if req.section == "REMOVED":
-            if "reason" not in req.description.lower() or "migration" not in req.description.lower():
-                err(req.line, f"{req.id}: a REMOVED requirement needs **Reason** and **Migration**")
+            if missing := [f for f in REMOVAL_FIELDS if f.lower() not in _removal_fields(req.description)]:
+                err(req.line, f"{req.id}: a REMOVED requirement needs **Reason** and **Migration** lines, each with its text "
+                              f"(missing: {', '.join(missing)}); e.g. '**Reason**: replaced by SSO'")
             continue
 
         if not NORMATIVE_RE.search(req.description):

@@ -105,7 +105,7 @@ earliest of those phases (`specworks cycle --change "<ref>"`).
 
    To send it back: record the finding as open with the agreed proposal, then
    ```bash
-   specworks phase "<ref>" <specify|design|test|code>
+   specworks phase <specify|design|test|code> --change "<ref>"
    ```
    and suggest the matching skill. When the change comes back to review,
    check that the proposal was carried out (a `done in <phase>: ...` line

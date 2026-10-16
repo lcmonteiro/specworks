@@ -24,7 +24,7 @@ CHANGE_DIR = f"spec/changes/{REF}"
 def ready(repo):
     """A change that passes validate: implemented, reviewed, in the review phase."""
     (repo / CHANGE_DIR / "review.md").write_text("# Review\n\n## Findings\n\nNone.\n")
-    run_json("phase", REF, "review")
+    run_json("phase", "review", "--change", REF)
     return repo
 
 

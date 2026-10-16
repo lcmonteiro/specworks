@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import typer
 
-from ..core.changes import PHASES, create_change, set_phase
+from ..core.changes import PHASES, ChangeError, create_change, set_phase
 from ..specs.tasks import read_tasks, set_done
 from ..workflow.artifacts import artifact_states, instructions
 from .app import app, task_app
@@ -36,12 +36,17 @@ def status(change: str = ChangeOpt, as_json: bool = JsonOpt) -> None:
 
 @app.command()
 def phase(
-    name: str = typer.Argument(..., help="Change name or module:name."),
     to: str = typer.Argument(..., help=f"One of: {', '.join(p for p in PHASES if p != 'done')} (done is set by `specworks close`)."),
+    old_to: str | None = typer.Argument(None, hidden=True),  # the order before `phase <phase> --change <ref>`
+    change: str | None = typer.Option(None, "--change", "-c", help="Change name or module:name."),
     as_json: bool = JsonOpt,
 ) -> None:
-    """Move a change to another phase."""
-    ws, mod, ch = require_change(name, as_json)
+    """Move a change to another phase, unchecked (`specworks start` checks the gates first)."""
+    if old_to is not None or change is None:
+        # `phase <ref> <phase>` was the order before `start` and `gate` set `<phase> --change <ref>`.
+        hint = f"specworks phase {old_to} --change {to}" if old_to is not None else f"specworks phase {to} --change <ref>"
+        raise ChangeError(f"give the change with --change, like `specworks start` and `specworks gate`: {hint}")
+    ws, mod, ch = require_change(change, as_json)
     set_phase(ch, to)
     emit(change_dict(ws, mod, ch), as_json, f"{mod.qualify(ch.name)}: phase → {ch.phase}")
 

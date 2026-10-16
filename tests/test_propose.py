@@ -228,6 +228,25 @@ def test_removed_needs_reason_and_migration(change):
     assert any("needs **Reason** and **Migration**" in m for m in errors(data))
 
 
+@pytest.mark.parametrize(
+    "body, missing",
+    [
+        ("**Reason**: SSO only\n**Migration**: use SSO\n", None),
+        ("**Reason:** SSO only\n- Migration: use SSO\n", None),  # bold around the colon, a bullet
+        ("A reasonable cut; there is no migration path.\n", "Reason, Migration"),  # the words alone are not the fields
+        ("**Reason**:\n**Migration**: use SSO\n", "Reason"),  # a label without its text
+    ],
+)
+def test_removed_needs_reason_and_migration_lines(change, body, missing):
+    replace_delta(change, "## MODIFIED", f"## REMOVED Requirements\n\n### Requirement: REQ-AUTH-001 Password login\n{body}\n## MODIFIED")
+    code, data = run_json("check", "--change", "add-password-reset")
+    found = [m for m in errors(data) if "REQ-AUTH-001: a REMOVED requirement needs" in m]
+    if missing is None:
+        assert found == []
+    else:
+        assert len(found) == 1 and f"(missing: {missing})" in found[0]
+
+
 def test_new_capability_only_adds_and_needs_purpose(change):
     path = change / "specs/audit-log/spec.md"
     path.parent.mkdir()

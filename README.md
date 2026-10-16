@@ -45,7 +45,7 @@ fixes a problem. It is a hand-written SVG
 ([`docs/diagrams/workflow.svg`](docs/diagrams/workflow.svg)), with light and
 dark colours; edit it directly.
 Each phase skill enters its phase with `specworks start <phase> --change <ref>`, which moves the change only
-once the gates it depends on pass; `specworks phase <change> <phase>` moves a change to any phase unchecked, except `done`, which only `specworks close` sets once it has merged and archived the change.
+once the gates it depends on pass; `specworks phase <phase> --change <ref>` moves a change to any phase unchecked, except `done`, which only `specworks close` sets once it has merged and archived the change.
 
 ## Layout
 

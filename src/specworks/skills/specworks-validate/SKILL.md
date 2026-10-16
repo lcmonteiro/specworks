@@ -80,7 +80,7 @@ go back to.
      close. Run `/specworks-close <ref>` to merge the specs into the living docs
      and archive the change."
    - **FAIL**: list the critical issues grouped by the phase to go back to, and
-     suggest the earliest one (e.g. `specworks phase "<ref>" code`, then
+     suggest the earliest one (e.g. `specworks phase code --change "<ref>"`, then
      `/specworks-code <ref>`). Warnings are listed but do not block.
 
 ---

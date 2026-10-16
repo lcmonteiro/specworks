@@ -34,7 +34,7 @@ change them to make the code easier. When the gate passes, stop and suggest
      `/specworks-test <ref>`. If the user explicitly wants to implement without
      tests first, say what that loses (no executable proof per criterion) and
      go on only with their agreement, moving the change by hand:
-     `specworks phase "<ref>" code`.
+     `specworks phase code --change "<ref>"`.
    - `commands` in the context are this project's tools; `specworks run test`
      (and `run lint`, `run typecheck` when configured) runs them in the right
      folder. If `test` is not configured, find it, confirm it with the user and
