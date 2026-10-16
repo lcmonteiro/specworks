@@ -20,7 +20,10 @@ from collections.abc import Iterator
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from .config import Capability, Config, ConfigError, config_name, find_config, find_root, load_config
+import yaml
+
+from .config import CONFIG_EXT, Capability, Config, ConfigError, config_name, find_config, find_root, is_config_file, load_config
+from .errors import SpecworksError
 
 SEP = ":"
 
@@ -146,6 +149,21 @@ def _links_to(parent: Config, child_root: Path) -> str | None:
     return None
 
 
+def _may_link(directory: Path, child_root: Path) -> bool:
+    """Whether the (invalid) configs in ``directory`` may list ``child_root`` as a module; True when unreadable."""
+    for path in directory.glob(f"*{CONFIG_EXT}"):
+        if not is_config_file(path):
+            continue
+        try:
+            raw = yaml.safe_load(path.read_text(encoding="utf-8"))
+        except (OSError, UnicodeDecodeError, yaml.YAMLError):
+            return True
+        modules = raw.get("modules") if isinstance(raw, dict) else None
+        if isinstance(modules, dict) and any(isinstance(p, str) and (directory / p).resolve() == child_root for p in modules.values()):
+            return True
+    return False
+
+
 def load_module_config(root: Path, name: str, workspace_dir: str) -> Config | None:
     """Config of a module, which must use the workspace's file name (<dir>.yml); None if it has none."""
     found = find_config(root)
@@ -193,9 +211,16 @@ def load_workspace(start: Path | None = None) -> Workspace | None:
         return None
     top_root = nearest
     for ancestor in nearest.parents:
-        if find_config(ancestor) is None:
-            continue
-        if _links_to(load_config(ancestor), top_root) is None:
+        try:
+            if find_config(ancestor) is None:
+                continue
+            parent = load_config(ancestor)
+        except SpecworksError:  # an invalid or unreadable config
+            # A broken config only matters here when it may be the parent of this project.
+            if not _may_link(ancestor, top_root):
+                break
+            raise
+        if _links_to(parent, top_root) is None:
             break
         top_root = ancestor
 

@@ -16,12 +16,14 @@ History, so its ID is never handed out again. A capability that is not yet in it
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 from ..core.changes import Change, list_changes
 from ..core.config import Capability, ConfigError
+from ..core.files import read_text
 from ..core.validators import validate_capability_name
 from ..core.workspace import Module, Workspace, capability_prefix
 from .specfile import REQ_ID_RE, SpecDoc, find_ids, id_prefix, parse_spec, requirement_number
@@ -111,14 +113,14 @@ def delta_files(change: Change) -> list[Path]:
 def read_spec(path: Path | None) -> SpecDoc | None:
     if path is None or not path.is_file():
         return None
-    return parse_spec(path.read_text(encoding="utf-8"))
+    return parse_spec(read_text(path))
 
 
 def history_lines(path: Path | None) -> list[str]:
     """The ``- ...`` lines under ``## History`` in a requirements.md (none when it does not exist)."""
     if path is None or not path.is_file():
         return []
-    text = path.read_text(encoding="utf-8")
+    text = read_text(path)
     if HISTORY_HEADING not in text:
         return []
     tail = text.split(HISTORY_HEADING, 1)[1]
@@ -130,6 +132,24 @@ def history_ids(cap: CapabilityRef) -> set[str]:
     living = cap.living_spec()
     lines = history_lines(living.parent / REQUIREMENTS_FILE if living else None)
     return {i for line in lines for i in find_ids(line) if cap.id_matches(i)}
+
+
+HISTORY_LINE_RE = re.compile(r"^- (?P<date>\d{4}-\d{2}-\d{2}) `(?P<change>[^`]+)`: (?P<summary>.*)$")
+
+
+def modified_since(cap: CapabilityRef, since: str) -> dict[str, str]:
+    """IDs a close on or after ``since`` (YYYY-MM-DD) MODIFIED, per requirements.md History -> ``<change> on <date>``."""
+    living = cap.living_spec()
+    found: dict[str, str] = {}
+    for line in history_lines(living.parent / REQUIREMENTS_FILE if living else None):
+        match = HISTORY_LINE_RE.match(line)
+        if not match or match.group("date") < since:
+            continue
+        for part in match.group("summary").split(";"):
+            kind, _, ids = part.strip().partition(" ")
+            if kind == "MODIFIED":
+                found |= {i: f"{match.group('change')} on {match.group('date')}" for i in find_ids(ids)}
+    return found
 
 
 def retired_ids(cap: CapabilityRef) -> set[str]:

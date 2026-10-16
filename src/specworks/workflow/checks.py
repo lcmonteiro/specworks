@@ -85,6 +85,11 @@ def specs_valid(ctx: GateContext) -> Check:
     return _listed("specs and tasks are valid (specworks check)", ctx.analysis.spec_errors)
 
 
+def specs_warnings(ctx: GateContext) -> Check:
+    """`specworks check`'s warnings, shown in every gate and validate without blocking."""
+    return _listed("specworks check has no warnings", ctx.analysis.spec_warnings, blocking=False)
+
+
 def tasks_written(ctx: GateContext) -> Check:
     found = ctx.analysis.specs.tasks_found
     return Check(f"{TASKS_FILE} is written", found, [] if found else [f"write {TASKS_FILE} (specworks instructions tasks)"])

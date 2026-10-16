@@ -38,6 +38,7 @@ MISPLACED_SCENARIO_RE = re.compile(r"^(?:#{1,3}|#{5,})\s+Scenario:|^\s*[-*]\s+\*
 DELTA_SECTIONS = ("ADDED", "MODIFIED", "REMOVED")
 LIVING_SECTION = "Requirements"
 NORMATIVE_RE = re.compile(r"\b(SHALL|MUST)\b")
+COMMENT_RE = re.compile(r"<!--.*?-->", re.DOTALL)
 
 
 @dataclass
@@ -131,7 +132,8 @@ def parse_spec(text: str) -> SpecDoc:
     purpose: list[str] = []
     req: Requirement | None = None
     scenario: Scenario | None = None
-    lines = text.splitlines()
+    # HTML comments (template hints) are not part of a spec: blank them out, keeping line numbers.
+    lines = COMMENT_RE.sub(lambda m: "\n" * m.group(0).count("\n"), text).splitlines()
     in_fence = fenced(lines)
 
     def close_block(last: int) -> None:

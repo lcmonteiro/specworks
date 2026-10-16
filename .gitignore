@@ -2,5 +2,8 @@
 __pycache__/
 *.pyc
 .pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
 dist/
 # D2 binary placed by the build hook for editable installs

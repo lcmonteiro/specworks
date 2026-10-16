@@ -8,9 +8,10 @@ from pathlib import Path
 
 from ..core.changes import Change, list_changes
 from ..core.config import ConfigError
+from ..core.files import read_text
 from ..core.workspace import Workspace
 from ..tools.diagrams import diagrams_in, referenced_images, state
-from .capabilities import SPECS_DIR, CapabilityRef, delta_files, read_spec, resolve_delta, retired_ids
+from .capabilities import SPECS_DIR, CapabilityRef, delta_files, modified_since, read_spec, resolve_delta, retired_ids
 from .specfile import DELTA_SECTIONS, LIVING_SECTION, NORMATIVE_RE, Requirement, SpecDoc, ac_parent, parse_spec
 from .tasks import TASKS_FILE, Task, parse_tasks
 
@@ -68,12 +69,12 @@ def collect(ws: Workspace, change: Change) -> ChangeSpecs:
         except ConfigError as exc:
             result.issues.append(Issue("error", ws.rel(path), 0, str(exc)))
             continue
-        doc = parse_spec(path.read_text(encoding="utf-8"))
+        doc = parse_spec(read_text(path))
         result.deltas.append(Delta(cap=cap, path=path, doc=doc, living=read_spec(cap.living_spec())))
     tasks_file = change.path / TASKS_FILE
     if tasks_file.is_file():
         result.tasks_found = True
-        result.tasks, problems = parse_tasks(tasks_file.read_text(encoding="utf-8"))
+        result.tasks, problems = parse_tasks(read_text(tasks_file))
         result.issues += [Issue("error", ws.rel(tasks_file), line, msg) for line, msg in problems]
     return result
 
@@ -83,7 +84,7 @@ def _check_proposal(ws: Workspace, change: Change, issues: list[Issue]) -> None:
     if not path.is_file():
         issues.append(Issue("error", ws.rel(path), 0, f"{PROPOSAL_FILE} is missing"))
         return
-    headings = {m.group(1).strip().lower() for m in re.finditer(r"^##\s+(.+)$", path.read_text(encoding="utf-8"), re.MULTILINE)}
+    headings = {m.group(1).strip().lower() for m in re.finditer(r"^##\s+(.+)$", read_text(path), re.MULTILINE)}
     for section in PROPOSAL_SECTIONS:
         if section.lower() not in headings:
             issues.append(Issue("error", ws.rel(path), 0, f"missing section '## {section}'"))
@@ -108,6 +109,9 @@ def _check_delta(ws: Workspace, change: Change, delta: Delta, seen: dict[str, st
 
     def err(line: int, message: str) -> None:
         issues.append(Issue("error", file, line, message))
+
+    def warn(line: int, message: str) -> None:
+        issues.append(Issue("warning", file, line, message))
 
     for line, message in doc.problems:
         err(line, message)
@@ -137,6 +141,8 @@ def _check_delta(ws: Workspace, change: Change, delta: Delta, seen: dict[str, st
     # editing one requirement would lose the first one's edit: one has to close first.
     edited = {**others["REMOVED"], **others["MODIFIED"]}
     retired = retired_ids(cap)
+    # A change that closed after this one started may have edited a block this one copied before.
+    closed_since = modified_since(cap, change.created) if change.created else {}
     for req in doc.requirements:
         if req.section not in DELTA_SECTIONS:
             continue
@@ -166,6 +172,15 @@ def _check_delta(ws: Workspace, change: Change, delta: Delta, seen: dict[str, st
                 f"{req.id} is also MODIFIED or REMOVED by change {edited[req.id]}; close one change first, "
                 "then copy the requirement again from the living spec in the other",
             )
+        if req.section == "MODIFIED" and req.id in closed_since:
+            warn(req.line, f"{req.id} was MODIFIED by {closed_since[req.id]}, after this change started; "
+                           "make sure this block is copied from the current living spec, or closing undoes those edits")
+        living_req = delta.living.by_id().get(req.id) if req.section == "MODIFIED" and delta.living else None
+        if living_req is not None:
+            kept = {sc.id for sc in req.scenarios}
+            if dropped := [sc.id for sc in living_req.scenarios if sc.id and sc.id not in kept]:
+                warn(req.line, f"{req.id}: this MODIFIED block drops {', '.join(dropped)}; copy the whole block "
+                               "from the living spec, or drop a criterion only on purpose (with its tests)")
 
         if req.section == "REMOVED":
             if "reason" not in req.description.lower() or "migration" not in req.description.lower():
@@ -230,7 +245,7 @@ def _check_tasks(ws: Workspace, change: Change, specs: ChangeSpecs, issues: list
 def _check_diagrams(ws: Workspace, change: Change, issues: list[Issue]) -> None:
     settings = ws.top.config.diagrams
     design = change.path / DESIGN_FILE
-    images = referenced_images(design.read_text(encoding="utf-8")) if design.is_file() else []
+    images = referenced_images(read_text(design)) if design.is_file() else []
     for ref in images:
         if not (change.path / ref).is_file():
             issues.append(Issue("error", ws.rel(design), 0, f"image {ref} does not exist"))

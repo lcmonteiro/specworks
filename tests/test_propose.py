@@ -7,7 +7,7 @@ from samples import DELTA, LIVING, PROPOSAL, TASKS
 from specworks.cli import app
 from specworks.specs.specfile import ac_parent, find_ids, id_prefix, parse_spec
 from specworks.specs.tasks import parse_tasks
-from specworks.specs.trace import is_test_file
+from specworks.specs.trace import glob_match, is_test_file
 
 runner = CliRunner()
 
@@ -404,7 +404,7 @@ def test_test_globs_do_not_hide_source_tags(change, project):
 
 def test_source_globs_limit_the_other_files_but_not_tests(change, project):
     cfg = project / "spec.yml"
-    cfg.write_text(cfg.read_text().replace("source_globs: []", 'source_globs: ["src/*"]'))
+    cfg.write_text(cfg.read_text().replace("source_globs: []", 'source_globs: ["src/**"]'))
     (project / "src/auth/reset.py").write_text("# @req REQ-AUTH-003\n")
     (project / "scripts").mkdir()
     (project / "scripts/tool.py").write_text("# @req REQ-AUTH-003\n")
@@ -448,3 +448,66 @@ def test_tasks_in_a_code_fence_are_examples_not_tasks():
     text = "## 1. Reset\n\n- [ ] 1.1 Add reset (REQ-AUTH-003)\n\n```markdown\n- [ ] 9.9 an example task\n- [x] bad example\n```\n"
     tasks, problems = parse_tasks(text)
     assert [t.num for t in tasks] == ["1.1"] and problems == []
+
+
+@pytest.mark.parametrize(
+    "rel, pattern, expected",
+    [
+        ("tests/test_a.py", "tests/**/*.py", True),  # ** spans zero folders too
+        ("tests/unit/test_a.py", "tests/**/*.py", True),
+        ("test_a.py", "**/test_*.py", True),
+        ("a/b/test_a.py", "**/test_*.py", True),
+        ("src/x.py", "src/*.py", True),
+        ("src/a/x.py", "src/*.py", False),  # * stays within one folder
+        ("src/a/x.py", "src/**", True),
+        ("qa/x1.py", "qa/x?.py", True),
+        ("qa/x/1.py", "qa/x?1.py", False),
+    ],
+)
+def test_globs_follow_folder_aware_rules(rel, pattern, expected):
+    assert glob_match(rel, pattern) is expected
+
+
+def test_one_tag_may_list_several_ids(change, project):
+    (project / "tests").mkdir()
+    (project / "tests/test_reset.py").write_text("# @ac AC-AUTH-003.1, AC-AUTH-003.2\n")
+    code, data = run_json("trace", "--change", "add-password-reset")
+    rows = {r["ac"]: r for r in data["rows"]}
+    assert rows["AC-AUTH-003.1"]["tests"] == rows["AC-AUTH-003.2"]["tests"] == ["tests/test_reset.py:1"]
+
+
+def test_html_comments_are_not_spec_content():
+    text = "## Purpose\n\n<!-- hint -->\n\n## ADDED Requirements\n\n<!--\n### Requirement: REQ-AUTH-009 Idea\n-->\n### Requirement: REQ-AUTH-010 Real\nThe system SHALL x.\n"
+    doc = parse_spec(text)
+    assert doc.purpose == ""
+    assert [(r.id, r.line) for r in doc.requirements] == [("REQ-AUTH-010", 10)]  # line numbers are kept
+
+
+def check_warnings(ref="add-password-reset"):
+    _, data = run_json("check", "--change", ref)
+    return [i["message"] for i in data["issues"] if i["level"] == "warning"]
+
+
+@pytest.mark.parametrize("closed, warned", [("2999-01-01", True), ("2000-01-01", False)])
+def test_requirement_modified_by_a_later_close_is_warned(change, project, closed, warned):
+    # Another change closed after this one started: this MODIFIED block may predate its edits.
+    history = f"# Requirements: user-auth\n\n## History\n\n- {closed} `stricter-lockout`: MODIFIED REQ-AUTH-002\n"
+    (project / "src/auth/docs/requirements.md").write_text(history)
+    found = [w for w in check_warnings() if w.startswith("REQ-AUTH-002 was MODIFIED by stricter-lockout")]
+    assert bool(found) is warned
+
+
+def test_modified_block_dropping_a_criterion_is_warned(change, project):
+    delta = change / "specs/user-auth/spec.md"
+    delta.write_text(DELTA.replace("AC-AUTH-002.1 Third failure", "AC-AUTH-002.2 Third failure"))
+    assert any(w.startswith("REQ-AUTH-002: this MODIFIED block drops AC-AUTH-002.1") for w in check_warnings())
+    # Gates show `specworks check` warnings without blocking on them.
+    _, data = run_json("gate", "specify", "--change", "add-password-reset")
+    row = next(c for c in data["checks"] if c["name"] == "specworks check has no warnings")
+    assert row["ok"] is False and row["blocking"] is False
+
+
+def test_a_file_that_is_not_utf8_is_a_clear_error(change):
+    (change / "specs/user-auth/spec.md").write_bytes(DELTA.encode().replace(b"single-use", b"single\xe9use"))
+    code, data = run_json("check", "--change", "add-password-reset")
+    assert code == 1 and "is not UTF-8 text" in data["error"] and "spec.md" in data["error"]

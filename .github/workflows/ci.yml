@@ -90,20 +90,12 @@ jobs:
           sw instructions refinement --change add-example --json > /dev/null
           sw instructions tasks --change add-example --json > /dev/null
           test -f spec.yml
-          test -f .claude/skills/specworks-refine/SKILL.md
-          test -f .github/skills/specworks-refine/SKILL.md
-          test -f .github/prompts/specworks-refine.prompt.md
-          test -f .github/skills/specworks-specify/SKILL.md
-          test -f .github/skills/specworks-design/SKILL.md
-          test -f .github/skills/specworks-build/SKILL.md
-          test -f .github/prompts/specworks-build.prompt.md
-          test -f .github/prompts/specworks-design.prompt.md
-          test -f .github/skills/specworks-test/SKILL.md
-          test -f .github/prompts/specworks-test.prompt.md
-          test -f .github/skills/specworks-code/SKILL.md
-          test -f .github/skills/specworks-review/SKILL.md
-          test -f .github/skills/specworks-validate/SKILL.md
-          test -f .github/skills/specworks-close/SKILL.md
+          # Every packaged skill, for both tools (the list comes from the source tree).
+          for skill in $(cd "$GITHUB_WORKSPACE/src/specworks/skills" && ls -d specworks-*); do
+            for f in ".claude/skills/$skill/SKILL.md" ".github/skills/$skill/SKILL.md" ".github/prompts/$skill.prompt.md"; do
+              test -f "$f" || { echo "missing $f"; exit 1; }
+            done
+          done
           grep -q 'Running the CLI' .claude/skills/specworks-refine/SKILL.md
           if grep -rq 'specworks:include' .claude .github; then echo 'unfilled include in an installed skill'; exit 1; fi
           mkdir -p spec/changes/add-example/diagrams
