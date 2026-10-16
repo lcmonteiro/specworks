@@ -1,5 +1,4 @@
 import json
-import stat
 import subprocess
 import sys
 
@@ -7,6 +6,7 @@ import pyd2
 import pytest
 from typer.testing import CliRunner
 
+from helpers import fake_executable
 from specworks.cli import app
 from specworks.tools import diagrams as diagrams_module
 
@@ -23,17 +23,15 @@ def run_json(*args):
 @pytest.fixture
 def fake_d2(tmp_path_factory, monkeypatch):
     """A stand-in for d2 that records its arguments and writes a small SVG."""
-    folder = tmp_path_factory.mktemp("bin")
-    script = folder / "d2"
-    script.write_text(
-        f"#!{sys.executable}\n"
+    script = fake_executable(
+        tmp_path_factory.mktemp("bin"),
+        "d2",
         "import sys, pathlib\n"
         "src, out = sys.argv[-2], sys.argv[-1]\n"
         "if 'BROKEN' in pathlib.Path(src).read_text():\n"
         "    print('err: failed to compile: unexpected token', file=sys.stderr); sys.exit(1)\n"
         "pathlib.Path(out).write_text('<?xml version=\"1.0\"?><svg viewBox=\"0 0 1 1\">' + ' '.join(sys.argv[1:-2]) + '</svg>')\n"
     )
-    script.chmod(script.stat().st_mode | stat.S_IEXEC)
     monkeypatch.setenv("SPECWORKS_D2", str(script))
     return script
 
