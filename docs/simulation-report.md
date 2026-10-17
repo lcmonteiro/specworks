@@ -62,7 +62,7 @@ mistake goes unnoticed, **UX** means confusing output.
 ### Medium
 
 8. **Gap: a capability that was never registered is only reported at
-   `close`.** Every earlier command passes.
+   `close`.** *(Fixed.)* Every earlier command passes.
 9. **Gap: `capability add --prefix TODO` broke every in-flight ID silently.**
    It invalidated the IDs of two active changes without a warning, and there
    is no command to edit a capability's prefix or rename the capability.
@@ -76,14 +76,14 @@ mistake goes unnoticed, **UX** means confusing output.
     (`assert … or True`) counts as the "failing test" for its AC.
 13. **Gap: a stale `traceability.md` passes validate.** One still showing
     "no tests, no code" was archived as the change's evidence.
-14. **Bug: a zombie change after an uncommitted close.** I closed without
+14. **Bug: a zombie change after an uncommitted close.** *(Fixed.)* I closed without
     committing and then switched branches. Git restored a partial copy of the
     change (no `proposal.md`, phase `code`) next to its archived copy, and
     `list` showed it as active.
 15. **Gap: phase order isn't enforced at close.** A change in `specify` (with
     skip-specs) passed validate and reached close. "Went through review" is
     only a warning.
-16. **Gap: no way to abandon or park a change.** The only way is `rm -rf`.
+16. **Gap: no way to abandon or park a change.** *(Fixed.)* The only way is `rm -rf`.
     Archived changes can't be opened by any command either (`status` says
     "not found").
 
@@ -103,13 +103,13 @@ mistake goes unnoticed, **UX** means confusing output.
 21. **UX: a delta at `specs/commands/` instead of `specs/cli/commands/` silently
     becomes a new top-level capability.** The error talks about the prefix,
     not the path.
-22. **UX: `new <name>` accepts the name of an archived change.** Closing it on
+22. **UX: `new <name>` accepts the name of an archived change.** *(Fixed.)* Closing it on
     the same day then fails at the very end, with an absolute path in the error.
 23. **UX: other small problems.**
     - A delta's `## Purpose` on an existing capability is dropped silently.
     - The dropped-AC warning can't be marked as intended, so it repeats on
       every gate.
-    - `new archive` says "already exists" instead of "reserved name".
+    - `new archive` says "already exists" instead of "reserved name". *(Fixed.)*
     - The error for an unconfigured `lint` suggests `e.g. test: uv run pytest`.
     - Branch-wide changed files make each change account for another change's
       files.
@@ -145,6 +145,19 @@ Items 5–7 are fixed:
   `spec show` prints `(no ID)` instead of `None`.
 - `gate`, `start` and `validate` take `--fresh`. It runs each project command
   for real once per invocation, however many gates use it.
+
+Items 8, 14, 16 and 22 are fixed:
+
+- `check` warns about a new capability that is not registered yet, from the
+  specify phase on, with the exact `capability add` command.
+- `specworks abandon --change <ref> --reason <why>` archives a change without
+  merging. `list --archived` lists closed and abandoned changes, and `status`
+  reads an archived one. Other commands say a change is archived instead of
+  "not found".
+- `new` refuses `archive` and the name of an archived change. The "already
+  exists in the archive" error no longer shows an absolute path.
+- `list` and `check` flag an active change that is also archived: the leftover
+  copy a branch switch restores after an uncommitted close.
 
 ## Suggested fixes and improvements
 
