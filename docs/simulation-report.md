@@ -47,15 +47,15 @@ mistake goes unnoticed, **UX** means confusing output.
    (missing `S`) passes "no tag refers to an unknown requirement".
    `unknown_tags` only looks at IDs whose prefix belongs to the change's own
    capabilities.
-5. **Gap: working on the base branch hides the change's commits.** On `main`
+5. **Gap: working on the base branch hides the change's commits.** *(Fixed.)* On `main`
    the merge base is `HEAD`, so review only sees uncommitted files. An
    untagged, never-implemented stub (`src/todo/dates.py`) passed review and
    validate, with no warning.
-6. **Gap: a broken living spec is never checked.** A hand-edited `spec.md`
+6. **Gap: a broken living spec is never checked.** *(Fixed.)* A hand-edited `spec.md`
    with a duplicate `REQ-…-003` and a requirement with no ID passes every
    command. `spec show` prints `None` as the ID, and `close` writes both into
    `requirements.md`.
-7. **Gap: the run cache can show a red suite as green.** After a git-ignored
+7. **Gap: the run cache can show a red suite as green.** *(Fixed.)* After a git-ignored
    `.env` broke the suite, `gate design` reused the old green result. This is
    documented, but gate, start and validate have no `--fresh` flag.
 
@@ -132,6 +132,19 @@ Items 1–4 are fixed:
 - A tag whose prefix no capability uses (registered, or new in an active
   change) is unknown for every change, with a "did you mean". So is a tag that
   is not a REQ/AC ID at all.
+
+Items 5–7 are fixed:
+
+- On the base branch, review compares with the commit before the change
+  started (the parent of the newest commit that added its `.change.yaml`).
+  When no commit marks that, `gate review` and `validate` warn that only
+  uncommitted files are compared.
+- `check` warns about problems in the living spec of each capability a change
+  touches: an ID used twice, a requirement or criterion without an ID, no
+  scenario, or no SHALL/MUST. `close` refuses to merge into a broken one.
+  `spec show` prints `(no ID)` instead of `None`.
+- `gate`, `start` and `validate` take `--fresh`. It runs each project command
+  for real once per invocation, however many gates use it.
 
 ## Suggested fixes and improvements
 
