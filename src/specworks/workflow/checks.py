@@ -49,6 +49,7 @@ class GateContext:
     run_tests: bool = True  # False: --no-run, the project's commands are reported as not run
     base: str | None = None  # review / validate: branch to diff against
     allow_open: bool = False  # review: open findings do not fail the gate (inside a build)
+    reuse_runs: bool = True  # False: always run the project's commands (the real close), never a cached result
 
     @cached_property
     def analysis(self) -> Analysis:
@@ -116,9 +117,9 @@ def _gap(name: str, key: str, blocking: bool = True) -> CheckFn:
 
 reqs_have_code = _gap("every requirement has code (@req tag)", "reqWithoutCode")
 acs_have_tests = _gap("every acceptance criterion has a test (@ac tag)", "acWithoutTests")
-removed_gone = _gap("removed requirements are gone from tests and code", "removedStillTagged")
-# Before the code phase, the code of a removed requirement may still be there.
-removed_gone_warning = _gap("removed requirements are gone from tests and code", "removedStillTagged", blocking=False)
+removed_gone = _gap("removed requirements and criteria are gone from tests and code", "removedStillTagged")
+# Before the code phase, the code of a removed requirement (or criterion) may still be there.
+removed_gone_warning = _gap("removed requirements and criteria are gone from tests and code", "removedStillTagged", blocking=False)
 
 
 def no_unknown_tags(ctx: GateContext) -> Check:
@@ -174,7 +175,7 @@ def command_check(ctx: GateContext, key: str, name: str, optional: bool = False)
     if not ctx.run_tests:
         return Check(name, False, [f"not run (--no-run); run `specworks run {key}`"], blocking=False)
     try:
-        result = cached_run(ctx.ws, ctx.module, key)
+        result = cached_run(ctx.ws, ctx.module, key, reuse=ctx.reuse_runs)
     except CommandError as exc:
         return Check(name, False, [str(exc)])
     reused = f", same code as the run at {result.cached_at}" if result.cached_at else ""

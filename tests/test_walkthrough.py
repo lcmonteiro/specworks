@@ -5,6 +5,7 @@ Each step writes what the phase's skill has the agent write, then moves on with
 command that breaks the documented flow fails here.
 """
 
+import json
 import re
 import subprocess
 import sys
@@ -142,16 +143,17 @@ def test_walkthrough(tmp_path, monkeypatch):
         monkeypatch.setenv(key, "t" if key.endswith("NAME") else "t@t")
     git = lambda *a: subprocess.run(["git", *a], cwd=tmp_path, check=True, capture_output=True)  # noqa: E731
     (tmp_path / "src/textkit").mkdir(parents=True)
-    (tmp_path / "src/textkit/__init__.py").write_text("")
+    (tmp_path / "src/textkit/__init__.py").write_text("", encoding="utf-8")
     (tmp_path / "tests").mkdir()
-    (tmp_path / "tests/test_package.py").write_text("def test_package_imports():\n    import textkit  # noqa: F401\n")
-    (tmp_path / ".gitignore").write_text("__pycache__/\n.pytest_cache/\n")
+    (tmp_path / "tests/test_package.py").write_text("def test_package_imports():\n    import textkit  # noqa: F401\n", encoding="utf-8")
+    (tmp_path / ".gitignore").write_text("__pycache__/\n.pytest_cache/\n", encoding="utf-8")
 
     # Set up: config, test command, the capability, a baseline commit.
     sw("init", "--dir", "spec", "--no-skills")
     cfg = tmp_path / "spec.yml"
-    test_command = f'"{sys.executable}" -m pytest -q -p no:cacheprovider --rootdir . tests'
-    cfg.write_text(re.sub(r"(?m)^  test:$", lambda _: f"  test: PYTHONPATH=src {test_command}", cfg.read_text(), count=1))
+    # pytest's own pythonpath option, not a PYTHONPATH=src prefix, which Windows' shell cannot run.
+    test_command = f'"{sys.executable}" -m pytest -q -p no:cacheprovider --rootdir . -o pythonpath=src tests'
+    cfg.write_text(re.sub(r"(?m)^  test:$", lambda _: f"  test: {json.dumps(test_command)}", cfg.read_text(encoding="utf-8"), count=1), encoding="utf-8")
     sw("capability", "add", "slugify", "--path", "src/textkit", "--prefix", "SLUG")
     git("init", "-q", "-b", "main")
     git("add", "-A")
@@ -161,29 +163,29 @@ def test_walkthrough(tmp_path, monkeypatch):
     # specify: proposal, delta spec with IDs from the CLI, tasks.
     assert "next: REQ-SLUG-001" in sw("spec", "show", "slugify")
     sw("start", "specify", "--change", REF)
-    (tmp_path / C / "proposal.md").write_text(PROPOSAL)
+    (tmp_path / C / "proposal.md").write_text(PROPOSAL, encoding="utf-8")
     (tmp_path / C / "specs/slugify").mkdir(parents=True)
-    (tmp_path / C / "specs/slugify/spec.md").write_text(SPEC)
-    (tmp_path / C / "tasks.md").write_text(TASKS)
+    (tmp_path / C / "specs/slugify/spec.md").write_text(SPEC, encoding="utf-8")
+    (tmp_path / C / "tasks.md").write_text(TASKS, encoding="utf-8")
     assert "valid (0 errors, 0 warnings)" in sw("check", "--change", REF)
 
     # design: the agreed API and its stub.
     sw("start", "design", "--change", REF)
-    (tmp_path / C / "design.md").write_text(DESIGN)
-    (tmp_path / "src/textkit/slug.py").write_text(STUB)
+    (tmp_path / C / "design.md").write_text(DESIGN, encoding="utf-8")
+    (tmp_path / "src/textkit/slug.py").write_text(STUB, encoding="utf-8")
     sw("task", "done", "1.1", "--change", REF)
     sw("gate", "design", "--change", REF)
 
     # test: failing tests tagged @ac, red for the right reason.
     sw("start", "test", "--change", REF)
-    (tmp_path / "tests/test_slug.py").write_text(TESTS)
+    (tmp_path / "tests/test_slug.py").write_text(TESTS, encoding="utf-8")
     assert "NotImplementedError" in sw("run", "test", "--change", REF, "--json", ok=False)
     sw("task", "done", "1.2", "--change", REF)
     sw("gate", "test", "--change", REF)
 
     # code: the implementation, tagged @req; tests green.
     sw("start", "code", "--change", REF)
-    (tmp_path / "src/textkit/slug.py").write_text(CODE)
+    (tmp_path / "src/textkit/slug.py").write_text(CODE, encoding="utf-8")
     sw("task", "done", "1.3", "--change", REF)
     sw("gate", "code", "--change", REF)
 
@@ -191,7 +193,7 @@ def test_walkthrough(tmp_path, monkeypatch):
     started = sw("start", "review", "--change", REF)
     assert "same code as the run at" in started  # gate code's run is reused
     assert "0 drift candidates" in sw("review", "--change", REF, "--base", "main")
-    (tmp_path / C / "review.md").write_text(REVIEW)
+    (tmp_path / C / "review.md").write_text(REVIEW, encoding="utf-8")
     sw("gate", "review", "--change", REF, "--base", "main")
 
     # validate and close.
@@ -200,6 +202,6 @@ def test_walkthrough(tmp_path, monkeypatch):
     assert "(new): ADDED REQ-SLUG-001" in sw("close", "--change", REF, "--base", "main", "--dry-run")
     closed = sw("close", "--change", REF, "--base", "main")
     assert f"archived -> spec/changes/archive/{date.today().isoformat()}-{REF}" in closed
-    living = (tmp_path / "src/textkit/docs/spec.md").read_text()
+    living = (tmp_path / "src/textkit/docs/spec.md").read_text(encoding="utf-8")
     assert "### Requirement: REQ-SLUG-001 Slugify a title" in living and "## Purpose\n\nTurn titles into URL slugs." in living
-    assert "| REQ-SLUG-001 | Slugify a title | AC-SLUG-001.1, AC-SLUG-001.2 |" in (tmp_path / "src/textkit/docs/requirements.md").read_text()
+    assert "| REQ-SLUG-001 | Slugify a title | AC-SLUG-001.1, AC-SLUG-001.2 |" in (tmp_path / "src/textkit/docs/requirements.md").read_text(encoding="utf-8")

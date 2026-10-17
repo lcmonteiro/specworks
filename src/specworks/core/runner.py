@@ -5,8 +5,11 @@ skill checks the previous phase's gate, then its own). ``cached_run`` reuses the
 result of a run on an identical working tree: same command and folder, same
 ``HEAD``, same uncommitted and untracked files. The workflow folders
 (``<dir>/``: specs, tasks, review.md) are left out, since writing them does not
-change what the commands see. The cache lives inside ``.git/``; without git, or
-with ``SPECWORKS_RUN_CACHE=0``, every run is real.
+change what the commands see. Every real run is recorded, ``specworks run``'s too,
+so the latest run on a tree is the one reused: after fixing something the
+fingerprint cannot see (a git-ignored file, a service), ``specworks run`` updates
+it. The cache lives inside ``.git/``; without git, or with ``SPECWORKS_RUN_CACHE=0``,
+every run is real.
 """
 
 from __future__ import annotations
@@ -57,6 +60,7 @@ def run_command(ws: Workspace, module: Module, key: str, capture: bool = True) -
         shell=True,
         cwd=module.root,
         text=True,
+        errors="replace",  # a tool's output may be in any encoding; a stray byte must not crash the gate
         stdout=subprocess.PIPE if capture else None,
         stderr=subprocess.STDOUT if capture else None,
         check=False,
@@ -118,21 +122,26 @@ def _load(cache: Path) -> dict:
     return data if isinstance(data, dict) else {}
 
 
-def cached_run(ws: Workspace, module: Module, key: str) -> RunResult:
-    """``run_command``, reusing the result of a run on an identical working tree when there is one."""
+def cached_run(ws: Workspace, module: Module, key: str, reuse: bool = True, capture: bool = True) -> RunResult:
+    """``run_command``, reusing the result of a run on an identical working tree when there is one.
+
+    ``reuse=False`` always runs, and records the result for the next caller on this tree.
+    """
     command = ws.commands(module).get(key, "")
     found = tree_fingerprint(ws, module, command) if command and os.environ.get("SPECWORKS_RUN_CACHE", "1") != "0" else None
     if found is None:
-        return run_command(ws, module, key)
+        return run_command(ws, module, key, capture)
     digest, cache = found
     runs = _load(cache)
-    if isinstance(hit := runs.get(digest), dict):
+    if reuse and isinstance(hit := runs.get(digest), dict):
         try:
             return RunResult(key, command, ws.rel(module.root), int(hit["exit_code"]), str(hit["output"]), cached_at=str(hit["at"]))
         except (KeyError, TypeError, ValueError):
             pass
-    result = run_command(ws, module, key)
-    runs[digest] = {"exit_code": result.exit_code, "output": "\n".join(result.tail()), "at": time.strftime("%Y-%m-%d %H:%M:%S")}
+    result = run_command(ws, module, key, capture)
+    output = "\n".join(result.tail()) if capture else "(output was shown in the terminal, not kept)"
+    runs.pop(digest, None)  # re-inserted last: the newest run is the last one evicted
+    runs[digest] = {"exit_code": result.exit_code, "output": output, "at": time.strftime("%Y-%m-%d %H:%M:%S")}
     try:
         cache.write_text(json.dumps(dict(list(runs.items())[-CACHE_SIZE:]), indent=1), encoding="utf-8")
     except OSError:

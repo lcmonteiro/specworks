@@ -15,7 +15,6 @@ cannot be applied.
 
 from __future__ import annotations
 
-import re
 import shutil
 from dataclasses import dataclass, field
 from datetime import date
@@ -84,6 +83,14 @@ def _block_lines(req: Requirement) -> list[str]:
     return req.markdown().rstrip("\n").split("\n") + [""]
 
 
+def _splice(out: list[str], new_lines: list[str]) -> None:
+    """Append ``new_lines`` to ``out``, never leaving two blank lines where they meet."""
+    start = 0
+    while start < len(new_lines) and not new_lines[start].strip() and (not out or not out[-1].strip()):
+        start += 1
+    out += new_lines[start:]
+
+
 def new_spec_text(cap: CapabilityRef, purpose: str) -> str:
     purpose = purpose.strip() or f"TBD: describe what {cap.ref} is for."
     return f"# {cap.ref}\n\n## Purpose\n\n{purpose}\n\n## Requirements\n"
@@ -113,23 +120,26 @@ def apply_delta(living_text: str, delta: Delta) -> tuple[str, list[str], list[st
         elif req.section == "ADDED" and req.id in by_id:
             raise MergeError(f"{req.id} is ADDED but already in the living spec of {delta.cap.ref}")
 
-    # Every replaced block lies inside the section; ADDED blocks go at its end.
+    # Every replaced block lies inside the section; ADDED blocks go at its end. Blank lines are
+    # tidied only where text is spliced in, so everything else stays as written.
     out: list[str] = []
     i = 0
     while i < section_end:
         if i in replacements:
             i, new_lines = replacements[i]
-            out += new_lines
+            _splice(out, new_lines)
+            while i < section_end and not lines[i].strip() and out and not out[-1].strip():
+                i += 1  # the blank lines after a replaced block, when the new one already ends in one
         else:
             out.append(lines[i])
             i += 1
     for req in delta.doc.section("ADDED"):
         if out and out[-1].strip():
             out.append("")
-        out += _block_lines(req)
+        _splice(out, _block_lines(req))
         added.append(req.id or "?")  # check_change requires IDs before close
-    out += lines[section_end:]
-    text = re.sub(r"\n{3,}", "\n\n", "\n".join(out)).rstrip("\n") + "\n"
+    _splice(out, lines[section_end:])
+    text = "\n".join(out).rstrip("\n") + "\n"
     return text, added, modified, removed
 
 

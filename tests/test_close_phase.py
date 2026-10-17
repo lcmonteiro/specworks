@@ -2,13 +2,12 @@
 
 import hashlib
 import shutil
-import sys
 from datetime import date
 
 import pytest
 from typer.testing import CliRunner
 
-from helpers import REF, run_json
+from helpers import REF, fake_executable, run_json
 from specworks.cli import app
 from specworks.core.changes import load_change
 from specworks.core.workspace import load_workspace
@@ -186,6 +185,34 @@ def test_removed_requirement_is_deleted_and_other_sections_kept():
     assert text.startswith("# user-auth\n\nIntro.\n") and text.endswith("## Notes\n\nKeep me.\n")
 
 
+
+MODIFY_A = "## MODIFIED Requirements\n\n### Requirement: REQ-AUTH-001 A\nThe system SHALL a2.\n\n#### Scenario: AC-AUTH-001.1 s\n- **WHEN** w\n- **THEN** t\n"
+
+
+@pytest.mark.parametrize(
+    "delta", [MODIFY_A, "## REMOVED Requirements\n\n### Requirement: REQ-AUTH-001 A\n**Reason**: x\n**Migration**: y\n"]
+)
+def test_a_heading_after_the_last_requirement_is_kept(delta):
+    living = "# user-auth\n\n## Requirements\n\n### Requirement: REQ-AUTH-001 A\nThe system SHALL a.\n\n### Notes\nKeep me.\n"
+    text, *_ = apply_delta(living, FakeDelta(delta))
+    assert text.endswith("### Notes\nKeep me.\n") and "SHALL a." not in text
+
+
+def test_merge_only_tidies_blank_lines_where_it_splices():
+    living = (
+        "# user-auth\n\n## Purpose\n\n```\nline 1\n\n\n\nline 2\n```\n\n## Requirements\n\n"
+        "### Requirement: REQ-AUTH-001 A\nThe system SHALL a.\n\n\n\n## Notes\n\n\nKeep the spacing.\n"
+    )
+    text, *_ = apply_delta(living, FakeDelta(MODIFY_A))
+    assert "line 1\n\n\n\nline 2" in text and "## Notes\n\n\nKeep the spacing.\n" in text
+    assert "- **THEN** t\n\n## Notes" in text  # one blank line where the new block meets the next section
+
+
+def test_a_heading_inside_a_delta_requirement_is_reported():
+    doc = parse_spec("## ADDED Requirements\n\n### Requirement: REQ-AUTH-003 C\nThe system SHALL c.\n\n### Details\nMore.\n")
+    assert [line for line, _ in doc.problems] == [6] and "### Details" in doc.problems[0][1]
+    assert "More." not in doc.requirements[0].description
+
 def test_headings_in_a_code_fence_are_text_when_merging():
     living = (
         "# user-auth\n\n## Requirements\n\n### Requirement: REQ-AUTH-001 A\nThe system SHALL read:\n\n"
@@ -203,11 +230,7 @@ def test_headings_in_a_code_fence_are_text_when_merging():
 
 
 def test_diagrams_in_a_docs_folder(ready, monkeypatch):
-    fake = ready / "fake_d2.py"
-    fake.write_text("import sys, pathlib\npathlib.Path(sys.argv[-1]).write_text('<?xml version=\"1.0\"?><svg/>')\n")
-    script = ready / "d2"
-    script.write_text(f"#!{sys.executable}\nexec(open({str(fake)!r}).read())\n")
-    script.chmod(0o755)
+    script = fake_executable(ready, "d2", "import sys, pathlib\npathlib.Path(sys.argv[-1]).write_text('<?xml version=\"1.0\"?><svg/>')\n")
     monkeypatch.setenv("SPECWORKS_D2", str(script))
     folder = ready / "src/auth/docs/diagrams"
     folder.mkdir(parents=True)

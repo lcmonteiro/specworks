@@ -113,10 +113,11 @@ def scan_tags(ws: Workspace) -> list[Tag]:
         module = ws.owner(here)
         for name in sorted(filenames):
             path = here / name
-            rel = ws.rel(path)
             scanned, is_test = scan_rule(module, path)
             if not scanned:
                 continue
+            # The path as walked, not resolved: a symlink to a file outside the workspace is not a crash.
+            rel = path.relative_to(ws.root).as_posix()
             try:
                 if path.stat().st_size > MAX_FILE_BYTES:
                     continue
@@ -163,6 +164,22 @@ def build_matrix(specs: ChangeSpecs, tags: list[Tag]) -> list[Row]:
                     code=code,
                 )
             )
+        # A criterion the MODIFIED block leaves out is removed with it: its tests must go too,
+        # or after close they point to an ID no spec has.
+        old = delta.living.by_id().get(req_id) if req.section == "MODIFIED" and delta.living else None
+        kept = {sc.id for sc in req.scenarios}
+        for sc in old.scenarios if old else []:
+            if sc.id and sc.id not in kept:
+                rows.append(
+                    Row(
+                        **{**base, "section": "REMOVED"},
+                        ac=sc.id,
+                        ac_title=sc.title,
+                        tasks=tasks_by_id.get(sc.id, []),
+                        tests=tests_by_id.get(sc.id, []),
+                        code=code_by_id.get(sc.id, []),
+                    )
+                )
     return rows
 
 
@@ -176,7 +193,7 @@ def gaps(rows: list[Row]) -> dict[str, list[str]]:
         "acWithoutTasks": [r.ac for r in active if r.ac and not r.tasks],
         "acWithoutTests": [r.ac for r in active if r.ac and not r.tests],
         "reqWithoutCode": sorted({r.req for r in active if not r.code}),
-        "removedStillTagged": sorted({r.req for r in rows if r.section == "REMOVED" and (r.tests or r.code)}),
+        "removedStillTagged": sorted({r.ac or r.req for r in rows if r.section == "REMOVED" and (r.tests or r.code)}),
     }
 
 
@@ -208,13 +225,16 @@ def to_markdown(change_ref: str, rows: list[Row], found: dict[str, list[str]]) -
         )
     removed = [r for r in rows if r.section == "REMOVED"]
     if removed:
-        out += ["", "## Removed", "", "| Capability | Requirement | Tasks | Still tagged in |", "|---|---|---|---|"]
-        out += [f"| {r.capability} | {r.req} {r.title} | {', '.join(r.tasks) or '—'} | {cell(r.tests + r.code)} |" for r in removed]
+        out += ["", "## Removed", "", "| Capability | Requirement or criterion | Tasks | Still tagged in |", "|---|---|---|---|"]
+        out += [
+            f"| {r.capability} | {f'{r.ac} {r.ac_title}' if r.ac else f'{r.req} {r.title}'} | {', '.join(r.tasks) or '—'} | {cell(r.tests + r.code)} |"
+            for r in removed
+        ]
     labels = {
         "acWithoutTasks": "Acceptance criteria without a task",
         "acWithoutTests": "Acceptance criteria without a test (`@ac`)",
         "reqWithoutCode": "Requirements without code (`@req`)",
-        "removedStillTagged": "Removed requirements still tagged in tests or code",
+        "removedStillTagged": "Removed requirements or criteria still tagged in tests or code",
     }
     out += ["", "## Gaps", ""]
     out += [f"- {labels[k]}: {', '.join(v)}" for k, v in found.items() if v] or ["- None"]

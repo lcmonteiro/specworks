@@ -110,3 +110,36 @@ def test_edits_inside_a_git_submodule_rerun(counted, tmp_path_factory):
     gate_tests()
     gate_tests()
     assert runs(counter) == 5
+
+
+def test_specworks_run_replaces_the_reused_result(repo):
+    # The suite needs a git-ignored file: the fingerprint cannot see it come and go.
+    (repo / ".gitignore").write_text("local.cfg\n")
+    command = f'"{sys.executable}" -c "import os, sys; sys.exit(0 if os.path.exists(\'local.cfg\') else 4)"'
+    cfg = repo / "spec.yml"
+    cfg.write_text(re.sub(r"(?m)^  test:.*$", lambda _: f"  test: {json.dumps(command)}", cfg.read_text(), count=1))
+    git(repo, "add", "-A")
+    git(repo, "commit", "-q", "-m", "test command")
+    assert not gate_tests()["ok"]
+    (repo / "local.cfg").write_text("ok")
+    assert not gate_tests()["ok"]  # same code: the failure is reused
+    code, _ = run_json("run", "test", "--change", REF)
+    assert code == 0
+    after = gate_tests()
+    assert after["ok"] and "exit 0, same code as the run at" in after["details"][0]
+    (repo / "local.cfg").unlink()
+    code, _ = run_json("run", "test", "--change", REF)
+    assert code == 4 and not gate_tests()["ok"]  # a stale pass is replaced too
+
+
+def test_close_runs_the_commands_but_its_dry_run_reuses(counted):
+    repo, counter = counted
+    (repo / "spec/changes" / REF / "review.md").write_text("# Review\n\n## Findings\n\nNone.\n")
+    run_json("phase", "review", "--change", REF)
+    gate_tests()
+    code, data = run_json("close", "--change", REF, "--base", "main", "--dry-run")
+    assert code == 0, data
+    assert runs(counter) == 1
+    code, data = run_json("close", "--change", REF, "--base", "main")
+    assert code == 0, data
+    assert runs(counter) == 2

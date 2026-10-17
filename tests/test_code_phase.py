@@ -4,6 +4,7 @@ import json
 import re
 import sys
 
+import pytest
 from typer.testing import CliRunner
 
 from helpers import REF, run_json, write_tests
@@ -116,8 +117,26 @@ def test_removed_requirement_still_tagged_blocks_implement(project):
     tasks.write_text(tasks.read_text() + "- [x] 2.2 Remove password login (REQ-AUTH-001)\n")
     (project / "src/auth/login.py").write_text("# @req REQ-AUTH-001\n")
     code, data = run_json("gate", "code", "--change", REF)
-    assert code == 1 and checks(data)["removed requirements are gone from tests and code"]["details"] == ["REQ-AUTH-001"]
+    assert code == 1 and checks(data)["removed requirements and criteria are gone from tests and code"]["details"] == ["REQ-AUTH-001"]
 
+
+
+def test_criterion_a_modified_requirement_drops_must_lose_its_tests(project):
+    # The living REQ-AUTH-002 has AC-AUTH-002.2; the change's MODIFIED block keeps only .1.
+    living = project / "src/auth/docs/spec.md"
+    living.write_text(living.read_text() + "\n#### Scenario: AC-AUTH-002.2 Unlock by email\n- **WHEN** the user follows the email link\n- **THEN** the account is unlocked\n")
+    set_test_command(project, PASS)
+    implement_everything(project)
+    (project / "tests/test_unlock.py").write_text("# @ac AC-AUTH-002.2\ndef test_unlock(): ...\n")
+    code, data = run_json("gate", "test", "--change", REF)
+    assert code == 0 and checks(data)["removed requirements and criteria are gone from tests and code"]["details"] == ["AC-AUTH-002.2"]
+    code, data = run_json("gate", "code", "--change", REF)
+    assert code == 1 and checks(data)["removed requirements and criteria are gone from tests and code"]["details"] == ["AC-AUTH-002.2"]
+    code, data = run_json("trace", "--change", REF)
+    assert data["gaps"]["acWithoutTests"] == []  # a dropped criterion needs no test
+    (project / "tests/test_unlock.py").unlink()
+    code, data = run_json("gate", "code", "--change", REF)
+    assert code == 0, data
 
 def test_tag_scan_skips_files_too_large_or_not_text(project):
     (project / "src/auth/lockout.py").write_text("# @req REQ-AUTH-002\nLIMIT = 3\n")
@@ -125,3 +144,21 @@ def test_tag_scan_skips_files_too_large_or_not_text(project):
     (project / "src/auth/legacy.py").write_bytes("# @req REQ-AUTH-003 café\n".encode("latin-1"))  # not UTF-8: not read
     code, data = run_json("trace", "--change", REF)
     assert data["gaps"]["reqWithoutCode"] == ["REQ-AUTH-003"]
+
+
+def test_tag_scan_follows_a_symlink_to_a_file_outside_the_workspace(project, tmp_path_factory):
+    shared = tmp_path_factory.mktemp("shared") / "reset.py"
+    shared.write_text("# @req REQ-AUTH-003\n")
+    try:
+        (project / "src/auth/reset.py").symlink_to(shared)
+    except OSError:  # Windows without the symlink privilege
+        pytest.skip("cannot create symlinks here")
+    code, data = run_json("trace", "--change", REF)
+    assert "REQ-AUTH-003" not in data["gaps"]["reqWithoutCode"]
+    assert any("src/auth/reset.py:1" in code_at for row in data["rows"] for code_at in row["code"])
+
+
+def test_a_command_writing_bytes_that_are_not_text_does_not_crash_the_gate(project):
+    set_test_command(project, f'"{sys.executable}" -c "import sys; sys.stdout.buffer.write(bytes([0xff, 0xfe, 10])); sys.exit(1)"')
+    code, data = run_json("gate", "code", "--change", REF)
+    assert code == 1 and not checks(data)["the test suite passes (commands.test)"]["ok"]

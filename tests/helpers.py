@@ -1,7 +1,9 @@
 """Shared helpers for tests that need a planned change (proposal, delta spec and tasks)."""
 
 import json
+import os
 import re
+import stat
 import subprocess
 import sys
 
@@ -70,3 +72,20 @@ def make_repo(project, monkeypatch):
     git(project, "commit", "-q", "-m", "implement")
     run_json("task", "done", "1.1", "1.2", "--change", REF)
     return project
+
+
+def fake_executable(folder, name, script):
+    """A program ``folder/name`` that runs the Python ``script`` with this interpreter, on any OS.
+
+    POSIX runs a shebang file; Windows does not, so there it is a ``name.cmd`` wrapper.
+    """
+    source = folder / f"{name}.py"
+    source.write_text(script)
+    if os.name == "nt":
+        program = folder / f"{name}.cmd"
+        program.write_text(f'@"{sys.executable}" "{source}" %*\r\n@exit /b %errorlevel%\r\n')
+    else:
+        program = folder / name
+        program.write_text(f"#!{sys.executable}\n" + script)
+        program.chmod(program.stat().st_mode | stat.S_IEXEC)
+    return program
