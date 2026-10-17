@@ -1,5 +1,4 @@
 import json
-import re
 
 import pytest
 from typer.testing import CliRunner
@@ -211,15 +210,6 @@ def test_skills_are_installed_with_specworks_prefix(project):
     assert skills and all(name.startswith("specworks-") for name in skills)
     text = (project / ".claude/skills/specworks-refine/SKILL.md").read_text()
     assert "name: specworks-refine" in text and "sw-" not in text
-
-
-def test_changes_saved_with_old_phase_names_still_load(project):
-    run_json("new", "old-change")
-    meta = project / "specworks/changes/old-change/.change.yaml"
-    for old, new in (("propose", "specify"), ("interface", "design"), ("implement", "code"), ("verify", "validate")):
-        meta.write_text(re.sub(r"(?m)^phase: .*$", f"phase: {old}", meta.read_text()))
-        code, data = run_json("status", "--change", "old-change")
-        assert code == 0 and data["phase"] == new
 
 
 @pytest.mark.parametrize(

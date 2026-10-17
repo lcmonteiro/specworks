@@ -13,7 +13,7 @@ from ..core.config import DEFAULT_DIR, Config, ConfigError, config_name, find_co
 from ..core.config_file import add_capability_entry, add_module_entry, write_default_config
 from ..core.workspace import Workspace, capability_prefix, load_module_config, load_workspace, require_workspace
 from ..specs.capabilities import capability_ref, describe
-from ..tools.skills import install_skills, parse_tools, remove_renamed_skills
+from ..tools.skills import install_skills, parse_tools
 from .app import app, capability_app, module_app
 from .output import AllOpt, JsonOpt, ToolsOpt, change_dict, changes_of, emit, fail, missing_dicts, module_dict, workspace
 
@@ -28,8 +28,6 @@ def write_skills(ws: Workspace, tools: str) -> None:
     typer.echo(f"tools   {', '.join(t.label for t in selected)}")
     for written in install_skills(ws.root, selected):
         typer.echo(f"skill   {ws.rel(written)}")
-    for removed in remove_renamed_skills(ws.root, selected):
-        typer.echo(f"removed {ws.rel(removed)} (renamed skill)")
 
 
 def ensure_module_config(root: Path, name: str, workspace_dir: str) -> tuple[Config, bool]:
