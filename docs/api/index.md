@@ -1,9 +1,8 @@
 # Python API
 
 The `specworks` package, module by module, generated from its docstrings. The
-CLI is a thin layer (`specworks.cli`) over these modules; the
-[README's code layout](https://github.com/lcmonteiro/specworks#development)
-explains how they fit.
+CLI is a thin layer (`specworks.cli`) over these modules; the code layout in
+{doc}`../development` explains how they fit.
 
 | Package | What it holds |
 |---|---|

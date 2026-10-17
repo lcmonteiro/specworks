@@ -79,3 +79,9 @@ The dashed arrows in the workflow diagram are the ways back:
   design: small, local ones are applied there with you, larger ones go back to
   `code`, `specify` or `design`.
 - A failing `validate` names the phase that fixes each problem.
+
+The workflow diagram on the {doc}`home page <../index>` shows every transition
+the skills and gates use: solid arrows move forward when a phase's gate passes,
+the upper dashed lane goes back to `specify`, and the lower one to the phase
+that fixes a problem. It is a hand-written SVG (`docs/diagrams/workflow.svg`),
+with light and dark colours; edit it directly.
