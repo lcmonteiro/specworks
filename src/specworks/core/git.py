@@ -1,7 +1,5 @@
 """Running git: its output as bytes or text, and one error for a missing git or a failed command."""
 
-from __future__ import annotations
-
 import subprocess
 from pathlib import Path
 
