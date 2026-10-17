@@ -242,3 +242,34 @@ def ac_parent(ac_id: str) -> str | None:
 def find_ids(text: str) -> list[str]:
     """Every REQ-/AC- ID mentioned in ``text``, in order of appearance."""
     return [m.group(0) for m in ANY_ID_RE.finditer(text)]
+
+
+def living_problems(doc: SpecDoc) -> list[tuple[int, str]]:
+    """(line, message) for each way a living spec is not one ``close`` can merge into or index."""
+    problems = list(doc.problems)
+    seen: dict[str, int] = {}
+
+    def once(any_id: str, line: int) -> None:
+        if any_id in seen:
+            problems.append((line, f"{any_id} is used twice (line {seen[any_id]})"))
+        seen.setdefault(any_id, line)
+
+    for req in doc.requirements:
+        if req.section != LIVING_SECTION:
+            problems.append((req.line, f"requirement outside '## {LIVING_SECTION}'"))
+        if req.id is None:
+            problems.append((req.line, "requirement header has no 'REQ-<prefix>-NNN' ID"))
+            continue
+        once(req.id, req.line)
+        if not NORMATIVE_RE.search(req.description):
+            problems.append((req.line, f"{req.id}: state the requirement with SHALL or MUST"))
+        if not req.scenarios:
+            problems.append((req.line, f"{req.id} has no '#### Scenario: AC-...' (acceptance criterion)"))
+        for sc in req.scenarios:
+            if sc.id is None:
+                problems.append((sc.line, f"scenario of {req.id} has no 'AC-<prefix>-NNN.<n>' ID"))
+                continue
+            once(sc.id, sc.line)
+            if ac_parent(sc.id) != req.id:
+                problems.append((sc.line, f"{sc.id} is under {req.id}"))
+    return sorted(problems)

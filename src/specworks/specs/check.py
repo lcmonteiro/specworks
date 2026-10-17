@@ -11,7 +11,7 @@ from ..core.files import read_text
 from ..core.workspace import Workspace
 from ..tools.diagrams import diagrams_in, referenced_images, state
 from .capabilities import SPECS_DIR, CapabilityRef, delta_files, modified_since, read_spec, resolve_delta, retired_ids
-from .specfile import DELTA_SECTIONS, LIVING_SECTION, NORMATIVE_RE, Requirement, Scenario, SpecDoc, ac_parent, h2_titles, parse_spec
+from .specfile import DELTA_SECTIONS, LIVING_SECTION, NORMATIVE_RE, Requirement, Scenario, SpecDoc, ac_parent, h2_titles, living_problems, parse_spec
 from .tasks import TASKS_FILE, Task, parse_tasks
 
 PROPOSAL_FILE, DESIGN_FILE = "proposal.md", "design.md"
@@ -160,6 +160,10 @@ def _check_delta(ws: Workspace, change: Change, delta: Delta, seen: dict[str, st
         err(0, "no requirements; add '## ADDED Requirements' (or MODIFIED / REMOVED) with '### Requirement:' blocks")
     if any(r.section == LIVING_SECTION for r in doc.requirements):
         err(0, "a delta spec uses '## ADDED/MODIFIED/REMOVED Requirements', not '## Requirements'")
+
+    if delta.living is not None and (living_path := cap.living_spec()) is not None:
+        for line, message in living_problems(delta.living):
+            issues.append(Issue("warning", ws.rel(living_path), line, f"living spec of {cap.ref}: {message}; fix it before closing"))
 
     living_ids = set(delta.living.by_id()) if delta.living else set()
     if delta.living is None:

@@ -79,7 +79,7 @@ def spec_show(
         f"  delta:     {data['deltaPath']}",
         f"  living:    {data['livingSpec'] or '-'}",
     ]
-    lines += [f"  {r['id']}  {r['title']}" for r in data["requirements"]]
+    lines += [f"  {r['id'] or '(no ID)'}  {r['title']}" for r in data["requirements"]]
     emit(data, as_json, "\n".join(lines))
 
 
