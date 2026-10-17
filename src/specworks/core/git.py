@@ -1,7 +1,7 @@
 """Running git: its output as bytes or text, and one error for a missing git or a failed command."""
 
-import subprocess
 from pathlib import Path
+from subprocess import run
 
 from .errors import SpecworksError
 
@@ -12,7 +12,7 @@ class GitError(SpecworksError):
 
 def git(cwd: Path, *args: str) -> bytes:
     try:
-        proc = subprocess.run(["git", *args], cwd=cwd, capture_output=True, check=False)
+        proc = run(["git", *args], cwd=cwd, capture_output=True, check=False)
     except OSError as exc:
         raise GitError(f"cannot run git: {exc}") from None
     if proc.returncode != 0:
