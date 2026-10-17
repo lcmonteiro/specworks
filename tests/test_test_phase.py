@@ -73,12 +73,12 @@ def checks(data):
     return {c["name"]: c for c in data["checks"]}
 
 
-def test_propose_gate_passes_for_a_complete_plan(project):
+def test_specify_gate_passes_for_a_complete_plan(project):
     code, data = run_json("gate", "specify", "--change", REF)
     assert code == 0 and data["passed"] is True
 
 
-def test_propose_gate_fails_without_tasks(project):
+def test_specify_gate_fails_without_tasks(project):
     (project / "spec/changes" / REF / "tasks.md").unlink()
     code, data = run_json("gate", "specify", "--change", REF)
     assert code == 1 and checks(data)["tasks.md is written"]["ok"] is False
@@ -126,9 +126,27 @@ def test_unknown_gate(project):
     assert code == 1 and "no gate for phase 'deploy'" in data["error"]
 
 
-def test_propose_gate_reports_a_criterion_without_a_task_once(project):
+def test_specify_gate_reports_a_criterion_without_a_task_once(project):
     tasks = project / "spec/changes" / REF / "tasks.md"
     tasks.write_text("\n".join(line for line in tasks.read_text().splitlines() if "AUTH-003" not in line) + "\n")
     code, data = run_json("gate", "specify", "--change", REF)
     details = [d for c in data["checks"] for d in c["details"] if "AC-AUTH-003.1" in d]
     assert code == 1 and len(details) == 1 and "is not covered by any task" in details[0]
+
+
+def test_a_tag_no_capability_owns_is_a_warning(project):
+    write_tests(project, "AC-AUTH-003.1", "AC-AUTH-003.2", "AC-AUTH-002.1", "AC-AUHT-003.1")
+    code, data = run_json("gate", "test", "--change", REF)
+    stray = checks(data)["every tag's ID prefix belongs to a capability (a typo, or a deleted capability)"]
+    assert code == 0 and stray["blocking"] is False and stray["details"][0].startswith("AC-AUHT-003.1 at tests/")
+    code, data = run_json("trace", "--change", REF)
+    assert [t["id"] for t in data["strayTags"]] == ["AC-AUHT-003.1"]
+
+
+def test_tags_of_a_new_capability_in_a_change_are_not_stray(project):
+    delta = project / "spec/changes" / REF / "specs/exports/spec.md"
+    delta.parent.mkdir(parents=True)
+    delta.write_text("## ADDED Requirements\n\n### Requirement: REQ-EXPORTS-001 Export\nThe system SHALL export.\n")
+    write_tests(project, "AC-AUTH-003.1", "AC-AUTH-003.2", "AC-AUTH-002.1", "AC-EXPORTS-001.1")
+    code, data = run_json("trace", "--change", REF)
+    assert data["strayTags"] == []

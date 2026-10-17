@@ -94,7 +94,12 @@ The system SHALL email a single-use reset link valid for 30 minutes.
 - `test_globs` / `source_globs` (in the config, relative to its folder) choose the
   files scanned for tags: `*` and `?` stay within one folder, `**` spans any number
   of folders (`tests/**/*.py` includes `tests/test_x.py`; `src/*` does not include
-  `src/auth/x.py`, `src/**` does).
+  `src/auth/x.py`, `src/**` does). Without them, tests are found by name
+  (`test_x.py`, `x.test.ts`, `tests/`, ...) and code by extension (`.py`, `.ts`,
+  `.go`, ...); `source_globs` may name files of any type. Files git ignores
+  (build output, coverage reports) are never scanned.
+- A tag whose prefix belongs to no capability (a typo such as `REQ-AUHT-003`) is
+  reported as a warning by the test, code and review gates and by validate.
 - `check` also warns when a `MODIFIED` block drops acceptance criteria the living
   spec has, and when a close recorded in `requirements.md` modified the
   requirement after this change started (re-copy the block, or closing undoes
@@ -242,7 +247,10 @@ files work in several tools:
 already uses (`.claude/`, `CLAUDE.md`, `.github/copilot-instructions.md`,
 `.github/prompts/`, ...) and for all of them when none is found. Use
 `--tools copilot`, `--tools claude,copilot` or `--tools all` to choose.
-`specworks skills` re-installs them, e.g. after upgrading specworks.
+`specworks skills` re-installs them, e.g. after upgrading specworks. Each
+installed file carries a `specworks:generated` stamp: a file you edited by hand
+is kept (`specworks skills --force` replaces it), and `specworks context` lists
+under `outdatedSkills` the installed files that differ from this version.
 
 The skills call the `specworks` CLI from the terminal, so the agent needs
 terminal access (Copilot agent mode, Claude Code).

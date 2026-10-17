@@ -126,15 +126,16 @@ def no_unknown_tags(ctx: GateContext) -> Check:
     return _listed("no tag refers to an unknown requirement or criterion", [t.at for t in ctx.analysis.unknown_tags])
 
 
+def tags_have_known_prefix(ctx: GateContext) -> Check:
+    """A warning: a tag no capability owns is never counted as code or a test of anything."""
+    stray = [t.at for t in ctx.analysis.stray_tags]
+    return _listed("every tag's ID prefix belongs to a capability (a typo, or a deleted capability)", stray, blocking=False)
+
+
 def acs_in_test_files(ctx: GateContext) -> Check:
-    ids_ = change_ids(ctx)
-    misplaced = [t.at for t in ctx.analysis.tags if t.kind == "ac" and not t.is_test and t.id in ids_]
+    ids = ctx.analysis.specs.delta_ids()
+    misplaced = [t.at for t in ctx.analysis.tags if t.kind == "ac" and not t.is_test and t.id in ids]
     return _listed("@ac tags are in test files (configure test_globs if your tests live elsewhere)", misplaced, blocking=False)
-
-
-def change_ids(ctx: GateContext) -> set[str]:
-    """Every requirement and acceptance-criterion ID in the change's delta specs."""
-    return {i for d in ctx.analysis.specs.deltas for i in d.doc.ids()}
 
 
 # --- review.md -----------------------------------------------------------------

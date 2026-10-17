@@ -56,6 +56,7 @@ VALIDATE: list[tuple[str, str, CheckFn]] = [
     (CORRECTNESS, CODE, c.optional_command("lint", "lint passes (commands.lint)")),
     (CORRECTNESS, CODE, c.optional_command("typecheck", "typecheck passes (commands.typecheck)")),
     (CORRECTNESS, REVIEW, c.no_unknown_tags),
+    (CORRECTNESS, CODE, c.tags_have_known_prefix),
     (CORRECTNESS, CODE, c.removed_gone),
     # Coherence: code, specs, review and design tell the same story.
     (COHERENCE, REVIEW, c.files_accounted),

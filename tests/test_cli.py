@@ -1,5 +1,4 @@
 import json
-import re
 
 import pytest
 from typer.testing import CliRunner
@@ -98,17 +97,10 @@ def test_phase_moves_and_validates(project):
     assert code == 1
 
 
-@pytest.mark.parametrize(
-    "args, hint",
-    [
-        (["add-login", "specify"], "specworks phase specify --change add-login"),  # the order before --change
-        (["specify"], "specworks phase specify --change <ref>"),
-    ],
-)
-def test_phase_takes_the_change_like_start_and_gate(project, args, hint):
+def test_phase_needs_the_change_like_start_and_gate(project):
     run_json("new", "add-login")
-    code, data = run_json("phase", *args)
-    assert code == 1 and hint in data["error"]
+    result = runner.invoke(app, ["phase", "specify"])
+    assert result.exit_code == 2 and "--change" in result.output
 
 
 def test_only_close_makes_a_change_done(project):
@@ -151,13 +143,6 @@ def test_two_configs_in_one_folder_is_an_error(project):
     assert code == 1 and "several specworks configs" in data["error"]
 
 
-def test_old_dir_key_is_rejected(project):
-    cfg = project / "specworks.yml"
-    cfg.write_text(cfg.read_text() + "dir: spec\n")
-    code, data = run_json("context")
-    assert code == 1 and "'dir' is no longer a setting" in data["error"]
-
-
 @pytest.mark.parametrize(
     "setting, message",
     [
@@ -167,6 +152,8 @@ def test_old_dir_key_is_rejected(project):
         ("source_globs: [src/**, 3]", "'source_globs' must be a list of glob strings"),
         ("docs_dir: ../../outside", "'docs_dir' must be a relative folder inside the project"),
         ("docs_dir: /etc", "'docs_dir' must be a relative folder inside the project"),
+        ("docs_dir: C:/docs", "'docs_dir' must be a relative folder inside the project"),
+        ("docs_dir: //server/share", "'docs_dir' must be a relative folder inside the project"),
         ("docs_dir: 3", "'docs_dir' must be a non-empty folder name"),
         ("capabilities:\n  user-auth:\n    path: null", "capability 'user-auth' needs a 'path'"),
         ("capabilities:\n  user-auth:\n    path: src/auth\n    prefx: AUTH", "capability 'user-auth' has unknown keys: prefx"),
@@ -211,15 +198,6 @@ def test_skills_are_installed_with_specworks_prefix(project):
     assert skills and all(name.startswith("specworks-") for name in skills)
     text = (project / ".claude/skills/specworks-refine/SKILL.md").read_text()
     assert "name: specworks-refine" in text and "sw-" not in text
-
-
-def test_changes_saved_with_old_phase_names_still_load(project):
-    run_json("new", "old-change")
-    meta = project / "specworks/changes/old-change/.change.yaml"
-    for old, new in (("propose", "specify"), ("interface", "design"), ("implement", "code"), ("verify", "validate")):
-        meta.write_text(re.sub(r"(?m)^phase: .*$", f"phase: {old}", meta.read_text()))
-        code, data = run_json("status", "--change", "old-change")
-        assert code == 0 and data["phase"] == new
 
 
 @pytest.mark.parametrize(

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import re
-from pathlib import PurePosixPath
+from pathlib import PurePosixPath, PureWindowsPath
 
 from .errors import ConfigError
 
@@ -17,7 +17,8 @@ def validate_relative(value: object, what: str) -> str:
     if not isinstance(value, str) or not value.strip():
         raise ConfigError(f"{what} must be a non-empty folder name")
     path = PurePosixPath(value.strip().replace("\\", "/"))
-    if path.is_absolute() or ".." in path.parts or str(path) == ".":
+    # A drive (C:/x, C:x) or UNC share (//server/share) is absolute on Windows, which PurePosixPath cannot see.
+    if path.is_absolute() or PureWindowsPath(value.strip()).anchor or ".." in path.parts or str(path) == ".":
         raise ConfigError(f"{what} must be a relative folder inside the project, got '{value}'")
     return str(path)
 

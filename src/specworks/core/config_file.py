@@ -45,8 +45,9 @@ modules: {}
 
 # Globs used by `specworks trace` to find tests and source files, relative to
 # this file's folder; they apply to this project's files, not to its modules'.
-# Empty means "scan everything that is not in the workflow folder", except
-# documentation (.md, .rst, .txt, ...): a tag quoted in a doc is not code or a test.
+# Empty means tests are found by name (test_x.py, x.test.ts, tests/, ...) and
+# code by extension (.py, .ts, .go, ...); source_globs may name files of any type.
+# Files git ignores (build output, coverage reports) and docs are never code.
 # In a glob * and ? stay within one folder and ** spans any number of folders,
 # e.g. test_globs: ["tests/**/*.py"] or source_globs: ["src/**"].
 test_globs: []

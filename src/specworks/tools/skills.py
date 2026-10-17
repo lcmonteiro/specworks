@@ -10,6 +10,7 @@ Skills follow the Agent Skills format (``<name>/SKILL.md`` with ``name`` and
 
 from __future__ import annotations
 
+import hashlib
 import re
 from dataclasses import dataclass, field
 from importlib import resources
@@ -69,13 +70,22 @@ def packaged_skills() -> list[str]:
 # Text several skills share lives once in skills/_shared/<name>.md; a skill marks where it
 # goes with a line ``<!-- specworks:include <name> -->``, filled in when the skill is read.
 INCLUDE_RE = re.compile(r"^<!-- specworks:include (?P<name>[a-z0-9-]+) -->\n", re.MULTILINE)
+# Every skill pre-approves the same ways of running the CLI (see _shared/running-cli.md):
+# ``allowed-tools: SPECWORKS_CLI, Read, ...`` in a packaged skill.
+CLI_TOOLS_TOKEN = "SPECWORKS_CLI"
+CLI_TOOLS = "Bash(specworks:*), Bash(uv run specworks:*), Bash(uvx --from git+https://github.com/lcmonteiro/specworks specworks:*)"
+# Each installed file carries the hash of what was written, so a later install can tell a file
+# the user edited (kept, unless --force) from one it wrote (replaced).
+STAMP = "<!-- specworks:generated sha256={} -->\n"
+STAMP_RE = re.compile(r"^<!-- specworks:generated sha256=(?P<hash>[0-9a-f]{64}) -->\n", re.MULTILINE)
 
 
 def read_skill(name: str) -> str:
-    """A packaged skill's SKILL.md with its shared parts filled in."""
+    """A packaged skill's SKILL.md with its shared parts and CLI tools filled in."""
     skills = resources.files("specworks").joinpath("skills")
     text = skills.joinpath(name, "SKILL.md").read_text(encoding="utf-8")
-    return INCLUDE_RE.sub(lambda m: skills.joinpath("_shared", f"{m.group('name')}.md").read_text(encoding="utf-8"), text)
+    text = INCLUDE_RE.sub(lambda m: skills.joinpath("_shared", f"{m.group('name')}.md").read_text(encoding="utf-8"), text)
+    return text.replace(CLI_TOOLS_TOKEN, CLI_TOOLS)
 
 
 def split_frontmatter(text: str) -> tuple[list[tuple[str, str]], str]:
@@ -100,6 +110,35 @@ def render_prompt(text: str) -> str:
     return f"---\n{description}\nagent: agent\n---\n{body}"
 
 
+def _digest(text: str) -> str:
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def stamp(text: str) -> str:
+    """``text`` with the generated-file stamp right after its frontmatter (which must stay first)."""
+    match = FRONTMATTER_RE.match(text)
+    at = match.end() if match else 0
+    return text[:at] + STAMP.format(_digest(text)) + text[at:]
+
+
+def is_edited(text: str) -> bool:
+    """An installed file whose content no longer matches its stamp; an unstamped file is an older install, not an edit."""
+    match = STAMP_RE.search(text)
+    return match is not None and _digest(text[: match.start()] + text[match.end() :]) != match.group("hash")
+
+
+def rendered_skills(root: Path, tools: list[Tool]) -> list[tuple[Path, str]]:
+    """Every file installing the packaged skills for ``tools`` writes at ``root``, with its content."""
+    files = []
+    for name in packaged_skills():
+        text = read_skill(name)
+        for tool in tools:
+            files.append((root / tool.skills_dir / name / "SKILL.md", stamp(render_skill(text, tool))))
+            if tool.prompts_dir:
+                files.append((root / tool.prompts_dir / f"{name}.prompt.md", stamp(render_prompt(text))))
+    return files
+
+
 def parse_tools(value: str, root: Path) -> list[Tool]:
     """``auto`` (default), ``all`` or a comma list such as ``claude,copilot``.
 
@@ -122,39 +161,28 @@ def parse_tools(value: str, root: Path) -> list[Tool]:
     return tools
 
 
-# Skills from before the phase rename (propose/interface/implement/verify); installing removes them.
-RENAMED_SKILLS = ("specworks-propose", "specworks-interface", "specworks-implement", "specworks-verify")
+def install_skills(root: Path, tools: list[Tool], force: bool = False) -> tuple[list[Path], list[Path]]:
+    """Write every packaged skill (and Copilot prompt files) for ``tools``: (written, kept because the user edited them).
+
+    ``force`` replaces edited files too.
+    """
+    written, kept = [], []
+    for dest, text in rendered_skills(root, tools):
+        if not force and dest.is_file() and is_edited(dest.read_text(encoding="utf-8", errors="replace")):
+            kept.append(dest)
+            continue
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_text(text, encoding="utf-8")
+        written.append(dest)
+    return written, kept
 
 
-def remove_renamed_skills(root: Path, tools: list[Tool]) -> list[Path]:
-    """Delete the old skill files specworks installed under its former names; return what was removed."""
-    removed = []
-    for tool in tools:
-        for name in RENAMED_SKILLS:
-            skill = root / tool.skills_dir / name / "SKILL.md"
-            prompt = root / tool.prompts_dir / f"{name}.prompt.md" if tool.prompts_dir else None
-            for path in (skill, prompt):
-                if path is not None and path.is_file():
-                    path.unlink()
-                    removed.append(path)
-            if skill.parent.is_dir() and not any(skill.parent.iterdir()):
-                skill.parent.rmdir()
-    return removed
-
-
-def install_skills(root: Path, tools: list[Tool]) -> list[Path]:
-    """Write every packaged skill (and Copilot prompt files) for ``tools``; return written files."""
-    written = []
-    for tool in tools:
-        for name in packaged_skills():
-            text = read_skill(name)
-            dest = root / tool.skills_dir / name / "SKILL.md"
-            dest.parent.mkdir(parents=True, exist_ok=True)
-            dest.write_text(render_skill(text, tool), encoding="utf-8")
-            written.append(dest)
-            if tool.prompts_dir:
-                prompt = root / tool.prompts_dir / f"{name}.prompt.md"
-                prompt.parent.mkdir(parents=True, exist_ok=True)
-                prompt.write_text(render_prompt(text), encoding="utf-8")
-                written.append(prompt)
-    return written
+def outdated_skills(root: Path) -> list[Path]:
+    """Installed skill files (of any tool) that `specworks skills` would replace: they differ from what this
+    version of specworks installs and were not edited by hand (those are the user's now)."""
+    outdated = []
+    for dest, text in rendered_skills(root, list(TOOLS.values())):
+        current = dest.read_text(encoding="utf-8", errors="replace") if dest.is_file() else text
+        if current != text and not is_edited(current):
+            outdated.append(dest)
+    return outdated

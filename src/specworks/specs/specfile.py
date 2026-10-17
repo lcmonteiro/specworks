@@ -40,6 +40,7 @@ DELTA_SECTIONS = ("ADDED", "MODIFIED", "REMOVED")
 LIVING_SECTION = "Requirements"
 NORMATIVE_RE = re.compile(r"\b(SHALL|MUST)\b")
 COMMENT_RE = re.compile(r"<!--.*?-->", re.DOTALL)
+FENCE_RE = re.compile(r"^\s*(?P<fence>`{3,}|~{3,})(?P<info>.*)$")
 
 
 @dataclass
@@ -117,13 +118,29 @@ def section_kind(title: str) -> str | None:
     return None
 
 
+def strip_comments(text: str) -> str:
+    """``text`` without HTML comments (template hints); each comment keeps its line breaks, so line numbers stay."""
+    return COMMENT_RE.sub(lambda m: "\n" * m.group(0).count("\n"), text)
+
+
 def fenced(lines: list[str]) -> list[bool]:
-    """For each line, whether it belongs to a ``` code fence (the fence lines included): examples, not structure."""
-    flags, inside = [], False
+    """For each line, whether it belongs to a code fence (the fence lines included): examples, not structure.
+
+    A fence opens with ``` or ~~~ (three or more) and closes with a bare run of the same
+    character at least as long, so a ``` inside a ~~~~ fence is text.
+    """
+    flags, opened = [], ""
     for line in lines:
-        is_fence = line.lstrip().startswith("```")
-        inside ^= is_fence
-        flags.append(inside or is_fence)
+        match = FENCE_RE.match(line)
+        if not opened:
+            # A backtick fence's info string cannot hold a backtick (``` `code` ``` is inline code).
+            if match and not (match["fence"][0] == "`" and "`" in match["info"]):
+                opened = match["fence"]
+            flags.append(bool(opened))
+        else:
+            flags.append(True)
+            if match and match["fence"][0] == opened[0] and len(match["fence"]) >= len(opened) and not match["info"].strip():
+                opened = ""
     return flags
 
 
@@ -134,7 +151,7 @@ def parse_spec(text: str) -> SpecDoc:
     req: Requirement | None = None
     scenario: Scenario | None = None
     # HTML comments (template hints) are not part of a spec: blank them out, keeping line numbers.
-    lines = COMMENT_RE.sub(lambda m: "\n" * m.group(0).count("\n"), text).splitlines()
+    lines = strip_comments(text).splitlines()
     in_fence = fenced(lines)
 
     def close_block(last: int) -> None:

@@ -1,8 +1,10 @@
 """Gates reuse the result of a project command run on an identical working tree."""
 
 import json
+import os
 import re
 import sys
+from pathlib import Path
 
 import pytest
 
@@ -143,3 +145,28 @@ def test_close_runs_the_commands_but_its_dry_run_reuses(counted):
     code, data = run_json("close", "--change", REF, "--base", "main")
     assert code == 0, data
     assert runs(counter) == 2
+
+
+def test_an_untracked_name_that_is_not_utf8_is_fingerprinted(counted):
+    repo, counter = counted
+    try:
+        open(os.fsencode(repo) + b"/notes-\xff.py", "wb").close()
+    except (OSError, ValueError):
+        pytest.skip("the file system only takes UTF-8 names")
+    gate_tests(), gate_tests()
+    assert runs(counter) == 1
+
+
+def test_an_unreadable_untracked_file_means_a_real_run(counted, monkeypatch):
+    repo, counter = counted
+    (repo / "src/auth/locked.py").write_text("a = 1\n")
+    real = Path.read_bytes
+
+    def read_bytes(self):
+        if self.name == "locked.py":
+            raise PermissionError(13, "Permission denied")
+        return real(self)
+
+    monkeypatch.setattr(Path, "read_bytes", read_bytes)
+    first, second = gate_tests(), gate_tests()
+    assert runs(counter) == 2 and first["ok"] and second["ok"]

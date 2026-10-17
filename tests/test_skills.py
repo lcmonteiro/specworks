@@ -1,3 +1,4 @@
+import json
 import re
 import shlex
 from importlib import resources
@@ -98,22 +99,6 @@ def test_module_init_installs_skills_at_workspace_root(tmp_path, monkeypatch):
     init(tmp_path, monkeypatch, "--tools", "copilot")
     runner.invoke(app, ["init", "services/billing", "--tools", "copilot"])
     assert not (tmp_path / "services/billing/.github").exists()
-
-
-def test_skills_renamed_in_the_phase_rename_are_removed(tmp_path, monkeypatch):
-    init(tmp_path, monkeypatch, "--tools", "all")
-    old = [tmp_path / ".claude/skills/specworks-propose/SKILL.md", tmp_path / ".github/skills/specworks-verify/SKILL.md"]
-    prompt = tmp_path / ".github/prompts/specworks-implement.prompt.md"
-    kept = tmp_path / ".claude/skills/specworks-interface/notes.md"  # not ours: the folder stays
-    for path in [*old, prompt, kept]:
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text("old")
-    result = runner.invoke(app, ["skills", "--tools", "all"])
-    assert result.exit_code == 0, result.output
-    assert "removed .claude/skills/specworks-propose/SKILL.md (renamed skill)" in result.output
-    assert not any(p.exists() for p in old) and not prompt.exists()
-    assert not (tmp_path / ".claude/skills/specworks-propose").exists() and kept.is_file()
-    assert (tmp_path / ".claude/skills/specworks-specify/SKILL.md").is_file()
 
 
 def test_installed_skills_have_their_shared_parts_filled_in(tmp_path, monkeypatch):
@@ -244,3 +229,43 @@ def test_skills_only_show_cli_calls_that_exist():
 )
 def test_the_skill_call_check_catches_drift(call, problem):
     assert problem in call_problems(call)
+
+
+def test_a_skill_edited_by_hand_is_kept_unless_forced(tmp_path, monkeypatch):
+    init(tmp_path, monkeypatch, "--tools", "claude")
+    edited = tmp_path / f".claude/skills/{SKILL}/SKILL.md"
+    edited.write_text(edited.read_text() + "\nOur own note.\n")
+    result = runner.invoke(app, ["skills", "--tools", "claude"])
+    assert result.exit_code == 0 and f"kept    .claude/skills/{SKILL}/SKILL.md (edited by hand" in result.output
+    assert "Our own note." in edited.read_text()
+    result = runner.invoke(app, ["skills", "--tools", "claude", "--force"])
+    assert result.exit_code == 0 and "Our own note." not in edited.read_text()
+
+
+def test_an_unstamped_skill_from_an_older_install_is_replaced(tmp_path, monkeypatch):
+    init(tmp_path, monkeypatch, "--tools", "claude")
+    old = tmp_path / f".claude/skills/{SKILL}/SKILL.md"
+    old.write_text("---\nname: old\n---\nold body\n")
+    assert runner.invoke(app, ["skills", "--tools", "claude"]).exit_code == 0
+    assert "old body" not in old.read_text() and "specworks:generated sha256=" in old.read_text()
+
+
+def test_context_reports_skills_that_differ_from_this_version(tmp_path, monkeypatch):
+    init(tmp_path, monkeypatch, "--tools", "all")
+    result = runner.invoke(app, ["context", "--json"])
+    assert json.loads(result.output)["outdatedSkills"] == []
+    stale = tmp_path / f".github/prompts/{SKILL}.prompt.md"
+    stale.write_text("---\ndescription: old\n---\nold\n")
+    data = json.loads(runner.invoke(app, ["context", "--json"]).output)
+    assert data["outdatedSkills"] == [f".github/prompts/{SKILL}.prompt.md"]
+    assert "run `specworks skills`" in runner.invoke(app, ["context"]).output
+    edited = tmp_path / f".claude/skills/{SKILL}/SKILL.md"
+    edited.write_text(edited.read_text() + "\nOur own note.\n")  # kept by `specworks skills`, so not reported
+    assert json.loads(runner.invoke(app, ["context", "--json"]).output)["outdatedSkills"] == [f".github/prompts/{SKILL}.prompt.md"]
+
+
+def test_every_skill_takes_its_cli_tools_from_one_place():
+    for name in packaged_skills():
+        source = resources.files("specworks").joinpath("skills", name, "SKILL.md").read_text(encoding="utf-8")
+        assert re.search(r"^allowed-tools: SPECWORKS_CLI\b", source, re.MULTILINE), name
+        assert "SPECWORKS_CLI" not in read_skill(name)

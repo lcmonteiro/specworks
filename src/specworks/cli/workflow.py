@@ -9,7 +9,7 @@ import typer
 from ..core.changes import PHASES
 from ..core.runner import cached_run
 from ..specs.merge import archive_target, close_change, plan_merge
-from ..specs.trace import Analysis
+from ..specs.trace import GAP_LABELS, Analysis
 from ..workflow.checks import Check, GateContext, passed
 from ..workflow.cycle import next_cycle
 from ..workflow.gate import GATES, run_gate, start_phase
@@ -90,12 +90,10 @@ def review(
     report = review_change(Analysis(ws, ch), base)
     data = {**change_dict(ws, mod, ch), **report.to_dict()}
     labels = {
-        "reqWithoutCode": "requirements without code (@req)",
-        "acWithoutTests": "acceptance criteria without tests (@ac)",
-        "removedStillTagged": "removed requirements or criteria still tagged",
-        "unknownTags": "tags to unknown IDs",
-        "untracedSource": "changed code files without @req tags",
-        "untracedTests": "changed test files without @ac tags",
+        **GAP_LABELS,
+        "unknownTags": "Tags to unknown IDs",
+        "untracedSource": "Changed code files without `@req` tags",
+        "untracedTests": "Changed test files without `@ac` tags",
     }
     lines = [f"base: {report.base or '-'}"] + ([f"note: {report.note}"] if report.note else [])
     lines += [f"spec error: {e}" for e in report.spec_errors]

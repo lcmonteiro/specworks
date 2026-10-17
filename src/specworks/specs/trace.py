@@ -12,9 +12,11 @@ it matches the module's ``test_globs`` or, when none are set, when its name or
 folder looks like a test (``test_x.py``, ``x_test.go``, ``x.test.ts``,
 ``x.spec.js``, ``x_spec.rb``, ``tests/``, ``__tests__/``...).
 
-Tests are always scanned; ``source_globs``, when set, limit the other files. Without ``source_globs``, documentation (``.md``,
-``.rst``, ``.txt``, ...) is not scanned: a tag quoted in a README or a note is
-not code or a test. Globs that name such files scan them.
+Tests are always scanned (except documentation: ``.md``, ``.rst``, ``.txt``, ...,
+unless ``test_globs`` name it); ``source_globs``, when set, choose the other files,
+of any type. Without ``source_globs`` only code files (``CODE_EXTENSIONS``) are:
+a tag quoted in a README, a note or a generated report is not code.
+Files git ignores (build output, coverage reports, ...) are never scanned.
 
 Globs follow the usual rules: ``*`` and ``?`` stay within one folder, ``**``
 spans any number of folders (``tests/**/*.py`` includes ``tests/test_x.py``).
@@ -30,7 +32,9 @@ from functools import cached_property
 from pathlib import Path
 
 from ..core.changes import Change
+from ..core.git import GitError, git, split_z
 from ..core.workspace import Module, Workspace
+from .capabilities import known_prefixes
 from .check import ChangeSpecs, Issue, check_change
 from .specfile import id_prefix
 
@@ -43,6 +47,12 @@ TEST_DIRS = {"test", "tests", "__tests__", "testing"}
 TEST_NAME_RE = re.compile(r"(^test_|_test\.|\.test\.|\.spec\.|Test\.|Tests\.|_spec\.)")
 MAX_FILE_BYTES = 1_000_000
 DOC_EXTENSIONS = {".md", ".markdown", ".mdx", ".rst", ".txt", ".adoc", ".asciidoc", ".org"}
+CODE_EXTENSIONS = {
+    ".py", ".pyi", ".js", ".jsx", ".mjs", ".cjs", ".ts", ".tsx", ".go", ".rs", ".java", ".kt", ".kts",
+    ".scala", ".c", ".h", ".cc", ".cpp", ".cxx", ".hh", ".hpp", ".hxx", ".cs", ".fs", ".rb", ".php",
+    ".swift", ".m", ".mm", ".dart", ".lua", ".ex", ".exs", ".erl", ".clj", ".sh", ".bash", ".ps1",
+    ".sql", ".vue", ".svelte", ".zig", ".nim", ".r", ".jl",
+}  # fmt: skip
 
 
 @dataclass
@@ -90,47 +100,73 @@ def is_test_file(rel: str, test_globs: list[str]) -> bool:
 
 def scan_rule(module: Module, path: Path) -> tuple[bool, bool]:
     """(scanned, is_test) for a file of ``module``: its tests (by test_globs, or by name outside docs) are always
-    scanned; source_globs, when set, limit the other files; otherwise everything but documentation is scanned."""
+    scanned; source_globs, when set, choose the other files; otherwise only code files are scanned."""
     cfg = module.config
     rel = path.relative_to(module.root).as_posix()
-    is_doc = path.suffix.lower() in DOC_EXTENSIONS
-    if is_test_file(rel, cfg.test_globs) and (cfg.test_globs or not is_doc):
+    suffix = path.suffix.lower()
+    if is_test_file(rel, cfg.test_globs) and (cfg.test_globs or suffix not in DOC_EXTENSIONS):
         return True, True
     if cfg.source_globs:
         return any(glob_match(rel, g) for g in cfg.source_globs), False
-    return not is_doc, False
+    return suffix in CODE_EXTENSIONS, False
+
+
+def git_ignored(repo: Path, paths: list[Path]) -> set[Path]:
+    """The ``paths`` (inside the git work tree at ``repo``) that git ignores; none when ``repo`` is not in one."""
+    if not paths:
+        return set()
+    names = b"\0".join(os.fsencode(p.relative_to(repo).as_posix()) for p in paths)
+    try:
+        out = git(repo, "check-ignore", "-z", "--stdin", input=names, ok_codes=(0, 1))  # 1: nothing is ignored
+    except GitError:
+        return set()
+    return {repo / os.fsdecode(name) for name in split_z(out)}
 
 
 def scan_tags(ws: Workspace) -> list[Tag]:
-    """Every @req / @ac tag in the workspace, skipping hidden, vendored and workflow folders."""
+    """Every @req / @ac tag in the workspace, skipping hidden, vendored, git-ignored and workflow folders."""
     skip_roots = {(m.root / m.config.dir).resolve() for m in ws.modules()}
-    tags: list[Tag] = []
+    candidates: list[tuple[Path, Path, bool]] = []  # (file, the git work tree it is in, is_test)
+    repo_of: dict[Path, Path] = {}
     for dirpath, dirnames, filenames in os.walk(ws.root):
         here = Path(dirpath)
+        # A folder with its own .git (a submodule) is a work tree of its own, with its own ignore rules.
+        repo_of[here] = here if here == ws.root or (here / ".git").exists() else repo_of[here.parent]
         dirnames[:] = sorted(
             d for d in dirnames if not d.startswith(".") and d not in SKIP_DIRS and (here / d).resolve() not in skip_roots
         )
         module = ws.owner(here)
         for name in sorted(filenames):
-            path = here / name
-            scanned, is_test = scan_rule(module, path)
-            if not scanned:
-                continue
-            # The path as walked, not resolved: a symlink to a file outside the workspace is not a crash.
-            rel = path.relative_to(ws.root).as_posix()
-            try:
-                if path.stat().st_size > MAX_FILE_BYTES:
-                    continue
-                text = path.read_text(encoding="utf-8")
-            except (OSError, UnicodeDecodeError):
-                continue
-            if "@req" not in text and "@ac" not in text:
-                continue
-            for number, line in enumerate(text.splitlines(), start=1):
-                for match in TAG_RE.finditer(line):
-                    for tag_id in re.findall(TAG_ID, match.group("ids")):
-                        tags.append(Tag(id=tag_id, kind=match.group("kind"), file=rel, line=number, is_test=is_test))
+            scanned, is_test = scan_rule(module, here / name)
+            if scanned:
+                candidates.append((here / name, repo_of[here], is_test))
+    ignored: set[Path] = set()
+    for repo in dict.fromkeys(repo for _, repo, _ in candidates):
+        ignored |= git_ignored(repo, [path for path, in_repo, _ in candidates if in_repo == repo])
+    tags: list[Tag] = []
+    for path, _, is_test in candidates:
+        if path not in ignored:
+            tags += _file_tags(ws, path, is_test)
     return tags
+
+
+def _file_tags(ws: Workspace, path: Path, is_test: bool) -> list[Tag]:
+    # The path as walked, not resolved: a symlink to a file outside the workspace is not a crash.
+    rel = path.relative_to(ws.root).as_posix()
+    try:
+        if path.stat().st_size > MAX_FILE_BYTES:
+            return []
+        text = path.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError):
+        return []
+    if "@req" not in text and "@ac" not in text:
+        return []
+    return [
+        Tag(id=tag_id, kind=match.group("kind"), file=rel, line=number, is_test=is_test)
+        for number, line in enumerate(text.splitlines(), start=1)
+        for match in TAG_RE.finditer(line)
+        for tag_id in re.findall(TAG_ID, match.group("ids"))
+    ]
 
 
 def build_matrix(specs: ChangeSpecs, tags: list[Tag]) -> list[Row]:
@@ -187,6 +223,14 @@ def _task_key(num: str) -> tuple[int, ...]:
     return tuple(int(p) for p in num.split("."))
 
 
+GAP_LABELS = {
+    "acWithoutTasks": "Acceptance criteria without a task",
+    "acWithoutTests": "Acceptance criteria without a test (`@ac`)",
+    "reqWithoutCode": "Requirements without code (`@req`)",
+    "removedStillTagged": "Removed requirements or criteria still tagged in tests or code",
+}
+
+
 def gaps(rows: list[Row]) -> dict[str, list[str]]:
     active = [r for r in rows if r.section != "REMOVED"]
     return {
@@ -202,6 +246,11 @@ def unknown_tags(specs: ChangeSpecs, tags: list[Tag]) -> list[Tag]:
     prefixes = {d.cap.prefix for d in specs.deltas}
     known = specs.known_ids()
     return [t for t in tags if t.id not in known and id_prefix(t.id) in prefixes]
+
+
+def stray_tags(tags: list[Tag], prefixes: set[str]) -> list[Tag]:
+    """Tags whose ID prefix belongs to no capability (``REQ-AUHT-003``): a typo, or a tag left from a deleted capability."""
+    return [t for t in tags if id_prefix(t.id) not in prefixes]
 
 
 def to_markdown(change_ref: str, rows: list[Row], found: dict[str, list[str]]) -> str:
@@ -230,14 +279,8 @@ def to_markdown(change_ref: str, rows: list[Row], found: dict[str, list[str]]) -
             f"| {r.capability} | {f'{r.ac} {r.ac_title}' if r.ac else f'{r.req} {r.title}'} | {', '.join(r.tasks) or '—'} | {cell(r.tests + r.code)} |"
             for r in removed
         ]
-    labels = {
-        "acWithoutTasks": "Acceptance criteria without a task",
-        "acWithoutTests": "Acceptance criteria without a test (`@ac`)",
-        "reqWithoutCode": "Requirements without code (`@req`)",
-        "removedStillTagged": "Removed requirements or criteria still tagged in tests or code",
-    }
     out += ["", "## Gaps", ""]
-    out += [f"- {labels[k]}: {', '.join(v)}" for k, v in found.items() if v] or ["- None"]
+    out += [f"- {GAP_LABELS[k]}: {', '.join(v)}" for k, v in found.items() if v] or ["- None"]
     return "\n".join(out) + "\n"
 
 
@@ -291,3 +334,7 @@ class Analysis:
     @cached_property
     def unknown_tags(self) -> list[Tag]:
         return unknown_tags(self.specs, self.tags)
+
+    @cached_property
+    def stray_tags(self) -> list[Tag]:
+        return stray_tags(self.tags, known_prefixes(self.ws))

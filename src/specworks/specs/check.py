@@ -52,9 +52,13 @@ class ChangeSpecs:
     tasks_found: bool = False
     issues: list[Issue] = field(default_factory=list)
 
+    def delta_ids(self) -> set[str]:
+        """Every requirement and acceptance-criterion ID in the delta specs."""
+        return {i for d in self.deltas for i in d.doc.ids()}
+
     def known_ids(self) -> set[str]:
         """Every ID in the deltas and in the living specs they change."""
-        return {i for d in self.deltas for doc in (d.doc, d.living) if doc for i in doc.ids()}
+        return self.delta_ids() | {i for d in self.deltas if d.living for i in d.living.ids()}
 
     def requirements(self, *sections: str) -> list[tuple[Delta, Requirement]]:
         wanted = sections or DELTA_SECTIONS
@@ -153,7 +157,7 @@ def _check_delta(ws: Workspace, change: Change, delta: Delta, seen: dict[str, st
     # Each MODIFIED/REMOVED block replaces the whole living block at close, so two changes
     # editing one requirement would lose the first one's edit: one has to close first.
     edited = {**others["REMOVED"], **others["MODIFIED"]}
-    retired = retired_ids(cap)
+    retired = retired_ids(cap, delta.living)
     # A change that closed after this one started may have edited a block this one copied before.
     closed_since = modified_since(cap, change.created) if change.created else {}
     for req in doc.requirements:

@@ -1,7 +1,7 @@
 ---
 name: specworks-review
 description: Review phase of spec-driven development - compare a change's code with its specs in both directions, find drift (behaviour no requirement describes, requirements the code misses, tests that do not really check their criterion, an API or design the code proved wrong, wrong tags), propose for each one a change to the code, the spec or the design/API, apply it with the user or send the change back to the phase that owns it, and record every decision in review.md. Use after the code phase of a specworks change, or when the user says "review the change", "sync code and spec", "check for drift" or "specworks review".
-allowed-tools: Bash(specworks:*), Bash(uv run specworks:*), Bash(uvx --from git+https://github.com/lcmonteiro/specworks specworks:*), Bash(git diff:*), Bash(git log:*), Bash(git status:*), Read, Grep, Glob, Write, Edit
+allowed-tools: SPECWORKS_CLI, Bash(git diff:*), Bash(git log:*), Bash(git status:*), Read, Grep, Glob, Write, Edit
 ---
 
 Review phase: make the code, the specs and the design (API) say the same

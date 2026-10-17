@@ -1,7 +1,7 @@
 ---
 name: specworks-close
 description: Close phase of spec-driven development - fold a verified change into the project's living documentation next to the code (spec, requirements index, design, architecture, diagrams), register new capabilities, and archive the change. Use when a specworks change has passed validate and the user wants to finish it, or says "close the change", "archive the change", "merge the specs" or "specworks close".
-allowed-tools: Bash(specworks:*), Bash(uv run specworks:*), Bash(uvx --from git+https://github.com/lcmonteiro/specworks specworks:*), Read, Grep, Glob, Write, Edit
+allowed-tools: SPECWORKS_CLI, Read, Grep, Glob, Write, Edit
 ---
 
 Close phase: turn what the change decided into the project's lasting truth.

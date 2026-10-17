@@ -56,6 +56,7 @@ def trace(
         "rows": [vars(r) for r in rows],
         "gaps": found,
         "unknownTags": [{"id": t.id, "where": t.where} for t in analysis.unknown_tags],
+        "strayTags": [{"id": t.id, "where": t.where} for t in analysis.stray_tags],
         "specErrors": len(analysis.spec_errors),
         "written": written,
     }

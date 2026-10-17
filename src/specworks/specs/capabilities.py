@@ -152,9 +152,8 @@ def modified_since(cap: CapabilityRef, since: str) -> dict[str, str]:
     return found
 
 
-def retired_ids(cap: CapabilityRef) -> set[str]:
-    """IDs that were used by ``cap`` and removed: never to be added again."""
-    living = read_spec(cap.living_spec())
+def retired_ids(cap: CapabilityRef, living: SpecDoc | None) -> set[str]:
+    """IDs that were used by ``cap`` and removed (in its History, gone from its parsed ``living`` spec): never to be added again."""
     return history_ids(cap) - (set(living.by_id()) if living else set())
 
 
@@ -201,6 +200,19 @@ def describe(ws: Workspace, cap: CapabilityRef, with_scenarios: bool = True) -> 
             item["scenarios"] = [{"id": s.id, "title": s.title, "text": s.text} for s in req.scenarios]
         data["requirements"].append(item)
     return data
+
+
+def known_prefixes(ws: Workspace) -> set[str]:
+    """ID prefixes of every registered capability, and of every new one an active change writes a delta for."""
+    prefixes = set(ws.prefixes())
+    for module in ws.modules():
+        for change in list_changes(module.config):
+            for path in delta_files(change):
+                try:
+                    prefixes.add(resolve_delta(ws, change, path).prefix)
+                except ConfigError:  # a misplaced delta: `specworks check` reports it
+                    continue
+    return prefixes
 
 
 def workspace_capabilities(ws: Workspace) -> list[CapabilityRef]:

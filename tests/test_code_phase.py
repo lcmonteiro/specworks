@@ -162,3 +162,31 @@ def test_a_command_writing_bytes_that_are_not_text_does_not_crash_the_gate(proje
     set_test_command(project, f'"{sys.executable}" -c "import sys; sys.stdout.buffer.write(bytes([0xff, 0xfe, 10])); sys.exit(1)"')
     code, data = run_json("gate", "code", "--change", REF)
     assert code == 1 and not checks(data)["the test suite passes (commands.test)"]["ok"]
+
+
+def test_tags_in_git_ignored_files_are_not_code(repo):
+    # A stale coverage report still quotes a tag whose code is gone: it must not count as that code.
+    (repo / "src/auth/lockout.py").write_text("LIMIT = 3\n")
+    (repo / ".gitignore").write_text("htmlcov/\n")
+    (repo / "htmlcov").mkdir()
+    (repo / "htmlcov/z_lockout_py.py").write_text("# @req REQ-AUTH-002\n")
+    code, data = run_json("trace", "--change", REF)
+    assert "REQ-AUTH-002" in data["gaps"]["reqWithoutCode"]
+
+
+def test_only_code_files_hold_req_tags_unless_source_globs_say_otherwise(project):
+    (project / "src/auth/reset.json").write_text('{"note": "@req REQ-AUTH-003"}\n')
+    code, data = run_json("trace", "--change", REF)
+    assert "REQ-AUTH-003" in data["gaps"]["reqWithoutCode"]
+    cfg = project / "spec.yml"
+    cfg.write_text(cfg.read_text().replace("source_globs: []", 'source_globs: ["src/**"]'))
+    code, data = run_json("trace", "--change", REF)
+    assert "REQ-AUTH-003" not in data["gaps"]["reqWithoutCode"]
+
+
+def test_ticking_a_task_keeps_the_line_endings(project):
+    tasks = project / "spec/changes" / REF / "tasks.md"
+    tasks.write_bytes(tasks.read_bytes().replace(b"\r\n", b"\n").replace(b"\n", b"\r\n"))
+    code, data = run_json("task", "done", "1.1", "--change", REF)
+    raw = tasks.read_bytes()
+    assert code == 0 and b"- [x] 1.1" in raw and raw.count(b"\r\n") == raw.count(b"\n")

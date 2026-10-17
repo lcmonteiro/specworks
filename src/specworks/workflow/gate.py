@@ -15,10 +15,10 @@ from ..core.changes import PHASES, Change, set_phase
 from ..core.errors import SpecworksError
 from ..core.files import read_text
 from ..specs.check import DESIGN_FILE
-from ..specs.specfile import COMMENT_RE, H2_RE, fenced
+from ..specs.specfile import H2_RE, fenced, strip_comments
+from ..specs.trace import CODE_EXTENSIONS
 from . import checks as c
 from .checks import Check, CheckFn, GateContext, passed, run_checks
-from .review import CODE_EXTENSIONS
 from .validate import validate_change
 
 
@@ -46,7 +46,7 @@ def interfaces_section(change: Change) -> str | None:
             body = [] if INTERFACES_TITLE_RE.match(h2.group("title")) else None
         elif body is not None:
             body.append(line)
-    return COMMENT_RE.sub("", "\n".join(body)).strip() if body is not None else None
+    return strip_comments("\n".join(body)).strip() if body is not None else None
 
 
 def interface_files(section: str) -> list[str]:
@@ -105,7 +105,7 @@ def existing_tests_pass(ctx: GateContext) -> Check:
     tests = c.command_check(ctx, "test", "the existing tests still pass with the stubs (commands.test)")
     ran = ctx.run_tests and ctx.has_command("test")  # a missing command still blocks
     if ran and not tests.ok:
-        ids = c.change_ids(ctx)
+        ids = ctx.analysis.specs.delta_ids()
         if any(t.kind == "ac" and t.is_test and t.id in ids for t in ctx.analysis.tags):
             # The test phase has started (or a later cycle reopened the API): this change's
             # own tests are red until the code phase, whose gate requires a green suite.
@@ -126,8 +126,26 @@ GATE_CHECKS: dict[str, list[CheckFn]] = {
         stubs_build("typecheck"),
         existing_tests_pass,
     ],
-    "test": [c.specs_valid, c.specs_warnings, c.acs_have_tests, c.no_unknown_tags, c.acs_in_test_files, c.removed_gone_warning],
-    "code": [c.specs_valid, c.specs_warnings, c.tasks_done, c.reqs_have_code, c.acs_have_tests, c.no_unknown_tags, c.removed_gone, c.tests_pass],
+    "test": [
+        c.specs_valid,
+        c.specs_warnings,
+        c.acs_have_tests,
+        c.no_unknown_tags,
+        c.tags_have_known_prefix,
+        c.acs_in_test_files,
+        c.removed_gone_warning,
+    ],
+    "code": [
+        c.specs_valid,
+        c.specs_warnings,
+        c.tasks_done,
+        c.reqs_have_code,
+        c.acs_have_tests,
+        c.no_unknown_tags,
+        c.tags_have_known_prefix,
+        c.removed_gone,
+        c.tests_pass,
+    ],
     "review": [
         c.specs_valid,
         c.specs_warnings,
@@ -137,6 +155,7 @@ GATE_CHECKS: dict[str, list[CheckFn]] = {
         c.reqs_have_code,
         c.acs_have_tests,
         c.no_unknown_tags,
+        c.tags_have_known_prefix,
         c.removed_gone,
         c.files_accounted,
         c.tests_pass,

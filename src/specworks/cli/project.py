@@ -12,7 +12,7 @@ from ..core.config import DEFAULT_DIR, Config, ConfigError, config_name, find_co
 from ..core.config_file import add_capability_entry, add_module_entry, write_default_config
 from ..core.workspace import Workspace, capability_prefix, load_module_config, load_workspace, require_workspace
 from ..specs.capabilities import capability_ref, describe
-from ..tools.skills import install_skills, parse_tools, remove_renamed_skills
+from ..tools.skills import install_skills, outdated_skills, parse_tools
 from .app import app, capability_app, module_app
 from .output import AllOpt, JsonOpt, ToolsOpt, change_dict, changes_of, emit, fail, missing_dicts, module_dict, workspace
 
@@ -21,14 +21,15 @@ def default_module_name(path: Path) -> str:
     return re.sub(r"[^a-z0-9]+", "-", path.name.lower()).strip("-") or "module"
 
 
-def write_skills(ws: Workspace, tools: str) -> None:
-    """Install the skills at the workspace root (shared by every module)."""
+def write_skills(ws: Workspace, tools: str, force: bool = False) -> None:
+    """Install the skills at the workspace root (shared by every module); files the user edited are kept unless ``force``."""
     selected = parse_tools(tools, ws.root)
     typer.echo(f"tools   {', '.join(t.label for t in selected)}")
-    for written in install_skills(ws.root, selected):
-        typer.echo(f"skill   {ws.rel(written)}")
-    for removed in remove_renamed_skills(ws.root, selected):
-        typer.echo(f"removed {ws.rel(removed)} (renamed skill)")
+    written, kept = install_skills(ws.root, selected, force=force)
+    for path in written:
+        typer.echo(f"skill   {ws.rel(path)}")
+    for path in kept:
+        typer.echo(f"kept    {ws.rel(path)} (edited by hand; `specworks skills --force` replaces it)")
 
 
 def ensure_module_config(root: Path, name: str, workspace_dir: str) -> tuple[Config, bool]:
@@ -122,9 +123,12 @@ def init(
 
 
 @app.command()
-def skills(tools: str = ToolsOpt) -> None:
-    """Install or refresh the agent skills (e.g. after upgrading specworks)."""
-    write_skills(workspace(False), tools)
+def skills(
+    tools: str = ToolsOpt,
+    force: bool = typer.Option(False, "--force", help="Also replace skill files edited by hand."),
+) -> None:
+    """Install or refresh the agent skills (e.g. after upgrading specworks); skills edited by hand are kept."""
+    write_skills(workspace(False), tools, force)
 
 
 @app.command()
@@ -148,6 +152,7 @@ def context(as_json: bool = JsonOpt, all_modules: bool = AllOpt) -> None:
             }
         )
     changes = changes_of(ws, all_modules)
+    outdated = [ws.rel(p) for p in outdated_skills(ws.root)]
     data = {
         "root": str(ws.root),
         "module": ws.current.label,
@@ -160,10 +165,13 @@ def context(as_json: bool = JsonOpt, all_modules: bool = AllOpt) -> None:
         "missingModules": missing_dicts(ws),
         "capabilities": capabilities,
         "changes": [change_dict(ws, m, c) for m, c in changes],
+        "outdatedSkills": outdated,
     }
     lines = [f"root:    {ws.root}", f"module:  {ws.current.label}", "modules:", *module_lines(ws, "  ")]
     lines += ["capabilities:"] + ([f"  {c['name']:<24} {c['path']}" for c in capabilities] or ["  (none)"])
     lines += ["changes:"] + ([f"  {m.qualify(c.name):<24} {c.phase}" for m, c in changes] or ["  (none)"])
+    if outdated:
+        lines.append(f"skills:  {len(outdated)} installed skill files differ from this specworks version; run `specworks skills`")
     emit(data, as_json, "\n".join(lines))
 
 

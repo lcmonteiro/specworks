@@ -214,10 +214,6 @@ def load_config(root: Path, dir: str | None = None) -> Config:
         raise ConfigError(f"{path} must contain a YAML mapping")
     if raw.get("specworks") != CONFIG_VERSION:
         raise ConfigError(f"{path}: unsupported config version specworks: {raw.get('specworks')!r} (expected {CONFIG_VERSION})")
-    if "dir" in raw:
-        raise ConfigError(
-            f"{path}: 'dir' is no longer a setting; the file name sets the folder ({path.name} -> {path.stem}/). Remove it."
-        )
     check_keys(raw, CONFIG_KEYS, str(path))
 
     context = raw.get("context") or ""

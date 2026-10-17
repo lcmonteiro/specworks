@@ -530,3 +530,22 @@ def test_a_file_that_is_not_utf8_is_a_clear_error(change):
     (change / "specs/user-auth/spec.md").write_bytes(DELTA.encode().replace(b"single-use", b"single\xe9use"))
     code, data = run_json("check", "--change", "add-password-reset")
     assert code == 1 and "is not UTF-8 text" in data["error"] and "spec.md" in data["error"]
+
+
+@pytest.mark.parametrize(
+    "fence, inner",
+    [("~~~", ""), ("````", "```\n"), ("~~~~", "```\n")],
+    ids=["tilde", "longer-backtick", "backtick-inside-tilde"],
+)
+def test_requirements_in_any_code_fence_are_examples(fence, inner):
+    text = (
+        "## ADDED Requirements\n\n### Requirement: REQ-A-001 Real\nThe system SHALL work.\n\n"
+        f"{fence}markdown\n{inner}### Requirement: REQ-A-002 Example\n{inner}{fence}\n"
+        "\n### Requirement: REQ-A-003 Also real\nThe system SHALL work.\n"
+    )
+    assert [r.id for r in parse_spec(text).requirements] == ["REQ-A-001", "REQ-A-003"]
+
+
+def test_tasks_in_a_tilde_fence_are_examples():
+    tasks, problems = parse_tasks("~~~\n- [ ] 9.9 example\n~~~\n- [ ] 1.1 real\n")
+    assert [t.num for t in tasks] == ["1.1"] and problems == []

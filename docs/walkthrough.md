@@ -77,8 +77,8 @@ gates behind it pass:
 $ specworks start design --change add-slugify
 gate specify:
 [ok  ] specs and tasks are valid (specworks check)
+[ok  ] specworks check has no warnings
 [ok  ] tasks.md is written
-[ok  ] every acceptance criterion has a task
 add-slugify: phase specify → design
 ```
 
@@ -92,6 +92,7 @@ code as a stub that only says "not implemented":
 ```
 $ specworks gate design --change add-slugify
 [ok  ] specs and tasks are valid (specworks check)
+[ok  ] specworks check has no warnings
 [ok  ] design.md has an Interfaces section (write "None" when the API does not change)
 [ok  ] every file named under Interfaces exists
 [ok  ] the existing tests still pass with the stubs (commands.test)
@@ -121,10 +122,12 @@ FAILED tests/test_slug.py::test_a_title_with_no_words_is_rejected - NotImplem...
 ```
 $ specworks gate test --change add-slugify
 [ok  ] specs and tasks are valid (specworks check)
-[ok  ] every acceptance criterion has a test (@ac tag in a test file)
+[ok  ] specworks check has no warnings
+[ok  ] every acceptance criterion has a test (@ac tag)
 [ok  ] no tag refers to an unknown requirement or criterion
+[ok  ] every tag's ID prefix belongs to a capability (a typo, or a deleted capability)
 [ok  ] @ac tags are in test files (configure test_globs if your tests live elsewhere)
-[ok  ] removed requirements are no longer tagged
+[ok  ] removed requirements and criteria are gone from tests and code
 gate test: passed
 ```
 
@@ -145,11 +148,13 @@ def slugify(title: str) -> str:
 ```
 $ specworks gate code --change add-slugify
 [ok  ] specs and tasks are valid (specworks check)
+[ok  ] specworks check has no warnings
 [ok  ] every task is done (specworks task list --pending)
 [ok  ] every requirement has code (@req tag)
-[ok  ] every acceptance criterion still has a test (@ac tag)
+[ok  ] every acceptance criterion has a test (@ac tag)
 [ok  ] no tag refers to an unknown requirement or criterion
-[ok  ] removed requirements are gone from tests and code
+[ok  ] every tag's ID prefix belongs to a capability (a typo, or a deleted capability)
+[ok  ] removed requirements and criteria are gone from tests and code
 [ok  ] the test suite passes (commands.test)
          $ uv run pytest -q  (in ., exit 0)
 gate code: passed
@@ -186,9 +191,9 @@ A read-only report; every failure would name the phase that fixes it:
 
 ```
 $ specworks validate --change add-slugify --base main
-Completeness (5/5)
+Completeness (7/7)
   ...
-Correctness (6/6)
+Correctness (8/8)
   ...
 Coherence (3/3)
   ...

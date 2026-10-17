@@ -1,7 +1,7 @@
 ---
 name: specworks-build
 description: Build a specified change end to end in cycles of design → test → code → review, running each phase's own skill in order; after each review with findings, ask whether to start a new cycle and start it from the earliest phase the findings need (code findings → code, review; test findings → test, code, review; design/API findings → design, test, code, review). Use when a specworks change has been specified and the user wants to build it in one go, or says "build the change", "run the build cycle", "design test code review" or "specworks build".
-allowed-tools: Bash(specworks:*), Bash(uv run specworks:*), Bash(uvx --from git+https://github.com/lcmonteiro/specworks specworks:*), Bash(git diff:*), Bash(git log:*), Bash(git status:*), Read, Grep, Glob, Write, Edit
+allowed-tools: SPECWORKS_CLI, Bash(git diff:*), Bash(git log:*), Bash(git status:*), Read, Grep, Glob, Write, Edit
 ---
 
 Build: take a specified change through **design → test → code → review** in

@@ -104,6 +104,8 @@ jobs:
           done
           grep -q 'Running the CLI' .claude/skills/specworks-refine/SKILL.md
           if grep -rq 'specworks:include' .claude .github; then echo 'unfilled include in an installed skill'; exit 1; fi
+          if grep -rq 'SPECWORKS_CLI' .claude .github; then echo 'unfilled allowed-tools in an installed skill'; exit 1; fi
+          grep -q '^allowed-tools: Bash(specworks:\*)' .claude/skills/specworks-refine/SKILL.md
           mkdir -p spec/changes/add-example/diagrams
           printf 'shape: sequence_diagram\nuser -> api: "POST /reset {email}"\n' > spec/changes/add-example/diagrams/flow.d2
           sw diagrams --themes | grep -q '(pyd2)'

@@ -119,3 +119,9 @@ def test_finding_types_match_in_any_case_and_after_other_bold_words():
     text = "- [ ] R1 **BREAKING** **Spec-Gap** reset changes\n- [ ] R2 **spec_gap** typo\n"
     found = [(f.type, f.phase, f.routed) for f in parse_review(text).findings]
     assert found == [("spec-gap", "specify", True), ("spec_gap", "code", False)]
+
+
+def test_a_finding_shown_in_a_code_fence_is_an_example():
+    text = "## Findings\n\nFormat:\n~~~markdown\n- [ ] R9 **code-gap** an example\n~~~\n- [x] R1 **code-gap** fixed\n"
+    doc = parse_review(text)
+    assert [f.id for f in doc.findings] == ["R1"] and doc.problems == []
