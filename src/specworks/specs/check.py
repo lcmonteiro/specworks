@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -12,7 +11,7 @@ from ..core.files import read_text
 from ..core.workspace import Workspace
 from ..tools.diagrams import diagrams_in, referenced_images, state
 from .capabilities import SPECS_DIR, CapabilityRef, delta_files, modified_since, read_spec, resolve_delta, retired_ids
-from .specfile import DELTA_SECTIONS, LIVING_SECTION, NORMATIVE_RE, Requirement, Scenario, SpecDoc, ac_parent, parse_spec
+from .specfile import DELTA_SECTIONS, LIVING_SECTION, NORMATIVE_RE, Requirement, Scenario, SpecDoc, ac_parent, h2_titles, parse_spec
 from .tasks import TASKS_FILE, Task, parse_tasks
 
 PROPOSAL_FILE, DESIGN_FILE = "proposal.md", "design.md"
@@ -92,7 +91,7 @@ def _check_proposal(ws: Workspace, change: Change, issues: list[Issue]) -> None:
     if not path.is_file():
         issues.append(Issue("error", ws.rel(path), 0, f"{PROPOSAL_FILE} is missing"))
         return
-    headings = {m.group(1).strip().lower() for m in re.finditer(r"^##\s+(.+)$", read_text(path), re.MULTILINE)}
+    headings = {title.strip().lower() for title in h2_titles(read_text(path))}
     for section in PROPOSAL_SECTIONS:
         if section.lower() not in headings:
             issues.append(Issue("error", ws.rel(path), 0, f"missing section '## {section}'"))

@@ -23,7 +23,7 @@ from ..core.changes import Change
 from ..core.errors import SpecworksError
 from ..core.files import read_text
 from ..core.workspace import Workspace
-from ..specs.specfile import COMMENT_RE, H2_RE
+from ..specs.specfile import H2_RE, blank_comments, fenced
 from ..specs.trace import Analysis, scan_rule
 
 CODE_EXTENSIONS = {
@@ -230,14 +230,18 @@ class ReviewDoc:
 
 
 def parse_review(text: str) -> ReviewDoc:
-    """Findings and the "Changed files without tags" section of review.md; HTML comments are ignored."""
+    """Findings and the "Changed files without tags" section of review.md; HTML comments and code fences are ignored."""
     doc = ReviewDoc(exists=True)
     current: Finding | None = None
     section = ""
     accounted: list[str] = []
     # Comments are blanked line for line, so reported line numbers stay those of the file.
-    uncommented = COMMENT_RE.sub(lambda m: "\n" * m.group(0).count("\n"), text)
-    for number, line in enumerate(uncommented.splitlines(), start=1):
+    lines = blank_comments(text).splitlines()
+    for number, (line, example) in enumerate(zip(lines, fenced(lines), strict=True), start=1):
+        if example:  # a finding shown in a code fence is an example; a fence under a finding stays in it
+            if section == ACCOUNTED_SECTION:
+                accounted.append(line)
+            continue
         if h2 := H2_RE.match(line):
             section, current = h2.group("title").strip().lower(), None
             continue

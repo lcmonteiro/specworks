@@ -115,6 +115,21 @@ def test_a_checkbox_inside_a_finding_is_part_of_it():
     assert [f["phase"] for f in open_findings(text)] == ["code"] and parse_review(text).problems == []
 
 
+def test_a_finding_in_a_code_fence_is_an_example():
+    text = (
+        "## Findings\n\nNone. A finding looks like:\n\n```markdown\n- [ ] R1 **code-gap** x\n```\n\n"
+        "## Changed files without tags\n\n~~~\n- `src/a.py`: config\n~~~\n"
+    )
+    doc = parse_review(text)
+    assert doc.findings == [] and doc.problems == [] and doc.accounts_for("src/a.py")
+
+
+def test_a_code_fence_under_a_finding_keeps_it_open_and_routed():
+    text = "## Findings\n\n- [ ] R1 **design-gap** x\n  ```\n  - [ ] not a finding\n  ```\n  - **Decision**: back to design: y\n"
+    doc = parse_review(text)
+    assert [f["phase"] for f in open_findings(text)] == ["design"] and doc.problems == []
+
+
 def test_finding_types_match_in_any_case_and_after_other_bold_words():
     text = "- [ ] R1 **BREAKING** **Spec-Gap** reset changes\n- [ ] R2 **spec_gap** typo\n"
     found = [(f.type, f.phase, f.routed) for f in parse_review(text).findings]

@@ -68,6 +68,19 @@ def test_parse_ignores_headers_inside_code_fences():
     assert [r.id for r in doc.requirements] == ["REQ-X-001"]
 
 
+@pytest.mark.parametrize(
+    "fence",
+    [
+        "~~~\n### Requirement: REQ-X-002 B\n~~~\n",  # tildes
+        "````\n```\n### Requirement: REQ-X-002 B\n```\n````\n",  # a shorter fence inside a longer one
+        "~~~\n```\n### Requirement: REQ-X-002 B\n~~~\n",  # backticks do not close a tilde fence
+    ],
+)
+def test_parse_ignores_headers_inside_any_code_fence(fence):
+    doc = parse_spec("## ADDED Requirements\n### Requirement: REQ-X-001 A\nSHALL x\n" + fence + "### Requirement: REQ-X-003 C\nSHALL y\n")
+    assert [r.id for r in doc.requirements] == ["REQ-X-001", "REQ-X-003"]
+
+
 def test_ids_helpers():
     assert find_ids("covers AC-BILLING-INVOICES-001.2 and REQ-AUTH-003.") == ["AC-BILLING-INVOICES-001.2", "REQ-AUTH-003"]
     assert ac_parent("AC-BILLING-INVOICES-001.2") == "REQ-BILLING-INVOICES-001"
@@ -183,6 +196,12 @@ def test_missing_proposal_and_specs(project):
     assert code == 1
     msgs = " | ".join(errors(data))
     assert "proposal.md is missing" in msgs and "no delta specs" in msgs
+
+
+def test_proposal_section_in_a_code_fence_does_not_count(change):
+    (change / "proposal.md").write_text(PROPOSAL.replace("## Why\nUsers get locked out.\n", "```\n## Why\n```\n"))
+    code, data = run_json("check", "--change", "add-password-reset")
+    assert "missing section '## Why'" in errors(data)
 
 
 def replace_delta(change, old, new):
