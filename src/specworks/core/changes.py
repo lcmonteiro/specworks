@@ -33,7 +33,7 @@ class Change:
     name: str
     path: Path
     phase: str = "refine"
-    created: str = ""  # when the change started: YYYY-MM-DDTHH:MM:SS (older changes: YYYY-MM-DD)
+    created: str = ""
     skip_specs: bool = False
 
     @property
