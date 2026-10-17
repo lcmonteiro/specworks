@@ -28,6 +28,12 @@ $ python -m http.server -d docs/_build/html
 | `docs/example/shortlink/` | the tutorial's project, as it is at the end; pages show its files with `literalinclude`, so they cannot drift from it |
 | `docs/conf.py` | Sphinx settings (theme `furo`, `sphinx-design` tabs and dropdowns, Mermaid diagrams) |
 
+On every push to `main`, the `Docs` workflow (`.github/workflows/docs.yml`)
+builds the site and publishes it to GitHub Pages, at
+<https://lcmonteiro.github.io/specworks/>. It needs Pages enabled once, under
+Settings → Pages → Build and deployment → Source: **GitHub Actions**. The `CI`
+workflow also builds the site, with warnings as errors, on every pull request.
+
 The skill pages include each `SKILL.md`, and the reference includes
 `schema.yaml` and the templates, straight from `src/specworks/`: editing a
 skill or a template updates the docs.
