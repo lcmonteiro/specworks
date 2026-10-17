@@ -59,6 +59,7 @@ VALIDATE: list[tuple[str, str, CheckFn]] = [
     (CORRECTNESS, CODE, c.removed_gone),
     # Coherence: code, specs, review and design tell the same story.
     (COHERENCE, REVIEW, c.files_accounted),
+    (COHERENCE, REVIEW, c.diff_base),
     (COHERENCE, SPECIFY, diagrams_current),
     (COHERENCE, REVIEW, went_through_review),
 ]

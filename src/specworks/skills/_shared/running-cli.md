@@ -4,4 +4,5 @@
 Gates and `validate` reuse a test/lint/typecheck result from the same code
 (`same code as the run at ...`). After fixing something outside the code (a
 git-ignored file, a service the tests need), run `specworks run <key>` once:
-its result replaces the reused one.
+its result replaces the reused one. `--fresh` on a gate, `start` or `validate`
+does the same for that command.

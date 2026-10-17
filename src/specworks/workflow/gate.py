@@ -139,6 +139,7 @@ GATE_CHECKS: dict[str, list[CheckFn]] = {
         c.no_unknown_tags,
         c.removed_gone,
         c.files_accounted,
+        c.diff_base,
         c.tests_pass,
     ],
 }

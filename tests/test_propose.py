@@ -6,7 +6,7 @@ from typer.testing import CliRunner
 
 from samples import DELTA, LIVING, PROPOSAL, TASKS
 from specworks.cli import app
-from specworks.specs.specfile import ac_parent, find_ids, id_prefix, parse_spec
+from specworks.specs.specfile import ac_parent, find_ids, id_prefix, living_problems, parse_spec
 from specworks.specs.tasks import parse_tasks
 from specworks.specs.trace import glob_match, is_test_file
 
@@ -379,6 +379,54 @@ def test_two_changes_editing_one_requirement_do_not_block_each_other(change, pro
     code, data = run_json("check", "--change", "add-password-reset")
     assert code == 0, errors(data)
     assert any("REQ-AUTH-002 is also MODIFIED or REMOVED by change other-change, which started later" in m for m in warnings(data))
+
+
+BROKEN_LIVING = """
+### Requirement: REQ-AUTH-002 Lockout (copy)
+The system SHALL lock again.
+
+#### Scenario: AC-AUTH-002.1 Copied
+- **WHEN** x
+- **THEN** y
+
+### Requirement: Search by title
+The system SHALL search.
+"""
+
+
+def test_check_warns_about_a_broken_living_spec(change, project):
+    living = project / "src/auth/docs/spec.md"
+    living.write_text(living.read_text() + BROKEN_LIVING)
+    code, data = run_json("check", "--change", "add-password-reset")
+    assert code == 0
+    found = [i for i in data["issues"] if i["file"] == "src/auth/docs/spec.md"]
+    assert {i["level"] for i in found} == {"warning"}
+    messages = " | ".join(i["message"] for i in found)
+    assert "living spec of user-auth: REQ-AUTH-002 is used twice" in messages and "fix it before closing" in messages
+    assert "AC-AUTH-002.1 is used twice" in messages and "requirement header has no 'REQ-<prefix>-NNN' ID" in messages
+
+
+@pytest.mark.parametrize(
+    "text, problem",
+    [
+        ("## Requirements\n\n### Requirement: REQ-A-001 X\nThe system does x.\n\n#### Scenario: AC-A-001.1 Y\n- **WHEN** a\n- **THEN** b\n",
+         "REQ-A-001: state the requirement with SHALL or MUST"),
+        ("## Requirements\n\n### Requirement: REQ-A-001 X\nThe system SHALL x.\n", "REQ-A-001 has no '#### Scenario: AC-...' (acceptance criterion)"),
+        ("## Requirements\n\n### Requirement: REQ-A-001 X\nThe system SHALL x.\n\n#### Scenario: no id\n- **WHEN** a\n- **THEN** b\n",
+         "scenario of REQ-A-001 has no 'AC-<prefix>-NNN.<n>' ID"),
+        ("## Requirements\n\n### Requirement: REQ-A-001 X\nThe system SHALL x.\n\n#### Scenario: AC-A-002.1 Y\n- **WHEN** a\n- **THEN** b\n",
+         "AC-A-002.1 is under REQ-A-001"),
+        ("## ADDED Requirements\n\n### Requirement: REQ-A-001 X\nThe system SHALL x.\n\n#### Scenario: AC-A-001.1 Y\n- **WHEN** a\n- **THEN** b\n",
+         "requirement outside '## Requirements'"),
+    ],
+    ids=["no-shall", "no-scenario", "scenario-without-id", "scenario-under-another", "delta-section"],
+)
+def test_living_problems(text, problem):
+    assert [message for _, message in living_problems(parse_spec(text))] == [problem]
+
+
+def test_a_valid_living_spec_has_no_problems():
+    assert living_problems(parse_spec(LIVING)) == []
 
 
 def test_skip_specs(project):

@@ -49,7 +49,8 @@ class GateContext:
     run_tests: bool = True  # False: --no-run, the project's commands are reported as not run
     base: str | None = None  # review / validate: branch to diff against
     allow_open: bool = False  # review: open findings do not fail the gate (inside a build)
-    reuse_runs: bool = True  # False: always run the project's commands (the real close), never a cached result
+    reuse_runs: bool = True  # False: run each project command once for real (the real close, --fresh), never an earlier result
+    ran: set[str] = field(default_factory=set)  # commands already run for real in this invocation
 
     @cached_property
     def analysis(self) -> Analysis:
@@ -162,7 +163,13 @@ def files_accounted(ctx: GateContext) -> Check:
     if report.changed is None:
         return Check("changed files without tags are accounted for", False, [report.note], blocking=False)
     missing = [path for path in report.untraced_source + report.untraced_tests if not ctx.review.accounts_for(path)]
-    return _listed(f"changed files without tags are accounted for in {REVIEW_FILE} (base {report.base})", missing)
+    return _listed(f"changed files without tags are accounted for in {REVIEW_FILE} (base {report.since})", missing)
+
+
+def diff_base(ctx: GateContext) -> Check | None:
+    """Warns when the changed files may be incomplete: HEAD is on the base branch and nothing marks where the change started."""
+    report = ctx.report
+    return Check("the change's commits are compared with its base", False, [report.note], blocking=False) if report.on_base else None
 
 
 # --- the project's commands ---------------------------------------------------------
@@ -175,7 +182,8 @@ def command_check(ctx: GateContext, key: str, name: str, optional: bool = False)
     if not ctx.run_tests:
         return Check(name, False, [f"not run (--no-run); run `specworks run {key}`"], blocking=False)
     try:
-        result = cached_run(ctx.ws, ctx.module, key, reuse=ctx.reuse_runs)
+        result = cached_run(ctx.ws, ctx.module, key, reuse=ctx.reuse_runs or key in ctx.ran)
+        ctx.ran.add(key)
     except CommandError as exc:
         return Check(name, False, [str(exc)])
     reused = f", same code as the run at {result.cached_at}" if result.cached_at else ""

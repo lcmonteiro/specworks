@@ -90,6 +90,16 @@ def test_close_merges_indexes_and_archives(ready):
     assert data["nextId"] == "REQ-AUTH-004"
 
 
+def test_close_refuses_to_merge_into_a_broken_living_spec(ready):
+    living = ready / "src/auth/docs/spec.md"
+    living.write_text(living.read_text() + "\n### Requirement: Search by title\nThe system SHALL search.\n")
+    before = snapshot(ready)
+    code, data = run_json("close", "--change", REF, "--base", "main")
+    assert code == 1
+    assert "src/auth/docs/spec.md is not a valid living spec" in data["error"] and "no 'REQ-<prefix>-NNN' ID" in data["error"]
+    assert snapshot(ready) == before
+
+
 def test_close_refuses_when_verify_fails(repo):
     code, data = run_json("close", "--change", REF, "--base", "main")
     assert code == 1 and "does not pass validate" in data["error"] and "/specworks-review" in data["goBackTo"]

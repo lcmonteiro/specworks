@@ -143,3 +143,22 @@ def test_close_runs_the_commands_but_its_dry_run_reuses(counted):
     code, data = run_json("close", "--change", REF, "--base", "main")
     assert code == 0, data
     assert runs(counter) == 2
+
+
+@pytest.mark.parametrize("command", [["gate", "code"], ["validate", "--base", "main"]])
+def test_fresh_runs_the_commands_again(counted, command):
+    repo, counter = counted
+    gate_tests()
+    code, data = run_json(*command, "--change", REF, "--fresh")
+    assert runs(counter) == 2
+    assert not any("same code as the run at" in d for c in data["checks"] for d in c["details"])
+
+
+def test_fresh_runs_each_command_once_for_all_the_gates_of_a_start(counted):
+    repo, counter = counted
+    gate_tests()
+    (repo / "spec/changes" / REF / "design.md").write_text("# Design\n\n## Interfaces\n\nNone\n")
+    run_json("phase", "design", "--change", REF)
+    code, data = run_json("start", "review", "--change", REF, "--fresh")  # gates design, test and code
+    assert code == 0, data
+    assert runs(counter) == 2

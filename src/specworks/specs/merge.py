@@ -26,7 +26,7 @@ from ..core.files import read_text
 from ..core.workspace import Workspace
 from .capabilities import HISTORY_HEADING, REQUIREMENTS_FILE, CapabilityRef, history_lines
 from .check import ChangeSpecs, Delta
-from .specfile import LIVING_SECTION, Requirement, parse_spec, section_kind
+from .specfile import LIVING_SECTION, Requirement, living_problems, parse_spec, section_kind
 
 
 class MergeError(SpecworksError):
@@ -176,6 +176,9 @@ def plan_merge(ws: Workspace, change: Change, specs: ChangeSpecs, change_ref: st
         assert spec_path is not None  # every capability is registered (checked above)
         created = not spec_path.is_file()
         living = read_text(spec_path) if not created else new_spec_text(delta.cap, delta.doc.purpose)
+        if problems := living_problems(parse_spec(living)):
+            listed = "; ".join(f"line {line}: {message}" for line, message in problems)
+            raise MergeError(f"{ws.rel(spec_path)} is not a valid living spec ({listed}); fix it before closing")
         try:
             text, added, modified, removed = apply_delta(living, delta)
         except MergeError as exc:
