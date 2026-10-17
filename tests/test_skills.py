@@ -172,6 +172,8 @@ def test_adopt_stops_after_mapping_unless_a_baseline_is_asked_for():
     text = read_skill("specworks-adopt")
     assert "**By default, stop after stage 2.**" in text and "**End here unless the user asked for a baseline.**" in text
     assert 'specworks new "baseline-<capability>" --json' in text and "specworks capability add <name>" in text
+    # A red suite fails the design and code gates; checking it first stops before the change is created.
+    assert text.index("specworks run test\n", text.index("## Stage 3")) < text.index('specworks new "baseline-<capability>"')
 
 
 def test_close_runs_the_project_commands_once_before_writing():

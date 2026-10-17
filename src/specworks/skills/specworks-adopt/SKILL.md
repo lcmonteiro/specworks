@@ -154,8 +154,20 @@ exactly as for any other change. Do one capability per change.
    ```
 
    A capability with requirements already has a living spec: it needs no
-   baseline (offer `/specworks-refine` for what is missing). Otherwise,
-   preferably on a new branch (review compares the branch with its base):
+   baseline (offer `/specworks-refine` for what is missing).
+
+   The test suite must be green: the design and code gates require it, and a
+   red suite cannot show that the baseline matches the code. Check it first:
+   ```bash
+   specworks run test
+   ```
+   If it fails, stop before creating anything: name the failing tests and
+   suggest fixing them first, in their own change (`/specworks-refine`), or
+   baselining a capability whose tests pass. Never narrow `commands.test`
+   to hide the failures.
+
+   Otherwise, preferably on a new branch (review compares the branch with
+   its base):
    ```bash
    specworks new "baseline-<capability>" --json
    specworks phase specify --change "baseline-<capability>"
@@ -164,10 +176,11 @@ exactly as for any other change. Do one capability per change.
 
 9. **Read the behaviour**
 
-   Read the capability's code and its tests. The evidence, best first:
+   Read the capability's code and its tests; requirements come from both:
    - existing tests: each one asserts behaviour someone decided on;
-   - public entry points, validation and error handling in the code;
-   - the README, docs, comments and changelog.
+   - the code: public entry points, validation, error handling and side
+     effects, including behaviour no test checks yet;
+   - the README, docs, comments and changelog, to name and explain them.
 
    Record only observable behaviour (inputs, outputs, errors, side effects),
    not how the code does it. Keep a list of what looks like a bug or is
@@ -184,8 +197,9 @@ exactly as for any other change. Do one capability per change.
     - The delta spec starts with `## Purpose` (one or two sentences: the
       capability has no living spec yet), then only `## ADDED Requirements`,
       IDs from `nextId`.
-      Prefer fewer, meaningful requirements. Add `(observed)` to a criterion
-      that rests on code alone, with no test asserting it.
+      Prefer fewer, meaningful requirements. A criterion read from the code
+      alone is as valid as one a test shows; step 12 gives it a test, so
+      do not mark it in the spec.
     - `tasks.md`: per requirement, one task to tag the tests that check its
       criteria (`@ac`) and to write a test for any criterion with none, and
       one task to tag the code that implements it (`@req`).
@@ -195,7 +209,8 @@ exactly as for any other change. Do one capability per change.
     ```
 
     Show the requirements and criteria table as `/specworks-specify` step 5
-    does, with the source of each (test file, or `observed` in code), and the
+    does, with the source of each (the test that shows it, or `code only:
+    <file>` for one that gets a new test in step 12), and the
     list of suspected bugs. **Stop and wait** for the user to confirm: a
     baseline that records a bug as a requirement makes the bug the spec.
 

@@ -27,9 +27,9 @@ it sets up the config, finds the project's test/lint commands and context from
 its build files and CI, and maps the existing code to capabilities with you
 (`capability add`). It stops there. On request, one capability at a time, it
 records the behaviour the code already has as a `baseline-<capability>` change:
-ADDED requirements from the existing tests and code, `@ac` / `@req` tags added
-to them (no behaviour change), then review, validate and `/specworks-close`
-write the capability's living spec. Suspected bugs are left out of the
+ADDED requirements read from both the existing tests and the code, `@ac` /
+`@req` tags added to them (no behaviour change; the test suite must be green),
+then review, validate and `/specworks-close` write the capability's living spec. Suspected bugs are left out of the
 baseline, each a candidate for its own change.
 
 ```bash
