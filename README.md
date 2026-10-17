@@ -37,7 +37,10 @@ cd your-project && specworks init   # installs the skills, then: /specworks-adop
 ```
 
 [`docs/walkthrough.md`](docs/walkthrough.md) follows one small change through every phase, with the real output of
-each step.
+each step. The full documentation is a Sphinx site in [`docs/`](docs/): concepts, a tutorial that takes an example
+project ([`docs/example/shortlink/`](docs/example/shortlink/)) through two changes with the real output of every
+command and how each output feeds the skill, a page per skill, the CLI reference, every gate and validate check,
+and the Python API. Build it with `uv run --group docs sphinx-build docs docs/_build/html`.
 
 **`/specworks-build`** runs design → test → code → review in one go, each
 phase exactly as its own skill. When the review has findings, it asks
@@ -281,6 +284,7 @@ uv run ruff check src tests   # lint
 uv run mypy                   # typecheck
 uv run coverage run -m pytest && uv run coverage report   # branch coverage; CI fails under 95%
 uv run specworks --help
+uv run --group docs sphinx-build -W --keep-going docs docs/_build/html   # the documentation
 ```
 
 Code layout (`src/specworks/`):
