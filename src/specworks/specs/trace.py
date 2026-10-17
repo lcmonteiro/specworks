@@ -151,8 +151,7 @@ def build_matrix(specs: ChangeSpecs, tags: list[Tag]) -> list[Row]:
         code = code_by_id.get(req_id, [])
         if req.section == "REMOVED" or not req.scenarios:
             rows.append(Row(**base, tasks=req_tasks, tests=tests_by_id.get(req_id, []), code=code))
-            continue
-        for sc in req.scenarios:
+        for sc in req.scenarios if req.section != "REMOVED" else []:
             ac_id = sc.id or "?"
             rows.append(
                 Row(
@@ -164,22 +163,20 @@ def build_matrix(specs: ChangeSpecs, tags: list[Tag]) -> list[Row]:
                     code=code,
                 )
             )
-        # A criterion the MODIFIED block leaves out is removed with it: its tests must go too,
-        # or after close they point to an ID no spec has.
-        old = delta.living.by_id().get(req_id) if req.section == "MODIFIED" and delta.living else None
-        kept = {sc.id for sc in req.scenarios}
-        for sc in old.scenarios if old else []:
-            if sc.id and sc.id not in kept:
-                rows.append(
-                    Row(
-                        **{**base, "section": "REMOVED"},
-                        ac=sc.id,
-                        ac_title=sc.title,
-                        tasks=tasks_by_id.get(sc.id, []),
-                        tests=tests_by_id.get(sc.id, []),
-                        code=code_by_id.get(sc.id, []),
-                    )
+        # A criterion that goes with its block at close (left out of a MODIFIED one, or under a
+        # REMOVED requirement) must leave the tests too, or they point to an ID no spec has.
+        for sc in delta.dropped_criteria(req):
+            ac_id = str(sc.id)
+            rows.append(
+                Row(
+                    **{**base, "section": "REMOVED"},
+                    ac=ac_id,
+                    ac_title=sc.title,
+                    tasks=tasks_by_id.get(ac_id, []),
+                    tests=tests_by_id.get(ac_id, []),
+                    code=code_by_id.get(ac_id, []),
                 )
+            )
     return rows
 
 

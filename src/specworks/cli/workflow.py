@@ -160,10 +160,12 @@ def close(
     change: str = ChangeOpt,
     dry_run: bool = typer.Option(False, "--dry-run", help="Show what would be merged and archived; write nothing."),
     base: str | None = typer.Option(None, "--base", help="Branch to diff against for validate (default: origin's default branch)."),
-    no_run: bool = typer.Option(False, "--no-run", help="Validate without running test/lint/typecheck."),
+    no_run: bool = typer.Option(False, "--no-run", help="With --dry-run: validate without running test/lint/typecheck."),
     as_json: bool = JsonOpt,
 ) -> None:
     """Merge the change's delta specs into the living specs, update requirements.md, and archive the change."""
+    if no_run and not dry_run:
+        fail("--no-run only goes with --dry-run: the real close runs test, lint and typecheck before writing anything", as_json)
     ws, mod, ch = require_change(change, as_json)
     ref = mod.qualify(ch.name)
     # The real close is the last check before the living docs change: it runs the commands, never reuses a result.

@@ -12,7 +12,7 @@ from ..core.files import read_text
 from ..core.workspace import Workspace
 from ..tools.diagrams import diagrams_in, referenced_images, state
 from .capabilities import SPECS_DIR, CapabilityRef, delta_files, modified_since, read_spec, resolve_delta, retired_ids
-from .specfile import DELTA_SECTIONS, LIVING_SECTION, NORMATIVE_RE, Requirement, SpecDoc, ac_parent, parse_spec
+from .specfile import DELTA_SECTIONS, LIVING_SECTION, NORMATIVE_RE, Requirement, Scenario, SpecDoc, ac_parent, parse_spec
 from .tasks import TASKS_FILE, Task, parse_tasks
 
 PROPOSAL_FILE, DESIGN_FILE = "proposal.md", "design.md"
@@ -41,6 +41,14 @@ class Delta:
     path: Path
     doc: SpecDoc
     living: SpecDoc | None
+
+    def dropped_criteria(self, req: Requirement) -> list[Scenario]:
+        """Living criteria that go with ``req`` at close: those a MODIFIED block leaves out, every one of a REMOVED requirement."""
+        if req.section not in ("MODIFIED", "REMOVED") or self.living is None:
+            return []
+        old = self.living.by_id().get(req.id or "")
+        kept = {sc.id for sc in req.scenarios} if req.section == "MODIFIED" else set()
+        return [sc for sc in old.scenarios if sc.id and sc.id not in kept] if old else []
 
 
 @dataclass
@@ -188,12 +196,9 @@ def _check_delta(ws: Workspace, change: Change, delta: Delta, seen: dict[str, st
         if req.section == "MODIFIED" and req.id in closed_since:
             warn(req.line, f"{req.id} was MODIFIED by {closed_since[req.id]}, after this change started; "
                            "make sure this block is copied from the current living spec, or closing undoes those edits")
-        living_req = delta.living.by_id().get(req.id) if req.section == "MODIFIED" and delta.living else None
-        if living_req is not None:
-            kept = {sc.id for sc in req.scenarios}
-            if dropped := [sc.id for sc in living_req.scenarios if sc.id and sc.id not in kept]:
-                warn(req.line, f"{req.id}: this MODIFIED block drops {', '.join(dropped)}; copy the whole block "
-                               "from the living spec, or drop a criterion only on purpose (with its tests)")
+        if req.section == "MODIFIED" and (dropped := [str(sc.id) for sc in delta.dropped_criteria(req)]):
+            warn(req.line, f"{req.id}: this MODIFIED block drops {', '.join(dropped)}; copy the whole block "
+                           "from the living spec, or drop a criterion only on purpose (with its tests)")
 
         if req.section == "REMOVED":
             if missing := [f for f in REMOVAL_FIELDS if f.lower() not in _removal_fields(req.description)]:
