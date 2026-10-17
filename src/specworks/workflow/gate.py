@@ -119,6 +119,7 @@ GATE_CHECKS: dict[str, list[CheckFn]] = {
     "design": [
         c.specs_valid,
         c.specs_warnings,
+        c.specs_as_specified,
         interfaces_recorded,
         interface_files_exist,
         interface_files_named,
@@ -126,11 +127,12 @@ GATE_CHECKS: dict[str, list[CheckFn]] = {
         stubs_build("typecheck"),
         existing_tests_pass,
     ],
-    "test": [c.specs_valid, c.specs_warnings, c.acs_have_tests, c.no_unknown_tags, c.acs_in_test_files, c.removed_gone_warning],
-    "code": [c.specs_valid, c.specs_warnings, c.tasks_done, c.reqs_have_code, c.acs_have_tests, c.no_unknown_tags, c.removed_gone, c.tests_pass],
+    "test": [c.specs_valid, c.specs_warnings, c.specs_as_specified, c.acs_have_tests, c.no_unknown_tags, c.acs_in_test_files, c.removed_gone_warning],
+    "code": [c.specs_valid, c.specs_warnings, c.specs_as_specified, c.tasks_done, c.reqs_have_code, c.acs_have_tests, c.no_unknown_tags, c.removed_gone, c.tests_pass],
     "review": [
         c.specs_valid,
         c.specs_warnings,
+        c.specs_as_specified,
         c.review_written,
         c.review_readable,
         c.review_closed,
@@ -140,6 +142,7 @@ GATE_CHECKS: dict[str, list[CheckFn]] = {
         c.removed_gone,
         c.files_accounted,
         c.diff_base,
+        c.modified_tests_changed,
         c.tests_pass,
     ],
 }
@@ -180,5 +183,8 @@ def start_phase(ctx: GateContext, phase: str) -> tuple[bool, list[tuple[str, lis
         ran.append((gate, checks))
         if not ok:
             return False, ran
+        if gate == "specify":
+            # The specs are agreed as they are now; later gates warn when they change (saved with the phase).
+            ctx.change.specified = ctx.analysis.specs.fingerprints()
     set_phase(ctx.change, phase)
     return True, ran

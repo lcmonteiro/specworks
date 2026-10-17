@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 
@@ -39,6 +39,7 @@ class Change:
     created: str = ""
     skip_specs: bool = False
     abandoned: str = ""  # why it was archived without merging (specworks abandon)
+    specified: dict[str, str] = field(default_factory=dict)  # requirement ID -> fingerprint when specify last passed
 
     @property
     def order(self) -> tuple[str, str, str]:
@@ -51,6 +52,8 @@ class Change:
             data["skip_specs"] = True
         if self.abandoned:
             data["abandoned"] = self.abandoned
+        if self.specified:
+            data["specified"] = dict(self.specified)
         (self.path / META_FILE).write_text(yaml.safe_dump(data, sort_keys=False), encoding="utf-8")
 
 
@@ -90,6 +93,7 @@ def _read_change(path: Path, name: str, where: str) -> Change:
         created=str(meta.get("created", "")),
         skip_specs=bool(meta.get("skip_specs", False)),
         abandoned=str(meta.get("abandoned") or ""),
+        specified={str(k): str(v) for k, v in specified.items()} if isinstance(specified := meta.get("specified"), dict) else {},
     )
 
 

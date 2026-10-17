@@ -108,6 +108,21 @@ def tasks_done(ctx: GateContext) -> Check:
     return Check("every task is done (specworks task list --pending)", specs.tasks_found and not pending, pending)
 
 
+def specs_as_specified(ctx: GateContext) -> Check | None:
+    """The delta specs are the ones `gate specify` passed with when `start` last left specify (not checked without one)."""
+    agreed = ctx.change.specified
+    if not agreed:
+        return None
+    now = ctx.analysis.specs.fingerprints()
+    details = [f"{i} changed" for i in agreed if i in now and now[i] != agreed[i]]
+    details += [f"{i} added" for i in now if i not in agreed] + [f"{i} dropped" for i in agreed if i not in now]
+    if details:
+        ref = ctx.module.qualify(ctx.change.name)
+        details.append(f"if that is intended, `specworks start design --change {ref}` re-checks specify and accepts them; "
+                       "the tests and code then follow the new specs")
+    return Check("the specs are the ones agreed when specify passed", not details, details, blocking=False)
+
+
 # --- tags ------------------------------------------------------------------------
 
 
@@ -164,6 +179,24 @@ def files_accounted(ctx: GateContext) -> Check:
         return Check("changed files without tags are accounted for", False, [report.note], blocking=False)
     missing = [path for path in report.untraced_source + report.untraced_tests if not ctx.review.accounts_for(path)]
     return _listed(f"changed files without tags are accounted for in {REVIEW_FILE} (base {report.since})", missing)
+
+
+def modified_tests_changed(ctx: GateContext) -> Check | None:
+    """Each MODIFIED requirement whose behaviour changes has a test file changed on the branch: old tests only check the old one."""
+    report = ctx.report
+    if report.changed is None:
+        return None
+    modified = [(d, r) for d, r in ctx.analysis.specs.requirements("MODIFIED") if d.behaviour_changed(r)]
+    if not modified:
+        return None
+    changed = {f.path for f in report.changed}
+    stale = []
+    for _, req in modified:
+        acs = {sc.id for sc in req.scenarios if sc.id}
+        files = sorted({t.file for t in ctx.analysis.tags if t.is_test and t.id in acs})
+        if files and not changed.intersection(files):
+            stale.append(f"{req.id}: none of its tests changed ({', '.join(files)}); make sure they check the new behaviour")
+    return _listed("the tests of each MODIFIED requirement changed with it", stale, blocking=False)
 
 
 def diff_base(ctx: GateContext) -> Check | None:

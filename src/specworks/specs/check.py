@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -41,6 +42,11 @@ class Delta:
     doc: SpecDoc
     living: SpecDoc | None
 
+    def behaviour_changed(self, req: Requirement) -> bool:
+        """A MODIFIED block says something else than the living one, beyond its title."""
+        old = self.living.by_id().get(req.id or "") if self.living else None
+        return req.section == "MODIFIED" and old is not None and _behaviour(old) != _behaviour(req)
+
     def dropped_criteria(self, req: Requirement) -> list[Scenario]:
         """Living criteria that go with ``req`` at close: those a MODIFIED block leaves out, every one of a REMOVED requirement."""
         if req.section not in ("MODIFIED", "REMOVED") or self.living is None:
@@ -66,6 +72,22 @@ class ChangeSpecs:
     def requirements(self, *sections: str) -> list[tuple[Delta, Requirement]]:
         wanted = sections or DELTA_SECTIONS
         return [(d, r) for d in self.deltas for r in d.doc.requirements if r.section in wanted]
+
+    def fingerprints(self) -> dict[str, str]:
+        """Requirement ID -> a hash of its block (section, title, text, criteria), blank lines and spacing aside."""
+        return {
+            req.id: hashlib.sha256(f"{req.section}\n{_normalized(req.markdown())}".encode()).hexdigest()[:12]
+            for _, req in self.requirements()
+            if req.id
+        }
+
+
+def _normalized(text: str) -> str:
+    return "\n".join(" ".join(line.split()) for line in text.splitlines() if line.strip())
+
+
+def _behaviour(req: Requirement) -> tuple[str, list[tuple[str | None, str]]]:
+    return _normalized(req.description), [(sc.id, _normalized(sc.text)) for sc in req.scenarios]
 
 
 def collect(ws: Workspace, change: Change) -> ChangeSpecs:

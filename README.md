@@ -102,6 +102,11 @@ The system SHALL email a single-use reset link valid for 30 minutes.
   spec has, and when a close recorded in `requirements.md` modified the
   requirement after this change started (re-copy the block, or closing undoes
   that edit). Gates and validate show `check`'s warnings without blocking on them.
+- When `start` passes the specify gate it records each requirement (in `.change.yaml`), and the
+  later gates and validate warn about every requirement changed, added or dropped since then:
+  the tasks, tests and code were made for the old ones. `start design` re-checks specify and accepts
+  the new specs. Review and validate also warn about a MODIFIED requirement whose behaviour changes
+  while none of its test files changed on the branch.
 
 | Command | What it does |
 |---|---|
