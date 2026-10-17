@@ -7,6 +7,7 @@ CLI commands it runs, with their real output. In practice you type
 commands are shown so you can see what each step checks.
 
 `tests/test_walkthrough.py` runs exactly this flow, so it stays true.
+For every skill, command and gate check in depth, see the {doc}`tutorial <tutorial/index>` and the {doc}`CLI reference <cli/index>`.
 
 ## Set up
 
