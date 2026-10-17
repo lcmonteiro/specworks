@@ -52,6 +52,7 @@ VALIDATE: list[tuple[str, str, CheckFn]] = [
     # Correctness: the specs are well-formed and the code does what they say.
     (CORRECTNESS, SPECIFY, c.specs_valid),
     (CORRECTNESS, SPECIFY, c.specs_warnings),
+    (CORRECTNESS, SPECIFY, c.specs_as_specified),
     (CORRECTNESS, CODE, c.tests_pass),
     (CORRECTNESS, CODE, c.optional_command("lint", "lint passes (commands.lint)")),
     (CORRECTNESS, CODE, c.optional_command("typecheck", "typecheck passes (commands.typecheck)")),
@@ -60,6 +61,7 @@ VALIDATE: list[tuple[str, str, CheckFn]] = [
     # Coherence: code, specs, review and design tell the same story.
     (COHERENCE, REVIEW, c.files_accounted),
     (COHERENCE, REVIEW, c.diff_base),
+    (COHERENCE, TEST, c.modified_tests_changed),
     (COHERENCE, SPECIFY, diagrams_current),
     (COHERENCE, REVIEW, went_through_review),
 ]
