@@ -22,6 +22,20 @@ refine -> specify -> design -> test -> code -> review -> validate -> close
 | validate  | `/specworks-validate`  | **read-only** PASS/FAIL report (completeness, correctness, coherence); every failure names the phase that fixes it |
 | close     | `/specworks-close`     | deltas merged into the living `spec.md`, `requirements.md` regenerated, design / architecture / diagrams updated in `<capability-path>/docs/`, change archived (phase `done`) |
 
+**`/specworks-adopt`** brings a project that already has code into specworks:
+it sets up the config, finds the project's test/lint commands and context from
+its build files and CI, and maps the existing code to capabilities with you
+(`capability add`). It stops there. On request, one capability at a time, it
+records the behaviour the code already has as a `baseline-<capability>` change:
+ADDED requirements read from both the existing tests and the code, `@ac` /
+`@req` tags added to them (no behaviour change; the test suite must be green),
+then review, validate and `/specworks-close` write the capability's living spec. Suspected bugs are left out of the
+baseline, each a candidate for its own change.
+
+```bash
+cd your-project && specworks init   # installs the skills, then: /specworks-adopt
+```
+
 [`docs/walkthrough.md`](docs/walkthrough.md) follows one small change through every phase, with the real output of
 each step.
 
