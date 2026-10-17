@@ -1,4 +1,5 @@
 import json
+import re
 
 import pytest
 from typer.testing import CliRunner
@@ -316,13 +317,44 @@ def test_delta_under_unknown_module(change):
     assert any("'nope' in specs/nope/thing/spec.md is not a module" in m for m in errors(data))
 
 
-def test_id_clash_with_another_change(change, project):
+def started(project, name, created):
+    meta = project / "spec/changes" / name / ".change.yaml"
+    meta.write_text(re.sub(r"(?m)^created: .*$", f"created: '{created}'", meta.read_text()))
+
+
+def warnings(data):
+    return [i["message"] for i in data["issues"] if i["level"] == "warning"]
+
+
+def test_id_clash_is_an_error_only_in_the_change_that_started_later(change, project):
     run_json("new", "other-change")
     other = project / "spec/changes/other-change/specs/user-auth"
     other.mkdir(parents=True)
     (other / "spec.md").write_text(DELTA)
+    started(project, "add-password-reset", "2026-10-17T09:00:00")
+    started(project, "other-change", "2026-10-17T10:00:00")
+    code, data = run_json("check", "--change", "other-change")
+    assert any("REQ-AUTH-003 is also added by change add-password-reset, which started first; take the next free ID" in m for m in errors(data))
     code, data = run_json("check", "--change", "add-password-reset")
-    assert any("REQ-AUTH-003 is also added by change other-change" in m for m in errors(data))
+    assert code == 0 and not any("other-change" in m for m in errors(data))
+    assert any("REQ-AUTH-003 is also added by change other-change, which started later" in m for m in warnings(data))
+
+
+def test_changes_started_on_the_same_day_without_a_time_are_ordered_by_name(change, project):
+    run_json("new", "other-change")
+    other = project / "spec/changes/other-change/specs/user-auth"
+    other.mkdir(parents=True)
+    (other / "spec.md").write_text(DELTA)
+    started(project, "add-password-reset", "2026-10-17")
+    started(project, "other-change", "2026-10-17")
+    assert run_json("check", "--change", "add-password-reset")[0] == 0
+    assert run_json("check", "--change", "other-change")[0] == 1
+
+
+def test_a_new_change_records_when_it_started(project):
+    run_json("new", "other-change")
+    meta = (project / "spec/changes/other-change/.change.yaml").read_text()
+    assert re.search(r"(?m)^created: '\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d'$", meta), meta
 
 
 @pytest.mark.parametrize(
@@ -334,16 +366,19 @@ def test_id_clash_with_another_change(change, project):
     ],
     ids=["modified", "removed"],
 )
-def test_two_changes_cannot_edit_the_same_requirement(change, project, other_delta):
+def test_two_changes_editing_one_requirement_do_not_block_each_other(change, project, other_delta):
     run_json("new", "other-change")
     other = project / "spec/changes/other-change/specs/user-auth"
     other.mkdir(parents=True)
     (other / "spec.md").write_text(other_delta)
-    code, data = run_json("check", "--change", "add-password-reset")
-    assert code == 1
-    assert any("REQ-AUTH-002 is also MODIFIED or REMOVED by change other-change; close one change first" in m for m in errors(data))
+    started(project, "add-password-reset", "2026-10-17T09:00:00")
+    started(project, "other-change", "2026-10-17T10:00:00")
     code, data = run_json("check", "--change", "other-change")
-    assert any("REQ-AUTH-002 is also MODIFIED or REMOVED by change add-password-reset" in m for m in errors(data))
+    assert code == 1
+    assert any("REQ-AUTH-002 is also MODIFIED or REMOVED by change add-password-reset, which started first; close it first" in m for m in errors(data))
+    code, data = run_json("check", "--change", "add-password-reset")
+    assert code == 0, errors(data)
+    assert any("REQ-AUTH-002 is also MODIFIED or REMOVED by change other-change, which started later" in m for m in warnings(data))
 
 
 def test_skip_specs(project):
@@ -440,10 +475,47 @@ def test_trace_respects_test_globs(change, project):
 
 def test_tags_of_a_capability_with_a_longer_prefix_are_not_unknown(change, project):
     # The change touches AUTH; REQ-AUTH-ADMIN-001 belongs to another capability (prefix AUTH-ADMIN).
-    (project / "src/admin").mkdir()
+    run_json("capability", "add", "auth-admin", "--path", "src/admin", "--prefix", "AUTH-ADMIN")
+    (project / "src/admin").mkdir(exist_ok=True)
     (project / "src/admin/users.py").write_text("# @req REQ-AUTH-ADMIN-001\n# @req REQ-AUTH-078\n")
     code, data = run_json("trace", "--change", "add-password-reset")
     assert data["unknownTags"] == [{"id": "REQ-AUTH-078", "where": "src/admin/users.py:2"}]
+
+
+def test_a_tag_with_a_prefix_no_capability_uses_is_unknown(change, project):
+    (project / "tests").mkdir()
+    (project / "tests/test_reset.py").write_text("# @ac AC-AUHT-003.1\n# @req REQ-AUTH\n")
+    code, data = run_json("trace", "--change", "add-password-reset")
+    assert data["unknownTags"] == [
+        {"id": "AC-AUHT-003.1", "where": "tests/test_reset.py:1", "hint": "no capability uses the prefix AUHT; did you mean AUTH?"},
+        {"id": "REQ-AUTH", "where": "tests/test_reset.py:2", "hint": "not a REQ-<prefix>-NNN or AC-<prefix>-NNN.<n> ID"},
+    ]
+
+
+def test_tags_of_another_active_change_are_not_unknown(change, project):
+    # other-change adds REQ-AUTH-004 to the same capability and a new, not yet registered one.
+    run_json("new", "other-change")
+    other = project / "spec/changes/other-change/specs"
+    (other / "user-auth").mkdir(parents=True)
+    (other / "user-auth/spec.md").write_text(DELTA.replace("REQ-AUTH-003", "REQ-AUTH-004").replace("AC-AUTH-003", "AC-AUTH-004"))
+    (other / "audit-log").mkdir()
+    (other / "audit-log/spec.md").write_text(
+        "## Purpose\nAudit.\n\n## ADDED Requirements\n\n### Requirement: REQ-AUDIT-LOG-001 Log\nThe system SHALL log.\n\n"
+        "#### Scenario: AC-AUDIT-LOG-001.1 Logged\n- **WHEN** x\n- **THEN** y\n"
+    )
+    (project / "tests").mkdir()
+    (project / "tests/test_other.py").write_text("# @ac AC-AUTH-004.1\n# @ac AC-AUDIT-LOG-001.1\n# @ac AC-AUTH-005.1\n")
+    code, data = run_json("trace", "--change", "add-password-reset")
+    assert data["unknownTags"] == [{"id": "AC-AUTH-005.1", "where": "tests/test_other.py:3"}]
+
+
+def test_a_broken_delta_of_another_change_does_not_break_this_ones_trace(change, project):
+    run_json("new", "other-change")
+    bad = project / "spec/changes/other-change/specs/nope/thing"
+    bad.mkdir(parents=True)
+    (bad / "spec.md").write_text("## ADDED Requirements\n")
+    code, data = run_json("trace", "--change", "add-password-reset")
+    assert code == 0 and data["unknownTags"] == []
 
 
 @pytest.mark.parametrize(

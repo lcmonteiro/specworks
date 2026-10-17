@@ -91,6 +91,9 @@ The system SHALL email a single-use reset link valid for 30 minutes.
 - Tests and code point back with comment tags in any language:
   `# @ac AC-AUTH-003.1` in a test, `// @req REQ-AUTH-003` in code; one tag may
   list several IDs (`# @ac AC-AUTH-003.1, AC-AUTH-003.2`).
+  A tag is unknown when its ID is in none of the change's specs (its delta, the living
+  spec, or another active change's delta), or when no capability uses its prefix
+  (`AC-AUHT-003.1`: "did you mean AUTH?"), whichever change looks.
 - `test_globs` / `source_globs` (in the config, relative to its folder) choose the
   files scanned for tags: `*` and `?` stay within one folder, `**` spans any number
   of folders (`tests/**/*.py` includes `tests/test_x.py`; `src/*` does not include
@@ -103,7 +106,7 @@ The system SHALL email a single-use reset link valid for 30 minutes.
 | Command | What it does |
 |---|---|
 | `specworks spec list` / `spec show <ref>` | capabilities, their requirements, ID prefix, next free ID and delta path |
-| `specworks check --change <ref>` | checks proposal, delta specs (IDs, SHALL/MUST, scenarios, MODIFIED/REMOVED targets, ID clashes with other changes: the same ID ADDED twice, or one requirement MODIFIED/REMOVED by two active changes) and tasks (format, every AC covered) |
+| `specworks check --change <ref>` | checks proposal, delta specs (IDs, SHALL/MUST, scenarios, MODIFIED/REMOVED targets, ID clashes with other changes: the same ID ADDED twice, or one requirement MODIFIED/REMOVED by two active changes; the clash is an error in the change that started later and a warning in the earlier one, which can still close) and tasks (format, every AC covered) |
 | `specworks diagrams --change <ref> \| --dir <folder> [--check]` | renders `diagrams/*.d2` of a change (or of a living docs folder) to SVG with the workspace theme; `--check` reports missing/outdated SVGs without rendering |
 | `specworks skip-specs --change <ref> [--off]` | marks a change with no behaviour change (refactor, tooling, docs): it needs no delta specs |
 | `specworks task list\|done\|undo --change <ref> [N.M ...]` | lists tasks with their IDs; ticks or unticks checkboxes without touching the rest of `tasks.md` |

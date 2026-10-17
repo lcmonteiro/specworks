@@ -138,7 +138,8 @@ HISTORY_LINE_RE = re.compile(r"^- (?P<date>\d{4}-\d{2}-\d{2}) `(?P<change>[^`]+)
 
 
 def modified_since(cap: CapabilityRef, since: str) -> dict[str, str]:
-    """IDs a close on or after ``since`` (YYYY-MM-DD) MODIFIED, per requirements.md History -> ``<change> on <date>``."""
+    """IDs a close on or after the day of ``since`` (YYYY-MM-DD, a time may follow) MODIFIED, per requirements.md History -> ``<change> on <date>``."""
+    since = since[:10]
     living = cap.living_spec()
     found: dict[str, str] = {}
     for line in history_lines(living.parent / REQUIREMENTS_FILE if living else None):
