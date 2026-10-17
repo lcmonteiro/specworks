@@ -53,6 +53,16 @@ def test_dry_run_shows_the_plan_and_writes_nothing(ready):
     assert data["archivedTo"] is None and snapshot(ready) == before
 
 
+def test_close_without_dry_run_refuses_no_run(ready):
+    # The real close is the last check before the living docs change: it never skips the commands.
+    before = snapshot(ready)
+    code, data = run_json("close", "--change", REF, "--base", "main", "--no-run")
+    assert code == 1 and "--no-run only goes with --dry-run" in data["error"]
+    assert snapshot(ready) == before
+    code, data = run_json("close", "--change", REF, "--base", "main", "--dry-run", "--no-run")
+    assert code == 0, data
+
+
 def test_close_merges_indexes_and_archives(ready):
     code, data = run_json("close", "--change", REF, "--base", "main")
     assert code == 0, data

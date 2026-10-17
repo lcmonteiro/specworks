@@ -34,6 +34,7 @@ allow-direct-references = true
 
 [dependency-groups]
 dev = [
+    "coverage>=7.16.2",
     "mypy>=2.4.0",
     "pytest>=9.1.1",
     "ruff>=0.17.0",
@@ -63,3 +64,12 @@ extend-immutable-calls = ["typer.Argument", "typer.Option"]
 files = ["src/specworks"]
 python_version = "3.11"
 check_untyped_defs = true
+
+[tool.coverage.run]
+source = ["specworks"]
+branch = true
+
+[tool.coverage.report]
+fail_under = 95
+skip_covered = true
+show_missing = true

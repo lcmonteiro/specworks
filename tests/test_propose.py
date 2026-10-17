@@ -68,6 +68,19 @@ def test_parse_ignores_headers_inside_code_fences():
     assert [r.id for r in doc.requirements] == ["REQ-X-001"]
 
 
+@pytest.mark.parametrize(
+    "fence",
+    [
+        "~~~\n### Requirement: REQ-X-002 B\n~~~\n",  # tildes
+        "````\n```\n### Requirement: REQ-X-002 B\n```\n````\n",  # a shorter fence inside a longer one
+        "~~~\n```\n### Requirement: REQ-X-002 B\n~~~\n",  # backticks do not close a tilde fence
+    ],
+)
+def test_parse_ignores_headers_inside_any_code_fence(fence):
+    doc = parse_spec("## ADDED Requirements\n### Requirement: REQ-X-001 A\nSHALL x\n" + fence + "### Requirement: REQ-X-003 C\nSHALL y\n")
+    assert [r.id for r in doc.requirements] == ["REQ-X-001", "REQ-X-003"]
+
+
 def test_ids_helpers():
     assert find_ids("covers AC-BILLING-INVOICES-001.2 and REQ-AUTH-003.") == ["AC-BILLING-INVOICES-001.2", "REQ-AUTH-003"]
     assert ac_parent("AC-BILLING-INVOICES-001.2") == "REQ-BILLING-INVOICES-001"
@@ -185,6 +198,12 @@ def test_missing_proposal_and_specs(project):
     assert "proposal.md is missing" in msgs and "no delta specs" in msgs
 
 
+def test_proposal_section_in_a_code_fence_does_not_count(change):
+    (change / "proposal.md").write_text(PROPOSAL.replace("## Why\nUsers get locked out.\n", "```\n## Why\n```\n"))
+    code, data = run_json("check", "--change", "add-password-reset")
+    assert "missing section '## Why'" in errors(data)
+
+
 def replace_delta(change, old, new):
     path = change / "specs/user-auth/spec.md"
     assert old in path.read_text()
@@ -203,6 +222,9 @@ def replace_delta(change, old, new):
         ("AC-AUTH-003.2 Expired", "AC-AUTH-003.1 Expired", "AC-AUTH-003.1 is used twice"),
         ("- **THEN** the user is told it expired", "- the user is told", "'- **WHEN** ...' / '- **THEN** ...'"),
         ("REQ-AUTH-002 Lockout after failures", "REQ-AUTH-009 Lockout after failures", "not in the living spec"),
+        ("REQ-AUTH-003 Password reset", "REQ-AUTH-003", "REQ-AUTH-003 has no title"),
+        ("#### Scenario: AC-AUTH-003.2 Expired link", "#### Scenario: Expired link", "scenario header must be '#### Scenario: AC-AUTH-003.<n> <title>'"),
+        ("## MODIFIED Requirements", "## Requirements", "uses '## ADDED/MODIFIED/REMOVED Requirements', not '## Requirements'"),
     ],
 )
 def test_delta_errors(change, old, new, message):
@@ -210,6 +232,36 @@ def test_delta_errors(change, old, new, message):
     code, data = run_json("check", "--change", "add-password-reset")
     assert code == 1
     assert any(message in m for m in errors(data)), errors(data)
+
+
+def test_requirement_id_used_twice(change):
+    replace_delta(change, "REQ-AUTH-002 Lockout after failures", "REQ-AUTH-003 Lockout after failures")
+    code, data = run_json("check", "--change", "add-password-reset")
+    assert code == 1 and any("REQ-AUTH-003 is used twice" in m for m in errors(data)), errors(data)
+
+
+def test_delta_without_requirements(change):
+    (change / "specs/user-auth/spec.md").write_text("# Spec Delta: user-auth\n\nNothing yet.\n")
+    code, data = run_json("check", "--change", "add-password-reset")
+    assert code == 1 and any(m.startswith("no requirements; add '## ADDED Requirements'") for m in errors(data)), errors(data)
+
+
+def test_long_description_is_a_warning(change):
+    replace_delta(change, "valid for 30 minutes.", "valid for 30 minutes." + " Really." * 200)
+    code, data = run_json("check", "--change", "add-password-reset")
+    assert code == 0 and any("REQ-AUTH-003: description is long" in i["message"] for i in data["issues"] if i["level"] == "warning")
+
+
+def test_tasks_without_any_task(change):
+    (change / "tasks.md").write_text("# Tasks\n\nTo do.\n")
+    code, data = run_json("check", "--change", "add-password-reset")
+    assert code == 1 and any(m.startswith("no tasks;") for m in errors(data)), errors(data)
+
+
+def test_skip_specs_with_delta_specs(change):
+    run_json("skip-specs", "--change", "add-password-reset")
+    code, data = run_json("check", "--change", "add-password-reset")
+    assert code == 1 and "skip_specs is set but the change has delta specs" in errors(data)
 
 
 def test_requirement_without_scenario(change):

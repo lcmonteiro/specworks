@@ -151,8 +151,7 @@ def build_matrix(specs: ChangeSpecs, tags: list[Tag]) -> list[Row]:
         code = code_by_id.get(req_id, [])
         if req.section == "REMOVED" or not req.scenarios:
             rows.append(Row(**base, tasks=req_tasks, tests=tests_by_id.get(req_id, []), code=code))
-            continue
-        for sc in req.scenarios:
+        for sc in req.scenarios if req.section != "REMOVED" else []:
             ac_id = sc.id or "?"
             rows.append(
                 Row(
@@ -164,27 +163,34 @@ def build_matrix(specs: ChangeSpecs, tags: list[Tag]) -> list[Row]:
                     code=code,
                 )
             )
-        # A criterion the MODIFIED block leaves out is removed with it: its tests must go too,
-        # or after close they point to an ID no spec has.
-        old = delta.living.by_id().get(req_id) if req.section == "MODIFIED" and delta.living else None
-        kept = {sc.id for sc in req.scenarios}
-        for sc in old.scenarios if old else []:
-            if sc.id and sc.id not in kept:
-                rows.append(
-                    Row(
-                        **{**base, "section": "REMOVED"},
-                        ac=sc.id,
-                        ac_title=sc.title,
-                        tasks=tasks_by_id.get(sc.id, []),
-                        tests=tests_by_id.get(sc.id, []),
-                        code=code_by_id.get(sc.id, []),
-                    )
+        # A criterion that goes with its block at close (left out of a MODIFIED one, or under a
+        # REMOVED requirement) must leave the tests too, or they point to an ID no spec has.
+        for sc in delta.dropped_criteria(req):
+            ac_id = str(sc.id)
+            rows.append(
+                Row(
+                    **{**base, "section": "REMOVED"},
+                    ac=ac_id,
+                    ac_title=sc.title,
+                    tasks=tasks_by_id.get(ac_id, []),
+                    tests=tests_by_id.get(ac_id, []),
+                    code=code_by_id.get(ac_id, []),
                 )
+            )
     return rows
 
 
 def _task_key(num: str) -> tuple[int, ...]:
     return tuple(int(p) for p in num.split("."))
+
+
+# Each gap ``gaps`` reports, with how the trace and review outputs name it.
+GAP_LABELS = {
+    "acWithoutTasks": "acceptance criteria without a task",
+    "acWithoutTests": "acceptance criteria without a test (`@ac`)",
+    "reqWithoutCode": "requirements without code (`@req`)",
+    "removedStillTagged": "removed requirements or criteria still tagged in tests or code",
+}
 
 
 def gaps(rows: list[Row]) -> dict[str, list[str]]:
@@ -230,14 +236,8 @@ def to_markdown(change_ref: str, rows: list[Row], found: dict[str, list[str]]) -
             f"| {r.capability} | {f'{r.ac} {r.ac_title}' if r.ac else f'{r.req} {r.title}'} | {', '.join(r.tasks) or '—'} | {cell(r.tests + r.code)} |"
             for r in removed
         ]
-    labels = {
-        "acWithoutTasks": "Acceptance criteria without a task",
-        "acWithoutTests": "Acceptance criteria without a test (`@ac`)",
-        "reqWithoutCode": "Requirements without code (`@req`)",
-        "removedStillTagged": "Removed requirements or criteria still tagged in tests or code",
-    }
     out += ["", "## Gaps", ""]
-    out += [f"- {labels[k]}: {', '.join(v)}" for k, v in found.items() if v] or ["- None"]
+    out += [f"- {GAP_LABELS[k].capitalize()}: {', '.join(v)}" for k, v in found.items() if v] or ["- None"]
     return "\n".join(out) + "\n"
 
 

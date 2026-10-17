@@ -285,6 +285,8 @@ def test_diagram_pad_must_be_a_non_negative_number(project, pad):
         ("specworks: 1\nmodules: [billing]\n", "'modules' must be a mapping of name: path"),
         ("specworks: 1\ndiagrams:\n  theme: true\n", "'diagrams.theme': unknown theme True"),
         ("specworks: 1\ndiagrams:\n  dark_theme: nope\n", "or none to use the light theme in dark mode too"),
+        ("specworks: 1\ntest_globs: ['tests/test_[ab].py']\n", "'test_globs': tests/test_[ab].py: globs support *, ? and ** only"),
+        ("specworks: 1\nsource_globs: ['src/**/*.{ts,tsx}']\n", "'source_globs': src/**/*.{ts,tsx}: globs support *, ? and ** only"),
     ],
     ids=lambda value: value[:40],  # the test ID goes into an environment variable, which Windows caps at 32767 characters
 )
@@ -337,3 +339,12 @@ def test_task_numbered_twice_is_not_ticked(project):
     code, data = run_json("task", "done", "1.1", "--change", "dup")
     assert code == 1 and "numbered more than once" in data["error"]
     assert "[x]" not in tasks.read_text()
+
+
+def test_ticking_a_task_keeps_each_line_ending(project):
+    run_json("new", "crlf")
+    tasks = project / "specworks/changes/crlf/tasks.md"
+    tasks.write_bytes(b"# Tasks\r\n\r\n- [ ] 1.1 first\r\n- [ ] 1.2 second\n")
+    code, data = run_json("task", "done", "1.1", "--change", "crlf")
+    assert code == 0, data
+    assert tasks.read_bytes() == b"# Tasks\r\n\r\n- [x] 1.1 first\r\n- [ ] 1.2 second\n"

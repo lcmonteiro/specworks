@@ -38,13 +38,13 @@ earliest of those phases (`specworks cycle --change "<ref>"`).
 
    Pick the change (above), then:
    ```bash
-   specworks start review --change "<ref>" --no-run
+   specworks start review --change "<ref>"
    ```
    It runs `gate code` and moves the change to review only if it passes.
-   `--no-run` skips the test suite here: the code phase's gate just ran it,
-   and `gate review` runs it again at the end. If it fails (pending tasks,
-   untagged requirements), stop and suggest `/specworks-code <ref>`;
-   reviewing unfinished work finds noise.
+   Its test run costs nothing when the code has not changed since the code
+   phase's gate: that result is reused (`same code as the run at ...`). If it
+   fails (pending tasks, untagged requirements, a red suite), stop and suggest
+   `/specworks-code <ref>`; reviewing unfinished work finds noise.
 
 2. **Collect the drift candidates**
 

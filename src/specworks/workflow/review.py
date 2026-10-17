@@ -15,15 +15,14 @@ with the user whether the code or the spec is right.
 from __future__ import annotations
 
 import re
-import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
 
 from ..core.changes import Change
-from ..core.errors import SpecworksError
 from ..core.files import read_text
+from ..core.git import GitError, git, git_text
 from ..core.workspace import Workspace
-from ..specs.specfile import COMMENT_RE, H2_RE
+from ..specs.specfile import H2_RE, blank_comments, fenced
 from ..specs.trace import Analysis, scan_rule
 
 CODE_EXTENSIONS = {
@@ -34,10 +33,6 @@ CODE_EXTENSIONS = {
 }  # fmt: skip
 BASE_CANDIDATES = ("origin/main", "main", "origin/master", "master")
 REVIEW_FILE = "review.md"
-
-
-class ReviewError(SpecworksError):
-    """Raised when git cannot tell what changed."""
 
 
 @dataclass
@@ -92,36 +87,27 @@ class ReviewReport:
         }
 
 
-def _git(cwd: Path, *args: str) -> str:
-    # git writes paths as UTF-8 whatever the platform; the default (the locale's code page on
-    # Windows) would garble non-ASCII names into paths that do not exist.
-    proc = subprocess.run(["git", *args], cwd=cwd, capture_output=True, text=True, encoding="utf-8", errors="surrogateescape", check=False)
-    if proc.returncode != 0:
-        raise ReviewError((proc.stderr or proc.stdout).strip() or f"git {' '.join(args)} failed")
-    return proc.stdout
-
-
 def detect_base(cwd: Path) -> str:
     try:
-        return _git(cwd, "symbolic-ref", "--short", "refs/remotes/origin/HEAD").strip()
-    except (ReviewError, OSError):
+        return git_text(cwd, "symbolic-ref", "--short", "refs/remotes/origin/HEAD").strip()
+    except GitError:
         pass
     for candidate in BASE_CANDIDATES:
         try:
-            _git(cwd, "rev-parse", "--verify", "--quiet", candidate)
+            git(cwd, "rev-parse", "--verify", "--quiet", candidate)
             return candidate
-        except (ReviewError, OSError):
+        except GitError:
             continue
-    raise ReviewError("cannot find the base branch; pass --base <branch>")
+    raise GitError("cannot find the base branch; pass --base <branch>")
 
 
 def changed_paths(ws: Workspace, base: str) -> list[str]:
     """Files changed since the merge base with ``base`` (committed, uncommitted, untracked), relative to the workspace."""
-    git_root = Path(_git(ws.root, "rev-parse", "--show-toplevel").strip()).resolve()
-    merge_base = _git(ws.root, "merge-base", base, "HEAD").strip()
+    git_root = Path(git_text(ws.root, "rev-parse", "--show-toplevel").strip()).resolve()
+    merge_base = git_text(ws.root, "merge-base", base, "HEAD").strip()
     # -z: NUL-separated and never quoted, so names with non-ASCII characters or newlines come through as they are.
-    names = set(_git(ws.root, "diff", "--name-only", "-z", merge_base).split("\0"))
-    names |= set(_git(ws.root, "ls-files", "-z", "--others", "--exclude-standard", "--full-name").split("\0"))
+    names = set(git_text(ws.root, "diff", "--name-only", "-z", merge_base).split("\0"))
+    names |= set(git_text(ws.root, "ls-files", "-z", "--others", "--exclude-standard", "--full-name").split("\0"))
     paths = []
     for name in sorted(n for n in names if n):
         path = (git_root / name).resolve()
@@ -149,7 +135,7 @@ def review_change(analysis: Analysis, base: str | None = None) -> ReviewReport:
     try:
         report.base = base or detect_base(ws.root)
         paths = changed_paths(ws, report.base)
-    except (ReviewError, OSError) as exc:
+    except (GitError, OSError) as exc:
         report.note = f"changed files unknown ({exc}); only spec -> code drift was checked"
         return report
 
@@ -230,14 +216,18 @@ class ReviewDoc:
 
 
 def parse_review(text: str) -> ReviewDoc:
-    """Findings and the "Changed files without tags" section of review.md; HTML comments are ignored."""
+    """Findings and the "Changed files without tags" section of review.md; HTML comments and code fences are ignored."""
     doc = ReviewDoc(exists=True)
     current: Finding | None = None
     section = ""
     accounted: list[str] = []
     # Comments are blanked line for line, so reported line numbers stay those of the file.
-    uncommented = COMMENT_RE.sub(lambda m: "\n" * m.group(0).count("\n"), text)
-    for number, line in enumerate(uncommented.splitlines(), start=1):
+    lines = blank_comments(text).splitlines()
+    for number, (line, example) in enumerate(zip(lines, fenced(lines), strict=True), start=1):
+        if example:  # a finding shown in a code fence is an example; a fence under a finding stays in it
+            if section == ACCOUNTED_SECTION:
+                accounted.append(line)
+            continue
         if h2 := H2_RE.match(line):
             section, current = h2.group("title").strip().lower(), None
             continue

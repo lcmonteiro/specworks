@@ -4,7 +4,7 @@ description: Validate phase of spec-driven development - a final, read-only pass
 allowed-tools: Bash(specworks:*), Bash(uv run specworks:*), Bash(uvx --from git+https://github.com/lcmonteiro/specworks specworks:*), Bash(git diff:*), Bash(git log:*), Bash(git status:*), Read, Grep, Glob
 ---
 
-Validate phase: decide, without changing anything, whether the change is ready
+Validate phase: decide, changing nothing but the phase marker, whether the change is ready
 to close. The CLI checks what can be measured; you check what needs reading.
 The result is a clear PASS or FAIL, and every failure says which phase fixes
 it.

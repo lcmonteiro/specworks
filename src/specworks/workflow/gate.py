@@ -15,7 +15,7 @@ from ..core.changes import PHASES, Change, set_phase
 from ..core.errors import SpecworksError
 from ..core.files import read_text
 from ..specs.check import DESIGN_FILE
-from ..specs.specfile import COMMENT_RE, H2_RE, fenced
+from ..specs.specfile import H2_RE, blank_comments, fenced
 from . import checks as c
 from .checks import Check, CheckFn, GateContext, passed, run_checks
 from .review import CODE_EXTENSIONS
@@ -36,7 +36,7 @@ def interfaces_section(change: Change) -> str | None:
     design = change.path / DESIGN_FILE
     if not design.is_file():
         return None
-    lines = read_text(design).splitlines()
+    lines = blank_comments(read_text(design)).splitlines()
     body: list[str] | None = None  # None until the section starts
     for line, in_fence in zip(lines, fenced(lines), strict=True):
         h2 = None if in_fence else H2_RE.match(line)  # a "## " line in a code fence is an example
@@ -46,7 +46,7 @@ def interfaces_section(change: Change) -> str | None:
             body = [] if INTERFACES_TITLE_RE.match(h2.group("title")) else None
         elif body is not None:
             body.append(line)
-    return COMMENT_RE.sub("", "\n".join(body)).strip() if body is not None else None
+    return "\n".join(body).strip() if body is not None else None
 
 
 def interface_files(section: str) -> list[str]:
@@ -175,9 +175,9 @@ def start_phase(ctx: GateContext, phase: str) -> tuple[bool, list[tuple[str, lis
     """
     ran: list[tuple[str, list[Check]]] = []
     for gate in gates_to_start(ctx.change.phase, phase):
-        passed, checks = run_gate(ctx, gate)
+        ok, checks = run_gate(ctx, gate)
         ran.append((gate, checks))
-        if not passed:
+        if not ok:
             return False, ran
     set_phase(ctx.change, phase)
     return True, ran

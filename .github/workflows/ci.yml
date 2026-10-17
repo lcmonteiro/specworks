@@ -21,12 +21,12 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest]
-        python-version: ["3.11", "3.12", "3.13"]
+        python-version: ["3.11", "3.12", "3.13", "3.14"]
         include:
           - os: macos-latest
-            python-version: "3.13"
+            python-version: "3.14"
           - os: windows-latest
-            python-version: "3.13"
+            python-version: "3.14"
     steps:
       - uses: actions/checkout@v4
 
@@ -40,7 +40,11 @@ jobs:
         run: uv sync --locked
 
       - name: Run tests
-        run: uv run pytest -v
+        run: uv run coverage run -m pytest -v
+
+      # Branch coverage of src/specworks; fails under [tool.coverage.report] fail_under.
+      - name: Coverage
+        run: uv run coverage report
 
   lint:
     name: Lint and typecheck

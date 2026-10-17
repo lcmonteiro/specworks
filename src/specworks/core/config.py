@@ -115,6 +115,9 @@ def load_globs(raw: object, key: str) -> list[str]:
         raise ConfigError(f"'{key}' must be a list of globs, e.g. {key}: [{json.dumps(raw)}]")
     if not isinstance(raw, list) or not all(isinstance(g, str) and g.strip() for g in raw):
         raise ConfigError(f"'{key}' must be a list of glob strings")
+    # Only *, ? and ** are wildcards; a [set] or {a,b} would be matched as plain text, so never match.
+    if unsupported := [g for g in raw if any(ch in g for ch in "[]{}")]:
+        raise ConfigError(f"'{key}': {', '.join(unsupported)}: globs support *, ? and ** only; list each pattern instead of [..] or {{..}}")
     return [g.strip() for g in raw]
 
 

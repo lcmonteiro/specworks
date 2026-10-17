@@ -94,7 +94,7 @@ The system SHALL email a single-use reset link valid for 30 minutes.
 - `test_globs` / `source_globs` (in the config, relative to its folder) choose the
   files scanned for tags: `*` and `?` stay within one folder, `**` spans any number
   of folders (`tests/**/*.py` includes `tests/test_x.py`; `src/*` does not include
-  `src/auth/x.py`, `src/**` does).
+  `src/auth/x.py`, `src/**` does). Those are the only wildcards: a `[..]` or `{..}` is a config error.
 - `check` also warns when a `MODIFIED` block drops acceptance criteria the living
   spec has, and when a close recorded in `requirements.md` modified the
   requirement after this change started (re-copy the block, or closing undoes
@@ -252,8 +252,9 @@ terminal access (Copilot agent mode, Claude Code).
 ```bash
 uv sync
 uv run pytest
-uv run ruff check src tests   # lint (CI runs both)
+uv run ruff check src tests   # lint
 uv run mypy                   # typecheck
+uv run coverage run -m pytest && uv run coverage report   # branch coverage; CI fails under 95%
 uv run specworks --help
 ```
 
@@ -262,7 +263,7 @@ Code layout (`src/specworks/`):
 | Package | What it holds |
 |---|---|
 | `cli/` | the `specworks` command: `app.py` (Typer app and command groups), `output.py` (options, JSON/text output, resolving changes), and one module per area: `project.py`, `changes.py`, `specs.py`, `workflow.py` |
-| `core/` | `config.py` (find and read `<dir>.yml`), `config_file.py` (write it), `workspace.py` (modules), `changes.py` (changes and phases), `runner.py` (project commands), `files.py` (reading project files), `validators.py` (folder, name and prefix rules), `errors.py` (`SpecworksError`, the base of every error the CLI reports, and `ConfigError`) |
+| `core/` | `config.py` (find and read `<dir>.yml`), `config_file.py` (write it), `workspace.py` (modules), `changes.py` (changes and phases), `runner.py` (project commands), `git.py` (running git), `files.py` (reading project files), `validators.py` (folder, name and prefix rules), `errors.py` (`SpecworksError`, the base of every error the CLI reports, and `ConfigError`) |
 | `specs/` | `specfile.py` (parse specs), `capabilities.py`, `check.py` (`specworks check`), `tasks.py`, `trace.py` (tags, matrix, and `Analysis`: everything known about a change, computed once), `merge.py` (close) |
 | `workflow/` | `artifacts.py` (artifacts and instructions, `schema.yaml`), `checks.py` (every check, each defined once; gates and validate are lists of them), `gate.py`, `review.py` (drift and `review.md`), `cycle.py`, `validate.py` (`specworks validate`) |
 | `tools/` | `diagrams.py` (D2 via pyd2), `skills.py` (install the skills) |

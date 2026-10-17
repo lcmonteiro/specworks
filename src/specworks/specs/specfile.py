@@ -117,14 +117,36 @@ def section_kind(title: str) -> str | None:
     return None
 
 
+# A code fence opens with ``` or ~~~ (three or more) and closes with a run of the same character at least as
+# long and nothing after it. A backtick fence's info string has no backtick (```` ``x`` ```` is inline code).
+FENCE_RE = re.compile(r"^\s*(?P<fence>`{3,}|~{3,})(?P<info>.*)$")
+
+
 def fenced(lines: list[str]) -> list[bool]:
-    """For each line, whether it belongs to a ``` code fence (the fence lines included): examples, not structure."""
-    flags, inside = [], False
+    """For each line, whether it belongs to a code fence (the fence lines included): examples, not structure."""
+    flags, fence = [], ""
     for line in lines:
-        is_fence = line.lstrip().startswith("```")
-        inside ^= is_fence
-        flags.append(inside or is_fence)
+        match = FENCE_RE.match(line)
+        if not fence:
+            if match and not (match["fence"][0] == "`" and "`" in match["info"]):
+                fence = match["fence"]
+            flags.append(bool(fence))
+            continue
+        if match and match["fence"][0] == fence[0] and len(match["fence"]) >= len(fence) and not match["info"].strip():
+            fence = ""
+        flags.append(True)
     return flags
+
+
+def blank_comments(text: str) -> str:
+    """``text`` with its HTML comments (template hints) blanked out, keeping line numbers."""
+    return COMMENT_RE.sub(lambda m: "\n" * m.group(0).count("\n"), text)
+
+
+def h2_titles(text: str) -> list[str]:
+    """The ``## `` headings of a markdown text, outside code fences and HTML comments."""
+    lines = blank_comments(text).splitlines()
+    return [m.group("title") for line, example in zip(lines, fenced(lines), strict=True) if not example and (m := H2_RE.match(line))]
 
 
 def parse_spec(text: str) -> SpecDoc:
@@ -133,8 +155,8 @@ def parse_spec(text: str) -> SpecDoc:
     purpose: list[str] = []
     req: Requirement | None = None
     scenario: Scenario | None = None
-    # HTML comments (template hints) are not part of a spec: blank them out, keeping line numbers.
-    lines = COMMENT_RE.sub(lambda m: "\n" * m.group(0).count("\n"), text).splitlines()
+    # HTML comments (template hints) are not part of a spec.
+    lines = blank_comments(text).splitlines()
     in_fence = fenced(lines)
 
     def close_block(last: int) -> None:

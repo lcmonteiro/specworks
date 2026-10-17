@@ -23,6 +23,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from .errors import SpecworksError
+from .git import GitError, git, git_text
 from .workspace import Module, Workspace
 
 TAIL_LINES = 40
@@ -72,46 +73,36 @@ CACHE_FILE = "specworks-runs.json"
 CACHE_SIZE = 50
 
 
-def _git(cwd: Path, *args: str) -> bytes | None:
-    try:
-        proc = subprocess.run(["git", *args], cwd=cwd, capture_output=True, check=False)
-    except OSError:
-        return None
-    return proc.stdout if proc.returncode == 0 else None
-
-
 def _untracked_in_submodule(root: Path, excluded: list[str]) -> bool:
     """A submodule holds untracked files: git lists none of them, so the tree cannot be fingerprinted."""
     if not (root / ".gitmodules").is_file():
         return False
-    status = _git(root, "status", "--porcelain=v2", "--ignore-submodules=none", "--", ".", *excluded)
-    if status is None:
-        return True
+    status = git(root, "status", "--porcelain=v2", "--ignore-submodules=none", "--", ".", *excluded)
     # Changed entries are "1 <XY> <sub> ..."; <sub> is "S<C><M><U>" for a submodule, U meaning untracked content.
     return any(len(f := line.split(b" ")) > 2 and f[0] in (b"1", b"2") and f[2][:1] == b"S" and f[2][3:4] == b"U" for line in status.splitlines())
 
 
 def tree_fingerprint(ws: Workspace, module: Module, command: str) -> tuple[str, Path] | None:
     """(digest of the command and the working tree, cache file), or None when git cannot tell."""
-    top = _git(module.root, "rev-parse", "--show-toplevel")
-    head = _git(module.root, "rev-parse", "HEAD")
-    cache = _git(module.root, "rev-parse", "--git-path", CACHE_FILE)
-    if top is None or head is None or cache is None:
+    try:
+        root = Path(git_text(module.root, "rev-parse", "--show-toplevel").strip())
+        head = git_text(module.root, "rev-parse", "HEAD").strip()
+        cache = git_text(module.root, "rev-parse", "--git-path", CACHE_FILE).strip()
+        excluded = [f":(exclude){(m.root / m.config.dir).resolve().relative_to(root).as_posix()}" for m in ws.modules()
+                    if (m.root / m.config.dir).resolve().is_relative_to(root)]
+        # --submodule=diff: a dirty submodule shows its edits, not only "<commit>-dirty".
+        diff = git(root, "diff", "HEAD", "--binary", "--submodule=diff", "--", ".", *excluded)
+        untracked = git(root, "ls-files", "--others", "--exclude-standard", "-z", "--", ".", *excluded)
+        if _untracked_in_submodule(root, excluded):
+            return None
+    except GitError:
         return None
-    root = Path(top.decode().strip())
-    excluded = [f":(exclude){(m.root / m.config.dir).resolve().relative_to(root).as_posix()}" for m in ws.modules()
-                if (m.root / m.config.dir).resolve().is_relative_to(root)]
-    # --submodule=diff: a dirty submodule shows its edits, not only "<commit>-dirty".
-    diff = _git(root, "diff", "HEAD", "--binary", "--submodule=diff", "--", ".", *excluded)
-    untracked = _git(root, "ls-files", "--others", "--exclude-standard", "-z", "--", ".", *excluded)
-    if diff is None or untracked is None or _untracked_in_submodule(root, excluded):
-        return None
-    digest = hashlib.sha256("\0".join([command, str(module.root.resolve()), head.decode().strip()]).encode())
+    digest = hashlib.sha256("\0".join([command, str(module.root.resolve()), head]).encode())
     digest.update(diff)
     for name in sorted(n for n in untracked.split(b"\0") if n):
         path = root / name.decode()
         digest.update(name + b"\0" + (hashlib.sha256(path.read_bytes()).digest() if path.is_file() else b""))
-    return digest.hexdigest(), (module.root / cache.decode().strip()).resolve()
+    return digest.hexdigest(), (module.root / cache).resolve()
 
 
 def _load(cache: Path) -> dict:

@@ -120,6 +120,25 @@ def test_removed_requirement_still_tagged_blocks_implement(project):
     assert code == 1 and checks(data)["removed requirements and criteria are gone from tests and code"]["details"] == ["REQ-AUTH-001"]
 
 
+def test_criteria_of_a_removed_requirement_still_tested_block_implement(project):
+    # Its code is gone, but a test of its criterion would point to an unknown ID after close.
+    set_test_command(project, PASS)
+    implement_everything(project)
+    delta = project / "spec/changes" / REF / "specs/user-auth/spec.md"
+    delta.write_text(
+        delta.read_text()
+        + "\n## REMOVED Requirements\n\n### Requirement: REQ-AUTH-001 Password login\n**Reason**: SSO only\n**Migration**: use SSO\n"
+    )
+    tasks = project / "spec/changes" / REF / "tasks.md"
+    tasks.write_text(tasks.read_text() + "- [x] 2.2 Remove password login (REQ-AUTH-001)\n")
+    (project / "tests/test_login.py").write_text("# @ac AC-AUTH-001.1\ndef test_login(): ...\n")
+    code, data = run_json("gate", "code", "--change", REF)
+    assert code == 1 and checks(data)["removed requirements and criteria are gone from tests and code"]["details"] == ["AC-AUTH-001.1"]
+    (project / "tests/test_login.py").unlink()
+    code, data = run_json("gate", "code", "--change", REF)
+    assert code == 0, data
+
+
 
 def test_criterion_a_modified_requirement_drops_must_lose_its_tests(project):
     # The living REQ-AUTH-002 has AC-AUTH-002.2; the change's MODIFIED block keeps only .1.
