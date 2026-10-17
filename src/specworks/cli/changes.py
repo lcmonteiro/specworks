@@ -4,11 +4,12 @@ from __future__ import annotations
 
 import typer
 
-from ..core.changes import PHASES, ChangeError, create_change, set_phase
+from ..core.changes import PHASES, ChangeError, ChangeNotFound, create_change, set_phase
+from ..specs.merge import archive_change
 from ..specs.tasks import read_tasks, set_done
 from ..workflow.artifacts import artifact_states, instructions
 from .app import app, task_app
-from .output import ChangeOpt, JsonOpt, change_dict, emit, require_change, workspace
+from .output import ChangeOpt, JsonOpt, change_dict, emit, require_change, resolve_archived, resolve_change, workspace
 
 
 @app.command()
@@ -26,12 +27,35 @@ def new(
 
 @app.command()
 def status(change: str = ChangeOpt, as_json: bool = JsonOpt) -> None:
-    """Phase and artifact states (done / ready / blocked) of a change."""
-    ws, mod, ch = require_change(change, as_json)
+    """Phase and artifact states (done / ready / blocked) of a change, active or archived."""
+    ws = workspace(as_json)
+    try:
+        mod, ch = resolve_change(ws, change)
+    except ChangeNotFound:
+        mod, ch = resolve_archived(ws, change)
     states = artifact_states(ch)
     data = {**change_dict(ws, mod, ch), "phases": list(PHASES), "artifacts": states}
-    text = "\n".join([f"{mod.qualify(ch.name)} (phase: {ch.phase})"] + [f"  [{s['status']:^7}] {s['generates']}" for s in states])
+    head = f"{mod.qualify(ch.name)} (phase: {ch.phase})"
+    if data.get("archived"):
+        head += f", abandoned: {ch.abandoned}" if ch.abandoned else ""
+        head += f", archived at {ws.rel(ch.path)}"
+    text = "\n".join([head] + [f"  [{s['status']:^7}] {s['generates']}" for s in states])
     emit(data, as_json, text)
+
+
+@app.command()
+def abandon(
+    change: str = ChangeOpt,
+    reason: str = typer.Option(..., "--reason", help="Why the change is dropped; kept in its archived metadata."),
+    as_json: bool = JsonOpt,
+) -> None:
+    """Archive a change without merging its specs: it will not be built. Its name stays taken."""
+    ws, mod, ch = require_change(change, as_json)
+    if not reason.strip():
+        raise ChangeError("say why with --reason (e.g. --reason 'replaced by add-deadlines')")
+    phase = ch.phase
+    ch.path = archive_change(ch, mod.config.archive_path, abandoned=reason.strip())
+    emit(change_dict(ws, mod, ch), as_json, f"{mod.qualify(ch.name)}: abandoned in phase {phase}, archived at {ws.rel(ch.path)}")
 
 
 @app.command()

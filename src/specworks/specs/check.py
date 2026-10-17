@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from ..core.changes import Change, list_changes
+from ..core.changes import Change, archived_as, list_changes
 from ..core.config import ConfigError
 from ..core.files import read_text
 from ..core.workspace import Workspace
@@ -323,6 +323,11 @@ def check_change(ws: Workspace, change: Change) -> tuple[ChangeSpecs, list[Issue
     specs = collect(ws, change)
     issues = list(specs.issues)
     _check_proposal(ws, change, issues)
+    if twin := archived_as(ws.owner(change.path).config, change.name):
+        issues.append(Issue("warning", ws.rel(change.path), 0, (
+            f"an archived change has the same name ({ws.rel(twin.path)}); if this change was closed or abandoned, "
+            "this folder is a leftover (e.g. a close not committed before switching branches): delete it"
+        )))
 
     if change.skip_specs and specs.deltas:
         issues.append(Issue("error", ws.rel(change.path), 0, "skip_specs is set but the change has delta specs"))

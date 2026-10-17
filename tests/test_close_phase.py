@@ -86,6 +86,8 @@ def test_close_merges_indexes_and_archives(ready):
     assert not (ready / CHANGE_DIR).exists()
     code, data = run_json("list")
     assert data["changes"] == []
+    code, data = run_json("list", "--archived")
+    assert [(c["name"], c["phase"], c.get("archived")) for c in data["changes"]] == [(REF, "done", True)]
     code, data = run_json("spec", "show", "user-auth")
     assert data["nextId"] == "REQ-AUTH-004"
 

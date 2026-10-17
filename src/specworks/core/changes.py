@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -13,6 +14,8 @@ from .errors import SpecworksError
 from .validators import validate_kebab
 
 META_FILE = ".change.yaml"
+ARCHIVE_DIR = "archive"
+ARCHIVED_RE = re.compile(r"^(?P<date>\d{4}-\d{2}-\d{2})-(?P<name>.+)$")  # <archive>/<date>-<name>/
 # Each phase is driven by the skill of the same name (specworks-<phase>); `close`
 # writes the living docs and archives the change, which then reads `done`.
 PHASES = ("refine", "specify", "design", "test", "code", "review", "validate", "close", "done")
@@ -35,6 +38,7 @@ class Change:
     phase: str = "refine"
     created: str = ""
     skip_specs: bool = False
+    abandoned: str = ""  # why it was archived without merging (specworks abandon)
 
     @property
     def order(self) -> tuple[str, str, str]:
@@ -45,11 +49,20 @@ class Change:
         data: dict[str, object] = {"name": self.name, "created": self.created, "phase": self.phase}
         if self.skip_specs:
             data["skip_specs"] = True
+        if self.abandoned:
+            data["abandoned"] = self.abandoned
         (self.path / META_FILE).write_text(yaml.safe_dump(data, sort_keys=False), encoding="utf-8")
 
 
 def create_change(cfg: Config, name: str) -> Change:
     validate_kebab(name, "change name", "add-user-auth")
+    if name == ARCHIVE_DIR:
+        raise ChangeError(f"'{ARCHIVE_DIR}' is reserved for finished changes; pick another name")
+    if archived := archived_as(cfg, name):
+        raise ChangeError(
+            f"change '{name}' was archived at {archived.path.relative_to(cfg.root).as_posix()}; "
+            "requirements.md History refers to it by name, so pick another one"
+        )
     path = cfg.changes_path / name
     if path.exists():
         raise ChangeError(f"change '{name}' already exists at {path.relative_to(cfg.root)}")
@@ -59,15 +72,9 @@ def create_change(cfg: Config, name: str) -> Change:
     return change
 
 
-def load_change(cfg: Config, name: str) -> Change:
-    validate_kebab(name, "change name", "add-user-auth")  # also keeps refs out of archive/ and other folders
-    path = cfg.changes_path / name
-    meta_file = path / META_FILE
-    if name == "archive" or not meta_file.is_file():
-        raise ChangeNotFound(f"change '{name}' not found in {cfg.changes_dir}")
-    where = f"{cfg.changes_dir}/{name}/{META_FILE}"
+def _read_change(path: Path, name: str, where: str) -> Change:
     try:
-        meta = yaml.safe_load(meta_file.read_text(encoding="utf-8")) or {}
+        meta = yaml.safe_load((path / META_FILE).read_text(encoding="utf-8")) or {}
     except (OSError, UnicodeDecodeError, yaml.YAMLError) as exc:
         raise ChangeError(f"cannot read {where}: {exc}") from None
     if not isinstance(meta, dict):
@@ -82,7 +89,16 @@ def load_change(cfg: Config, name: str) -> Change:
         phase=phase,
         created=str(meta.get("created", "")),
         skip_specs=bool(meta.get("skip_specs", False)),
+        abandoned=str(meta.get("abandoned") or ""),
     )
+
+
+def load_change(cfg: Config, name: str) -> Change:
+    validate_kebab(name, "change name", "add-user-auth")  # also keeps refs out of archive/ and other folders
+    path = cfg.changes_path / name
+    if name == ARCHIVE_DIR or not (path / META_FILE).is_file():
+        raise ChangeNotFound(f"change '{name}' not found in {cfg.changes_dir}")
+    return _read_change(path, name, f"{cfg.changes_dir}/{name}/{META_FILE}")
 
 
 def list_changes(cfg: Config) -> list[Change]:
@@ -91,8 +107,29 @@ def list_changes(cfg: Config) -> list[Change]:
     return [
         load_change(cfg, entry.name)
         for entry in sorted(cfg.changes_path.iterdir())
-        if entry.is_dir() and entry.name != "archive" and (entry / META_FILE).is_file()
+        if entry.is_dir() and entry.name != ARCHIVE_DIR and (entry / META_FILE).is_file()
     ]
+
+
+def list_archived(cfg: Config) -> list[Change]:
+    """Closed and abandoned changes, oldest first; a folder whose metadata cannot be read is left out."""
+    if not cfg.archive_path.is_dir():
+        return []
+    found = []
+    for entry in sorted(cfg.archive_path.iterdir()):
+        if not (entry.is_dir() and (match := ARCHIVED_RE.match(entry.name)) and (entry / META_FILE).is_file()):
+            continue
+        try:
+            found.append(_read_change(entry, match.group("name"), f"{cfg.changes_dir}/{ARCHIVE_DIR}/{entry.name}/{META_FILE}"))
+        except ChangeError:
+            continue
+    return found
+
+
+def archived_as(cfg: Config, name: str) -> Change | None:
+    """The newest archived change named ``name`` (or the archived one whose folder is ``name``), if any."""
+    found = [c for c in list_archived(cfg) if name in (c.name, c.path.name)]
+    return found[-1] if found else None
 
 
 def set_phase(change: Change, phase: str) -> None:

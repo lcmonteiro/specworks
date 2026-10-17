@@ -52,7 +52,7 @@ once the gates it depends on pass; `specworks phase <phase> --change <ref>` move
 ```
 <dir>.yml                          # config: context, capabilities -> code paths, modules
 <dir>/changes/<name>/              # in-flight change artifacts
-<dir>/changes/archive/             # finished changes
+<dir>/changes/archive/             # finished changes: closed or abandoned
 <capability-path>/<docs_dir>/      # living docs, next to the code
 ```
 
@@ -113,6 +113,8 @@ The system SHALL email a single-use reset link valid for 30 minutes.
 | `specworks gate <phase> --change <ref>` | checks a phase is finished: `specify` (valid specs, tasks cover every AC), `design` (design.md Interfaces recorded, the files it names exist, build/typecheck and the existing tests pass; once the change has `@ac` tests, a red suite is only a warning), `test` (every AC has an `@ac`-tagged test, no tags to unknown IDs), `code` (all tasks done, every requirement has `@req` code, removed ones gone, and `commands.test` passes; `--no-run` skips running it), `review` (`review.md` with no open finding (`--allow-open` in a build), every open finding of a known type or with `back to <phase>:`, every untagged changed file accounted for, tags complete, tests pass), `validate` (same checks as `specworks validate`) |
 | `specworks start <phase> --change <ref> [--no-run] [--base]` | moves a change to a phase once the gates it depends on pass, and leaves it where it is (exit 1) when one fails: moving forward, every phase left behind must pass its gate; going back or re-entering needs the gate of the phase just before |
 | `specworks close --change <ref> [--dry-run]` | after a passing validate, and only into living specs `check` finds no problem in: merges the deltas into each living `spec.md` (ADDED appended, MODIFIED replaced by ID, REMOVED deleted), regenerates `requirements.md` with a History line, marks the change `done` and moves it to `changes/archive/<date>-<name>/` |
+| `specworks abandon --change <ref> --reason <why>` | archives a change without merging anything (it keeps its phase and records why); its name stays taken, as for a closed change, so `new` refuses it |
+| `specworks list [--all] [--archived]` / `status --change <ref>` | active changes (flagging a leftover copy of one that is also archived), or with `--archived` the closed and abandoned ones; `status` also reads an archived change, by name or by `<date>-<name>` |
 | `specworks capability add <name> --path <dir> [--module] [--prefix]` | registers a new capability in a module's config (required before closing a change that creates it) |
 | `specworks validate --change <ref> [--base] [--no-run]` | final read-only report in three groups (completeness, correctness, coherence): artifacts, tasks, tags, review, specs valid, test/lint/typecheck pass, untagged files accounted for, diagrams current; each failure names the phase to go back to |
 | `specworks review --change <ref> [--base <branch>]` | drift candidates: requirements without code, criteria without tests, bad tags, and files changed on the branch (git) with no `@req`/`@ac` tag; on the base branch itself, files changed since the commit before the change started (a warning when no commit marks that) |

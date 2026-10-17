@@ -8,6 +8,7 @@ from pathlib import Path
 import typer
 
 from .. import __version__
+from ..core.changes import archived_as, list_archived
 from ..core.config import DEFAULT_DIR, Config, ConfigError, config_name, find_config, load_config
 from ..core.config_file import add_capability_entry, add_module_entry, write_default_config
 from ..core.workspace import Workspace, capability_prefix, load_module_config, load_workspace, require_workspace
@@ -168,12 +169,32 @@ def context(as_json: bool = JsonOpt, all_modules: bool = AllOpt) -> None:
 
 
 @app.command("list")
-def list_cmd(as_json: bool = JsonOpt, all_modules: bool = AllOpt) -> None:
+def list_cmd(
+    as_json: bool = JsonOpt,
+    all_modules: bool = AllOpt,
+    archived: bool = typer.Option(False, "--archived", help="List closed and abandoned changes instead of active ones."),
+) -> None:
     """List active changes of the current module (or all modules with --all)."""
     ws = workspace(as_json)
-    changes = changes_of(ws, all_modules)
-    text = "\n".join(f"{m.qualify(c.name):<32} {c.phase}" for m, c in changes) or "no active changes"
-    emit({"root": str(ws.root), "module": ws.current.label, "changes": [change_dict(ws, m, c) for m, c in changes]}, as_json, text)
+    modules = ws.modules() if all_modules else [ws.current]
+    rows, lines = [], []
+    if archived:
+        for m in modules:
+            for c in list_archived(m.config):
+                rows.append(change_dict(ws, m, c))
+                state = f"abandoned in {c.phase}: {c.abandoned}" if c.abandoned else "closed"
+                lines.append(f"{m.qualify(c.name):<32} {c.path.name[:10]}  {state}")
+    else:
+        for m, c in changes_of(ws, all_modules):
+            row = change_dict(ws, m, c)
+            line = f"{m.qualify(c.name):<32} {c.phase}"
+            if twin := archived_as(m.config, c.name):
+                row["alsoArchived"] = ws.rel(twin.path)
+                line += f"  (also archived at {row['alsoArchived']}: a leftover copy?)"
+            rows.append(row)
+            lines.append(line)
+    empty = "no archived changes" if archived else "no active changes"
+    emit({"root": str(ws.root), "module": ws.current.label, "changes": rows}, as_json, "\n".join(lines) or empty)
 
 
 @module_app.command("add")
