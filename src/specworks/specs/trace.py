@@ -53,7 +53,7 @@ class Tag:
     file: str
     line: int
     is_test: bool
-    hint: str = ""  # an unknown tag: why, when it is more than "not in the specs" (e.g. an unknown prefix)
+    hint: str = ""  # why an unknown tag is unknown, e.g. an unknown prefix
 
     @property
     def where(self) -> str:
@@ -206,9 +206,8 @@ def gaps(rows: list[Row]) -> dict[str, list[str]]:
 
 
 def unknown_tags(specs: ChangeSpecs, tags: list[Tag], others: set[str], prefixes: set[str]) -> list[Tag]:
-    """Tags to an ID no spec has: one of this change's capabilities without that ID in its delta, its living spec or
-    another active change's delta (``others``), or a prefix no capability uses (``prefixes``: registered ones and
-    those of every active change), which is a typo whatever change looks."""
+    """Tags to an ID of this change's capabilities that no spec has (``others``: other active changes' IDs), or with a
+    prefix no capability uses."""
     mine = {d.cap.prefix for d in specs.deltas}
     known = specs.known_ids() | others
     found = []

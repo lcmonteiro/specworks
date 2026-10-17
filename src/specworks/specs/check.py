@@ -98,7 +98,6 @@ def _check_proposal(ws: Workspace, change: Change, issues: list[Issue]) -> None:
 
 
 def _active_others(ws: Workspace, change: Change) -> list[tuple[str, Change]]:
-    """Every other active change of the workspace, as (``module:name``, change)."""
     return [(module.qualify(other.name), other) for module in ws.modules() for other in list_changes(module.config) if other.path != change.path]
 
 
@@ -106,8 +105,8 @@ def _active_others(ws: Workspace, change: Change) -> list[tuple[str, Change]]:
 class Claim:
     """An ID that another active change also puts in a delta section."""
 
-    change: str  # that change, as ``module:name``
-    earlier: bool  # it started before this one, so this one gives way
+    change: str
+    earlier: bool  # that change started before this one
 
 
 def _other_changes(ws: Workspace, change: Change, cap: CapabilityRef) -> dict[str, dict[str, Claim]]:
@@ -181,8 +180,7 @@ def _check_delta(ws: Workspace, change: Change, delta: Delta, seen: dict[str, st
     taken = others["ADDED"]
     # Each MODIFIED/REMOVED block replaces the whole living block at close, so two changes
     # editing one requirement would lose the first one's edit: one has to close first.
-    # A clash is an error only in the change that started later; the earlier one is warned
-    # and can still close, so two changes never block each other.
+    # Only the change that started later gets the error, so two changes never block each other.
     edited = {**others["REMOVED"], **others["MODIFIED"]}
     retired = retired_ids(cap)
     # A change that closed after this one started may have edited a block this one copied before.

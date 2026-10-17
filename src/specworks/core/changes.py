@@ -38,7 +38,7 @@ class Change:
 
     @property
     def order(self) -> tuple[str, str, str]:
-        """Sorts changes by when they started; the name and folder break ties (a date-only ``created`` sorts first that day)."""
+        """Sorts changes by when they started; the name and folder break ties."""
         return (self.created, self.name, self.path.as_posix())
 
     def save(self) -> None:

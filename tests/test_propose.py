@@ -367,7 +367,6 @@ def test_a_new_change_records_when_it_started(project):
     ids=["modified", "removed"],
 )
 def test_two_changes_editing_one_requirement_do_not_block_each_other(change, project, other_delta):
-    # The change that started first can still close; the later one waits for it.
     run_json("new", "other-change")
     other = project / "spec/changes/other-change/specs/user-auth"
     other.mkdir(parents=True)
