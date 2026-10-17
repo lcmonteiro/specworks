@@ -66,10 +66,10 @@ mistake goes unnoticed, **UX** means confusing output.
 9. **Gap: `capability add --prefix TODO` broke every in-flight ID silently.**
    It invalidated the IDs of two active changes without a warning, and there
    is no command to edit a capability's prefix or rename the capability.
-10. **Gap: editing the spec after specify goes unnoticed.** Wording changed
+10. **Gap: editing the spec after specify goes unnoticed.** *(Fixed.)* Wording changed
     (`<` to `<=`) and an AC was renumbered during design. All tasks stayed
     ticked, and code that no longer matches the wording passed `gate code`.
-11. **Gap: a MODIFIED requirement needs no new test.** If its AC IDs stay
+11. **Gap: a MODIFIED requirement needs no new test.** *(Fixed.)* If its AC IDs stay
     the same, the old tests satisfy "every AC has a test", so a behaviour
     change can ship untested.
 12. **Gap: the test gate never runs the tests.** A test that can't fail
@@ -158,6 +158,17 @@ Items 8, 14, 16 and 22 are fixed:
   exists in the archive" error no longer shows an absolute path.
 - `list` and `check` flag an active change that is also archived: the leftover
   copy a branch switch restores after an uncommitted close.
+
+Items 10 and 11 are fixed:
+
+- When `start` passes the specify gate, it records a fingerprint of each
+  requirement. Later gates and validate warn about every requirement changed,
+  added or dropped since then, and `start design` accepts the new specs.
+- Review and validate warn about a MODIFIED requirement whose behaviour
+  changes while none of its test files changed on the branch.
+
+Both are warnings, not blocks: the task boxes stay as they are, for the agent
+to untick once warned.
 
 ## Suggested fixes and improvements
 
