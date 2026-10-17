@@ -144,7 +144,7 @@ def blank_comments(text: str) -> str:
 
 
 def h2_titles(text: str) -> list[str]:
-    """The ``## `` headings of a markdown text, outside code fences and HTML comments."""
+    """The level-2 (``##``) headings of a markdown text, outside code fences and HTML comments."""
     lines = blank_comments(text).splitlines()
     return [m.group("title") for line, example in zip(lines, fenced(lines), strict=True) if not example and (m := H2_RE.match(line))]
 
