@@ -122,26 +122,6 @@ def parse_tools(value: str, root: Path) -> list[Tool]:
     return tools
 
 
-# Skills from before the phase rename (propose/interface/implement/verify); installing removes them.
-RENAMED_SKILLS = ("specworks-propose", "specworks-interface", "specworks-implement", "specworks-verify")
-
-
-def remove_renamed_skills(root: Path, tools: list[Tool]) -> list[Path]:
-    """Delete the old skill files specworks installed under its former names; return what was removed."""
-    removed = []
-    for tool in tools:
-        for name in RENAMED_SKILLS:
-            skill = root / tool.skills_dir / name / "SKILL.md"
-            prompt = root / tool.prompts_dir / f"{name}.prompt.md" if tool.prompts_dir else None
-            for path in (skill, prompt):
-                if path is not None and path.is_file():
-                    path.unlink()
-                    removed.append(path)
-            if skill.parent.is_dir() and not any(skill.parent.iterdir()):
-                skill.parent.rmdir()
-    return removed
-
-
 def install_skills(root: Path, tools: list[Tool]) -> list[Path]:
     """Write every packaged skill (and Copilot prompt files) for ``tools``; return written files."""
     written = []

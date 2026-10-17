@@ -19,8 +19,6 @@ ARCHIVED_RE = re.compile(r"^(?P<date>\d{4}-\d{2}-\d{2})-(?P<name>.+)$")  # <arch
 # Each phase is driven by the skill of the same name (specworks-<phase>); `close`
 # writes the living docs and archives the change, which then reads `done`.
 PHASES = ("refine", "specify", "design", "test", "code", "review", "validate", "close", "done")
-# Phase names before the rename; .change.yaml files that still use them load as the new names.
-OLD_PHASES = {"propose": "specify", "interface": "design", "implement": "code", "verify": "validate"}
 
 
 class ChangeError(SpecworksError):
@@ -83,7 +81,6 @@ def _read_change(path: Path, name: str, where: str) -> Change:
     if not isinstance(meta, dict):
         raise ChangeError(f"{where} must be a mapping (name, created, phase), got {type(meta).__name__}")
     phase = meta.get("phase", "refine")
-    phase = OLD_PHASES.get(phase, phase)
     if phase not in PHASES:
         raise ChangeError(f"change '{name}' has unknown phase '{phase}' in {where}; expected one of {', '.join(PHASES)}")
     return Change(
