@@ -1,9 +1,12 @@
 # specworks
 
 [![CI](https://github.com/lcmonteiro/specworks/actions/workflows/ci.yml/badge.svg)](https://github.com/lcmonteiro/specworks/actions/workflows/ci.yml)
+[![Docs](https://github.com/lcmonteiro/specworks/actions/workflows/docs.yml/badge.svg)](https://lcmonteiro.github.io/specworks/)
 
 Spec-driven development for AI coding agents, inspired by
 [OpenSpec](https://github.com/Fission-AI/OpenSpec) and written in Python (managed with `uv`).
+
+**Documentation: <https://lcmonteiro.github.io/specworks/>**
 
 ```
 refine -> specify -> design -> test -> code -> review -> validate -> close
@@ -37,7 +40,7 @@ cd your-project && specworks init   # installs the skills, then: /specworks-adop
 ```
 
 [`docs/walkthrough.md`](docs/walkthrough.md) follows one small change through every phase, with the real output of
-each step. The full documentation is a Sphinx site in [`docs/`](docs/): concepts, a tutorial that takes an example
+each step. The [full documentation](https://lcmonteiro.github.io/specworks/) is a Sphinx site built from [`docs/`](docs/): concepts, a tutorial that takes an example
 project ([`docs/example/shortlink/`](docs/example/shortlink/)) through two changes with the real output of every
 command and how each output feeds the skill, a page per skill, the CLI reference, every gate and validate check,
 and the Python API. Build it with `uv run --group docs sphinx-build docs docs/_build/html`.
