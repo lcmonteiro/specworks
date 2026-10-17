@@ -168,6 +168,13 @@ coverage. Warns about a new capability not registered yet, a MODIFIED block
 that drops criteria, a requirement another close modified since this change
 started, and a broken living spec.
 
+- **ID clashes**: the same ID ADDED by two active changes, or one requirement
+  MODIFIED or REMOVED by two of them. The clash is an error in the change that
+  started later and a warning in the earlier one, which can still close.
+- **A broken living spec**: in a capability the change touches, an ID used
+  twice, a requirement or criterion without an ID, a requirement without a
+  scenario or without SHALL/MUST. `close` refuses to merge into one.
+
 ```text
 specworks check --change REF [--strict] [--json]
 ```

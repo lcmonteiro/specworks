@@ -10,8 +10,10 @@ $ specworks version
 
 The install includes [D2](https://d2lang.com) for diagrams, through the
 [`pyd2`](https://github.com/lcmonteiro/pyd2) dependency pinned to one commit:
-installing builds it for your platform, downloads the official D2 release it
-pins and checks its SHA-256. Set `SPECWORKS_D2` to use another `d2`.
+installing builds it for your platform (Linux, macOS and Windows on x86-64 and
+ARM64), downloads the official D2 release it pins and checks its SHA-256. The
+archive is cached, so reinstalling does not download it again, and every
+machine renders identical SVGs. Set `SPECWORKS_D2` to use another `d2`.
 
 ## Set up a project
 

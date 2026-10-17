@@ -71,7 +71,11 @@ repo/
 ```
 
 - `specworks module add <path>` creates and links a module.
-- Every module uses the same config and folder name as the top level.
+- Every module uses the same config and folder name as the top level (set once
+  by `specworks init --dir ...`): `spec.yml` + `spec/` everywhere. A module with
+  another name (e.g. `docs.yml`) is an error that says what to rename.
+- A listed module whose folder has no config (e.g. a git submodule not checked
+  out) shows up under `missingModules` in `specworks context`.
 - Commands act on the **nearest** module; `--all` shows the whole workspace.
 - Context is **inherited**: top level first, then each module down to the
   current one.
