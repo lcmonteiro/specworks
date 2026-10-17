@@ -16,6 +16,7 @@ JsonOpt = typer.Option(False, "--json", help="Machine-readable output.")
 
 
 ChangeOpt = typer.Option(..., "--change", "-c", help="Change name or module:name.")
+FreshOpt = typer.Option(False, "--fresh", help="Run the project's commands even when a result from the same code exists.")
 
 
 AllOpt = typer.Option(False, "--all", help="Include every module of the workspace.")

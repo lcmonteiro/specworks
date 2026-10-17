@@ -225,11 +225,12 @@ files (the workflow folder, with specs, tasks and `review.md`, does not count).
 A reused result says so (`same code as the run at ...`). The cache is kept in
 `.git/specworks-runs.json`; without git, or with `SPECWORKS_RUN_CACHE=0`, every run
 is real. `specworks run` always runs and records its result, so the latest run on the same
-code is the one reused, and `specworks close` (without `--dry-run`) always runs the commands.
+code is the one reused; `gate`, `start` and `validate` run the commands again with `--fresh` (once each, however many
+gates use them), and `specworks close` (without `--dry-run`) always does.
 Keep files the commands themselves create (`__pycache__/`,
 `.pytest_cache/`, `node_modules/`, build output) in `.gitignore`, or every run changes the fingerprint. Files git ignores (installed dependencies, a local
 `.env`) and services the commands use are not part of the fingerprint: after changing only those, run
-`specworks run <key>` once to replace the reused result (a tracked lockfile change already counts). Edits inside git submodules count too; while a submodule holds untracked files, nothing is reused.
+`specworks run <key>` once (or pass `--fresh`) to replace the reused result (a tracked lockfile change already counts). Edits inside git submodules count too; while a submodule holds untracked files, nothing is reused.
 
 ## AI tools
 

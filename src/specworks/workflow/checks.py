@@ -49,7 +49,8 @@ class GateContext:
     run_tests: bool = True  # False: --no-run, the project's commands are reported as not run
     base: str | None = None  # review / validate: branch to diff against
     allow_open: bool = False  # review: open findings do not fail the gate (inside a build)
-    reuse_runs: bool = True  # False: always run the project's commands (the real close), never a cached result
+    reuse_runs: bool = True  # False: run each project command once for real (the real close, --fresh), never an earlier result
+    ran: set[str] = field(default_factory=set)  # commands already run for real in this invocation
 
     @cached_property
     def analysis(self) -> Analysis:
@@ -175,7 +176,8 @@ def command_check(ctx: GateContext, key: str, name: str, optional: bool = False)
     if not ctx.run_tests:
         return Check(name, False, [f"not run (--no-run); run `specworks run {key}`"], blocking=False)
     try:
-        result = cached_run(ctx.ws, ctx.module, key, reuse=ctx.reuse_runs)
+        result = cached_run(ctx.ws, ctx.module, key, reuse=ctx.reuse_runs or key in ctx.ran)
+        ctx.ran.add(key)
     except CommandError as exc:
         return Check(name, False, [str(exc)])
     reused = f", same code as the run at {result.cached_at}" if result.cached_at else ""

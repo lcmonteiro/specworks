@@ -16,7 +16,7 @@ from ..workflow.gate import GATES, run_gate, start_phase
 from ..workflow.review import review_change
 from ..workflow.validate import GROUPS, summary, validate_change
 from .app import app
-from .output import ChangeOpt, JsonOpt, change_dict, emit, fail, require_change, workspace
+from .output import ChangeOpt, FreshOpt, JsonOpt, change_dict, emit, fail, require_change, workspace
 
 
 @app.command()
@@ -28,11 +28,12 @@ def gate(
     allow_open: bool = typer.Option(
         False, "--allow-open", help="review: open findings do not fail the gate (inside /specworks-build they start the next cycle)."
     ),
+    fresh: bool = FreshOpt,
     as_json: bool = JsonOpt,
 ) -> None:
     """Check whether a change has finished a phase (exit 1 if a blocking check fails)."""
     ws, mod, ch = require_change(change, as_json)
-    ok, checks = run_gate(GateContext(ws, mod, ch, run_tests=not no_run, base=base, allow_open=allow_open), phase)
+    ok, checks = run_gate(GateContext(ws, mod, ch, run_tests=not no_run, base=base, allow_open=allow_open, reuse_runs=not fresh), phase)
     data = {**change_dict(ws, mod, ch), "gate": phase, "passed": ok, "checks": [c.to_dict() for c in checks]}
     emit(data, as_json, "\n".join(_check_lines(checks) + [f"gate {phase}: {'passed' if ok else 'NOT passed'}"]))
     if not ok:
@@ -53,6 +54,7 @@ def start(
     change: str = ChangeOpt,
     no_run: bool = typer.Option(False, "--no-run", help="Do not run the project's commands in the gates (reported as a warning)."),
     base: str | None = typer.Option(None, "--base", help="Branch the review and validate gates diff against (default: origin's default branch)."),
+    fresh: bool = FreshOpt,
     as_json: bool = JsonOpt,
 ) -> None:
     """Move a change to a phase once the gates it depends on pass (exit 1, phase unchanged, if one fails).
@@ -62,7 +64,7 @@ def start(
     """
     ws, mod, ch = require_change(change, as_json)
     before = ch.phase
-    started, gates = start_phase(GateContext(ws, mod, ch, run_tests=not no_run, base=base), phase)
+    started, gates = start_phase(GateContext(ws, mod, ch, run_tests=not no_run, base=base, reuse_runs=not fresh), phase)
     data = {
         **change_dict(ws, mod, ch),
         "from": before,
@@ -131,11 +133,12 @@ def validate_cmd(
     change: str = ChangeOpt,
     base: str | None = typer.Option(None, "--base", help="Branch to diff against (default: origin's default branch)."),
     no_run: bool = typer.Option(False, "--no-run", help="Do not run test/lint/typecheck (reported as warnings)."),
+    fresh: bool = FreshOpt,
     as_json: bool = JsonOpt,
 ) -> None:
     """Final read-only check before close (validate phase): completeness, correctness, coherence (exit 1 on FAIL)."""
     ws, mod, ch = require_change(change, as_json)
-    checks = validate_change(GateContext(ws, mod, ch, run_tests=not no_run, base=base))
+    checks = validate_change(GateContext(ws, mod, ch, run_tests=not no_run, base=base, reuse_runs=not fresh))
     result = summary(checks)
     data = {**change_dict(ws, mod, ch), **result, "checks": [c.to_dict() for c in checks]}
     lines = []
