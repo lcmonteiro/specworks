@@ -37,7 +37,9 @@ cd your-project && specworks init   # installs the skills, then: /specworks-adop
 ```
 
 [`docs/walkthrough.md`](docs/walkthrough.md) follows one small change through every phase, with the real output of
-each step.
+each step. [`docs/guide.md`](docs/guide.md) goes deeper: every skill, command and gate check, and how each
+command's output feeds the skill that runs it, following an example project
+([`docs/example/shortlink/`](docs/example/shortlink/)) through two changes, failing checks and a review cycle.
 
 **`/specworks-build`** runs design → test → code → review in one go, each
 phase exactly as its own skill. When the review has findings, it asks
