@@ -252,8 +252,9 @@ terminal access (Copilot agent mode, Claude Code).
 ```bash
 uv sync
 uv run pytest
-uv run ruff check src tests   # lint (CI runs both)
+uv run ruff check src tests   # lint
 uv run mypy                   # typecheck
+uv run coverage run -m pytest && uv run coverage report   # branch coverage; CI fails under 95%
 uv run specworks --help
 ```
 
