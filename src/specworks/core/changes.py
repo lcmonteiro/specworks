@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date
+from datetime import datetime
 from pathlib import Path
 
 import yaml
@@ -33,8 +33,13 @@ class Change:
     name: str
     path: Path
     phase: str = "refine"
-    created: str = ""
+    created: str = ""  # when the change started: YYYY-MM-DDTHH:MM:SS (older changes: YYYY-MM-DD)
     skip_specs: bool = False
+
+    @property
+    def order(self) -> tuple[str, str, str]:
+        """Sorts changes by when they started; the name and folder break ties (a date-only ``created`` sorts first that day)."""
+        return (self.created, self.name, self.path.as_posix())
 
     def save(self) -> None:
         data: dict[str, object] = {"name": self.name, "created": self.created, "phase": self.phase}
@@ -49,7 +54,7 @@ def create_change(cfg: Config, name: str) -> Change:
     if path.exists():
         raise ChangeError(f"change '{name}' already exists at {path.relative_to(cfg.root)}")
     path.mkdir(parents=True)
-    change = Change(name=name, path=path, created=date.today().isoformat())
+    change = Change(name=name, path=path, created=datetime.now().isoformat(timespec="seconds"))
     change.save()
     return change
 

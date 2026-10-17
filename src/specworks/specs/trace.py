@@ -23,15 +23,16 @@ A tag may list several IDs: ``# @ac AC-AUTH-001.1, AC-AUTH-001.2``.
 
 from __future__ import annotations
 
+import difflib
 import os
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from functools import cached_property
 from pathlib import Path
 
 from ..core.changes import Change
 from ..core.workspace import Module, Workspace
-from .check import ChangeSpecs, Issue, check_change
+from .check import ChangeSpecs, Issue, check_change, other_deltas
 from .specfile import id_prefix
 
 TAG_ID = r"(?:REQ|AC)-[A-Z0-9][A-Z0-9.-]*[A-Z0-9]"
@@ -52,6 +53,7 @@ class Tag:
     file: str
     line: int
     is_test: bool
+    hint: str = ""  # an unknown tag: why, when it is more than "not in the specs" (e.g. an unknown prefix)
 
     @property
     def where(self) -> str:
@@ -59,7 +61,7 @@ class Tag:
 
     @property
     def at(self) -> str:
-        return f"{self.id} at {self.where}"
+        return f"{self.id} at {self.where}" + (f" ({self.hint})" if self.hint else "")
 
 
 @dataclass
@@ -203,11 +205,23 @@ def gaps(rows: list[Row]) -> dict[str, list[str]]:
     }
 
 
-def unknown_tags(specs: ChangeSpecs, tags: list[Tag]) -> list[Tag]:
-    """Tags whose ID belongs to a capability this change touches but is in neither the delta nor the living spec."""
-    prefixes = {d.cap.prefix for d in specs.deltas}
-    known = specs.known_ids()
-    return [t for t in tags if t.id not in known and id_prefix(t.id) in prefixes]
+def unknown_tags(specs: ChangeSpecs, tags: list[Tag], others: set[str], prefixes: set[str]) -> list[Tag]:
+    """Tags to an ID no spec has: one of this change's capabilities without that ID in its delta, its living spec or
+    another active change's delta (``others``), or a prefix no capability uses (``prefixes``: registered ones and
+    those of every active change), which is a typo whatever change looks."""
+    mine = {d.cap.prefix for d in specs.deltas}
+    known = specs.known_ids() | others
+    found = []
+    for tag in tags:
+        prefix = id_prefix(tag.id)
+        if prefix is None:
+            found.append(replace(tag, hint="not a REQ-<prefix>-NNN or AC-<prefix>-NNN.<n> ID"))
+        elif prefix not in prefixes:
+            close = difflib.get_close_matches(prefix, sorted(prefixes), n=1)
+            found.append(replace(tag, hint=f"no capability uses the prefix {prefix}" + (f"; did you mean {close[0]}?" if close else "")))
+        elif prefix in mine and tag.id not in known:
+            found.append(tag)
+    return found
 
 
 def to_markdown(change_ref: str, rows: list[Row], found: dict[str, list[str]]) -> str:
@@ -290,4 +304,6 @@ class Analysis:
 
     @cached_property
     def unknown_tags(self) -> list[Tag]:
-        return unknown_tags(self.specs, self.tags)
+        others = other_deltas(self.ws, self.change)
+        prefixes = set(self.ws.prefixes()) | {d.cap.prefix for d in self.specs.deltas} | {cap.prefix for cap, _ in others}
+        return unknown_tags(self.specs, self.tags, {i for _, doc in others for i in doc.ids()}, prefixes)

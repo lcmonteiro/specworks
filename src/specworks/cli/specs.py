@@ -55,7 +55,7 @@ def trace(
         **change_dict(ws, mod, ch),
         "rows": [vars(r) for r in rows],
         "gaps": found,
-        "unknownTags": [{"id": t.id, "where": t.where} for t in analysis.unknown_tags],
+        "unknownTags": [{"id": t.id, "where": t.where, **({"hint": t.hint} if t.hint else {})} for t in analysis.unknown_tags],
         "specErrors": len(analysis.spec_errors),
         "written": written,
     }

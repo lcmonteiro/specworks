@@ -97,18 +97,40 @@ def _check_proposal(ws: Workspace, change: Change, issues: list[Issue]) -> None:
             issues.append(Issue("error", ws.rel(path), 0, f"missing section '## {section}'"))
 
 
-def _other_changes(ws: Workspace, change: Change, cap: CapabilityRef) -> dict[str, dict[str, str]]:
-    """For each delta section, the IDs that other active changes put there for the same capability -> that change."""
-    claimed: dict[str, dict[str, str]] = {section: {} for section in DELTA_SECTIONS}
-    for module in ws.modules():
-        for other in list_changes(module.config):
-            if other.path == change.path:
-                continue
-            doc = read_spec(other.path / cap.delta_path)
-            for req in doc.requirements if doc else []:
-                if req.id and req.section in claimed:
-                    claimed[req.section][req.id] = module.qualify(other.name)
+def _active_others(ws: Workspace, change: Change) -> list[tuple[str, Change]]:
+    """Every other active change of the workspace, as (``module:name``, change)."""
+    return [(module.qualify(other.name), other) for module in ws.modules() for other in list_changes(module.config) if other.path != change.path]
+
+
+@dataclass
+class Claim:
+    """An ID that another active change also puts in a delta section."""
+
+    change: str  # that change, as ``module:name``
+    earlier: bool  # it started before this one, so this one gives way
+
+
+def _other_changes(ws: Workspace, change: Change, cap: CapabilityRef) -> dict[str, dict[str, Claim]]:
+    """For each delta section, the IDs that other active changes put there for the same capability -> their claim."""
+    claimed: dict[str, dict[str, Claim]] = {section: {} for section in DELTA_SECTIONS}
+    for name, other in _active_others(ws, change):
+        doc = read_spec(other.path / cap.delta_path)
+        for req in doc.requirements if doc else []:
+            if req.id and req.section in claimed:
+                claimed[req.section][req.id] = Claim(name, other.order < change.order)
     return claimed
+
+
+def other_deltas(ws: Workspace, change: Change) -> list[tuple[CapabilityRef, SpecDoc]]:
+    """The delta specs of every other active change (those whose capability cannot be resolved are left out)."""
+    found = []
+    for _, other in _active_others(ws, change):
+        for path in delta_files(other):
+            try:
+                found.append((resolve_delta(ws, other, path), parse_spec(read_text(path))))
+            except ConfigError:
+                continue
+    return found
 
 
 REMOVAL_FIELDS = ("Reason", "Migration")
@@ -159,6 +181,8 @@ def _check_delta(ws: Workspace, change: Change, delta: Delta, seen: dict[str, st
     taken = others["ADDED"]
     # Each MODIFIED/REMOVED block replaces the whole living block at close, so two changes
     # editing one requirement would lose the first one's edit: one has to close first.
+    # A clash is an error only in the change that started later; the earlier one is warned
+    # and can still close, so two changes never block each other.
     edited = {**others["REMOVED"], **others["MODIFIED"]}
     retired = retired_ids(cap)
     # A change that closed after this one started may have edited a block this one copied before.
@@ -182,16 +206,26 @@ def _check_delta(ws: Workspace, change: Change, delta: Delta, seen: dict[str, st
                 err(req.line, f"{req.id} already exists in {cap.ref}; use MODIFIED to change it, or take the next free ID")
             if req.id in retired:
                 err(req.line, f"{req.id} was removed from {cap.ref} (requirements.md History); IDs are never reused, take the next free ID")
-            if req.id in taken:
-                err(req.line, f"{req.id} is also added by change {taken[req.id]}; take the next free ID")
+            if claim := taken.get(req.id):
+                if claim.earlier:
+                    err(req.line, f"{req.id} is also added by change {claim.change}, which started first; take the next free ID")
+                else:
+                    warn(req.line, f"{req.id} is also added by change {claim.change}, which started later and has to take another ID")
         elif delta.living is not None and req.id not in living_ids:
             err(req.line, f"{req.id} is not in the living spec of {cap.ref}, so it cannot be {req.section}")
-        elif req.id in edited:
-            err(
-                req.line,
-                f"{req.id} is also MODIFIED or REMOVED by change {edited[req.id]}; close one change first, "
-                "then copy the requirement again from the living spec in the other",
-            )
+        elif claim := edited.get(req.id):
+            if claim.earlier:
+                err(
+                    req.line,
+                    f"{req.id} is also MODIFIED or REMOVED by change {claim.change}, which started first; close it first, "
+                    "then copy the requirement again from the living spec here",
+                )
+            else:
+                warn(
+                    req.line,
+                    f"{req.id} is also MODIFIED or REMOVED by change {claim.change}, which started later; "
+                    "it waits until this change closes",
+                )
         if req.section == "MODIFIED" and req.id in closed_since:
             warn(req.line, f"{req.id} was MODIFIED by {closed_since[req.id]}, after this change started; "
                            "make sure this block is copied from the current living spec, or closing undoes those edits")

@@ -31,19 +31,19 @@ mistake goes unnoticed, **UX** means confusing output.
 
 ### High
 
-1. **Bug: deadlock between two changes MODIFYing one requirement.** Both
+1. **Bug: deadlock between two changes MODIFYing one requirement.** *(Fixed.)* Both
    changes become INVALID, so neither can pass validate and neither can close.
    The advice ("close one change first") can't be followed. The only way out
    is to edit one change by hand.
-2. **Bug: one change's tags break another change.** With two active changes
+2. **Bug: one change's tags break another change.** *(Fixed.)* With two active changes
    on one capability, change B's valid `@ac AC-…-003.1` counts as an *unknown
    tag* for change A, so A's `gate test` and `gate code` fail. Parallel work
    on one capability is blocked.
-3. **Bug: an ID clash is reported to both changes the same way.** When a new
+3. **Bug: an ID clash is reported to both changes the same way.** *(Fixed.)* When a new
    change reuses an ID, the older change (already in design, the first to use
    the ID) also becomes INVALID and is told to "take the next free ID". Its
    gates fail because of the newer change's mistake.
-4. **Gap: typos in the tag prefix are never reported.** `@ac AC-TODO-ITEM-002.1`
+4. **Gap: typos in the tag prefix are never reported.** *(Fixed.)* `@ac AC-TODO-ITEM-002.1`
    (missing `S`) passes "no tag refers to an unknown requirement".
    `unknown_tags` only looks at IDs whose prefix belongs to the change's own
    capabilities.
@@ -118,6 +118,20 @@ mistake goes unnoticed, **UX** means confusing output.
       (the walkthrough test fills it in itself).
     - Its `gate specify` output shows "every acceptance criterion has a task",
       which the gate no longer prints (`docs/walkthrough.md:81`).
+
+## Fixed since
+
+Items 1–4 are fixed:
+
+- A clash between two active changes (the same ID ADDED, or one requirement
+  MODIFIED/REMOVED by both) is an error only in the change that started later,
+  and a warning in the earlier one, which can still close. New changes record
+  when they started (`created: 'YYYY-MM-DDTHH:MM:SS'`). Changes that only have
+  a date sort first that day, then by name.
+- IDs in another active change's delta specs are known tags.
+- A tag whose prefix no capability uses (registered, or new in an active
+  change) is unknown for every change, with a "did you mean". So is a tag that
+  is not a REQ/AC ID at all.
 
 ## Suggested fixes and improvements
 
