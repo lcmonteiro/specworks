@@ -7,7 +7,7 @@ from typing import NoReturn
 
 import typer
 
-from ..core.changes import Change, ChangeError, ChangeNotFound, list_changes, load_change
+from ..core.changes import ARCHIVE_DIR, Change, ChangeError, ChangeNotFound, archived_as, list_changes, load_change
 from ..core.config import CONFIG_EXT, DEFAULT_DIR, config_name
 from ..core.workspace import Module, Workspace, load_workspace
 from ..tools.skills import TOOLS
@@ -62,6 +62,8 @@ def change_dict(ws: Workspace, module: Module, change: Change) -> dict:
         "phase": change.phase,
         "created": change.created,
         "skipSpecs": change.skip_specs,
+        **({"archived": True} if change.path.parent.name == ARCHIVE_DIR else {}),
+        **({"abandoned": change.abandoned} if change.abandoned else {}),
     }
 
 
@@ -105,7 +107,27 @@ def resolve_change(ws: Workspace, ref: str) -> tuple[Module, Change]:
     if found:
         refs = ", ".join(m.qualify(name) for m, _ in found)
         raise ChangeError(f"change '{name}' exists in several modules; use one of: {refs}")
-    raise ChangeError(f"change '{name}' not found in any module")
+    try:
+        archived_mod, archived = resolve_archived(ws, ref)
+    except ChangeNotFound:
+        raise ChangeNotFound(f"change '{name}' not found in any module") from None
+    raise ChangeNotFound(
+        f"change '{name}' is archived at {ws.rel(archived.path)}, not active "
+        f"(`specworks status --change {archived_mod.qualify(name)}` reads it)"
+    )
+
+
+def resolve_archived(ws: Workspace, ref: str) -> tuple[Module, Change]:
+    """An archived change, by name (the newest of that name) or folder (``<date>-<name>``); the current module first."""
+    module, name = ws.split(ref)
+    modules = [module] if module is not None else [ws.current, *(m for m in ws.modules() if m is not ws.current)]
+    found = [(m, c) for m in modules if (c := archived_as(m.config, name))]
+    if not found:
+        raise ChangeNotFound(f"change '{name}' not found in any module, active or archived")
+    if len(found) > 1 and found[0][0] is not ws.current:
+        refs = ", ".join(m.qualify(name) for m, _ in found)
+        raise ChangeError(f"archived change '{name}' exists in several modules; use one of: {refs}")
+    return found[0]
 
 
 def require_change(ref: str, as_json: bool) -> tuple[Workspace, Module, Change]:

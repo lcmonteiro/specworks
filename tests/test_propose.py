@@ -309,6 +309,18 @@ def test_new_capability_only_adds_and_needs_purpose(change):
     assert any("add '## Purpose'" in i["message"] for i in data["issues"] if i["level"] == "warning")
 
 
+def test_a_new_capability_that_is_not_registered_is_a_warning(change):
+    path = change / "specs/audit-log/spec.md"
+    path.parent.mkdir()
+    path.write_text("## Purpose\nAudit.\n\n## ADDED Requirements\n\n### Requirement: REQ-AUDIT-LOG-001 Log\nThe system SHALL log.\n\n"
+                    "#### Scenario: AC-AUDIT-LOG-001.1 Logged\n- **WHEN** x\n- **THEN** y\n")
+    code, data = run_json("check", "--change", "add-password-reset")
+    assert any(
+        "new capability audit-log is not registered; register it before closing: specworks capability add audit-log --path <code path>"
+        == i["message"] for i in data["issues"] if i["level"] == "warning"
+    )
+
+
 def test_delta_under_unknown_module(change):
     path = change / "specs/nope/thing/spec.md"
     path.parent.mkdir(parents=True)

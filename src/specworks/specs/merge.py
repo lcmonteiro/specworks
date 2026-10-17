@@ -201,21 +201,24 @@ def archive_target(change: Change, archive_root: Path, today: str | None = None)
     """Where the change is archived (<archive>/<date>-<name>/); fails if that folder is taken."""
     target = archive_root / f"{today or date.today().isoformat()}-{change.name}"
     if target.exists():
-        raise MergeError(f"{target} already exists")
+        raise MergeError(f"{target.name} already exists in the archive")
     return target
 
 
-def archive_change(change: Change, archive_root: Path, today: str | None = None) -> Path:
-    """Mark the change done and move it to <archive>/<date>-<name>/."""
+def archive_change(change: Change, archive_root: Path, today: str | None = None, abandoned: str = "") -> Path:
+    """Move the change to <archive>/<date>-<name>/: marked done after a close, or ``abandoned`` (why) without merging."""
     target = archive_target(change, archive_root, today)
-    phase = change.phase
-    change.phase = "done"
+    before = (change.phase, change.abandoned)
+    if abandoned:
+        change.abandoned = abandoned  # the phase it stopped in is kept
+    else:
+        change.phase = "done"
     change.save()
     try:
         archive_root.mkdir(parents=True, exist_ok=True)
         shutil.move(str(change.path), str(target))
     except OSError:
-        change.phase = phase
+        change.phase, change.abandoned = before
         change.save()
         raise
     return target

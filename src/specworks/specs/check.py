@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from ..core.changes import Change, list_changes
+from ..core.changes import Change, archived_as, list_changes
 from ..core.config import ConfigError
 from ..core.files import read_text
 from ..core.workspace import Workspace
@@ -172,6 +172,10 @@ def _check_delta(ws: Workspace, change: Change, delta: Delta, seen: dict[str, st
                 err(req.line, f"{cap.ref} has no living spec yet, so it can only have ADDED requirements")
         if not doc.purpose:
             issues.append(Issue("warning", file, 0, f"new capability {cap.ref}: add '## Purpose' (one or two sentences)"))
+    if cap.is_new:
+        module = f" --module {cap.module.name}" if cap.module.name else ""
+        warn(0, f"new capability {cap.ref} is not registered; register it before closing: "
+                f"specworks capability add {cap.name} --path <code path>{module}")
 
     if cap.is_new and (owner := ws.prefixes().get(cap.prefix)):
         err(
@@ -319,6 +323,11 @@ def check_change(ws: Workspace, change: Change) -> tuple[ChangeSpecs, list[Issue
     specs = collect(ws, change)
     issues = list(specs.issues)
     _check_proposal(ws, change, issues)
+    if twin := archived_as(ws.owner(change.path).config, change.name):
+        issues.append(Issue("warning", ws.rel(change.path), 0, (
+            f"an archived change has the same name ({ws.rel(twin.path)}); if this change was closed or abandoned, "
+            "this folder is a leftover (e.g. a close not committed before switching branches): delete it"
+        )))
 
     if change.skip_specs and specs.deltas:
         issues.append(Issue("error", ws.rel(change.path), 0, "skip_specs is set but the change has delta specs"))
