@@ -184,6 +184,15 @@ def _task_key(num: str) -> tuple[int, ...]:
     return tuple(int(p) for p in num.split("."))
 
 
+# Each gap ``gaps`` reports, with how the trace and review outputs name it.
+GAP_LABELS = {
+    "acWithoutTasks": "acceptance criteria without a task",
+    "acWithoutTests": "acceptance criteria without a test (`@ac`)",
+    "reqWithoutCode": "requirements without code (`@req`)",
+    "removedStillTagged": "removed requirements or criteria still tagged in tests or code",
+}
+
+
 def gaps(rows: list[Row]) -> dict[str, list[str]]:
     active = [r for r in rows if r.section != "REMOVED"]
     return {
@@ -227,14 +236,8 @@ def to_markdown(change_ref: str, rows: list[Row], found: dict[str, list[str]]) -
             f"| {r.capability} | {f'{r.ac} {r.ac_title}' if r.ac else f'{r.req} {r.title}'} | {', '.join(r.tasks) or '—'} | {cell(r.tests + r.code)} |"
             for r in removed
         ]
-    labels = {
-        "acWithoutTasks": "Acceptance criteria without a task",
-        "acWithoutTests": "Acceptance criteria without a test (`@ac`)",
-        "reqWithoutCode": "Requirements without code (`@req`)",
-        "removedStillTagged": "Removed requirements or criteria still tagged in tests or code",
-    }
     out += ["", "## Gaps", ""]
-    out += [f"- {labels[k]}: {', '.join(v)}" for k, v in found.items() if v] or ["- None"]
+    out += [f"- {GAP_LABELS[k].capitalize()}: {', '.join(v)}" for k, v in found.items() if v] or ["- None"]
     return "\n".join(out) + "\n"
 
 

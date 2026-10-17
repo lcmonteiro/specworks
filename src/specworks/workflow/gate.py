@@ -175,9 +175,9 @@ def start_phase(ctx: GateContext, phase: str) -> tuple[bool, list[tuple[str, lis
     """
     ran: list[tuple[str, list[Check]]] = []
     for gate in gates_to_start(ctx.change.phase, phase):
-        passed, checks = run_gate(ctx, gate)
+        ok, checks = run_gate(ctx, gate)
         ran.append((gate, checks))
-        if not passed:
+        if not ok:
             return False, ran
     set_phase(ctx.change, phase)
     return True, ran

@@ -7,7 +7,7 @@ from typing import NoReturn
 
 import typer
 
-from ..core.changes import Change, ChangeError, ChangeFileError, list_changes, load_change
+from ..core.changes import Change, ChangeError, ChangeNotFound, list_changes, load_change
 from ..core.config import CONFIG_EXT, DEFAULT_DIR, config_name
 from ..core.workspace import Module, Workspace, load_workspace
 from ..tools.skills import TOOLS
@@ -88,20 +88,16 @@ def resolve_change(ws: Workspace, ref: str) -> tuple[Module, Change]:
     module, name = ws.split(ref)
     if module is not None:
         return module, load_change(module.config, name)
-    # A broken .change.yaml is reported as such, not as "not found" (ChangeFileError is a ChangeError).
+    # Only "not found" moves on: a broken .change.yaml is reported as such.
     try:
         return ws.current, load_change(ws.current.config, name)
-    except ChangeFileError:
-        raise
-    except ChangeError:
+    except ChangeNotFound:
         pass
     found = []
     for mod in ws.modules():
         try:
             found.append((mod, load_change(mod.config, name)))
-        except ChangeFileError:
-            raise
-        except ChangeError:
+        except ChangeNotFound:
             continue
     if len(found) == 1:
         return found[0]

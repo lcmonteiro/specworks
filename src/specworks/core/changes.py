@@ -24,8 +24,8 @@ class ChangeError(SpecworksError):
     """Raised for invalid change names or missing changes."""
 
 
-class ChangeFileError(ChangeError):
-    """Raised when a change's .change.yaml cannot be read: the change exists but is broken."""
+class ChangeNotFound(ChangeError):
+    """Raised when no change of that name exists (a broken .change.yaml is a plain ChangeError)."""
 
 
 @dataclass
@@ -59,18 +59,18 @@ def load_change(cfg: Config, name: str) -> Change:
     path = cfg.changes_path / name
     meta_file = path / META_FILE
     if name == "archive" or not meta_file.is_file():
-        raise ChangeError(f"change '{name}' not found in {cfg.changes_dir}")
+        raise ChangeNotFound(f"change '{name}' not found in {cfg.changes_dir}")
     where = f"{cfg.changes_dir}/{name}/{META_FILE}"
     try:
         meta = yaml.safe_load(meta_file.read_text(encoding="utf-8")) or {}
     except (OSError, UnicodeDecodeError, yaml.YAMLError) as exc:
-        raise ChangeFileError(f"cannot read {where}: {exc}") from None
+        raise ChangeError(f"cannot read {where}: {exc}") from None
     if not isinstance(meta, dict):
-        raise ChangeFileError(f"{where} must be a mapping (name, created, phase), got {type(meta).__name__}")
+        raise ChangeError(f"{where} must be a mapping (name, created, phase), got {type(meta).__name__}")
     phase = meta.get("phase", "refine")
     phase = OLD_PHASES.get(phase, phase)
     if phase not in PHASES:
-        raise ChangeFileError(f"change '{name}' has unknown phase '{phase}' in {where}; expected one of {', '.join(PHASES)}")
+        raise ChangeError(f"change '{name}' has unknown phase '{phase}' in {where}; expected one of {', '.join(PHASES)}")
     return Change(
         name=name,
         path=path,

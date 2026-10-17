@@ -9,7 +9,7 @@ import typer
 from ..core.changes import PHASES
 from ..core.runner import cached_run
 from ..specs.merge import archive_target, close_change, plan_merge
-from ..specs.trace import Analysis
+from ..specs.trace import GAP_LABELS, Analysis
 from ..workflow.checks import Check, GateContext, passed
 from ..workflow.cycle import next_cycle
 from ..workflow.gate import GATES, run_gate, start_phase
@@ -32,10 +32,10 @@ def gate(
 ) -> None:
     """Check whether a change has finished a phase (exit 1 if a blocking check fails)."""
     ws, mod, ch = require_change(change, as_json)
-    passed, checks = run_gate(GateContext(ws, mod, ch, run_tests=not no_run, base=base, allow_open=allow_open), phase)
-    data = {**change_dict(ws, mod, ch), "gate": phase, "passed": passed, "checks": [c.to_dict() for c in checks]}
-    emit(data, as_json, "\n".join(_check_lines(checks) + [f"gate {phase}: {'passed' if passed else 'NOT passed'}"]))
-    if not passed:
+    ok, checks = run_gate(GateContext(ws, mod, ch, run_tests=not no_run, base=base, allow_open=allow_open), phase)
+    data = {**change_dict(ws, mod, ch), "gate": phase, "passed": ok, "checks": [c.to_dict() for c in checks]}
+    emit(data, as_json, "\n".join(_check_lines(checks) + [f"gate {phase}: {'passed' if ok else 'NOT passed'}"]))
+    if not ok:
         raise typer.Exit(1)
 
 
@@ -90,12 +90,10 @@ def review(
     report = review_change(Analysis(ws, ch), base)
     data = {**change_dict(ws, mod, ch), **report.to_dict()}
     labels = {
-        "reqWithoutCode": "requirements without code (@req)",
-        "acWithoutTests": "acceptance criteria without tests (@ac)",
-        "removedStillTagged": "removed requirements or criteria still tagged",
+        **GAP_LABELS,
         "unknownTags": "tags to unknown IDs",
-        "untracedSource": "changed code files without @req tags",
-        "untracedTests": "changed test files without @ac tags",
+        "untracedSource": "changed code files without `@req` tags",
+        "untracedTests": "changed test files without `@ac` tags",
     }
     lines = [f"base: {report.base or '-'}"] + ([f"note: {report.note}"] if report.note else [])
     lines += [f"spec error: {e}" for e in report.spec_errors]

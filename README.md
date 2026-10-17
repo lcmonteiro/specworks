@@ -262,7 +262,7 @@ Code layout (`src/specworks/`):
 | Package | What it holds |
 |---|---|
 | `cli/` | the `specworks` command: `app.py` (Typer app and command groups), `output.py` (options, JSON/text output, resolving changes), and one module per area: `project.py`, `changes.py`, `specs.py`, `workflow.py` |
-| `core/` | `config.py` (find and read `<dir>.yml`), `config_file.py` (write it), `workspace.py` (modules), `changes.py` (changes and phases), `runner.py` (project commands), `files.py` (reading project files), `validators.py` (folder, name and prefix rules), `errors.py` (`SpecworksError`, the base of every error the CLI reports, and `ConfigError`) |
+| `core/` | `config.py` (find and read `<dir>.yml`), `config_file.py` (write it), `workspace.py` (modules), `changes.py` (changes and phases), `runner.py` (project commands), `git.py` (running git), `files.py` (reading project files), `validators.py` (folder, name and prefix rules), `errors.py` (`SpecworksError`, the base of every error the CLI reports, and `ConfigError`) |
 | `specs/` | `specfile.py` (parse specs), `capabilities.py`, `check.py` (`specworks check`), `tasks.py`, `trace.py` (tags, matrix, and `Analysis`: everything known about a change, computed once), `merge.py` (close) |
 | `workflow/` | `artifacts.py` (artifacts and instructions, `schema.yaml`), `checks.py` (every check, each defined once; gates and validate are lists of them), `gate.py`, `review.py` (drift and `review.md`), `cycle.py`, `validate.py` (`specworks validate`) |
 | `tools/` | `diagrams.py` (D2 via pyd2), `skills.py` (install the skills) |
