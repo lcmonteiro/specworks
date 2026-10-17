@@ -158,12 +158,20 @@ def test_skills_pre_approve_only_specworks_and_read_only_git(name):
     assert UVX in commands and f"`{UVX} <cmd>`" in read_skill(name)  # the rule matches the command the skill documents
 
 
-@pytest.mark.parametrize("name", [n for n in packaged_skills() if n != "specworks-refine"])
+# refine and adopt create the change they work on instead of picking one.
+@pytest.mark.parametrize("name", [n for n in packaged_skills() if n not in ("specworks-refine", "specworks-adopt")])
 def test_skills_pick_the_change_by_one_shared_rule(name):
     # "Select the change as the other phases do" pointed at no rule; the shared paragraph is that rule.
     text = read_skill(name)
     assert "**Picking the change**" in text and "Pick the change (above)" in text
     assert "as the other phases do" not in text and "as in `/specworks-specify`" not in text
+
+
+def test_adopt_stops_after_mapping_unless_a_baseline_is_asked_for():
+    # Baselining every capability up front is the slow, error-prone path; stage 3 runs one capability on request.
+    text = read_skill("specworks-adopt")
+    assert "**By default, stop after stage 2.**" in text and "**End here unless the user asked for a baseline.**" in text
+    assert 'specworks new "baseline-<capability>" --json' in text and "specworks capability add <name>" in text
 
 
 def test_close_runs_the_project_commands_once_before_writing():
