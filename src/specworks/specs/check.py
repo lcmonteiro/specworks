@@ -172,6 +172,10 @@ def _check_delta(ws: Workspace, change: Change, delta: Delta, seen: dict[str, st
                 err(req.line, f"{cap.ref} has no living spec yet, so it can only have ADDED requirements")
         if not doc.purpose:
             issues.append(Issue("warning", file, 0, f"new capability {cap.ref}: add '## Purpose' (one or two sentences)"))
+    if cap.is_new:
+        module = f" --module {cap.module.name}" if cap.module.name else ""
+        warn(0, f"new capability {cap.ref} is not registered; register it before closing: "
+                f"specworks capability add {cap.name} --path <code path>{module}")
 
     if cap.is_new and (owner := ws.prefixes().get(cap.prefix)):
         err(

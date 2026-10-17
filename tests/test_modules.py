@@ -268,3 +268,13 @@ def test_derived_prefixes_may_not_collide_across_modules(workspace):
     cfg.write_text(cfg.read_text().replace("capabilities: {}", "capabilities:\n  billing-invoices:\n    path: src/bi"))
     code, data = run_json("list")
     assert code == 1 and "both use the ID prefix BILLING-INVOICES" in data["error"]
+
+
+def test_a_new_capability_of_a_module_is_registered_with_module(workspace):
+    run("new", "add-refunds")
+    delta = workspace / "spec/changes/add-refunds/specs/billing/refunds/spec.md"
+    delta.parent.mkdir(parents=True)
+    delta.write_text("## Purpose\nRefunds.\n\n## ADDED Requirements\n\n### Requirement: REQ-BILLING-REFUNDS-001 Refund\nThe system SHALL refund.\n\n"
+                     "#### Scenario: AC-BILLING-REFUNDS-001.1 Refunded\n- **WHEN** x\n- **THEN** y\n")
+    code, data = run_json("check", "--change", "add-refunds")
+    assert any(i["message"].endswith("specworks capability add refunds --path <code path> --module billing") for i in data["issues"])
