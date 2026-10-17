@@ -69,7 +69,7 @@ def set_done(change_path: Path, nums: list[str], done: bool) -> None:
     twice = sorted({n for n in nums if sum(t.num == n for t in found) > 1})
     if twice:
         raise TaskError(f"task {', '.join(twice)} is numbered more than once in {TASKS_FILE}; renumber it first")
-    lines = read_text(path).splitlines(keepends=True)
+    lines = read_text(path, keep_newlines=True).splitlines(keepends=True)
     for num in nums:
         index = tasks[num].line - 1
         ending = lines[index][len(lines[index].rstrip("\r\n")) :]
@@ -77,4 +77,4 @@ def set_done(change_path: Path, nums: list[str], done: bool) -> None:
         assert match is not None  # read_tasks found a task on this line
         mark = "x" if done else " "
         lines[index] = f"{match.group('lead')}{mark}{match.group('close')}{match.group('num')} {match.group('text')}{ending}"
-    path.write_text("".join(lines), encoding="utf-8")
+    path.write_text("".join(lines), encoding="utf-8", newline="")  # each line keeps its own ending

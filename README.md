@@ -94,7 +94,7 @@ The system SHALL email a single-use reset link valid for 30 minutes.
 - `test_globs` / `source_globs` (in the config, relative to its folder) choose the
   files scanned for tags: `*` and `?` stay within one folder, `**` spans any number
   of folders (`tests/**/*.py` includes `tests/test_x.py`; `src/*` does not include
-  `src/auth/x.py`, `src/**` does).
+  `src/auth/x.py`, `src/**` does). Those are the only wildcards: a `[..]` or `{..}` is a config error.
 - `check` also warns when a `MODIFIED` block drops acceptance criteria the living
   spec has, and when a close recorded in `requirements.md` modified the
   requirement after this change started (re-copy the block, or closing undoes
