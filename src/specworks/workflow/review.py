@@ -18,7 +18,7 @@ import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from ..core.changes import Change
+from ..core.changes import META_FILE, Change
 from ..core.files import read_text
 from ..core.git import GitError, git, git_text
 from ..core.workspace import Workspace
@@ -51,6 +51,8 @@ class ReviewReport:
     base: str | None = None
     changed: list[ChangedFile] | None = None  # None when git is not available
     note: str = ""
+    since: str = ""  # what the changed files are compared with: the base, or where the change started when HEAD is on the base
+    on_base: bool = False  # HEAD is on the base branch and the change has no commit to start from
 
     @property
     def spec_errors(self) -> list[str]:
@@ -79,6 +81,7 @@ class ReviewReport:
         found = self.findings()
         return {
             "base": self.base,
+            "since": self.since,
             "note": self.note,
             "specErrors": self.spec_errors,
             "findings": found,
@@ -101,12 +104,23 @@ def detect_base(cwd: Path) -> str:
     raise GitError("cannot find the base branch; pass --base <branch>")
 
 
-def changed_paths(ws: Workspace, base: str) -> list[str]:
-    """Files changed since the merge base with ``base`` (committed, uncommitted, untracked), relative to the workspace."""
+def change_start(ws: Workspace, change: Change) -> str | None:
+    """The parent of the newest commit that added the change's metadata (an archived change may have had its name), if any."""
+    meta = (change.path / META_FILE).relative_to(ws.root).as_posix()
+    added = git_text(ws.root, "log", "--diff-filter=A", "--format=%H", "-1", "--", meta).strip()
+    if not added:
+        return None
+    try:
+        return git_text(ws.root, "rev-parse", "--verify", "--quiet", f"{added}^").strip()
+    except GitError:
+        return None  # added in the first commit: there is nothing before it
+
+
+def changed_paths(ws: Workspace, since: str) -> list[str]:
+    """Files changed since the commit ``since`` (committed, uncommitted, untracked), relative to the workspace."""
     git_root = Path(git_text(ws.root, "rev-parse", "--show-toplevel").strip()).resolve()
-    merge_base = git_text(ws.root, "merge-base", base, "HEAD").strip()
     # -z: NUL-separated and never quoted, so names with non-ASCII characters or newlines come through as they are.
-    names = set(git_text(ws.root, "diff", "--name-only", "-z", merge_base).split("\0"))
+    names = set(git_text(ws.root, "diff", "--name-only", "-z", since).split("\0"))
     names |= set(git_text(ws.root, "ls-files", "-z", "--others", "--exclude-standard", "--full-name").split("\0"))
     paths = []
     for name in sorted(n for n in names if n):
@@ -134,7 +148,19 @@ def review_change(analysis: Analysis, base: str | None = None) -> ReviewReport:
     report = ReviewReport(analysis)
     try:
         report.base = base or detect_base(ws.root)
-        paths = changed_paths(ws, report.base)
+        since = git_text(ws.root, "merge-base", report.base, "HEAD").strip()
+        report.since = report.base
+        # On the base branch itself the merge base is HEAD, which would hide every commit of the change.
+        if since == git_text(ws.root, "rev-parse", "HEAD").strip():
+            if start := change_start(ws, analysis.change):
+                since, report.since = start, f"{report.base} at the commit before {analysis.change.name} started, {start[:7]}"
+            else:
+                report.on_base = True
+                report.note = (
+                    f"HEAD is on {report.base} and no earlier commit marks where {analysis.change.name} started, so only "
+                    "uncommitted files are compared; work on a branch, or pass --base <the commit before the change started>"
+                )
+        paths = changed_paths(ws, since)
     except (GitError, OSError) as exc:
         report.note = f"changed files unknown ({exc}); only spec -> code drift was checked"
         return report

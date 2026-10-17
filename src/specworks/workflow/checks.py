@@ -163,7 +163,13 @@ def files_accounted(ctx: GateContext) -> Check:
     if report.changed is None:
         return Check("changed files without tags are accounted for", False, [report.note], blocking=False)
     missing = [path for path in report.untraced_source + report.untraced_tests if not ctx.review.accounts_for(path)]
-    return _listed(f"changed files without tags are accounted for in {REVIEW_FILE} (base {report.base})", missing)
+    return _listed(f"changed files without tags are accounted for in {REVIEW_FILE} (base {report.since})", missing)
+
+
+def diff_base(ctx: GateContext) -> Check | None:
+    """Warns when the changed files may be incomplete: HEAD is on the base branch and nothing marks where the change started."""
+    report = ctx.report
+    return Check("the change's commits are compared with its base", False, [report.note], blocking=False) if report.on_base else None
 
 
 # --- the project's commands ---------------------------------------------------------

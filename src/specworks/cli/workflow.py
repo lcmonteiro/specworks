@@ -97,7 +97,7 @@ def review(
         "untracedSource": "changed code files without `@req` tags",
         "untracedTests": "changed test files without `@ac` tags",
     }
-    lines = [f"base: {report.base or '-'}"] + ([f"note: {report.note}"] if report.note else [])
+    lines = [f"base: {report.since or report.base or '-'}"] + ([f"note: {report.note}"] if report.note else [])
     lines += [f"spec error: {e}" for e in report.spec_errors]
     for key, items in data["findings"].items():
         lines.append(f"{labels[key]}: {len(items)}")

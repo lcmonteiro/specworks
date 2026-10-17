@@ -168,3 +168,49 @@ def test_gate_review_blocks_on_an_open_finding_of_unknown_type_even_in_a_build(r
     write_review(repo, "- [ ] R1 **spec_gap** lockout also logs\n  - **Decision**: back to specify: add REQ-AUTH-004\n")
     code, data = run_json("gate", "review", "--change", REF, "--base", "main", "--allow-open")
     assert code == 0, data
+
+
+@pytest.fixture
+def on_main(project, monkeypatch):
+    """The planned project as a git repo whose work is committed on main: no feature branch."""
+    for key, value in {"GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t", "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@t"}.items():
+        monkeypatch.setenv(key, value)
+    git(project, "init", "-q", "-b", "main")
+    git(project, "add", "spec.yml", "src")
+    git(project, "commit", "-q", "-m", "baseline")
+    return project
+
+
+def test_on_the_base_branch_the_diff_starts_where_the_change_did(on_main):
+    git(on_main, "add", "-A")
+    git(on_main, "commit", "-q", "-m", "start the change")
+    (on_main / "src/auth/stub.py").write_text("def stub(): ...\n")
+    git(on_main, "add", "-A")
+    git(on_main, "commit", "-q", "-m", "an untagged stub")
+    code, data = run_json("review", "--change", REF, "--base", "main")
+    assert findings(data)["untracedSource"] == ["src/auth/stub.py"]
+    assert data["since"].startswith(f"main at the commit before {REF} started") and data["note"] == ""
+
+
+def test_on_the_base_branch_without_a_commit_of_the_change_the_gate_warns(on_main):
+    (on_main / "src/auth/reset.py").write_text("# @req REQ-AUTH-003\n")
+    code, data = run_json("gate", "review", "--change", REF, "--base", "main", "--no-run")
+    check = next(c for c in data["checks"] if c["name"] == "the change's commits are compared with its base")
+    assert not check["ok"] and not check["blocking"]
+    assert f"HEAD is on main and no earlier commit marks where {REF} started" in check["details"][0]
+
+
+def test_on_a_branch_there_is_no_base_warning(repo):
+    code, data = run_json("gate", "review", "--change", REF, "--base", "main", "--no-run")
+    assert not any(c["name"] == "the change's commits are compared with its base" for c in data["checks"])
+    assert any(c["name"].endswith("(base main)") for c in data["checks"])
+
+
+def test_a_change_from_the_first_commit_has_nothing_to_start_from(project, monkeypatch):
+    for key, value in {"GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t", "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@t"}.items():
+        monkeypatch.setenv(key, value)
+    git(project, "init", "-q", "-b", "main")
+    git(project, "add", "-A")
+    git(project, "commit", "-q", "-m", "everything at once")
+    code, data = run_json("review", "--change", REF, "--base", "main")
+    assert f"HEAD is on main and no earlier commit marks where {REF} started" in data["note"]
