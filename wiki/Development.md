@@ -13,41 +13,28 @@ $ uv run specworks --help
 
 ## Edit this documentation
 
-The documentation is this wiki. Its pages live in the main repository, in
-`wiki/`, so a change to the docs goes through a pull request like any other
-change, and the wiki is overwritten from `wiki/` on every push to `main` (by the
-`Wiki` workflow, `.github/workflows/wiki.yml`). Edits made in the wiki's web
-editor are lost on the next push: make them in `wiki/` instead.
+The documentation is this wiki: edit a page in the wiki's web editor, or clone
+`https://github.com/lcmonteiro/specworks.wiki.git` and push. The file name is the
+page name, and links between pages use it: `[Phases and gates](Concepts-Phases)`.
+`_Sidebar.md` is the navigation, `images/` holds the images.
 
-| Path | What |
-|---|---|
-| `wiki/<Page-Name>.md` | one page; the file name is the page name, and links between pages use it: `[Phases and gates](Concepts-Phases)` |
-| `wiki/_Sidebar.md` | the navigation on the right of every page |
-| `wiki/images/` | images, linked as `images/<file>` |
-| `examples/shortlink/` | the tutorial's project, as it is at the end |
-
-A file the pages show (a `SKILL.md`, `schema.yaml`, a template, a file of the
-example project) is copied into the page after a marker:
+Some pages show a file of the main repository in full: each skill page its
+`SKILL.md`, the reference `schema.yaml` and the templates, the tutorial the
+files of the example project in
+[`examples/shortlink/`](https://github.com/lcmonteiro/specworks/tree/main/examples/shortlink).
+Each copy follows a marker naming its source:
 
     <!-- include: src/specworks/schema.yaml -->
     ```yaml
     ...
     ```
 
-`tests/test_wiki.py` fails when the copy no longer matches the file, when a
-link points at a page that does not exist, or when a page is missing from the
-sidebar. To refresh every copy after editing a skill or a template:
-
-```console
-$ uv run python tests/test_wiki.py --update
-```
+Nothing updates these copies: when you change a skill, a template or the
+example project, update the page that shows it.
 
 Command output in the tutorial and the CLI reference was captured by running
 specworks on the example project. When a command's output changes, run it
 again in a copy of `examples/shortlink/` and update the page.
-
-The wiki must exist before the first publish: create any page once in the
-repository's **Wiki** tab (the workflow then replaces it).
 
 ## Code layout
 
