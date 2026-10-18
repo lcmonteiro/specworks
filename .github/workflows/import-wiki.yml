@@ -14,7 +14,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: 3a5bf9d
+          ref: 3a5bf9d8931482c940db125d1d89f42672c1deb9
       - name: Push wiki/ to the wiki repository
         env:
           TOKEN: ${{ secrets.GITHUB_TOKEN }}
