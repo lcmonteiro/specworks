@@ -1,7 +1,6 @@
 # specworks
 
 [![CI](https://github.com/lcmonteiro/specworks/actions/workflows/ci.yml/badge.svg)](https://github.com/lcmonteiro/specworks/actions/workflows/ci.yml)
-[![Docs](https://github.com/lcmonteiro/specworks/actions/workflows/docs.yml/badge.svg)](https://lcmonteiro.github.io/specworks/)
 
 Spec-driven development for AI coding agents, inspired by
 [OpenSpec](https://github.com/Fission-AI/OpenSpec) and written in Python (managed with `uv`).
@@ -9,13 +8,13 @@ The agent (Claude Code, GitHub Copilot) follows one skill per phase, and the `sp
 CLI checks every step: each requirement has an ID, each acceptance criterion a test tagged
 `@ac`, each implementation a tag `@req`, and a phase ends only when its gate passes.
 
-**Documentation: <https://lcmonteiro.github.io/specworks/>**
+**Documentation: the [wiki](https://github.com/lcmonteiro/specworks/wiki)**
 
 ```
 refine -> specify -> design -> test -> code -> review -> validate -> close
 ```
 
-![specworks workflow: solid arrows move forward when a phase's gate passes, dashed arrows go back](docs/diagrams/workflow.svg)
+![specworks workflow: solid arrows move forward when a phase's gate passes, dashed arrows go back](assets/workflow.svg)
 
 | Phase     | Skill                  | Output |
 |-----------|------------------------|--------|
@@ -61,7 +60,7 @@ Then, in your agent:
 5. **`/specworks-validate`**, then **`/specworks-close`**: the final check, then the
    requirements merged into the living spec next to the code.
 
-[`docs/walkthrough.md`](docs/walkthrough.md) follows one small change through every
+The [walkthrough](https://github.com/lcmonteiro/specworks/wiki/Walkthrough) follows one small change through every
 phase in five minutes.
 
 **`/specworks-adopt`** stops once the capabilities are mapped. On request, one
@@ -94,11 +93,11 @@ specworks. The skills call the `specworks` CLI, so the agent needs terminal acce
 
 | | |
 |---|---|
-| [Concepts](https://lcmonteiro.github.io/specworks/concepts/index.html) | you, the skill and the CLI; how each command's output feeds the skill; phases and gates; capabilities, IDs, tags and traceability; modules |
-| [Tutorial](https://lcmonteiro.github.io/specworks/tutorial/index.html) | an example project through every phase and two changes, with the real output of every command |
-| [Skills](https://lcmonteiro.github.io/specworks/skills/index.html) | each skill step by step: the commands it runs and what it decides from their output |
-| [CLI reference](https://lcmonteiro.github.io/specworks/cli/index.html) | every `specworks` command: options, exit codes, text and JSON output |
-| [Reference](https://lcmonteiro.github.io/specworks/reference/index.html) | configuration, every gate and validate check, review findings, the run cache, troubleshooting |
+| [Concepts](https://github.com/lcmonteiro/specworks/wiki/Concepts) | you, the skill and the CLI; how each command's output feeds the skill; phases and gates; capabilities, IDs, tags and traceability; modules |
+| [Tutorial](https://github.com/lcmonteiro/specworks/wiki/Tutorial) | an example project through every phase and two changes, with the real output of every command |
+| [Skills](https://github.com/lcmonteiro/specworks/wiki/Skills) | each skill step by step: the commands it runs and what it decides from their output |
+| [CLI reference](https://github.com/lcmonteiro/specworks/wiki/CLI) | every `specworks` command: options, exit codes, text and JSON output |
+| [Reference](https://github.com/lcmonteiro/specworks/wiki/Reference) | configuration, every gate and validate check, review findings, the run cache, troubleshooting |
 
 ## Development
 
@@ -108,9 +107,7 @@ uv run pytest
 uv run ruff check src tests   # lint
 uv run mypy                   # typecheck
 uv run coverage run -m pytest && uv run coverage report   # branch coverage; CI fails under 95%
-uv run --group docs sphinx-build -W --keep-going docs docs/_build/html   # the documentation
 ```
 
-The code layout, how the documentation is built and published, and how to update
-pyd2 are on the [Development](https://lcmonteiro.github.io/specworks/development.html)
-page.
+The code layout, how to edit the wiki
+and how to update pyd2 are on the [Development](https://github.com/lcmonteiro/specworks/wiki/Development) page.

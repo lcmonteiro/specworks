@@ -1,7 +1,7 @@
-# shortlink: the example project of the guide
+# shortlink: the example project of the tutorial
 
-The project [`docs/guide.md`](../../guide.md) builds, as it is at the end of the
-guide: two closed changes and one abandoned one.
+The project the [tutorial](https://github.com/lcmonteiro/specworks/wiki/Tutorial) builds, as it is at the end of the
+tutorial: two closed changes and one abandoned one.
 
 | Where | What |
 |---|---|
