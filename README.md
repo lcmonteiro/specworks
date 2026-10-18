@@ -14,7 +14,7 @@ CLI checks every step: each requirement has an ID, each acceptance criterion a t
 refine -> specify -> design -> test -> code -> review -> validate -> close
 ```
 
-![specworks workflow: solid arrows move forward when a phase's gate passes, dashed arrows go back](wiki/images/workflow.svg)
+![specworks workflow: solid arrows move forward when a phase's gate passes, dashed arrows go back](assets/workflow.svg)
 
 | Phase     | Skill                  | Output |
 |-----------|------------------------|--------|
@@ -109,5 +109,5 @@ uv run mypy                   # typecheck
 uv run coverage run -m pytest && uv run coverage report   # branch coverage; CI fails under 95%
 ```
 
-The code layout, how to edit the documentation (the wiki's pages live in `wiki/`)
+The code layout, how to edit the documentation (edited in the wiki itself)
 and how to update pyd2 are on the [Development](https://github.com/lcmonteiro/specworks/wiki/Development) page.
