@@ -7,4 +7,3 @@ __pycache__/
 .coverage
 dist/
 # D2 binary placed by the build hook for editable installs
-docs/_build/

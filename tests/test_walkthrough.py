@@ -1,4 +1,4 @@
-"""docs/walkthrough.md, end to end: one change through every phase, from init to close.
+"""wiki/Walkthrough.md, end to end: one change through every phase, from init to close.
 
 Each step writes what the phase's skill has the agent write, then moves on with
 `specworks start` (or the gate the skill runs), so a change in any gate or

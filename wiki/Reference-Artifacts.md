@@ -1,0 +1,512 @@
+# Artifacts: instructions and templates
+
+Each artifact of a change has an `instruction` (the rules the agent follows)
+and a `template` (its structure). `specworks instructions <artifact> --change
+<ref> --json` returns both; they come from the files below, which are part of
+the installed package.
+
+| Artifact | Phase | File | Requires | Optional |
+|---|---|---|---|---|
+| `refinement` | refine | `refinement.md` | — | yes |
+| `proposal` | specify | `proposal.md` | refinement | |
+| `specs` | specify | `specs/**/spec.md` | proposal | |
+| `design` | specify | `design.md` | proposal | yes |
+| `tasks` | specify | `tasks.md` | specs, design | |
+| `traceability` | specify | `traceability.md` (generated) | tasks | |
+| `review` | review | `review.md` | tasks | |
+
+## The rules: `schema.yaml`
+
+<details open>
+<summary>src/specworks/schema.yaml</summary>
+
+<!-- include: src/specworks/schema.yaml -->
+```yaml
+# Artifacts of a specworks change, in workflow order. Each phase skill asks
+# `specworks instructions <artifact>` for the template and rules below.
+name: specworks
+version: 1
+artifacts:
+  - id: refinement
+    phase: refine
+    generates: refinement.md
+    template: refinement.md
+    requires: []
+    # Small changes (a bug fix, a tweak) can go straight to specify.
+    optional: true
+    instruction: |
+      Capture the shared understanding of the problem BEFORE committing to a solution.
+      This is the input for the proposal; it is not a plan.
+
+      Sections:
+      - **Problem**: 2-4 sentences. What hurts, for whom, and why now. Quote the
+        user's words where they matter.
+      - **Context**: What exists today that this touches. Cite concrete files,
+        modules, capabilities (from `specworks context`) and their living docs.
+        Separate what you OBSERVED in the code from what you ASSUME.
+      - **Constraints**: Technical, compatibility, performance, security,
+        organisational limits. Mark each as hard (must) or soft (prefer).
+      - **Options**: 2-3 genuinely different solutions. For each: a one-line
+        summary, how it works at a high level, pros, cons, rough effort (S/M/L),
+        and the capabilities it would touch. Include "do nothing / minimal" when
+        it is a real option.
+      - **Recommendation**: The option you recommend and why, in a few lines.
+        Leave it as "Pending" if the user has not agreed yet.
+      - **Open Questions**: Questions that must be answered before proposing.
+        Each one says who can answer it. Remove questions once answered and
+        record the answer in the relevant section.
+      - **Candidate Capabilities**: Capabilities likely to be added or modified,
+        using existing capability names from `specworks context` when they fit.
+        Qualify capabilities of other modules as `module:capability`, and for a
+        new capability say which module should own it.
+
+      Keep it to 1-2 pages. No requirements, no tasks, no code: those belong to
+      the specify phase.
+
+  - id: proposal
+    phase: specify
+    generates: proposal.md
+    template: proposal.md
+    requires: [refinement]
+    instruction: |
+      State WHY this change is needed and WHAT changes. If refinement.md exists,
+      build on its chosen option; do not repeat its analysis.
+
+      Sections:
+      - **Why**: 1-3 sentences. The problem or opportunity and why now.
+      - **What Changes**: bullets, specific. Mark breaking changes with **BREAKING**.
+      - **Capabilities**: the contract with the specs step. List every capability
+        whose BEHAVIOUR changes, by reference (`name` in this module,
+        `module:name` elsewhere, as in `specworks context`):
+        - **New Capabilities**: `ref` (owning module + code path): what it covers.
+          Name a durable behaviour (`user-auth`), not this piece of work
+          (`add-login-endpoint`). Kebab-case.
+        - **Modified Capabilities**: `ref`: which requirements change.
+        Each one gets a delta spec. A change with no behaviour change (pure
+        refactor, tooling, docs) lists none and is marked with
+        `specworks skip-specs --change <ref>` - never invent a requirement to pass validation.
+      - **Impact**: code, APIs, data, dependencies and systems affected.
+      - **Out of Scope**: what this change deliberately does not do.
+
+      Before filling Capabilities, read the related capabilities with
+      `specworks spec show <ref>` and reuse an existing one instead of creating
+      a near-duplicate. Keep it to 1-2 pages; HOW belongs in design.md.
+
+  - id: specs
+    phase: specify
+    generates: "specs/**/spec.md"
+    template: spec.md
+    requires: [proposal]
+    instruction: |
+      Write one delta spec per capability listed in the proposal: WHAT the system
+      must do, as testable requirements with acceptance criteria. A spec is a
+      behaviour contract: inputs, outputs, errors, observable effects and
+      external constraints (security, performance, compatibility). Leave out
+      class names, libraries and implementation steps.
+
+      Paths and IDs come from the CLI; never invent them:
+      - `capabilities[*].deltaPath` in this response (or `specworks spec show <ref> --json`)
+        is where the file goes, relative to the change folder:
+        `specs/<capability>/spec.md` for the top level,
+        `specs/<module>/<capability>/spec.md` for a module.
+      - Requirement IDs are `REQ-<prefix>-NNN` with the capability's `prefix`;
+        new requirements start at `nextId` and count up.
+      - Acceptance criteria are scenarios numbered under their requirement:
+        `AC-<prefix>-NNN.1`, `.2`, ... Each one becomes at least one test.
+
+      Delta sections (use only the ones you need):
+      - `## ADDED Requirements`: new behaviour, with new IDs.
+      - `## MODIFIED Requirements`: copy the WHOLE existing block (same ID) from
+        the living spec, then edit it. Partial blocks lose detail at close.
+        Changing only the title is also a MODIFIED.
+      - `## REMOVED Requirements`: the existing ID and title, plus **Reason**
+        and **Migration**.
+
+      Rules (`specworks check` checks them):
+      - `### Requirement: REQ-<prefix>-NNN <title>` then a description using
+        SHALL or MUST. One behaviour per requirement; split otherwise.
+      - At least one `#### Scenario: AC-<prefix>-NNN.<n> <title>` per
+        requirement, exactly four hashes, with `- **GIVEN**` (optional),
+        `- **WHEN**` and `- **THEN**` bullets. Cover the main path, errors and
+        edge cases that matter.
+      - A new capability starts with `## Purpose` (one or two sentences) and
+        has only ADDED requirements.
+
+      Write the files one at a time and say which capability you are on.
+
+  - id: design
+    phase: specify
+    generates: design.md
+    template: design.md
+    requires: [proposal]
+    optional: true
+    instruction: |
+      Explain HOW the change will be built. Write it only when one applies:
+      cross-cutting change (several modules or capabilities), new dependency or
+      architectural pattern, data model or API change, security, performance or
+      migration risk, or real ambiguity worth deciding before coding. Otherwise
+      skip it and say so.
+
+      Sections:
+      - **Context**: current state and constraints that shape the approach (link
+        to proposal.md for motivation instead of repeating it).
+      - **Goals / Non-Goals**: design-level boundaries only.
+      - **Decisions**: each choice with the alternatives considered and why.
+        Reference requirement IDs a decision serves.
+      - **Interfaces**: public APIs, data shapes, events or CLI surfaces the
+        change adds or extends. Name them precisely, each with its file in a
+        code span (`src/auth/reset.py`). The design phase settles this
+        section with the user and creates the stubs; tests are written
+        against it. Write "None" when the API does not change.
+      - **Diagrams**: only where a picture explains what text cannot - a
+        sequence diagram for a new flow, a state diagram for a lifecycle, a
+        component diagram for a change across modules or services, a data
+        model for new tables. Usually 0-3 per design.
+      - **Risks / Trade-offs**: `[risk] -> mitigation`.
+      - **Migration / Rollback**: when deployment or data needs steps.
+      - **Open Questions**: only ones that do not change specs, approach or
+        tasks; resolve the others with the user now.
+
+      Diagrams are D2 (https://d2lang.com), rendered to SVG by the CLI:
+      - Write `diagrams/<name>.d2` in the change folder (kebab-case name), run
+        `specworks diagrams --change <ref>`, and embed the result in
+        design.md as `![<caption> (REQ-...)](diagrams/<name>.svg)` with the
+        requirement IDs it illustrates.
+      - One idea per diagram, about 12 shapes at most; give every shape a
+        readable label (`api: Auth API`) and label every connection with what
+        flows (`api -> mail: reset link`).
+      - Flows: `shape: sequence_diagram`. Components: nest containers
+        (`auth: Auth service { api: API; db: Users DB {shape: cylinder} }`).
+        States: shapes as states, connections labelled with events. Tables:
+        `shape: sql_table`. Add `direction: right` for wide diagrams.
+      - Do not set colours, fonts or styles: the workspace theme gives every
+        diagram the same look. Quote labels containing `{ } : ; # | "`.
+      - Never edit the SVG by hand; change the .d2 and re-render. If d2
+        cannot run, keep the .d2, pass the error to the user, and continue.
+
+  - id: tasks
+    phase: specify
+    generates: tasks.md
+    template: tasks.md
+    requires: [specs, design]
+    instruction: |
+      Break the work into small, ordered, checkable tasks. The design, test
+      and code phases work through this list and tick boxes.
+
+      Rules (`specworks check` checks them):
+      - Group tasks under `## N. <group>` headings, in dependency order.
+      - Every task is `- [ ] N.M <description>`; only `- [x]` counts as done.
+      - Every task names the requirement or acceptance-criterion IDs it serves
+        (e.g. `(REQ-AUTH-001, AC-AUTH-001.2)`), and every acceptance criterion
+        is covered by at least one task.
+      - Every task says how to verify it: a test, a command or an observable
+        result.
+      - Interfaces, then tests, then behaviour: in each group, first the task
+        that adds or extends the API as stubs (the design phase), then the
+        failing tests for its acceptance criteria (tagged `@ac <AC-ID>`), then
+        the implementation tasks (tagged `@req <REQ-ID>`). Do not push
+        testing or docs into a final group.
+      - REMOVED requirements get a task that deletes their code and tests.
+      - Resolve design.md Open Questions that would change the tasks before
+        writing them.
+
+      Plain bullets under a final `## Workflow follow-up` heading are notes,
+      not tracked tasks.
+
+  - id: traceability
+    phase: specify
+    generates: traceability.md
+    template: ""
+    requires: [tasks]
+    instruction: |
+      Generated, not written: run `specworks trace --change <ref> --write`.
+      It maps every requirement and acceptance criterion to its tasks, and
+      (from the test phase on) to the tests and code that carry its
+      `@ac` / `@req` tags. Re-run it whenever specs, tasks, tests or code change.
+
+  - id: review
+    phase: review
+    generates: review.md
+    template: review.md
+    requires: [tasks]
+    instruction: |
+      Record the review: every place where the code, the specs and the design
+      (API) disagree, the change proposed for each, and what was decided. It is the evidence /specworks-validate
+      and /specworks-close rely on.
+
+      Findings (`- [ ] R<n>` open, `- [x] R<n>` resolved), one per drift, with
+      a type (a top-level checkbox not in this form fails `specworks gate review`):
+      - **spec-gap**: the code does something no requirement describes, or does
+        it differently from the spec (extra behaviour, other error codes,
+        different limits).
+      - **code-gap**: a requirement or criterion the code does not (fully)
+        implement.
+      - **design-gap**: the code and design.md disagree: an interface under
+        `## Interfaces` (name, parameters, return or error types, file) or a
+        Decision the code does not follow, or that the code proved wrong.
+      - **test-gap**: a criterion whose test does not really check its THEN
+        (asserts too little, tests a different path, never fails).
+      - **tag**: an `@req`/`@ac` tag on the wrong code, missing, or pointing
+        to an unknown ID.
+      - **quality**: a problem that does not break the spec but should not ship
+        (security, error handling, obvious bug in an untested path).
+      Each finding names the IDs and the file:line, and a **Decision**:
+      `code fixed`, `spec updated (ADDED/MODIFIED REQ-...)`,
+      `design updated (<interface or decision>)`, or `accepted: <reason>`
+      (only with the user's agreement). A finding sent back to an earlier
+      phase stays open (`- [ ]`) with `back to <specify|design|test|code>:
+      <the agreed proposal>` until the change returns to review and it is
+      done. The phase that carries out the proposal adds `done in <phase>:
+      <what changed>` under it (the box stays open until review confirms).
+      `specworks cycle` reads these to pick where the next build cycle
+      starts: the phase a finding needs, or the one after its `done in`.
+
+      "Changed files without tags" accounts for every file `specworks review`
+      lists under untracedSource / untracedTests: why it needs no tag, or the
+      finding that covers it. `specworks gate review` checks they are all
+      mentioned and that no finding is still open.
+```
+
+</details>
+
+## The templates
+
+<details>
+<summary>refinement.md</summary>
+
+<!-- include: src/specworks/templates/refinement.md -->
+```markdown
+# Refinement: <!-- change name -->
+
+## Problem
+
+<!-- What hurts, for whom, and why now -->
+
+## Context
+
+**Observed:**
+<!-- Files, modules, capabilities and docs that exist today -->
+
+**Assumed:**
+<!-- Things believed true but not verified -->
+
+## Constraints
+
+- <!-- [hard|soft] constraint -->
+
+## Options
+
+### Option A: <!-- name -->
+
+<!-- How it works -->
+
+- **Pros:**
+- **Cons:**
+- **Effort:** S | M | L
+- **Touches:** <!-- capabilities -->
+
+### Option B: <!-- name -->
+
+<!-- How it works -->
+
+- **Pros:**
+- **Cons:**
+- **Effort:** S | M | L
+- **Touches:** <!-- capabilities -->
+
+## Recommendation
+
+<!-- Chosen option and why, or "Pending" -->
+
+## Open Questions
+
+- <!-- question --> (who can answer: <!-- person/role -->)
+
+## Candidate Capabilities
+
+- `<!-- capability -->`: new | modified - <!-- why -->
+```
+
+</details>
+
+<details>
+<summary>proposal.md</summary>
+
+<!-- include: src/specworks/templates/proposal.md -->
+```markdown
+# Proposal: <!-- change name -->
+
+## Why
+
+<!-- The problem or opportunity, and why now (1-3 sentences) -->
+
+## What Changes
+
+- <!-- specific change; mark breaking ones with **BREAKING** -->
+
+## Capabilities
+
+### New Capabilities
+
+- `<!-- ref -->` (<!-- owning module -->, `<!-- code path -->`): <!-- what it covers -->
+
+### Modified Capabilities
+
+- `<!-- ref -->`: <!-- which requirements change -->
+
+## Impact
+
+<!-- Affected code, APIs, data, dependencies, systems -->
+
+## Out of Scope
+
+- <!-- what this change deliberately does not do -->
+```
+
+</details>
+
+<details>
+<summary>spec.md (delta spec)</summary>
+
+<!-- include: src/specworks/templates/spec.md -->
+```markdown
+# Spec Delta: <!-- capability ref -->
+
+## Purpose
+
+<!-- New capabilities only: one or two sentences on what this capability is for. Delete for an existing capability. -->
+
+## ADDED Requirements
+
+### Requirement: REQ-<!-- PREFIX -->-<!-- NNN --> <!-- title -->
+
+The system SHALL <!-- one observable behaviour -->.
+
+#### Scenario: AC-<!-- PREFIX -->-<!-- NNN -->.1 <!-- title -->
+
+- **GIVEN** <!-- optional precondition -->
+- **WHEN** <!-- action or event -->
+- **THEN** <!-- observable outcome -->
+
+## MODIFIED Requirements
+
+<!-- Copy the whole existing block (same ID) from the living spec, then edit it. Delete this section if unused. -->
+
+## REMOVED Requirements
+
+<!-- ### Requirement: REQ-... <title>
+**Reason**: why it goes
+**Migration**: what callers do instead
+Delete this section if unused. -->
+```
+
+</details>
+
+<details>
+<summary>design.md</summary>
+
+<!-- include: src/specworks/templates/design.md -->
+```markdown
+# Design: <!-- change name -->
+
+## Context
+
+<!-- Current state and constraints. See proposal.md for motivation; don't restate it. -->
+
+## Goals / Non-Goals
+
+**Goals:**
+- <!-- design-level goal -->
+
+**Non-Goals:**
+- <!-- explicitly excluded -->
+
+## Decisions
+
+### <!-- decision -->
+
+<!-- What, why, alternatives considered. Serves: REQ-... -->
+
+## Interfaces
+
+<!-- Public APIs, data shapes, events, CLI surfaces added or extended, each with its file:
+- `src/auth/reset.py`: `ResetService.request_reset(email: str) -> None` (REQ-...)
+Settled in the design phase; "None" when the API does not change. -->
+
+## Diagrams
+
+<!-- Optional. Write diagrams/<name>.d2, run `specworks diagrams --change <ref>`, then embed:
+![Password reset flow (REQ-AUTH-003)](diagrams/reset-flow.svg)
+-->
+
+## Risks / Trade-offs
+
+- <!-- [risk] -> mitigation -->
+
+## Migration / Rollback
+
+<!-- Only if deployment or data needs steps -->
+
+## Open Questions
+
+<!-- Only questions that don't change specs, approach or tasks -->
+```
+
+</details>
+
+<details>
+<summary>tasks.md</summary>
+
+<!-- include: src/specworks/templates/tasks.md -->
+```markdown
+# Tasks: <!-- change name -->
+
+## 1. <!-- group -->
+
+- [ ] 1.1 Add/extend <!-- interface --> as stubs (<!-- REQ-... -->); verify it builds and existing tests pass
+- [ ] 1.2 Write failing tests for <!-- AC-... --> tagged `@ac <!-- AC-... -->`; verify they fail for the right reason
+- [ ] 1.3 Implement <!-- behaviour --> (<!-- REQ-... -->) tagged `@req <!-- REQ-... -->`; verify the 1.2 tests pass
+
+## 2. <!-- group -->
+
+- [ ] 2.1 <!-- task (IDs); how to verify -->
+```
+
+</details>
+
+<details>
+<summary>review.md</summary>
+
+<!-- include: src/specworks/templates/review.md -->
+```markdown
+# Review: <!-- change ref -->
+
+Base: `<!-- base branch -->`
+
+## Findings
+
+<!-- One line per drift between code, spec and design (API), from `specworks review` and from
+reading the diff. `- [ ] R<n>` while open, `- [x] R<n>` once resolved. Write
+"None." when there are no findings. -->
+
+- [ ] R1 **<!-- spec-gap | code-gap | design-gap | test-gap | tag | quality -->** <!-- what drifts, with REQ/AC IDs --> (`<!-- file:line -->`)
+  - **Decision**: <!-- code fixed | spec updated (ADDED/MODIFIED REQ-...) | design updated (interface/decision) | back to specify/design/test/code: proposal (stays open) | accepted: reason -->
+
+## Changed files without tags
+
+<!-- Every file `specworks review` lists under untracedSource/untracedTests,
+with why it needs no tag (config, refactor, helper of REQ-...) or the
+finding that covers it. -->
+
+- `<!-- path -->`: <!-- reason or R<n> -->
+
+## Summary
+
+<!-- Two or three lines: what was found, what changed in code, specs and design, and anything sent back to an earlier phase. -->
+```
+
+</details>
+
+Filled-in examples of every one of them are in the tutorial:
+[1. refine](Tutorial-Refine), [2. specify](Tutorial-Specify),
+[3. design](Tutorial-Design), [7. The second build cycle](Tutorial-Build-Cycle).
