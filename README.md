@@ -109,5 +109,5 @@ uv run mypy                   # typecheck
 uv run coverage run -m pytest && uv run coverage report   # branch coverage; CI fails under 95%
 ```
 
-The code layout, how to edit the documentation (edited in the wiki itself)
+The code layout, how to edit this wiki
 and how to update pyd2 are on the [Development](https://github.com/lcmonteiro/specworks/wiki/Development) page.
