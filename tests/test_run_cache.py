@@ -153,6 +153,7 @@ def test_close_runs_the_commands_but_its_dry_run_reuses(counted):
     assert runs(counter) == 2
 
 
+# @ac AC-FLOW-003.3
 @pytest.mark.parametrize("command", [["gate", "code"], ["validate", "--base", "main"]])
 def test_fresh_runs_the_commands_again(counted, command):
     repo, counter = counted
@@ -162,6 +163,7 @@ def test_fresh_runs_the_commands_again(counted, command):
     assert not any("same code as the run at" in d for c in data["checks"] for d in c["details"])
 
 
+# @ac AC-FLOW-003.3
 def test_fresh_runs_each_command_once_for_all_the_gates_of_a_start(counted):
     repo, counter = counted
     gate_tests()

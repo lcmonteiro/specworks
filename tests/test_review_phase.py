@@ -9,6 +9,7 @@ def findings(data):
     return data["findings"]
 
 
+# @ac AC-FLOW-009.1
 def test_review_without_drift(repo):
     code, data = run_json("review", "--change", REF, "--base", "main")
     assert code == 0 and data["base"] == "main"
@@ -18,6 +19,7 @@ def test_review_without_drift(repo):
     assert not any(p.startswith("spec/") for p in kinds)  # workflow files are not code
 
 
+# @ac AC-FLOW-009.2
 def test_review_finds_untagged_code_and_tests(repo):
     (repo / "src/auth/audit.py").write_text("def audit(): ...\n")  # untracked, no tag
     (repo / "src/auth/session.py").write_text("def session(): return 1\n")  # modified, no tag
@@ -29,6 +31,7 @@ def test_review_finds_untagged_code_and_tests(repo):
     assert {"path": "README.md", "kind": "other", "tags": []} in data["changedFiles"]
 
 
+# @ac AC-FLOW-009.3
 def test_review_finds_spec_side_gaps(repo):
     (repo / "src/auth/lockout.py").write_text("LIMIT = 3\n")
     (repo / "tests/test_reset.py").write_text("# @ac AC-AUTH-003.1\n# @ac AC-AUTH-003.7\n")  # specworks: ignore-tags
@@ -40,22 +43,26 @@ def test_review_finds_spec_side_gaps(repo):
     assert f["untracedSource"] == ["src/auth/lockout.py"]
 
 
+# @ac AC-FLOW-009.4
 def test_review_without_git_checks_only_the_spec_side(project):
     code, data = run_json("review", "--change", REF)
     assert code == 0 and data["changedFiles"] is None and "changed files unknown" in data["note"]
 
 
+# @ac AC-FLOW-009.4
 def test_review_unknown_base(repo):
     code, data = run_json("review", "--change", REF, "--base", "nope")
     assert data["changedFiles"] is None and "nope" in data["note"]
 
 
+# @ac AC-FLOW-009.4
 def test_review_finds_a_local_main_when_origin_has_no_head(repo):
     # The repo has no remote, so origin/HEAD and origin/main are missing: the local main is the base.
     code, data = run_json("review", "--change", REF)
     assert data["base"] == "main" and data["changedFiles"] is not None
 
 
+# @ac AC-FLOW-009.4
 def test_review_without_any_base_branch_says_to_pass_one(repo):
     git(repo, "branch", "-m", "main", "trunk")
     code, data = run_json("review", "--change", REF)
@@ -73,17 +80,20 @@ def write_review(repo, body):
     (repo / "spec/changes" / REF / "review.md").write_text(f"# Review: {REF}\n\n## Findings\n\n{body}\n")
 
 
+# @ac AC-FLOW-011.1
 def test_gate_review_needs_review_md(repo):
     code, data = run_json("gate", "review", "--change", REF, "--base", "main")
     assert code == 1 and checks(data)["review.md is written"]["ok"] is False
 
 
+# @ac AC-FLOW-011.1
 def test_gate_review_blocks_on_open_findings(repo):
     write_review(repo, "- [ ] R1 **spec-gap** lockout also logs\n  - **Decision**: pending\n- [x] R2 **tag** fixed\n")
     code, data = run_json("gate", "review", "--change", REF, "--base", "main")
     assert code == 1 and checks(data)["no open finding in review.md"]["details"] == ["R1 **spec-gap** lockout also logs"]
 
 
+# @ac AC-FLOW-010.1
 @pytest.mark.parametrize("line", ["* [ ] R1 **code-gap** reset ignores case", "- [ ] **R1** **code-gap** reset ignores case", "1. [ ] R1 **code-gap** x"])
 def test_gate_review_reads_common_finding_variants(repo, line):
     write_review(repo, line + "\n  - **Decision**: pending\n")
@@ -91,6 +101,7 @@ def test_gate_review_reads_common_finding_variants(repo, line):
     assert code == 1 and checks(data)["no open finding in review.md"]["details"][0].startswith("R1 ")
 
 
+# @ac AC-FLOW-010.2
 def test_an_unreadable_finding_blocks_review_and_validate(repo):
     # Silently skipping it would let the gate pass with the finding open, even inside a build.
     write_review(repo, "- [ ] **R1 code-gap** reset ignores case\n  - **Decision**: pending\n")
@@ -103,6 +114,7 @@ def test_an_unreadable_finding_blocks_review_and_validate(repo):
     assert any("is not a finding" in d for d in readable["details"])
 
 
+# @ac AC-FLOW-011.2
 def test_gate_review_allow_open_reports_open_findings_as_a_warning(repo):
     # Inside /specworks-build, open findings start the next cycle instead of failing the review.
     write_review(repo, "- [ ] R1 **design-gap** reset returns None\n  - **Decision**: back to design: return the token\n")
@@ -114,6 +126,7 @@ def test_gate_review_allow_open_reports_open_findings_as_a_warning(repo):
     assert code == 1
 
 
+# @ac AC-FLOW-011.3
 def test_gate_review_requires_untagged_files_accounted_for(repo):
     (repo / "src/auth/audit.py").write_text("def audit(): ...\n")
     write_review(repo, "None.\n")
@@ -125,6 +138,7 @@ def test_gate_review_requires_untagged_files_accounted_for(repo):
     assert code == 0 and data["passed"] is True
 
 
+# @ac AC-FLOW-011.3
 def test_untagged_files_count_only_as_whole_paths_under_their_heading(repo):
     (repo / "src/auth/audit.py").write_text("def audit(): ...\n")
     not_accounted = [
@@ -141,18 +155,21 @@ def test_untagged_files_count_only_as_whole_paths_under_their_heading(repo):
     assert code == 0, data
 
 
+# @ac AC-FLOW-011.1
 def test_gate_review_passes_when_clean(repo):
     write_review(repo, "- [x] R1 **test-gap** AC-AUTH-003.2 only checked the status\n  - **Decision**: code fixed\n")
     code, data = run_json("gate", "review", "--change", REF, "--base", "main")
     assert code == 0, data
 
 
+# @ac AC-FLOW-002.1
 def test_review_artifact_has_instructions(repo):
     code, data = run_json("instructions", "review", "--change", REF)
     assert data["outputPath"] == f"spec/changes/{REF}/review.md"
     assert "## Changed files without tags" in data["template"] and "spec-gap" in data["instruction"]
 
 
+# @ac AC-FLOW-009.6
 def test_review_lists_changed_files_with_non_ascii_names(repo):
     # git quotes such names unless asked not to; a quoted name matched no file and the change went unreviewed.
     (repo / "src/auth/café.py").write_text("x = 1\n")
@@ -160,6 +177,7 @@ def test_review_lists_changed_files_with_non_ascii_names(repo):
     assert findings(data)["untracedSource"] == ["src/auth/café.py"]
 
 
+# @ac AC-FLOW-010.2
 def test_gate_review_blocks_on_an_open_finding_of_unknown_type_even_in_a_build(repo):
     write_review(repo, "- [ ] R1 **spec_gap** lockout also logs\n- [ ] R2 **Design-gap** reset returns None\n")
     code, data = run_json("gate", "review", "--change", REF, "--base", "main", "--allow-open")
@@ -181,6 +199,7 @@ def on_main(project, monkeypatch):
     return project
 
 
+# @ac AC-FLOW-009.5
 def test_on_the_base_branch_the_diff_starts_where_the_change_did(on_main):
     git(on_main, "add", "-A")
     git(on_main, "commit", "-q", "-m", "start the change")
@@ -192,6 +211,7 @@ def test_on_the_base_branch_the_diff_starts_where_the_change_did(on_main):
     assert data["since"].startswith(f"main at the commit before {REF} started") and data["note"] == ""
 
 
+# @ac AC-FLOW-011.5
 def test_on_the_base_branch_without_a_commit_of_the_change_the_gate_warns(on_main):
     (on_main / "src/auth/reset.py").write_text("# @req REQ-AUTH-003\n")  # specworks: ignore-tags
     code, data = run_json("gate", "review", "--change", REF, "--base", "main", "--no-run")
@@ -200,12 +220,14 @@ def test_on_the_base_branch_without_a_commit_of_the_change_the_gate_warns(on_mai
     assert f"HEAD is on main and no earlier commit marks where {REF} started" in check["details"][0]
 
 
+# @ac AC-FLOW-011.5
 def test_on_a_branch_there_is_no_base_warning(repo):
     code, data = run_json("gate", "review", "--change", REF, "--base", "main", "--no-run")
     assert not any(c["name"] == "the change's commits are compared with its base" for c in data["checks"])
     assert any(c["name"].endswith("(base main)") for c in data["checks"])
 
 
+# @ac AC-FLOW-009.5
 def test_a_change_from_the_first_commit_has_nothing_to_start_from(project, monkeypatch):
     for key, value in {"GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t", "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@t"}.items():
         monkeypatch.setenv(key, value)

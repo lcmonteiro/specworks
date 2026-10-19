@@ -90,6 +90,7 @@ class ReviewReport:
         }
 
 
+# @req REQ-FLOW-009
 def detect_base(cwd: Path) -> str:
     try:
         return git_text(cwd, "symbolic-ref", "--short", "refs/remotes/origin/HEAD").strip()
@@ -104,6 +105,7 @@ def detect_base(cwd: Path) -> str:
     raise GitError("cannot find the base branch; pass --base <branch>")
 
 
+# @req REQ-FLOW-009
 def change_start(ws: Workspace, change: Change) -> str | None:
     """The parent of the newest commit that added the change's metadata (an archived change may have had its name), if any."""
     meta = (change.path / META_FILE).relative_to(ws.root).as_posix()
@@ -116,6 +118,7 @@ def change_start(ws: Workspace, change: Change) -> str | None:
         return None  # added in the first commit: there is nothing before it
 
 
+# @req REQ-FLOW-009
 def changed_paths(ws: Workspace, since: str) -> list[str]:
     """Files changed since the commit ``since`` (committed, uncommitted, untracked), relative to the workspace."""
     git_root = Path(git_text(ws.root, "rev-parse", "--show-toplevel").strip()).resolve()
@@ -142,6 +145,7 @@ def changed_file_kind(ws: Workspace, rel: str) -> str | None:
     return "source" if scanned and path.suffix.lower() in CODE_EXTENSIONS else "other"
 
 
+# @req REQ-FLOW-009
 def review_change(analysis: Analysis, base: str | None = None) -> ReviewReport:
     """Drift candidates of the analysed change; changed files come from git against ``base``."""
     ws = analysis.ws
@@ -241,6 +245,7 @@ class ReviewDoc:
         return re.search(rf"(?<![\w./-]){re.escape(path)}(?![\w./-])", self.accounted) is not None
 
 
+# @req REQ-FLOW-010
 def parse_review(text: str) -> ReviewDoc:
     """Findings and the "Changed files without tags" section of review.md; HTML comments and code fences are ignored."""
     doc = ReviewDoc(exists=True)

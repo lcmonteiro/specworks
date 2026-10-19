@@ -28,12 +28,14 @@ def planning_artifacts(ctx: GateContext) -> Check:
     return Check("planning artifacts exist (proposal, specs, tasks)", not missing, missing)
 
 
+# @req REQ-FLOW-013
 def diagrams_current(ctx: GateContext) -> Check:
     settings = ctx.ws.top.config.diagrams
     stale = [f"{ctx.ws.rel(d.svg)} ({status})" for d in diagrams_in(ctx.change.path) if (status := state(d, settings)) != "ok"]
     return Check("diagram SVGs are up to date (specworks diagrams)", not stale, stale)
 
 
+# @req REQ-FLOW-013
 def went_through_review(ctx: GateContext) -> Check:
     in_order = ctx.change.phase in REVIEWED_PHASES
     return Check("the change went through review", in_order, [] if in_order else [f"phase is {ctx.change.phase}"], blocking=False)
@@ -67,6 +69,7 @@ VALIDATE: list[tuple[str, str, CheckFn]] = [
 ]
 
 
+# @req REQ-FLOW-013, REQ-FLOW-014
 def validate_change(ctx: GateContext) -> list[Check]:
     checks = []
     for group, fix, check in VALIDATE:
@@ -77,6 +80,7 @@ def validate_change(ctx: GateContext) -> list[Check]:
     return checks
 
 
+# @req REQ-FLOW-013
 def summary(checks: list[Check]) -> dict:
     critical = [c for c in checks if c.blocking and not c.ok]
     warnings = [c for c in checks if not c.blocking and not c.ok]

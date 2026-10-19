@@ -162,6 +162,7 @@ def test_spec_show_in_module_uses_module_path_and_prefix(project, monkeypatch):
     assert data["prefix"] == "PAY-REFUNDS" and data["deltaPath"] == "specs/pay/refunds/spec.md"
 
 
+# @ac AC-FLOW-002.3
 def test_instructions_for_specs_list_capabilities(project):
     code, data = run_json("instructions", "specs", "--change", "add-password-reset")
     caps = {c["ref"]: c for c in data["capabilities"]}
@@ -169,6 +170,7 @@ def test_instructions_for_specs_list_capabilities(project):
     assert "REQ-<prefix>-NNN" in data["instruction"]
 
 
+# @ac AC-FLOW-001.1
 def test_status_after_planning(change):
     code, data = run_json("status", "--change", "add-password-reset")
     states = {a["id"]: a["status"] for a in data["artifacts"]}
@@ -620,6 +622,7 @@ def test_source_globs_limit_the_other_files_but_not_tests(change, project):
     assert rows["AC-AUTH-003.1"]["tests"] == ["tests/test_reset.py:1"]
 
 
+# @ac AC-FLOW-001.3
 def test_skip_specs_change(project):
     run_json("new", "tidy-up")
     code, data = run_json("skip-specs", "--change", "tidy-up")

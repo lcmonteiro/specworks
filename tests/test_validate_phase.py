@@ -35,6 +35,7 @@ def snapshot(root):
     }
 
 
+# @ac AC-FLOW-013.1
 def test_verify_passes_a_finished_change(repo):
     reviewed(repo)
     code, data = run_json("validate", "--change", REF, "--base", "main")
@@ -45,6 +46,7 @@ def test_verify_passes_a_finished_change(repo):
     assert by_name(data)["lint passes (commands.lint)"]["details"] == ["not configured"]
 
 
+# @ac AC-FLOW-013.2
 def test_verify_is_read_only(repo):
     reviewed(repo)
     before = snapshot(repo)
@@ -53,6 +55,7 @@ def test_verify_is_read_only(repo):
     assert snapshot(repo) == before
 
 
+# @ac AC-FLOW-013.3
 def test_verify_names_the_phase_to_go_back_to(repo):
     run_json("task", "undo", "1.2", "--change", REF)
     (repo / "src/auth/lockout.py").write_text("LIMIT = 3\n")
@@ -66,6 +69,7 @@ def test_verify_names_the_phase_to_go_back_to(repo):
     assert data["goBackTo"] == ["/specworks-code", "/specworks-review"]
 
 
+# @ac AC-FLOW-013.4
 def test_failing_tests_and_lint_are_critical(repo):
     reviewed(repo)
     set_command(repo, "test", FAIL)
@@ -77,6 +81,7 @@ def test_failing_tests_and_lint_are_critical(repo):
     assert "lint: 1 error" in checks["lint passes (commands.lint)"]["details"]
 
 
+# @ac AC-FLOW-003.2
 def test_no_run_turns_commands_into_warnings(repo):
     reviewed(repo)
     set_command(repo, "lint", PASS)
@@ -84,6 +89,7 @@ def test_no_run_turns_commands_into_warnings(repo):
     assert code == 0 and data["verdict"] == "PASS" and data["warnings"] == 2
 
 
+# @ac AC-FLOW-013.5
 def test_outdated_diagram_fails_coherence(repo):
     reviewed(repo)
     folder = repo / "spec/changes" / REF / "diagrams"
@@ -94,6 +100,7 @@ def test_outdated_diagram_fails_coherence(repo):
     assert code == 1 and check["group"] == "coherence" and check["details"] == [f"spec/changes/{REF}/diagrams/flow.svg (missing)"]
 
 
+# @ac AC-FLOW-013.6
 def test_skipping_the_review_phase_is_a_warning(repo):
     (repo / "spec/changes" / REF / "review.md").write_text("None.\n")
     code, data = run_json("validate", "--change", REF, "--base", "main")
@@ -101,6 +108,7 @@ def test_skipping_the_review_phase_is_a_warning(repo):
     assert code == 0 and phase["ok"] is False and phase["blocking"] is False and phase["details"] == ["phase is refine"]
 
 
+# @ac AC-FLOW-013.7
 def test_gate_verify_matches_verify(repo):
     reviewed(repo)
     code, data = run_json("gate", "validate", "--change", REF, "--base", "main")
@@ -110,6 +118,7 @@ def test_gate_verify_matches_verify(repo):
     assert code == 1
 
 
+# @ac AC-FLOW-014.5
 def test_start_close_names_the_phase_that_fixes_each_failed_check(repo):
     # The close skill enters its phase with `start close`; its text output must still say where to go back.
     run_json("phase", "validate", "--change", REF)

@@ -66,6 +66,7 @@ def test_run_unconfigured_command(project):
 # --- gate code ---------------------------------------------------------
 
 
+# @ac AC-FLOW-008.1
 def test_implement_gate_passes_when_everything_is_done(project):
     set_test_command(project, PASS)
     implement_everything(project)
@@ -74,6 +75,7 @@ def test_implement_gate_passes_when_everything_is_done(project):
     assert checks(data)["the test suite passes (commands.test)"]["details"][0].startswith("$ ")
 
 
+# @ac AC-FLOW-008.2
 def test_implement_gate_lists_what_is_missing(project):
     set_test_command(project, PASS)
     write_tests(project, "AC-AUTH-003.1", "AC-AUTH-003.2", "AC-AUTH-002.1")
@@ -85,6 +87,7 @@ def test_implement_gate_lists_what_is_missing(project):
     assert [d.split()[0] for d in c["every task is done (specworks task list --pending)"]["details"]] == ["1.1", "1.2"]
 
 
+# @ac AC-FLOW-008.3
 def test_implement_gate_fails_when_tests_fail(project):
     set_test_command(project, FAIL)
     implement_everything(project)
@@ -94,12 +97,14 @@ def test_implement_gate_fails_when_tests_fail(project):
     assert tests["ok"] is False and "2 failed" in tests["details"]
 
 
+# @ac AC-FLOW-008.4
 def test_implement_gate_needs_a_test_command(project):
     implement_everything(project)
     code, data = run_json("gate", "code", "--change", REF)
     assert code == 1 and "no 'test' command configured" in checks(data)["the test suite passes (commands.test)"]["details"][0]
 
 
+# @ac AC-FLOW-003.2
 def test_no_run_turns_the_test_check_into_a_warning(project):
     implement_everything(project)
     code, data = run_json("gate", "code", "--change", REF, "--no-run")
@@ -108,6 +113,7 @@ def test_no_run_turns_the_test_check_into_a_warning(project):
     assert tests["blocking"] is False and "not run" in tests["details"][0]
 
 
+# @ac AC-FLOW-008.5
 def test_removed_requirement_still_tagged_blocks_implement(project):
     set_test_command(project, PASS)
     implement_everything(project)
@@ -123,6 +129,7 @@ def test_removed_requirement_still_tagged_blocks_implement(project):
     assert code == 1 and checks(data)["removed requirements and criteria are gone from tests and code"]["details"] == ["REQ-AUTH-001"]
 
 
+# @ac AC-FLOW-008.5
 def test_criteria_of_a_removed_requirement_still_tested_block_implement(project):
     # Its code is gone, but a test of its criterion would point to an unknown ID after close.
     set_test_command(project, PASS)
@@ -143,6 +150,7 @@ def test_criteria_of_a_removed_requirement_still_tested_block_implement(project)
 
 
 
+# @ac AC-FLOW-008.5
 def test_criterion_a_modified_requirement_drops_must_lose_its_tests(project):
     # The living REQ-AUTH-002 has AC-AUTH-002.2; the change's MODIFIED block keeps only .1.
     living = project / "src/auth/docs/spec.md"
@@ -180,6 +188,7 @@ def test_tag_scan_follows_a_symlink_to_a_file_outside_the_workspace(project, tmp
     assert any("src/auth/reset.py:1" in code_at for row in data["rows"] for code_at in row["code"])
 
 
+# @ac AC-FLOW-008.3
 def test_a_command_writing_bytes_that_are_not_text_does_not_crash_the_gate(project):
     set_test_command(project, f'"{sys.executable}" -c "import sys; sys.stdout.buffer.write(bytes([0xff, 0xfe, 10])); sys.exit(1)"')
     code, data = run_json("gate", "code", "--change", REF)

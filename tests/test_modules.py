@@ -131,6 +131,7 @@ def test_list_all_includes_every_module(workspace):
     assert [c["ref"] for c in data["changes"]] == ["top-change", "billing:bill-change"]
 
 
+# @ac AC-FLOW-002.2
 def test_instructions_in_module_use_inherited_context(workspace):
     run_json("new", "add-refunds", "--module", "billing")
     code, data = run_json("instructions", "refinement", "--change", "billing:add-refunds")

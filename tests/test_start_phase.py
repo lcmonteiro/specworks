@@ -15,6 +15,7 @@ def phase_now():
     return run_json("status", "--change", REF)[1]["phase"]
 
 
+# @ac AC-FLOW-014.1
 @pytest.mark.parametrize(
     "current, phase, gates",
     [
@@ -31,6 +32,7 @@ def test_gates_to_start(current, phase, gates):
     assert gates_to_start(current, phase) == gates
 
 
+# @ac AC-FLOW-014.2
 def test_start_moves_the_change_when_the_gates_pass(project):
     code, data = start("specify")
     assert code == 0 and data["started"] and data["gates"] == [] and data["from"] == "refine"
@@ -39,6 +41,7 @@ def test_start_moves_the_change_when_the_gates_pass(project):
     assert phase_now() == "design"
 
 
+# @ac AC-FLOW-014.3
 def test_a_failing_gate_leaves_the_phase_unchanged(project):
     start("specify")
     delta = project / "spec/changes" / REF / "specs/user-auth/spec.md"
@@ -48,6 +51,7 @@ def test_a_failing_gate_leaves_the_phase_unchanged(project):
     assert phase_now() == "specify"
 
 
+# @ac AC-FLOW-014.3
 def test_skipping_ahead_stops_at_the_first_failing_gate(project):
     start("specify")
     code, data = start("test", "--no-run")  # design.md has no Interfaces yet
@@ -55,12 +59,14 @@ def test_skipping_ahead_stops_at_the_first_failing_gate(project):
     assert phase_now() == "specify"
 
 
+# @ac AC-FLOW-014.1, AC-FLOW-014.3
 def test_going_back_for_rework_needs_only_the_gate_before(repo):
     run_json("phase", "review", "--change", REF)
     code, data = start("code", "--no-run")
     assert code == 0 and [g["gate"] for g in data["gates"]] == ["test"] and phase_now() == "code"
 
 
+# @ac AC-FLOW-014.4
 def test_done_is_reached_by_close_not_start(project):
     code, data = start("done")
     assert code == 1 and "specworks close" in data["error"]

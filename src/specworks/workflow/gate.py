@@ -31,6 +31,7 @@ INTERFACES_TITLE_RE = re.compile(r"interfaces\b", re.IGNORECASE)
 CODE_SPAN_RE = re.compile(r"`([^`\s]+)`")
 
 
+# @req REQ-FLOW-006
 def interfaces_section(change: Change) -> str | None:
     """The text of design.md's Interfaces section without HTML comments, or None if there is none."""
     design = change.path / DESIGN_FILE
@@ -49,6 +50,7 @@ def interfaces_section(change: Change) -> str | None:
     return "\n".join(body).strip() if body is not None else None
 
 
+# @req REQ-FLOW-006
 def interface_files(section: str) -> list[str]:
     """File paths named in code spans (`src/auth/reset.py`, `src/auth/reset.py:ResetService`, `main.py`).
 
@@ -67,6 +69,7 @@ def interface_files(section: str) -> list[str]:
 # --- design: the API is recorded, its stubs exist and build, nothing broke ---------
 
 
+# @req REQ-FLOW-006
 def interfaces_recorded(ctx: GateContext) -> Check:
     section = interfaces_section(ctx.change)
     return Check(
@@ -76,12 +79,14 @@ def interfaces_recorded(ctx: GateContext) -> Check:
     )
 
 
+# @req REQ-FLOW-006
 def interface_files_exist(ctx: GateContext) -> Check:
     files = interface_files(interfaces_section(ctx.change) or "")
     missing = [path for path in files if not (ctx.module.root / path).exists() and not (ctx.ws.root / path).exists()]
     return Check("every file named under Interfaces exists", not missing, missing)
 
 
+# @req REQ-FLOW-006
 def interface_files_named(ctx: GateContext) -> Check | None:
     section = interfaces_section(ctx.change)
     if not section or interface_files(section) or re.match(r"none\b", section, re.IGNORECASE):
@@ -94,6 +99,7 @@ def interface_files_named(ctx: GateContext) -> Check | None:
     )
 
 
+# @req REQ-FLOW-006
 def stubs_build(key: str) -> CheckFn:
     def check(ctx: GateContext) -> Check | None:
         return c.command_check(ctx, key, f"the stubs build (commands.{key})") if ctx.has_command(key) else None
@@ -101,6 +107,7 @@ def stubs_build(key: str) -> CheckFn:
     return check
 
 
+# @req REQ-FLOW-006
 def existing_tests_pass(ctx: GateContext) -> Check:
     tests = c.command_check(ctx, "test", "the existing tests still pass with the stubs (commands.test)")
     ran = ctx.run_tests and ctx.has_command("test")  # a missing command still blocks
@@ -114,6 +121,7 @@ def existing_tests_pass(ctx: GateContext) -> Check:
     return tests
 
 
+# @req REQ-FLOW-004, REQ-FLOW-006, REQ-FLOW-007, REQ-FLOW-008, REQ-FLOW-011
 GATE_CHECKS: dict[str, list[CheckFn]] = {
     "specify": [c.specs_valid, c.specs_warnings, c.tasks_written],  # every criterion having a task is one of specs_valid's errors
     "design": [
@@ -149,6 +157,7 @@ GATE_CHECKS: dict[str, list[CheckFn]] = {
 GATES = (*GATE_CHECKS, "validate")
 
 
+# @req REQ-FLOW-003
 def run_gate(ctx: GateContext, phase: str) -> tuple[bool, list[Check]]:
     if phase not in GATES:
         raise GateError(f"no gate for phase '{phase}' yet; gates exist for: {', '.join(GATES)}")
@@ -156,6 +165,7 @@ def run_gate(ctx: GateContext, phase: str) -> tuple[bool, list[Check]]:
     return passed(checks), checks
 
 
+# @req REQ-FLOW-014
 def gates_to_start(current: str, phase: str) -> list[str]:
     """Gates that must pass before a change in ``current`` starts ``phase``.
 
@@ -171,6 +181,7 @@ def gates_to_start(current: str, phase: str) -> list[str]:
     return [p for p in PHASES[max(first, 0) : target] if p in GATES]
 
 
+# @req REQ-FLOW-014, REQ-FLOW-005
 def start_phase(ctx: GateContext, phase: str) -> tuple[bool, list[tuple[str, list[Check]]]]:
     """Run the gates ``phase`` depends on, in order, and move the change to it if they all pass.
 

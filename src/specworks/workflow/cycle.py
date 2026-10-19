@@ -18,6 +18,7 @@ CYCLE = FINDING_PHASES[1:]  # design, test, code, review
 ORDER = FINDING_PHASES
 
 
+# @req REQ-FLOW-012
 def next_cycle(change: Change) -> dict:
     """The next build cycle for a reviewed change: where it starts and the phases it runs."""
     review = read_review(change)

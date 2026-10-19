@@ -65,6 +65,7 @@ def test_new_rejects_duplicates(project):
     assert code == 1 and "already exists" in data["error"]
 
 
+# @ac AC-FLOW-002.1
 def test_instructions_for_refinement(project):
     run_json("new", "add-login")
     code, data = run_json("instructions", "refinement", "--change", "add-login")
@@ -74,6 +75,14 @@ def test_instructions_for_refinement(project):
     assert data["exists"] is False
 
 
+# @ac AC-FLOW-002.4
+def test_instructions_for_an_unknown_artifact_are_refused(project):
+    run_json("new", "add-login")
+    code, data = run_json("instructions", "plan", "--change", "add-login")
+    assert code == 1 and "unknown artifact 'plan'" in data["error"]
+    assert "refinement, proposal, specs, design, tasks, traceability, review" in data["error"]
+
+# @ac AC-FLOW-001.2
 def test_status_marks_refinement_done_once_written(project):
     run_json("new", "add-login")
     (project / "specworks/changes/add-login/refinement.md").write_text("# Refinement\n")

@@ -24,6 +24,7 @@ def edit(project, old, new):
     path.write_text(path.read_text().replace(old, new))
 
 
+# @ac AC-FLOW-005.1
 def test_start_records_the_specs_and_the_gates_warn_when_they_change(project):
     start_design(project)
     meta = (project / f"spec/changes/{REF}/.change.yaml").read_text()
@@ -41,6 +42,7 @@ def test_start_records_the_specs_and_the_gates_warn_when_they_change(project):
     assert f"`specworks start design --change {REF}` re-checks specify" in agreed["details"][2]
 
 
+# @ac AC-FLOW-005.2
 def test_a_dropped_requirement_is_named(project):
     start_design(project)
     path = project / DELTA_FILE
@@ -49,6 +51,7 @@ def test_a_dropped_requirement_is_named(project):
     assert check(data, AGREED)["details"][0] == "REQ-AUTH-002 dropped"
 
 
+# @ac AC-FLOW-005.3
 def test_spacing_and_blank_lines_are_not_a_change(project):
     start_design(project)
     edit(project, "valid for 30 minutes.", "valid  for 30 minutes.\n")
@@ -56,6 +59,7 @@ def test_spacing_and_blank_lines_are_not_a_change(project):
     assert check(data, AGREED)["ok"]
 
 
+# @ac AC-FLOW-005.4
 def test_going_back_to_design_accepts_the_new_specs(project):
     start_design(project)
     run_json("phase", "code", "--change", REF)
@@ -66,12 +70,14 @@ def test_going_back_to_design_accepts_the_new_specs(project):
     assert check(data, AGREED)["ok"]
 
 
+# @ac AC-FLOW-005.5
 def test_a_change_moved_without_start_is_not_checked(project):
     run_json("phase", "design", "--change", REF)
     code, data = run_json("gate", "design", "--change", REF, "--no-run")
     assert check(data, AGREED) is None
 
 
+# @ac AC-FLOW-011.4
 def test_a_modified_requirement_whose_tests_did_not_change_is_named(repo):
     # The lockout test is on main already: the feature branch changes REQ-AUTH-002 (5 -> 3 attempts) but not it.
     git(repo, "checkout", "-q", "main")
@@ -94,6 +100,7 @@ def test_a_modified_requirement_whose_tests_did_not_change_is_named(repo):
     assert check(data, MODIFIED_TESTS)["ok"]
 
 
+# @ac AC-FLOW-011.4
 def test_a_modified_title_alone_needs_no_new_test(repo):
     living_block = (repo / "src/auth/docs/spec.md").read_text().split("### Requirement: REQ-AUTH-002 Lockout\n")[1]
     path = repo / DELTA_FILE
@@ -103,6 +110,7 @@ def test_a_modified_title_alone_needs_no_new_test(repo):
     assert check(data, MODIFIED_TESTS) is None
 
 
+# @ac AC-FLOW-011.4
 def test_without_git_the_tests_of_a_modified_requirement_are_not_checked(project):
     code, data = run_json("gate", "review", "--change", REF, "--no-run", "--allow-open")
     assert check(data, MODIFIED_TESTS) is None
