@@ -63,11 +63,13 @@ Then, in your agent:
 The [walkthrough](https://github.com/lcmonteiro/specworks/wiki/Walkthrough) follows one small change through every
 phase in five minutes.
 
-**`/specworks-adopt`** stops once the capabilities are mapped. On request, one
-capability at a time, it records the behaviour the code already has as a
-`baseline-<capability>` change: requirements read from the existing tests and code,
-`@ac` / `@req` tags added, no behaviour change. Suspected bugs are left out, each a
-candidate for its own change.
+**`/specworks-adopt`** stops once the capabilities are mapped. Then
+**`/specworks-baseline <capability>`**, one capability at a time and typically just
+before the first change that touches it, records the behaviour the code already has
+as a `baseline-<capability>` change: requirements read from the existing tests and
+code, confirmed with you, `@ac` / `@req` tags added, no behaviour change. Suspected
+bugs are left out, each a candidate for its own change. `/specworks-close` then
+writes the capability's living spec.
 
 **`/specworks-build`** runs design → test → code → review in one go, each phase
 exactly as its own skill. When the review has findings, it asks whether to start a

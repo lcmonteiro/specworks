@@ -1,26 +1,21 @@
 ---
-description: Adopt specworks in a project that already has code - set it up, find the project's test/lint commands and context, map the existing code to capabilities, and, per capability on request, record the behaviour the code already has as a baseline living spec. Use when the user wants to start using specworks on an existing (brownfield) project, onboard a codebase, baseline a capability, or says "adopt", "onboard" or "specworks adopt".
+description: Adopt specworks in a project that already has code - set it up, find the project's test/lint commands and context, and map the existing code to capabilities (a capability's existing behaviour is then recorded with /specworks-baseline). Use when the user wants to start using specworks on an existing (brownfield) project, onboard a codebase, or says "adopt", "onboard" or "specworks adopt".
 agent: agent
 ---
 
 Adopt: bring a project that already has code into specworks, without
-pretending it was built with it. It runs in stages:
+pretending it was built with it. It runs in two stages:
 
 1. **Set up**: the config, the project's commands and its context.
 2. **Map**: the capabilities of the existing code, registered in the config.
-3. **Baseline** (only on request, one capability at a time): the behaviour
-   the code already has, written as requirements, tied to the existing tests
-   and code with `@ac` / `@req` tags, and closed into the capability's living
-   spec through an ordinary change.
 
-**By default, stop after stage 2.** A project is ready for new changes once
-its capabilities are mapped; a capability gets a baseline when the user asks,
-typically the first time a change touches it. Never baseline the whole
-project in one go.
+A project is ready for new changes once its capabilities are mapped. The
+behaviour a capability already has is recorded later, one capability at a
+time, by `/specworks-baseline <capability>`: typically just before the
+first change that touches it. Adopt never baselines.
 
-**Boundary**: adopting changes no behaviour. Stages 1-2 write only the config.
-Stage 3 writes a change folder and adds comment tags (and tests only for
-criteria no test covers); it never fixes the code, even a bug it finds.
+**Boundary**: adopting changes no behaviour and writes only the config (and,
+through `init`, the agent skills).
 
 **Running the CLI**: use `specworks <cmd>`. If it is not on PATH, use
 `uv run specworks <cmd>` (inside the specworks repo) or
@@ -138,157 +133,24 @@ does the same for that command.
 
    "specworks is set up. New work starts with `/specworks-refine`. A
    capability has no living spec yet; when a change first touches one (or
-   now, if you prefer), ask me to baseline it: I record the behaviour it
-   already has, so the change's specs can MODIFY requirements instead of
-   only ADDING them."
+   now, if you prefer), run `/specworks-baseline <capability>`: it records
+   the behaviour the capability already has, so the change's specs can
+   MODIFY requirements instead of only ADDING them."
 
-   **End here unless the user asked for a baseline.**
-
----
-
-## Stage 3: Baseline one capability (on request)
-
-A baseline is an ordinary change named `baseline-<capability>` whose specs
-ADD the behaviour the code already has. Its tests and code exist, so the
-test and code phases only add tags; `close` then writes the living spec
-exactly as for any other change. Do one capability per change.
-
-8. **Check the capability and create the change**
-
-   ```bash
-   specworks spec show "<capability>" --json
-   ```
-
-   A capability with requirements already has a living spec: it needs no
-   baseline (offer `/specworks-refine` for what is missing).
-
-   The test suite must be green: the design and code gates require it, and a
-   red suite cannot show that the baseline matches the code. Check it first:
-   ```bash
-   specworks run test
-   ```
-   If it fails, stop before creating anything: name the failing tests and
-   suggest fixing them first, in their own change (`/specworks-refine`), or
-   baselining a capability whose tests pass. Never narrow `commands.test`
-   to hide the failures.
-
-   Otherwise, preferably on a new branch (review compares the branch with
-   its base):
-   ```bash
-   specworks new "baseline-<capability>" --json
-   specworks phase specify --change "baseline-<capability>"
-   ```
-   (`--module <m>` on `new` for a capability of another module.)
-
-9. **Read the behaviour**
-
-   Read the capability's code and its tests; requirements come from both:
-   - existing tests: each one asserts behaviour someone decided on;
-   - the code: public entry points, validation, error handling and side
-     effects, including behaviour no test checks yet;
-   - the README, docs, comments and changelog, to name and explain them.
-
-   Record only observable behaviour (inputs, outputs, errors, side effects),
-   not how the code does it. Keep a list of what looks like a bug or is
-   unclear: it is not specified here (step 10).
-
-10. **Write proposal, delta spec and tasks**
-
-    Use `specworks instructions proposal|specs|tasks --change "<ref>" --json`
-    as `/specworks-specify` does, with these differences:
-    - `proposal.md`: Why = "record the existing behaviour of `<capability>`";
-      What Changes = "no behaviour change"; the capability under Modified
-      Capabilities (it is registered); Out of Scope = the suspected bugs and
-      unclear behaviour from step 9, each as a candidate for its own change.
-    - The delta spec starts with `## Purpose` (one or two sentences: the
-      capability has no living spec yet), then only `## ADDED Requirements`,
-      IDs from `nextId`.
-      Prefer fewer, meaningful requirements. A criterion read from the code
-      alone is as valid as one a test shows; step 12 gives it a test, so
-      do not mark it in the spec.
-    - `tasks.md`: per requirement, one task to tag the tests that check its
-      criteria (`@ac`) and to write a test for any criterion with none, and
-      one task to tag the code that implements it (`@req`).
-
-    ```bash
-    specworks check --change "<ref>"
-    ```
-
-    Show the requirements and criteria table as `/specworks-specify` step 5
-    does, with the source of each (the test that shows it, or `code only:
-    <file>` for one that gets a new test in step 12), and the
-    list of suspected bugs. **Stop and wait** for the user to confirm: a
-    baseline that records a bug as a requirement makes the bug the spec.
-
-11. **Gate specify and record the API as unchanged**
-
-    ```bash
-    specworks trace --change "<ref>" --write
-    specworks start design --change "<ref>"
-    ```
-    Write `design.md` with only:
-    ```markdown
-    ## Interfaces
-
-    None: a baseline records existing behaviour and changes no API.
-    ```
-
-12. **Tag the tests**
-
-    ```bash
-    specworks start test --change "<ref>"
-    ```
-    Add `@ac <ID>` comments to the existing tests that check each criterion
-    (one tag may list several IDs). Write a new test only for a criterion
-    that none covers; it must pass against the current code (if it fails,
-    the criterion is wrong or it is a bug: back to step 10, not a code fix).
-    Tick the test tasks: `specworks task done --change "<ref>" <N.M>`.
-
-13. **Tag the code**
-
-    ```bash
-    specworks start code --change "<ref>"
-    ```
-    Add `@req <ID>` comments where each requirement is implemented (the
-    function or class that decides the behaviour, not every caller). Change
-    nothing else. Tick the code tasks.
-
-14. **Review and validate**
-
-    ```bash
-    specworks start review --change "<ref>"
-    specworks review --change "<ref>" --json
-    ```
-    Write `review.md` (`specworks instructions review --change "<ref>" --json`).
-    The only changed files should be tests and code that gained tags (and any
-    new test); a code change other than a tag is a finding. Then:
-    ```bash
-    specworks start validate --change "<ref>"
-    specworks validate --change "<ref>"
-    ```
-    Every failure names the step to go back to.
-
-15. **Hand over to close**
-
-    Show the summary: requirements and criteria recorded, tests tagged and
-    added, files tagged, the suspected bugs left out. End with:
-    "The baseline of `<capability>` passes validate. Run `/specworks-close
-    baseline-<capability>` to write its living spec. The suspected bugs can
-    each start with `/specworks-refine`."
+   **End here.** If the user asks for a baseline, that is
+   `/specworks-baseline`, one capability at a time.
 
 ---
 
 ## Guardrails
 
-- Stop after stage 2 unless the user asked for a baseline; then do one
-  capability per change, and only the one asked for.
+- Stop after stage 2: a baseline is `/specworks-baseline`, never part of
+  adopt.
 - Never change behaviour while adopting: no refactors, no bug fixes, no
   renames. A failing command or a bug is reported, not fixed.
-- The user confirms the commands, the capability table and each baseline's
-  requirements before they are written into the project.
-- Capability names, prefixes, IDs and delta paths come from the CLI
-  (`spec show`, `instructions`), never invented.
-- Record behaviour the code has, not behaviour it should have: what it
-  should do is a new change, through `/specworks-refine`.
+- The user confirms the commands and the capability table before they are
+  written into the project.
+- Capability names and prefixes are checked with the CLI (`spec list`),
+  never assumed.
 - Never edit the living docs (`<path>/<docs_dir>/`) by hand: `close` writes
   them.
