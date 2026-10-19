@@ -50,6 +50,12 @@ does the same for that command.
    phase each failed check names (`-> /specworks-<phase>`; `/specworks-validate`
    explains them). `specworks close` refuses a change that does not pass.
 
+   The gate cannot see what `/specworks-validate` found by reading (step 3).
+   If validate reported FAIL for this change in this conversation, its
+   reading included, and nothing changed since, stop as well: closing it
+   anyway would make `/specworks-validate` + `/specworks-close` close what
+   `/specworks-done` refuses.
+
 2. **Register new capabilities**
 
    For every capability under "New Capabilities" in proposal.md (or any delta
@@ -118,6 +124,12 @@ does the same for that command.
    living docs, the archive and the code together, e.g.
    `git add -A && git commit -m "<change>: close"`, and opening the PR if the
    project uses them.
+
+   When the change was a baseline (`baseline-<capability>`), name what is
+   next: the next capability with 0 requirements in `specworks spec list`
+   (`/specworks-baseline <capability>`), or, when none is left, that every
+   capability now has a living spec and new work starts with
+   `/specworks-refine`.
 
 ---
 

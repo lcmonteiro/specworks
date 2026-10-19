@@ -142,8 +142,8 @@ def test_skills_pre_approve_only_specworks_and_read_only_git(name):
     assert UVX in commands and f"`{UVX} <cmd>`" in read_skill(name)  # the rule matches the command the skill documents
 
 
-# refine and adopt create the change they work on instead of picking one.
-@pytest.mark.parametrize("name", [n for n in packaged_skills() if n not in ("specworks-refine", "specworks-adopt")])
+# refine, adopt and baseline create the change they work on (adopt none) instead of picking one.
+@pytest.mark.parametrize("name", [n for n in packaged_skills() if n not in ("specworks-refine", "specworks-adopt", "specworks-baseline")])
 def test_skills_pick_the_change_by_one_shared_rule(name):
     # "Select the change as the other phases do" pointed at no rule; the shared paragraph is that rule.
     text = read_skill(name)
@@ -151,13 +151,50 @@ def test_skills_pick_the_change_by_one_shared_rule(name):
     assert "as the other phases do" not in text and "as in `/specworks-specify`" not in text
 
 
-def test_adopt_stops_after_mapping_unless_a_baseline_is_asked_for():
-    # Baselining every capability up front is the slow, error-prone path; stage 3 runs one capability on request.
+def test_adopt_stops_after_mapping_and_hands_baselines_to_their_own_skill():
+    # Baselining every capability up front is the slow, error-prone path; /specworks-baseline runs one capability on request.
     text = read_skill("specworks-adopt")
-    assert "**By default, stop after stage 2.**" in text and "**End here unless the user asked for a baseline.**" in text
-    assert 'specworks new "baseline-<capability>" --json' in text and "specworks capability add <name>" in text
+    assert "specworks capability add <name>" in text and "**End here.**" in text
+    assert "## Stage 3" not in text and "specworks new" not in text
+    assert "`/specworks-baseline <first capability>`" in text
+
+
+def test_adopt_baseline_and_close_chain_through_every_capability():
+    # After adopt, each capability is baselined and closed in turn; each skill names the next step.
+    loop = "for each capability:\n    /specworks-baseline <capability>\n    /specworks-done baseline-<capability>"
+    assert loop in read_skill("specworks-adopt") and loop in read_skill("specworks-baseline")
+    assert "then\n   `/specworks-baseline` for the next capability" in read_skill("specworks-baseline")
+    assert "the next capability with 0 requirements" in read_skill("specworks-close")
+
+
+def test_done_closes_only_after_validate_passes():
+    # done chains the two phase skills; a FAIL must stop it before close changes anything.
+    text = read_skill("specworks-done")
+    assert "`specworks-validate` and `specworks-close`" in text
+    steps = text.split("## Steps", 1)[1]
+    assert steps.index("follow `specworks-validate`") < steps.index("follow `specworks-close`")
+    assert "**FAIL**" in steps and "Nothing is closed." in steps
+    # Running both phases in one go still waits for the go-ahead on the merge plan.
+    assert "does not skip it" in text
+
+
+def test_done_is_validate_then_close():
+    # /specworks-validate then /specworks-close must end where /specworks-done ends: done adds no rule of its own
+    # (the phase a change may validate from is validate's call), and close refuses what validate's reading failed.
+    done = read_skill("specworks-done")
+    assert "specworks status" not in done and "specworks start" not in done and "specworks gate" not in done
+    assert "It adds no check of its own and skips none." in done
+    assert "If validate reported FAIL for this change in this conversation" in read_skill("specworks-close")
+
+
+def test_baseline_checks_the_suite_before_creating_its_change():
+    text = read_skill("specworks-baseline")
+    assert 'specworks new "baseline-<capability>" --json' in text and "/specworks-done" in text
+    assert "specworks validate" not in text  # validate runs once, in /specworks-done
     # A red suite fails the design and code gates; checking it first stops before the change is created.
-    assert text.index("specworks run test\n", text.index("## Stage 3")) < text.index('specworks new "baseline-<capability>"')
+    assert text.index("specworks run test\n") < text.index('specworks new "baseline-<capability>"')
+    # A project with no capabilities is adopted first; the baseline never registers one itself.
+    assert "/specworks-adopt" in text.split("## Steps", 1)[1].split("2. **", 1)[0]
 
 
 def test_close_runs_the_project_commands_once_before_writing():
