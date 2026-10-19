@@ -71,6 +71,7 @@ def packaged_skills() -> list[str]:
 INCLUDE_RE = re.compile(r"^<!-- specworks:include (?P<name>[a-z0-9-]+) -->\n", re.MULTILINE)
 
 
+# @req REQ-INTEG-005
 def read_skill(name: str) -> str:
     """A packaged skill's SKILL.md with its shared parts filled in."""
     skills = resources.files("specworks").joinpath("skills")
@@ -87,12 +88,14 @@ def split_frontmatter(text: str) -> tuple[list[tuple[str, str]], str]:
     return pairs, text[match.end() :]
 
 
+# @req REQ-INTEG-005
 def render_skill(text: str, tool: Tool) -> str:
     pairs, body = split_frontmatter(text)
     kept = [line for key, line in pairs if key in tool.keep_keys]
     return "---\n" + "\n".join(kept) + "\n---\n" + body
 
 
+# @req REQ-INTEG-005
 def render_prompt(text: str) -> str:
     """Copilot prompt file: description frontmatter, agent mode, and the skill's instructions."""
     pairs, body = split_frontmatter(text)
@@ -100,6 +103,7 @@ def render_prompt(text: str) -> str:
     return f"---\n{description}\nagent: agent\n---\n{body}"
 
 
+# @req REQ-INTEG-004
 def parse_tools(value: str, root: Path) -> list[Tool]:
     """``auto`` (default), ``all`` or a comma list such as ``claude,copilot``.
 
@@ -122,6 +126,7 @@ def parse_tools(value: str, root: Path) -> list[Tool]:
     return tools
 
 
+# @req REQ-INTEG-005
 def install_skills(root: Path, tools: list[Tool]) -> list[Path]:
     """Write every packaged skill (and Copilot prompt files) for ``tools``; return written files."""
     written = []

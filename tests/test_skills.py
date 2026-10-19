@@ -28,6 +28,7 @@ def frontmatter(path):
     return path.read_text().split("---\n")[1]
 
 
+# @ac AC-INTEG-004.1
 def test_no_tool_detected_installs_for_all(tmp_path, monkeypatch):
     init(tmp_path, monkeypatch)
     assert (tmp_path / f".claude/skills/{SKILL}/SKILL.md").is_file()
@@ -35,6 +36,7 @@ def test_no_tool_detected_installs_for_all(tmp_path, monkeypatch):
     assert (tmp_path / f".github/prompts/{SKILL}.prompt.md").is_file()
 
 
+# @ac AC-INTEG-005.2
 def test_copilot_only(tmp_path, monkeypatch):
     init(tmp_path, monkeypatch, "--tools", "copilot")
     assert not (tmp_path / ".claude").exists()
@@ -45,6 +47,7 @@ def test_copilot_only(tmp_path, monkeypatch):
     assert "## Steps" in skill.read_text()
 
 
+# @ac AC-INTEG-005.3
 def test_copilot_prompt_file_is_an_agent_mode_slash_command(tmp_path, monkeypatch):
     init(tmp_path, monkeypatch, "--tools", "copilot")
     prompt = tmp_path / f".github/prompts/{SKILL}.prompt.md"
@@ -54,12 +57,14 @@ def test_copilot_prompt_file_is_an_agent_mode_slash_command(tmp_path, monkeypatc
     assert "specworks context --json" in prompt.read_text()
 
 
+# @ac AC-INTEG-005.2
 def test_claude_copy_keeps_allowed_tools(tmp_path, monkeypatch):
     init(tmp_path, monkeypatch, "--tools", "claude")
     assert "allowed-tools:" in frontmatter(tmp_path / f".claude/skills/{SKILL}/SKILL.md")
     assert not (tmp_path / ".github").exists()
 
 
+# @ac AC-INTEG-004.2
 @pytest.mark.parametrize(
     "marker, expected",
     [(".github/copilot-instructions.md", {".github"}), ("CLAUDE.md", {".claude"})],
@@ -72,6 +77,14 @@ def test_auto_detects_tool_in_use(tmp_path, monkeypatch, marker, expected):
     assert installed == expected
 
 
+# @ac AC-INTEG-004.4
+def test_an_empty_tool_list_is_rejected(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    result = runner.invoke(app, ["init", "--tools", ","])
+    assert result.exit_code == 1 and "no tool given" in result.output
+    assert list(tmp_path.iterdir()) == []
+
+# @ac AC-INTEG-005.1
 def test_every_packaged_skill_is_installed(tmp_path, monkeypatch):
     init(tmp_path, monkeypatch, "--tools", "all")
     for name in packaged_skills():
@@ -80,6 +93,7 @@ def test_every_packaged_skill_is_installed(tmp_path, monkeypatch):
         assert (tmp_path / f".github/prompts/{name}.prompt.md").is_file()
 
 
+# @ac AC-INTEG-004.3
 def test_unknown_tool_is_rejected(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     result = runner.invoke(app, ["init", "--tools", "cursor"])
@@ -87,6 +101,7 @@ def test_unknown_tool_is_rejected(tmp_path, monkeypatch):
     assert list(tmp_path.iterdir()) == []
 
 
+# @ac AC-INTEG-005.5
 def test_skills_command_refreshes(tmp_path, monkeypatch):
     init(tmp_path, monkeypatch, "--tools", "claude")
     result = runner.invoke(app, ["skills", "--tools", "copilot"])
@@ -94,12 +109,14 @@ def test_skills_command_refreshes(tmp_path, monkeypatch):
     assert (tmp_path / f".github/skills/{SKILL}/SKILL.md").is_file()
 
 
+# @ac AC-INTEG-005.5
 def test_module_init_installs_skills_at_workspace_root(tmp_path, monkeypatch):
     init(tmp_path, monkeypatch, "--tools", "copilot")
     runner.invoke(app, ["init", "services/billing", "--tools", "copilot"])
     assert not (tmp_path / "services/billing/.github").exists()
 
 
+# @ac AC-INTEG-005.4
 def test_installed_skills_have_their_shared_parts_filled_in(tmp_path, monkeypatch):
     init(tmp_path, monkeypatch, "--tools", "all")
     for name in packaged_skills():

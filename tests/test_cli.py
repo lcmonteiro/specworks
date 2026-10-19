@@ -227,6 +227,7 @@ def test_phases_follow_the_workflow(project):
         assert code == 0 and data["phase"] == phase
 
 
+# @ac AC-INTEG-005.1
 def test_skills_are_installed_with_specworks_prefix(project):
     skills = sorted(p.name for p in (project / ".claude/skills").iterdir())
     assert skills and all(name.startswith("specworks-") for name in skills)

@@ -139,6 +139,7 @@ def test_instructions_in_module_use_inherited_context(workspace):
     assert "Company-wide" in data["context"] and "Billing" in data["context"]
 
 
+# @ac AC-INTEG-005.5
 def test_init_in_subfolder_links_to_parent(workspace):
     run("init", "libs/auth", "--name", "auth")
     assert "  auth: libs/auth\n" in (workspace / "spec.yml").read_text()
