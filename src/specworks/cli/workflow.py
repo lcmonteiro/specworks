@@ -156,6 +156,7 @@ def validate_cmd(
         raise typer.Exit(1)
 
 
+# @req REQ-CLI-007
 @app.command()
 def close(
     change: str = ChangeOpt,

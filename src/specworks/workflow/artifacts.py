@@ -52,6 +52,7 @@ def read_template(name: str) -> str:
     return resources.files("specworks").joinpath("templates", name).read_text(encoding="utf-8")
 
 
+# @req REQ-FLOW-001
 def artifact_states(change: Change) -> list[dict]:
     """Each artifact as done, ready (all requirements exist), blocked, or skipped (specs of a skip_specs change)."""
     artifacts = load_artifacts()
@@ -77,6 +78,7 @@ def artifact_states(change: Change) -> list[dict]:
     return states
 
 
+# @req REQ-FLOW-002
 def instructions(ws: Workspace, module: Module, change: Change, artifact_id: str) -> dict:
     artifacts = load_artifacts()
     if artifact_id not in artifacts:

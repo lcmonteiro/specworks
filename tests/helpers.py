@@ -66,8 +66,8 @@ def make_repo(project, monkeypatch):
     git(project, "commit", "-q", "-m", "baseline")
     git(project, "checkout", "-q", "-b", "feature")
     write_tests(project, "AC-AUTH-003.1", "AC-AUTH-003.2", "AC-AUTH-002.1")
-    (project / "src/auth/reset.py").write_text("# @req REQ-AUTH-003\ndef reset(): ...\n")
-    (project / "src/auth/lockout.py").write_text("# @req REQ-AUTH-002\nLIMIT = 3\n")
+    (project / "src/auth/reset.py").write_text("# @req REQ-AUTH-003\ndef reset(): ...\n")  # specworks: ignore-tags
+    (project / "src/auth/lockout.py").write_text("# @req REQ-AUTH-002\nLIMIT = 3\n")  # specworks: ignore-tags
     git(project, "add", "-A")
     git(project, "commit", "-q", "-m", "implement")
     run_json("task", "done", "1.1", "1.2", "--change", REF)

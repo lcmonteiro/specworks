@@ -33,6 +33,7 @@ def emit(data: dict, as_json: bool, text: str) -> None:
     typer.echo(json.dumps(data, indent=2) if as_json else text)
 
 
+# @req REQ-CLI-001
 def fail(message: str, as_json: bool, **extra) -> NoReturn:
     if as_json:
         typer.echo(json.dumps({"error": message, **extra}, indent=2))
@@ -41,6 +42,7 @@ def fail(message: str, as_json: bool, **extra) -> NoReturn:
     raise typer.Exit(1)
 
 
+# @req REQ-CLI-001
 def workspace(as_json: bool) -> Workspace:
     ws = load_workspace()
     if ws is None:
@@ -86,6 +88,7 @@ def changes_of(ws: Workspace, all_modules: bool) -> list[tuple[Module, Change]]:
     return [(m, c) for m in modules for c in list_changes(m.config)]
 
 
+# @req REQ-CLI-002
 def resolve_change(ws: Workspace, ref: str) -> tuple[Module, Change]:
     """``module:name`` is exact. A bare name prefers the current module, then any module if unique."""
     module, name = ws.split(ref)
@@ -117,6 +120,7 @@ def resolve_change(ws: Workspace, ref: str) -> tuple[Module, Change]:
     )
 
 
+# @req REQ-CLI-002
 def resolve_archived(ws: Workspace, ref: str) -> tuple[Module, Change]:
     """An archived change, by name (the newest of that name) or folder (``<date>-<name>``); the current module first."""
     module, name = ws.split(ref)

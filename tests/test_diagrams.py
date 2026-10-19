@@ -49,6 +49,7 @@ def change(tmp_path, monkeypatch):
     return path
 
 
+# @ac AC-INTEG-001.1
 def test_render_writes_stamped_svg_with_workspace_settings(change, fake_d2):
     code, data = run_json("diagrams", "--change", CHANGE)
     assert code == 0, data
@@ -60,6 +61,7 @@ def test_render_writes_stamped_svg_with_workspace_settings(change, fake_d2):
     assert code == 0 and data["diagrams"][0]["status"] == "ok"
 
 
+# @ac AC-INTEG-002.1, AC-CLI-008.3
 def test_editing_the_source_makes_the_svg_stale(change, fake_d2):
     run_json("diagrams", "--change", CHANGE)
     (change / "diagrams/reset-flow.d2").write_text(FLOW + "api -> mail: link\n")
@@ -69,6 +71,7 @@ def test_editing_the_source_makes_the_svg_stale(change, fake_d2):
     assert code == 0 and data["diagrams"][0]["status"] == "rendered"
 
 
+# @ac AC-INTEG-002.2
 def test_changing_the_theme_makes_the_svg_stale(change, fake_d2):
     run_json("diagrams", "--change", CHANGE)
     cfg = change.parents[2] / "spec.yml"
@@ -79,6 +82,7 @@ def test_changing_the_theme_makes_the_svg_stale(change, fake_d2):
     assert "--sketch" in (change / "diagrams/reset-flow.svg").read_text()
 
 
+# @ac AC-INTEG-002.3
 def test_hand_edited_svg_is_stale(change, fake_d2):
     (change / "diagrams/reset-flow.svg").write_text("<svg></svg>")
     code, data = run_json("diagrams", "--change", CHANGE, "--check")
@@ -97,18 +101,21 @@ def no_d2(monkeypatch):
     monkeypatch.setattr(sys.modules["pyd2.render"], "executable", missing)
 
 
+# @ac AC-INTEG-002.5
 def test_check_does_not_need_d2(change, no_d2):
     code, data = run_json("diagrams", "--change", CHANGE, "--check")
     assert code == 1 and data["diagrams"][0]["status"] == "missing"
     assert not (change / "diagrams/reset-flow.svg").exists()
 
 
+# @ac AC-INTEG-003.2
 def test_missing_d2_reports_pyd2s_error(change, no_d2):
     code, data = run_json("diagrams", "--change", CHANGE)
     assert code == 1 and data["d2From"] == "missing" and data["d2"] is None
     assert data["diagrams"][0]["error"] == "cannot render reset-flow.d2: the d2 binary is missing; reinstall pyd2"
 
 
+# @ac AC-INTEG-003.1
 def test_specworks_d2_overrides_pyd2(monkeypatch):
     monkeypatch.delenv("SPECWORKS_D2", raising=False)
     assert diagrams_module.find_d2() == (pyd2.executable(), "pyd2")
@@ -116,12 +123,14 @@ def test_specworks_d2_overrides_pyd2(monkeypatch):
     assert diagrams_module.find_d2() == ("/opt/d2", "SPECWORKS_D2")
 
 
+# @ac AC-INTEG-003.2
 def test_d2_that_does_not_run(change, monkeypatch):
     monkeypatch.setenv("SPECWORKS_D2", str(change / "no-such-d2"))
     code, data = run_json("diagrams", "--change", CHANGE)
     assert code == 1 and data["diagrams"][0]["error"].startswith("cannot render reset-flow.d2: ")
 
 
+# @ac AC-INTEG-003.1
 def test_pyd2_provides_the_pinned_release(monkeypatch):
     monkeypatch.delenv("SPECWORKS_D2", raising=False)
     path, where = diagrams_module.find_d2()
@@ -129,6 +138,7 @@ def test_pyd2_provides_the_pinned_release(monkeypatch):
     assert where == "pyd2" and out == pyd2.D2_VERSION
 
 
+# @ac AC-INTEG-001.3
 def test_render_args_are_stable():
     """The stamp hashes these flags: changing them would mark every committed SVG stale."""
     from specworks.core.config import DiagramSettings
@@ -139,6 +149,7 @@ def test_render_args_are_stable():
     assert DiagramSettings(dark_theme=None, sketch=True).options().args()[-1] == "--sketch"
 
 
+# @ac AC-INTEG-003.3
 def test_d2_errors_are_reported(change, fake_d2):
     (change / "diagrams/reset-flow.d2").write_text("BROKEN")
     code, data = run_json("diagrams", "--change", CHANGE)
@@ -167,6 +178,7 @@ def test_invalid_diagram_settings(change, block, message):
     assert code == 1 and message in data["error"]
 
 
+# @ac AC-INTEG-001.4
 def test_real_d2_render(change):
     code, data = run_json("diagrams", "--change", CHANGE)
     assert code == 0, data
@@ -180,6 +192,7 @@ def set_diagrams(change, block):
     cfg.write_text(text[: text.index("\ndiagrams:\n") + 1] + block)
 
 
+# @ac AC-INTEG-001.2
 @pytest.mark.parametrize(
     "theme, dark, expected",
     [
@@ -197,6 +210,7 @@ def test_theme_by_name_or_number(change, fake_d2, theme, dark, expected):
     assert expected + "</svg>" in svg
 
 
+# @ac AC-INTEG-002.4
 def test_renaming_a_theme_to_its_number_keeps_svgs_up_to_date(change, fake_d2):
     set_diagrams(change, "diagrams:\n  theme: c4\n")
     run_json("diagrams", "--change", CHANGE)
@@ -211,6 +225,7 @@ def test_unknown_theme_name_lists_the_names(change):
     assert code == 1 and "unknown theme 'rainbow'" in data["error"] and "colorblind-clear" in data["error"]
 
 
+# @ac AC-CLI-008.2
 def test_list_themes_shows_the_one_in_use(change):
     set_diagrams(change, "diagrams:\n  theme: origami\n  dark_theme: none\n")
     code, data = run_json("diagrams", "--themes")
@@ -219,11 +234,19 @@ def test_list_themes_shows_the_one_in_use(change):
     assert {"name": "dark-mauve", "id": 200, "dark": True} in data["themes"]
 
 
+# @ac AC-CLI-008.1
 def test_diagrams_needs_change_or_themes(change):
     code, data = run_json("diagrams")
     assert code == 1 and "--change" in data["error"]
 
 
+
+# @ac AC-CLI-008.5
+def test_diagrams_refuses_a_folder_outside_the_workspace(change, tmp_path_factory):
+    code, data = run_json("diagrams", "--dir", str(tmp_path_factory.mktemp("elsewhere")))
+    assert code == 1 and "is outside the workspace" in data["error"]
+
+# @ac AC-PROJ-009.3
 def test_init_sets_the_diagram_theme(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     assert runner.invoke(app, ["init", "--no-skills", "--diagram-theme", "Cool Classics"]).exit_code == 0
@@ -232,6 +255,7 @@ def test_init_sets_the_diagram_theme(tmp_path, monkeypatch):
     assert data["theme"] == "cool-classics"
 
 
+# @ac AC-PROJ-009.3
 def test_init_rejects_unknown_diagram_theme(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     result = runner.invoke(app, ["init", "--no-skills", "--diagram-theme", "rainbow"])

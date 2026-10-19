@@ -50,6 +50,7 @@ def env_d2() -> str | None:
     return os.environ.get("SPECWORKS_D2") or None
 
 
+# @req REQ-INTEG-003
 def find_d2() -> tuple[str | None, str]:
     """(path, where) of the d2 that renders: SPECWORKS_D2 if set, else pyd2's (None if pyd2 has none)."""
     if d2 := env_d2():
@@ -65,6 +66,7 @@ def diagrams_in(folder: Path) -> list[Diagram]:
     return [Diagram(p) for p in sorted(root.glob("*.d2"))] if root.is_dir() else []
 
 
+# @req REQ-INTEG-001
 def source_hash(diagram: Diagram, settings: DiagramSettings) -> str:
     """Hash of the source text and the render settings: either changing makes the SVG stale."""
     digest = hashlib.sha256(diagram.source.read_bytes())
@@ -72,6 +74,7 @@ def source_hash(diagram: Diagram, settings: DiagramSettings) -> str:
     return digest.hexdigest()
 
 
+# @req REQ-INTEG-002
 def state(diagram: Diagram, settings: DiagramSettings) -> str:
     """``ok``, ``missing`` (no SVG) or ``stale`` (source or settings changed, or the SVG was not generated)."""
     if not diagram.svg.is_file():
@@ -80,6 +83,7 @@ def state(diagram: Diagram, settings: DiagramSettings) -> str:
     return "ok" if match and match.group("hash") == source_hash(diagram, settings) else "stale"
 
 
+# @req REQ-INTEG-001
 def stamp(svg_text: str, digest: str) -> str:
     mark = STAMP.format(digest)
     if svg_text.startswith("<?xml"):
@@ -88,6 +92,7 @@ def stamp(svg_text: str, digest: str) -> str:
     return mark + svg_text
 
 
+# @req REQ-INTEG-001, REQ-INTEG-003
 def render(diagram: Diagram, settings: DiagramSettings) -> None:
     try:
         pyd2.render_file(diagram.source, diagram.svg, settings.options(), d2=env_d2())

@@ -16,6 +16,7 @@ from ..core.errors import SpecworksError
 from .output import fail
 
 
+# @req REQ-CLI-001
 def _reporting_errors(fn: Callable[..., Any]) -> Callable[..., Any]:
     @functools.wraps(fn)  # Typer reads the parameters from the wrapped signature
     def command(*args: Any, **kwargs: Any) -> Any:

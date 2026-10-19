@@ -12,6 +12,7 @@ from .app import app, task_app
 from .output import ChangeOpt, JsonOpt, change_dict, emit, require_change, resolve_archived, resolve_change, workspace
 
 
+# @req REQ-CLI-006
 @app.command()
 def new(
     name: str,
@@ -25,6 +26,7 @@ def new(
     emit(change_dict(ws, target, change), as_json, f"created {ws.rel(change.path)}")
 
 
+# @req REQ-CLI-002
 @app.command()
 def status(change: str = ChangeOpt, as_json: bool = JsonOpt) -> None:
     """Phase and artifact states (done / ready / blocked) of a change, active or archived."""
@@ -43,6 +45,7 @@ def status(change: str = ChangeOpt, as_json: bool = JsonOpt) -> None:
     emit(data, as_json, text)
 
 
+# @req REQ-CLI-006
 @app.command()
 def abandon(
     change: str = ChangeOpt,
@@ -58,6 +61,7 @@ def abandon(
     emit(change_dict(ws, mod, ch), as_json, f"{mod.qualify(ch.name)}: abandoned in phase {phase}, archived at {ws.rel(ch.path)}")
 
 
+# @req REQ-CLI-006
 @app.command()
 def phase(
     to: str = typer.Argument(..., help=f"One of: {', '.join(p for p in PHASES if p != 'done')} (done is set by `specworks close`)."),
@@ -75,6 +79,7 @@ def phase(
     emit(change_dict(ws, mod, ch), as_json, f"{mod.qualify(ch.name)}: phase → {ch.phase}")
 
 
+# @req REQ-CLI-006
 @app.command("skip-specs")
 def skip_specs(
     change: str = ChangeOpt,

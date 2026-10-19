@@ -25,7 +25,27 @@ docs_dir: docs
 #     path: src/auth
 #     description: Login, sessions and password reset
 #     prefix: AUTH          # optional: REQ-AUTH-001 instead of REQ-USER-AUTH-001
-capabilities: {}
+capabilities:
+  project:
+    path: src/specworks/core
+    description: "The config file, the workspace of modules, changes and their phases, and running the project's commands (with result reuse)"
+    prefix: PROJ
+  specs:
+    path: src/specworks/specs
+    description: "Spec files, capabilities, format checks, tasks, the trace matrix, and merging deltas into living specs at close"
+    prefix: SPECS
+  workflow:
+    path: src/specworks/workflow
+    description: "A change's artifacts and instructions, phase gates, review drift, build cycles and the validate report"
+    prefix: FLOW
+  integrations:
+    path: src/specworks/tools
+    description: "Rendering D2 diagrams to SVG and installing the agent skills for Claude Code and Copilot"
+    prefix: INTEG
+  cli:
+    path: src/specworks/cli
+    description: "The command surface and its conventions: --json output, errors as {\"error\": ...} with exit 1, and {\"root\": null} when there's no project"
+    prefix: CLI
 
 # Modules: sub-projects with their own config (same file name as this one),
 # like git submodules. Each one is a complete project (own context,

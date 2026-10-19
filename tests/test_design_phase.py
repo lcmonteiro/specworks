@@ -56,6 +56,7 @@ def test_phase_order_has_interface_between_propose_and_test(planned):
     assert data["phase"] == "design" and data["phases"].index("specify") < data["phases"].index("design") < data["phases"].index("test")
 
 
+# @ac AC-FLOW-006.1
 def test_gate_needs_the_interfaces_section(planned):
     code, checks = gate()
     assert code == 1 and not checks[SECTION]["ok"]
@@ -64,6 +65,7 @@ def test_gate_needs_the_interfaces_section(planned):
     assert code == 1 and not checks[SECTION]["ok"]
 
 
+# @ac AC-FLOW-006.2
 def test_gate_checks_the_named_files_exist(planned):
     write_design(
         planned,
@@ -78,12 +80,14 @@ def test_gate_checks_the_named_files_exist(planned):
     assert code == 0 and checks[FILES]["ok"] and checks[TESTS]["ok"]
 
 
+# @ac AC-FLOW-006.3
 def test_none_passes_without_files(planned):
     write_design(planned, "None. The change only fixes the lockout counter.")
     code, checks = gate()
     assert code == 0 and checks[SECTION]["ok"] and len([c for c in checks.values() if not c["ok"]]) == 0
 
 
+# @ac AC-FLOW-006.3
 def test_prose_without_paths_is_a_warning(planned):
     write_design(planned, "A ResetService with request_reset and confirm.")
     code, checks = gate()
@@ -91,6 +95,7 @@ def test_prose_without_paths_is_a_warning(planned):
     assert code == 0 and not warning["ok"] and warning["blocking"] is False
 
 
+# @ac AC-FLOW-003.2, AC-FLOW-006.4
 def test_stubs_that_break_the_existing_tests_fail_the_gate(planned):
     write_design(planned, "None.")
     set_commands(planned, test=FAIL)
@@ -100,6 +105,7 @@ def test_stubs_that_break_the_existing_tests_fail_the_gate(planned):
     assert code == 0 and checks[TESTS]["blocking"] is False and "not run" in checks[TESTS]["details"][0]
 
 
+# @ac AC-FLOW-006.5
 def test_build_and_typecheck_run_when_configured(planned):
     write_design(planned, "None.")
     code, checks = gate()
@@ -110,6 +116,7 @@ def test_build_and_typecheck_run_when_configured(planned):
     assert checks["the stubs build (commands.build)"]["ok"] and not checks["the stubs build (commands.typecheck)"]["ok"]
 
 
+# @ac AC-FLOW-003.1
 def test_invalid_specs_fail_the_gate(planned):
     write_design(planned, "None.")
     delta = planned / "spec/changes" / REF / "specs/user-auth/spec.md"
@@ -118,6 +125,7 @@ def test_invalid_specs_fail_the_gate(planned):
     assert code == 1 and not checks["specs and tasks are valid (specworks check)"]["ok"]
 
 
+# @ac AC-FLOW-006.2
 @pytest.mark.parametrize(
     "section, files",
     [
@@ -131,21 +139,23 @@ def test_interface_files(section, files):
     assert interface_files(section) == files
 
 
+# @ac AC-FLOW-006.4
 def test_red_suite_is_only_a_warning_once_the_change_has_tests(planned):
     # `/specworks-test` re-checks `gate design`, and a later build cycle reopens the API:
     # by then this change's own @ac tests are red on purpose.
     write_design(planned, "None.")
     set_commands(planned, test=FAIL)
     (planned / "tests").mkdir()
-    (planned / "tests/test_other.py").write_text("# @ac AC-OTHER-001.1\ndef test_other(): ...\n")  # not this change
+    (planned / "tests/test_other.py").write_text("# @ac AC-OTHER-001.1\ndef test_other(): ...\n")  # not this change  # specworks: ignore-tags
     code, checks = gate()
     assert code == 1 and checks[TESTS]["blocking"] is True
-    (planned / "tests/test_reset.py").write_text("# @ac AC-AUTH-003.1\ndef test_request(): assert False\n")
+    (planned / "tests/test_reset.py").write_text("# @ac AC-AUTH-003.1\ndef test_request(): assert False\n")  # specworks: ignore-tags
     code, checks = gate()
     assert code == 0 and checks[TESTS]["ok"] is False and checks[TESTS]["blocking"] is False
     assert "already has @ac tests" in checks[TESTS]["details"][0]
 
 
+# @ac AC-FLOW-006.1
 @pytest.mark.parametrize(
     "design, files",
     [
@@ -164,6 +174,7 @@ def test_interfaces_section_is_found_by_its_heading(planned, design, files):
     assert interface_files(interfaces_section(change(planned))) == files
 
 
+# @ac AC-FLOW-006.1
 def test_no_interfaces_heading_means_no_section(planned):
     (planned / "spec/changes" / REF / "design.md").write_text("# Design\n\n## Interfaced systems\n\n- `src/auth/reset.py`\n")
     code, checks = gate()

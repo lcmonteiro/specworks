@@ -85,6 +85,8 @@ def slugify(title: str) -> str:
     raise NotImplementedError
 '''
 
+# Sample tags of the walkthrough project, not this repository's:
+# specworks: ignore-tags-start
 TESTS = """\
 import pytest
 
@@ -114,6 +116,7 @@ def slugify(title: str) -> str:
         raise ValueError(f"no words in {title!r}")
     return "-".join(words)
 '''
+# specworks: ignore-tags-end
 
 REVIEW = """\
 # Review: add-slugify

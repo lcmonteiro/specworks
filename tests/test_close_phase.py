@@ -35,6 +35,7 @@ def snapshot(root):
     }
 
 
+# @ac AC-CLI-007.1
 def test_dry_run_shows_the_plan_and_writes_nothing(ready):
     before = snapshot(ready)
     code, data = run_json("close", "--change", REF, "--base", "main", "--dry-run")
@@ -53,6 +54,7 @@ def test_dry_run_shows_the_plan_and_writes_nothing(ready):
     assert data["archivedTo"] is None and snapshot(ready) == before
 
 
+# @ac AC-CLI-007.2
 def test_close_without_dry_run_refuses_no_run(ready):
     # The real close is the last check before the living docs change: it never skips the commands.
     before = snapshot(ready)
@@ -102,12 +104,14 @@ def test_close_refuses_to_merge_into_a_broken_living_spec(ready):
     assert snapshot(ready) == before
 
 
+# @ac AC-CLI-007.3
 def test_close_refuses_when_verify_fails(repo):
     code, data = run_json("close", "--change", REF, "--base", "main")
     assert code == 1 and "does not pass validate" in data["error"] and "/specworks-review" in data["goBackTo"]
     assert (repo / CHANGE_DIR).is_dir()
 
 
+# @ac AC-PROJ-008.2
 def test_new_capability_must_be_registered_first(ready):
     delta = ready / CHANGE_DIR / "specs/audit-log/spec.md"
     delta.parent.mkdir(parents=True)
@@ -116,9 +120,9 @@ def test_new_capability_must_be_registered_first(ready):
         "### Requirement: REQ-AUDIT-LOG-001 Log resets\nThe system SHALL log every password reset.\n\n"
         "#### Scenario: AC-AUDIT-LOG-001.1 Reset logged\n- **WHEN** a reset is requested\n- **THEN** an audit event is stored\n"
     )
-    (ready / "tests/test_audit.py").write_text("# @ac AC-AUDIT-LOG-001.1\n")
+    (ready / "tests/test_audit.py").write_text("# @ac AC-AUDIT-LOG-001.1\n")  # specworks: ignore-tags
     (ready / "src/audit").mkdir()
-    (ready / "src/audit/log.py").write_text("# @req REQ-AUDIT-LOG-001\n")
+    (ready / "src/audit/log.py").write_text("# @req REQ-AUDIT-LOG-001\n")  # specworks: ignore-tags
     tasks = ready / CHANGE_DIR / "tasks.md"
     tasks.write_text(tasks.read_text() + "- [x] 2.2 Log resets (AC-AUDIT-LOG-001.1)\n")
     review = ready / CHANGE_DIR / "review.md"
@@ -139,6 +143,7 @@ def test_new_capability_must_be_registered_first(ready):
     assert [r.id for r in parse_spec(text).requirements] == ["REQ-AUDIT-LOG-001"]
 
 
+# @ac AC-PROJ-003.1, AC-PROJ-004.4, AC-PROJ-008.3
 def test_capability_add_validates(ready):
     code, data = run_json("capability", "add", "user-auth", "--path", "src/x")
     assert code == 1 and "already exists" in data["error"]
@@ -148,6 +153,7 @@ def test_capability_add_validates(ready):
     assert code == 1
 
 
+# @ac AC-PROJ-008.4
 def test_capability_add_never_drops_existing_capabilities(project):
     # A flow mapping is not a block the text edit can extend; appending a second
     # `capabilities:` would make YAML keep only the new entry.
@@ -164,6 +170,7 @@ def test_capability_add_never_drops_existing_capabilities(project):
     assert [c["ref"] for c in data["capabilities"]] == ["user-auth"]
 
 
+# @ac AC-CLI-005.5
 def test_capability_add_in_a_module(ready, monkeypatch):
     runner.invoke(app, ["module", "add", "services/billing"])
     code, data = run_json("capability", "add", "invoices", "--path", "src/invoices", "--module", "billing", "--prefix", "INV")
@@ -251,6 +258,7 @@ def test_headings_in_a_code_fence_are_text_when_merging():
     assert text == "# user-auth\n\n## Requirements\n\n### Requirement: REQ-AUTH-002 B\nThe system SHALL b.\n\n## Notes\n\nKeep me.\n"
 
 
+# @ac AC-CLI-008.4
 def test_diagrams_in_a_docs_folder(ready, monkeypatch):
     script = fake_executable(ready, "d2", "import sys, pathlib\npathlib.Path(sys.argv[-1]).write_text('<?xml version=\"1.0\"?><svg/>')\n")
     monkeypatch.setenv("SPECWORKS_D2", str(script))
@@ -307,6 +315,7 @@ def test_a_removed_id_is_never_handed_out_again(project):
     assert [r["id"] for r in data["requirements"]] == ["REQ-AUTH-001"] and data["nextId"] == "REQ-AUTH-003"
 
 
+# @ac AC-CLI-005.4
 def test_capability_add_rejects_a_prefix_already_in_use(ready):
     cfg = ready / "spec.yml"
     before = cfg.read_text()

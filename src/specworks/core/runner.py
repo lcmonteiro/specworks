@@ -50,6 +50,7 @@ class RunResult:
         return self.output.rstrip().splitlines()[-lines:]
 
 
+# @req REQ-PROJ-013
 def run_command(ws: Workspace, module: Module, key: str, capture: bool = True) -> RunResult:
     """Run ``commands.<key>`` (merged top level -> module) in the module's folder, through the shell."""
     command = ws.commands(module).get(key)
@@ -82,6 +83,7 @@ def _untracked_in_submodule(root: Path, excluded: list[str]) -> bool:
     return any(len(f := line.split(b" ")) > 2 and f[0] in (b"1", b"2") and f[2][:1] == b"S" and f[2][3:4] == b"U" for line in status.splitlines())
 
 
+# @req REQ-PROJ-014
 def tree_fingerprint(ws: Workspace, module: Module, command: str) -> tuple[str, Path] | None:
     """(digest of the command and the working tree, cache file), or None when git cannot tell."""
     try:
@@ -113,6 +115,7 @@ def _load(cache: Path) -> dict:
     return data if isinstance(data, dict) else {}
 
 
+# @req REQ-PROJ-014
 def cached_run(ws: Workspace, module: Module, key: str, reuse: bool = True, capture: bool = True) -> RunResult:
     """``run_command``, reusing the result of a run on an identical working tree when there is one.
 

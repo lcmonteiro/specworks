@@ -11,6 +11,7 @@ class FileError(SpecworksError):
     """Raised when a project file cannot be read as UTF-8 text."""
 
 
+# @req REQ-PROJ-015
 def read_text(path: Path, keep_newlines: bool = False) -> str:
     """The file's text; ``keep_newlines`` keeps its line endings (``\\r\\n``) instead of reading them as ``\\n``."""
     try:
