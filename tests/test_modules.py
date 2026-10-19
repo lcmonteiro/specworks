@@ -42,6 +42,7 @@ def workspace(tmp_path, monkeypatch):
     return tmp_path
 
 
+# @ac AC-CLI-005.1
 def test_module_add_links_parent_and_creates_module(workspace):
     assert "  billing: services/billing\n" in (workspace / "spec.yml").read_text()
     assert "  tax: tax\n" in (workspace / "services/billing/spec.yml").read_text()
@@ -55,6 +56,7 @@ def test_module_add_keeps_comments(workspace):
     assert "# Modules: sub-projects" in (workspace / "spec.yml").read_text()
 
 
+# @ac AC-CLI-004.4
 def test_module_list_shows_tree(workspace):
     code, data = run_json("module", "list")
     assert [m["name"] for m in data["modules"]] == ["(top)", "billing", "billing/tax"]
@@ -84,7 +86,7 @@ def test_context_inside_module_inherits_and_sees_whole_workspace(workspace, monk
     ]
 
 
-# @ac AC-PROJ-001.5
+# @ac AC-PROJ-001.5, AC-CLI-006.1
 def test_new_goes_to_nearest_module(workspace, monkeypatch):
     (workspace / "services/billing/src").mkdir()
     monkeypatch.chdir(workspace / "services/billing/src")
@@ -93,6 +95,7 @@ def test_new_goes_to_nearest_module(workspace, monkeypatch):
     assert data["ref"] == "billing:add-refunds"
 
 
+# @ac AC-CLI-006.1
 def test_new_with_module_option(workspace):
     code, data = run_json("new", "add-vat", "--module", "billing/tax")
     assert data["path"] == "services/billing/tax/spec/changes/add-vat"
@@ -100,12 +103,14 @@ def test_new_with_module_option(workspace):
     assert code == 1 and "unknown module" in data["error"]
 
 
+# @ac AC-CLI-002.1
 def test_bare_change_name_resolves_across_modules(workspace):
     run_json("new", "add-vat", "--module", "billing/tax")
     code, data = run_json("status", "--change", "add-vat")
     assert code == 0 and data["ref"] == "billing/tax:add-vat"
 
 
+# @ac AC-CLI-002.2
 def test_ambiguous_change_name_needs_module_prefix(workspace, monkeypatch):
     run_json("new", "cleanup", "--module", "billing")
     run_json("new", "cleanup", "--module", "billing/tax")
@@ -115,6 +120,7 @@ def test_ambiguous_change_name_needs_module_prefix(workspace, monkeypatch):
     assert code == 0 and data["module"] == "billing/tax"
 
 
+# @ac AC-CLI-002.3
 def test_current_module_wins_for_bare_name(workspace, monkeypatch):
     run_json("new", "cleanup")
     run_json("new", "cleanup", "--module", "billing")
@@ -122,6 +128,7 @@ def test_current_module_wins_for_bare_name(workspace, monkeypatch):
     assert data["module"] == "(top)"
 
 
+# @ac AC-CLI-004.2
 def test_list_all_includes_every_module(workspace):
     run_json("new", "top-change")
     run_json("new", "bill-change", "--module", "billing")
@@ -139,7 +146,7 @@ def test_instructions_in_module_use_inherited_context(workspace):
     assert "Company-wide" in data["context"] and "Billing" in data["context"]
 
 
-# @ac AC-INTEG-005.5
+# @ac AC-INTEG-005.5, AC-CLI-003.2
 def test_init_in_subfolder_links_to_parent(workspace):
     run("init", "libs/auth", "--name", "auth")
     assert "  auth: libs/auth\n" in (workspace / "spec.yml").read_text()
@@ -148,12 +155,14 @@ def test_init_in_subfolder_links_to_parent(workspace):
     assert "auth" in [m["name"] for m in data["modules"]]
 
 
+# @ac AC-CLI-001.3
 def test_init_prints_paths_relative_to_the_workspace_root(workspace):
     output = run("init", "libs/auth", "--name", "auth", "--no-skills")
     assert "created libs/auth/spec.yml\nready   libs/auth/spec/changes/\nlinked  as module 'auth'" in output
     assert str(workspace) not in output
 
 
+# @ac AC-CLI-003.3
 def test_init_no_link_keeps_project_independent(workspace, monkeypatch):
     run("init", "tools/other", "--no-link", "--no-skills")
     assert "tools/other" not in (workspace / "spec.yml").read_text()
@@ -219,6 +228,7 @@ def test_module_with_different_config_name_is_an_error(workspace):
     assert "module 'billing' uses docs.yml" in data["error"] and "workspace uses spec.yml" in data["error"]
 
 
+# @ac AC-CLI-003.4
 def test_init_module_with_different_dir_is_rejected(workspace):
     result = runner.invoke(app, ["init", "libs/auth", "--dir", "docs"])
     assert result.exit_code == 1
@@ -226,12 +236,14 @@ def test_init_module_with_different_dir_is_rejected(workspace):
     assert "auth: libs/auth" not in (workspace / "spec.yml").read_text()
 
 
+# @ac AC-CLI-003.3
 def test_init_no_link_may_use_another_dir(workspace):
     run("init", "tools/other", "--dir", "docs", "--no-link", "--no-skills")
     assert (workspace / "tools/other/docs.yml").is_file()
     assert (workspace / "tools/other/docs/changes").is_dir()
 
 
+# @ac AC-CLI-005.2
 def test_module_add_rejects_existing_config_with_other_dir(workspace):
     other = workspace / "libs/legacy"
     other.mkdir(parents=True)
@@ -266,6 +278,7 @@ def test_test_globs_are_relative_to_their_module_and_apply_only_to_it(workspace)
     }
 
 
+# @ac AC-CLI-003.2
 def test_init_in_a_nested_module_reports_its_full_name(workspace, monkeypatch):
     monkeypatch.chdir(workspace / "services/billing")
     assert "as module 'billing/vat'" in run("init", "vat", "--no-skills")
@@ -299,3 +312,12 @@ def test_a_module_inherits_the_commands_it_does_not_set(workspace):
     assert ws is not None
     assert ws.commands(ws.module("billing")) == {"test": "billing-test", "lint": "top-lint"}
     assert ws.commands(ws.module("billing/tax")) == {"test": "billing-test", "lint": "top-lint"}
+
+
+# @ac AC-CLI-005.3
+def test_module_add_refuses_a_folder_outside_the_project(workspace, tmp_path_factory):
+    outside = tmp_path_factory.mktemp("elsewhere")
+    for path in (str(outside), "."):
+        code, data = run_json("module", "add", path)
+        assert code == 1 and "must be a folder inside" in data["error"], path
+    assert "elsewhere" not in (workspace / "spec.yml").read_text()

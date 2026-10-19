@@ -21,7 +21,7 @@ def run_json(*args):
     return result.exit_code, json.loads(result.output)
 
 
-# @ac AC-PROJ-001.4
+# @ac AC-PROJ-001.4, AC-CLI-001.1
 def test_context_without_project_reports_null_root(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     code, data = run_json("context")
@@ -29,12 +29,14 @@ def test_context_without_project_reports_null_root(tmp_path, monkeypatch):
     assert data["root"] is None
 
 
+# @ac AC-CLI-003.1
 def test_init_creates_config_changes_and_skills(project):
     assert (project / "specworks.yml").is_file()
     assert (project / "specworks/changes/archive").is_dir()
     assert (project / ".claude/skills/specworks-refine/SKILL.md").is_file()
 
 
+# @ac AC-CLI-001.3
 def test_init_prints_paths_relative_to_the_project_root(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     result = runner.invoke(app, ["init", "--dir", "spec", "--no-skills"])
@@ -91,6 +93,7 @@ def test_status_marks_refinement_done_once_written(project):
     assert states["refinement"] == "done"
 
 
+# @ac AC-CLI-004.1
 def test_context_lists_capabilities_with_docs_path(project):
     (project / "specworks.yml").write_text(
         "specworks: 1\ncontext: Python 3.12 service\ncapabilities:\n  user-auth:\n    path: src/auth\n"
@@ -102,6 +105,7 @@ def test_context_lists_capabilities_with_docs_path(project):
     assert data["capabilities"][0]["hasSpec"] is False
 
 
+# @ac AC-CLI-006.2
 def test_phase_moves_and_validates(project):
     run_json("new", "add-login")
     code, data = run_json("phase", "specify", "--change", "add-login")
@@ -110,6 +114,7 @@ def test_phase_moves_and_validates(project):
     assert code == 1
 
 
+# @ac AC-CLI-006.3
 @pytest.mark.parametrize(
     "args, hint",
     [
@@ -235,7 +240,7 @@ def test_skills_are_installed_with_specworks_prefix(project):
     assert "name: specworks-refine" in text and "sw-" not in text
 
 
-# @ac AC-PROJ-011.3
+# @ac AC-PROJ-011.3, AC-CLI-001.2
 @pytest.mark.parametrize(
     "meta, message",
     [
@@ -271,6 +276,7 @@ def test_null_description_is_empty(project):
     assert code == 0 and data["capabilities"][0]["description"] == "", data
 
 
+# @ac AC-CLI-002.6
 def test_archived_changes_are_not_addressable(project):
     runner.invoke(app, ["new", "old"])
     archived = project / "specworks/changes/archive/2026-01-01-old"
@@ -348,6 +354,7 @@ def test_a_broken_parent_that_links_this_module_is_still_an_error(tmp_path, monk
     assert code == 1 and "bogus" in data["error"]
 
 
+# @ac AC-CLI-003.5
 def test_diagram_theme_on_an_existing_project_says_it_is_not_applied(project):
     result = runner.invoke(app, ["init", "--no-skills", "--diagram-theme", "c4"])
     assert result.exit_code == 0 and "--diagram-theme not applied" in result.output

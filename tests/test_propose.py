@@ -622,7 +622,7 @@ def test_source_globs_limit_the_other_files_but_not_tests(change, project):
     assert rows["AC-AUTH-003.1"]["tests"] == ["tests/test_reset.py:1"]
 
 
-# @ac AC-FLOW-001.3
+# @ac AC-FLOW-001.3, AC-CLI-006.5
 def test_skip_specs_change(project):
     run_json("new", "tidy-up")
     code, data = run_json("skip-specs", "--change", "tidy-up")

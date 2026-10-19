@@ -61,7 +61,7 @@ def test_render_writes_stamped_svg_with_workspace_settings(change, fake_d2):
     assert code == 0 and data["diagrams"][0]["status"] == "ok"
 
 
-# @ac AC-INTEG-002.1
+# @ac AC-INTEG-002.1, AC-CLI-008.3
 def test_editing_the_source_makes_the_svg_stale(change, fake_d2):
     run_json("diagrams", "--change", CHANGE)
     (change / "diagrams/reset-flow.d2").write_text(FLOW + "api -> mail: link\n")
@@ -225,6 +225,7 @@ def test_unknown_theme_name_lists_the_names(change):
     assert code == 1 and "unknown theme 'rainbow'" in data["error"] and "colorblind-clear" in data["error"]
 
 
+# @ac AC-CLI-008.2
 def test_list_themes_shows_the_one_in_use(change):
     set_diagrams(change, "diagrams:\n  theme: origami\n  dark_theme: none\n")
     code, data = run_json("diagrams", "--themes")
@@ -233,10 +234,17 @@ def test_list_themes_shows_the_one_in_use(change):
     assert {"name": "dark-mauve", "id": 200, "dark": True} in data["themes"]
 
 
+# @ac AC-CLI-008.1
 def test_diagrams_needs_change_or_themes(change):
     code, data = run_json("diagrams")
     assert code == 1 and "--change" in data["error"]
 
+
+
+# @ac AC-CLI-008.5
+def test_diagrams_refuses_a_folder_outside_the_workspace(change, tmp_path_factory):
+    code, data = run_json("diagrams", "--dir", str(tmp_path_factory.mktemp("elsewhere")))
+    assert code == 1 and "is outside the workspace" in data["error"]
 
 # @ac AC-PROJ-009.3
 def test_init_sets_the_diagram_theme(tmp_path, monkeypatch):

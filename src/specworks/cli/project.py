@@ -70,6 +70,7 @@ def version() -> None:
     typer.echo(__version__)
 
 
+# @req REQ-CLI-003
 @app.command()
 def init(
     path: Path = typer.Argument(Path("."), help="Project (or module) root."),
@@ -126,6 +127,7 @@ def skills(tools: str = ToolsOpt) -> None:
     write_skills(workspace(False), tools)
 
 
+# @req REQ-CLI-004
 @app.command()
 def context(as_json: bool = JsonOpt, all_modules: bool = AllOpt) -> None:
     """Inherited context, all capabilities of the workspace, modules and changes."""
@@ -166,6 +168,7 @@ def context(as_json: bool = JsonOpt, all_modules: bool = AllOpt) -> None:
     emit(data, as_json, "\n".join(lines))
 
 
+# @req REQ-CLI-004
 @app.command("list")
 def list_cmd(
     as_json: bool = JsonOpt,
@@ -195,6 +198,7 @@ def list_cmd(
     emit({"root": str(ws.root), "module": ws.current.label, "changes": rows}, as_json, "\n".join(lines) or empty)
 
 
+# @req REQ-CLI-005
 @module_app.command("add")
 def module_add(
     path: Path = typer.Argument(..., help="Folder of the module, relative to the current directory."),
@@ -217,6 +221,7 @@ def module_add(
     emit(module_dict(ws, ws.current), as_json, f"linked  {ws.rel(root)} as module '{ws.current.label}'")
 
 
+# @req REQ-CLI-004
 @module_app.command("list")
 def module_list(as_json: bool = JsonOpt) -> None:
     """List every module of the workspace (the current one is marked *)."""
@@ -229,6 +234,7 @@ def module_list(as_json: bool = JsonOpt) -> None:
     emit(data, as_json, "\n".join(module_lines(ws)))
 
 
+# @req REQ-CLI-005
 @capability_app.command("add")
 def capability_add(
     name: str = typer.Argument(..., help="Capability name (kebab-case)."),

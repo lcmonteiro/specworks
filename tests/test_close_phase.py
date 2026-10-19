@@ -35,6 +35,7 @@ def snapshot(root):
     }
 
 
+# @ac AC-CLI-007.1
 def test_dry_run_shows_the_plan_and_writes_nothing(ready):
     before = snapshot(ready)
     code, data = run_json("close", "--change", REF, "--base", "main", "--dry-run")
@@ -53,6 +54,7 @@ def test_dry_run_shows_the_plan_and_writes_nothing(ready):
     assert data["archivedTo"] is None and snapshot(ready) == before
 
 
+# @ac AC-CLI-007.2
 def test_close_without_dry_run_refuses_no_run(ready):
     # The real close is the last check before the living docs change: it never skips the commands.
     before = snapshot(ready)
@@ -102,6 +104,7 @@ def test_close_refuses_to_merge_into_a_broken_living_spec(ready):
     assert snapshot(ready) == before
 
 
+# @ac AC-CLI-007.3
 def test_close_refuses_when_verify_fails(repo):
     code, data = run_json("close", "--change", REF, "--base", "main")
     assert code == 1 and "does not pass validate" in data["error"] and "/specworks-review" in data["goBackTo"]
@@ -167,6 +170,7 @@ def test_capability_add_never_drops_existing_capabilities(project):
     assert [c["ref"] for c in data["capabilities"]] == ["user-auth"]
 
 
+# @ac AC-CLI-005.5
 def test_capability_add_in_a_module(ready, monkeypatch):
     runner.invoke(app, ["module", "add", "services/billing"])
     code, data = run_json("capability", "add", "invoices", "--path", "src/invoices", "--module", "billing", "--prefix", "INV")
@@ -254,6 +258,7 @@ def test_headings_in_a_code_fence_are_text_when_merging():
     assert text == "# user-auth\n\n## Requirements\n\n### Requirement: REQ-AUTH-002 B\nThe system SHALL b.\n\n## Notes\n\nKeep me.\n"
 
 
+# @ac AC-CLI-008.4
 def test_diagrams_in_a_docs_folder(ready, monkeypatch):
     script = fake_executable(ready, "d2", "import sys, pathlib\npathlib.Path(sys.argv[-1]).write_text('<?xml version=\"1.0\"?><svg/>')\n")
     monkeypatch.setenv("SPECWORKS_D2", str(script))
@@ -310,6 +315,7 @@ def test_a_removed_id_is_never_handed_out_again(project):
     assert [r["id"] for r in data["requirements"]] == ["REQ-AUTH-001"] and data["nextId"] == "REQ-AUTH-003"
 
 
+# @ac AC-CLI-005.4
 def test_capability_add_rejects_a_prefix_already_in_use(ready):
     cfg = ready / "spec.yml"
     before = cfg.read_text()

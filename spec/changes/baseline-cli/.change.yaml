@@ -1,3 +1,12 @@
 name: baseline-cli
 created: '2026-10-19T22:04:23'
-phase: specify
+phase: review
+specified:
+  REQ-CLI-001: 816b5ba63b41
+  REQ-CLI-002: 44bf2b3085e2
+  REQ-CLI-003: 7b67ebaa1806
+  REQ-CLI-004: 90c949105754
+  REQ-CLI-005: 55efc28aff77
+  REQ-CLI-006: b066f9f00e0a
+  REQ-CLI-007: e91e8da92453
+  REQ-CLI-008: 5377952c9b29

@@ -29,6 +29,7 @@ from . import workflow  # noqa: E402, F401
 __all__ = ["app", "main"]
 
 
+# @req REQ-CLI-001
 def main() -> None:
     """Run the CLI; a broken config or change file anywhere in the workspace is an error message, not a traceback."""
     try:

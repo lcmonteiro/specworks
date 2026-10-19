@@ -94,6 +94,7 @@ def spec_list(as_json: bool = JsonOpt) -> None:
     emit({"root": str(ws.root), "capabilities": caps}, as_json, text or "no capabilities")
 
 
+# @req REQ-CLI-008
 @app.command()
 def diagrams(
     change: str | None = typer.Option(None, "--change", "-c", help="Change name or module:name."),
