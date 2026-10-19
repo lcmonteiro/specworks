@@ -2,8 +2,9 @@
 
 A project is a folder holding ``<dir>.yml`` next to the workflow folder
 ``<dir>/`` (e.g. ``spec.yml`` + ``spec/``). The file name defines the folder
-name; the first line ``specworks: 1`` marks the file as a specworks config so
-an unrelated ``docs.yml`` is never mistaken for one.
+name. A ``specworks: <n>`` line, not indented and anywhere in the file (``init``
+writes it first), marks the file as a specworks config, so an unrelated
+``docs.yml`` is never mistaken for one.
 """
 
 from __future__ import annotations
