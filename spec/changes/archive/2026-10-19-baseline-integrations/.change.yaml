@@ -1,6 +1,6 @@
 name: baseline-integrations
 created: '2026-10-19T21:31:26'
-phase: review
+phase: done
 specified:
   REQ-INTEG-001: 2e25232a4193
   REQ-INTEG-002: 1079292a85fe
