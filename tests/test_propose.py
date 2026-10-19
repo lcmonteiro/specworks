@@ -717,3 +717,72 @@ def test_a_file_that_is_not_utf8_is_a_clear_error(change):
     (change / "specs/user-auth/spec.md").write_bytes(DELTA.encode().replace(b"single-use", b"single\xe9use"))
     code, data = run_json("check", "--change", "add-password-reset")
     assert code == 1 and "is not UTF-8 text" in data["error"] and "spec.md" in data["error"]
+
+
+# --- ignore markers ----------------------------------------------------------
+# Sample tags below are fixture content: each line carries the marker, or quotes one.
+
+
+def trace_rows(project, files):
+    for name, text in files.items():
+        (project / name).parent.mkdir(parents=True, exist_ok=True)
+        (project / name).write_text(text)
+    code, data = run_json("trace", "--change", "add-password-reset")
+    return {r["ac"]: r for r in data["rows"]}, data
+
+
+# @ac AC-SPECS-001.1
+def test_a_marked_line_is_skipped_and_the_next_is_not(change, project):
+    rows, _ = trace_rows(project, {"tests/test_reset.py": "# @ac AC-AUTH-003.1  # specworks: ignore-tags\n# @ac AC-AUTH-003.2\n"})  # specworks: ignore-tags
+    assert rows["AC-AUTH-003.1"]["tests"] == [] and rows["AC-AUTH-003.2"]["tests"] == ["tests/test_reset.py:2"]
+
+
+# @ac AC-SPECS-001.2
+def test_the_line_marker_works_in_any_comment_syntax(change, project):
+    rows, data = trace_rows(project, {"src/auth/lockout.go": "x := 1 // @req REQ-AUTH-002 @req REQ-AUTH-077 // specworks: ignore-tags\n"})
+    assert rows["AC-AUTH-002.1"]["code"] == [] and data["unknownTags"] == []
+
+
+# @ac AC-SPECS-002.1
+def test_the_lines_of_a_block_are_skipped(change, project):
+    rows, data = trace_rows(project, {
+        "tests/test_reset.py": "# @ac AC-AUTH-003.1\n# specworks: ignore-tags-start\n# @ac AC-AUTH-003.2\n# @req REQ-AUTH-077\n"  # specworks: ignore-tags
+                               "# specworks: ignore-tags-end\n# @ac AC-AUTH-002.1\n",  # specworks: ignore-tags
+        "src/auth/lockout.go": "/* specworks: ignore-tags-start */\n// @req REQ-AUTH-002\n/* specworks: ignore-tags-end */\n",  # specworks: ignore-tags
+    })
+    assert rows["AC-AUTH-003.1"]["tests"] == ["tests/test_reset.py:1"] and rows["AC-AUTH-003.2"]["tests"] == []
+    assert rows["AC-AUTH-002.1"]["tests"] == ["tests/test_reset.py:6"] and rows["AC-AUTH-002.1"]["code"] == []
+    assert data["unknownTags"] == []
+
+
+# @ac AC-SPECS-002.2
+def test_a_block_with_no_end_stops_at_the_end_of_its_file(change, project):
+    rows, _ = trace_rows(project, {
+        "tests/test_a.py": "# specworks: ignore-tags-start\n# @ac AC-AUTH-003.1\n",  # specworks: ignore-tags
+        "tests/test_b.py": "# @ac AC-AUTH-003.2\n",  # specworks: ignore-tags
+    })
+    assert rows["AC-AUTH-003.1"]["tests"] == [] and rows["AC-AUTH-003.2"]["tests"] == ["tests/test_b.py:1"]
+
+
+# @ac AC-SPECS-002.3
+def test_a_marker_quoted_in_prose_opens_no_block(change, project):
+    rows, _ = trace_rows(project, {"tests/test_reset.py": "# Lines from specworks: ignore-tags-start are skipped\n# @ac AC-AUTH-003.1\n"})  # specworks: ignore-tags
+    assert rows["AC-AUTH-003.1"]["tests"] == ["tests/test_reset.py:2"]
+
+
+# @ac AC-SPECS-002.4
+def test_an_end_with_no_start_is_ignored(change, project):
+    rows, _ = trace_rows(project, {"tests/test_reset.py": "# specworks: ignore-tags-end\n# @ac AC-AUTH-003.1\n"})  # specworks: ignore-tags
+    assert rows["AC-AUTH-003.1"]["tests"] == ["tests/test_reset.py:2"]
+
+
+# @ac AC-SPECS-003.1
+def test_an_ignored_tag_is_not_unknown(change, project):
+    _, data = trace_rows(project, {"tests/test_reset.py": "# @ac AC-AUHT-003.1  # specworks: ignore-tags\n"})
+    assert data["unknownTags"] == []
+
+
+# @ac AC-SPECS-003.2
+def test_an_ignored_tag_is_not_coverage(change, project):
+    _, data = trace_rows(project, {"tests/test_reset.py": "# @ac AC-AUTH-003.1  # specworks: ignore-tags\n"})
+    assert "AC-AUTH-003.1" in data["gaps"]["acWithoutTests"]
