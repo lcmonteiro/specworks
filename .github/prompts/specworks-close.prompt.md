@@ -119,6 +119,12 @@ does the same for that command.
    `git add -A && git commit -m "<change>: close"`, and opening the PR if the
    project uses them.
 
+   When the change was a baseline (`baseline-<capability>`), name what is
+   next: the next capability with 0 requirements in `specworks spec list`
+   (`/specworks-baseline <capability>`), or, when none is left, that every
+   capability now has a living spec and new work starts with
+   `/specworks-refine`.
+
 ---
 
 ## Guardrails

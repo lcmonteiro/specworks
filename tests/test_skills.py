@@ -156,7 +156,15 @@ def test_adopt_stops_after_mapping_and_hands_baselines_to_their_own_skill():
     text = read_skill("specworks-adopt")
     assert "specworks capability add <name>" in text and "**End here.**" in text
     assert "## Stage 3" not in text and "specworks new" not in text
-    assert "`/specworks-baseline <capability>`" in text
+    assert "`/specworks-baseline <first capability>`" in text
+
+
+def test_adopt_baseline_and_close_chain_through_every_capability():
+    # After adopt, each capability is baselined and closed in turn; each skill names the next step.
+    loop = "for each capability:\n    /specworks-baseline <capability>\n    /specworks-close baseline-<capability>"
+    assert loop in read_skill("specworks-adopt") and loop in read_skill("specworks-baseline")
+    assert "then\n   `/specworks-baseline` for the next capability" in read_skill("specworks-baseline")
+    assert "the next capability with 0 requirements" in read_skill("specworks-close")
 
 
 def test_baseline_checks_the_suite_before_creating_its_change():

@@ -1,6 +1,6 @@
 ---
 name: specworks-baseline
-description: Baseline one capability of a project that already has code - record the behaviour the code already has as requirements, tie them to the existing tests and code with @ac / @req tags, and hand the change over to close so the capability gets its living spec. No behaviour change. Use when a specworks capability has no living spec yet (typically before the first change that touches it), or when the user says "baseline", "baseline <capability>", "record what <capability> does today" or "specworks baseline".
+description: Baseline one capability of a project that already has code - record the behaviour the code already has as requirements, tie them to the existing tests and code with @ac / @req tags, and hand the change over to close so the capability gets its living spec. No behaviour change. Use after /specworks-adopt, once per capability (each baseline closed before the next), whenever a specworks capability has no living spec yet, or when the user says "baseline", "baseline <capability>", "record what <capability> does today" or "specworks baseline".
 allowed-tools: Bash(specworks:*), Bash(uv run specworks:*), Bash(uvx --from git+https://github.com/lcmonteiro/specworks specworks:*), Read, Grep, Glob, Write, Edit
 ---
 
@@ -11,8 +11,14 @@ behaviour. Its tests and code exist, so the test and code phases only add
 tags; `/specworks-close` then writes the living spec exactly as for any other
 change.
 
-**One capability per run.** Never baseline the whole project in one go:
-baseline a capability when a change first touches it.
+**One capability per run.** After `/specworks-adopt`, the capabilities are
+baselined one after another, each closed before the next:
+
+```
+for each capability:
+    /specworks-baseline <capability>
+    /specworks-close baseline-<capability>
+```
 
 **Boundary**: a baseline changes no behaviour. It writes a change folder and
 adds comment tags (and tests only for criteria no test covers); it never
@@ -37,8 +43,9 @@ fixes the code, even a bug it finds.
      ```bash
      specworks spec list
      ```
-     and ask which one, pointing out those with 0 requirements (no living
-     spec yet). Never pick one yourself.
+     and propose the first one with 0 requirements (no living spec yet),
+     in the order of the list; go on once the user confirms or picks
+     another. When every capability has requirements, say so and stop.
    - A capability that is not registered: stop and offer
      `/specworks-adopt` (or `specworks capability add`) first.
    - A change `baseline-<capability>` already in `changes`: continue it
@@ -166,14 +173,15 @@ fixes the code, even a bug it finds.
    Show the summary: requirements and criteria recorded, tests tagged and
    added, files tagged, the suspected bugs left out. End with:
    "The baseline of `<capability>` passes validate. Run `/specworks-close
-   baseline-<capability>` to write its living spec. The suspected bugs can
+   baseline-<capability>` to write its living spec; then
+   `/specworks-baseline` for the next capability. The suspected bugs can
    each start with `/specworks-refine`."
 
 ---
 
 ## Guardrails
 
-- One capability per change, and only the one the user asked for.
+- One capability per change, closed before the next one starts.
 - Never change behaviour: no refactors, no bug fixes, no renames. A bug is
   reported (Out of Scope), not fixed.
 - The user confirms the requirements and criteria before anything is tagged.

@@ -9,10 +9,18 @@ pretending it was built with it. It runs in two stages:
 1. **Set up**: the config, the project's commands and its context.
 2. **Map**: the capabilities of the existing code, registered in the config.
 
-A project is ready for new changes once its capabilities are mapped. The
-behaviour a capability already has is recorded later, one capability at a
-time, by `/specworks-baseline <capability>`: typically just before the
-first change that touches it. Adopt never baselines.
+Then each capability in turn gets its living spec, one change per
+capability:
+
+```
+/specworks-adopt
+for each capability:
+    /specworks-baseline <capability>
+    /specworks-close baseline-<capability>
+```
+
+Adopt itself never baselines: it ends by handing over to the first
+`/specworks-baseline`.
 
 **Boundary**: adopting changes no behaviour and writes only the config (and,
 through `init`, the agent skills).
@@ -131,14 +139,15 @@ does the same for that command.
    Summarize: the config file, the commands and whether each passes, the
    context written, the modules and the capabilities. Then:
 
-   "specworks is set up. New work starts with `/specworks-refine`. A
-   capability has no living spec yet; when a change first touches one (or
-   now, if you prefer), run `/specworks-baseline <capability>`: it records
-   the behaviour the capability already has, so the change's specs can
-   MODIFY requirements instead of only ADDING them."
+   "specworks is set up. Next, each capability gets its living spec, one
+   at a time: run `/specworks-baseline <first capability>`, then
+   `/specworks-close baseline-<first capability>`, and so on for the
+   others (in the order of the table). A baseline records the behaviour the
+   capability already has, so later changes can MODIFY its requirements
+   instead of only ADDING them."
 
-   **End here.** If the user asks for a baseline, that is
-   `/specworks-baseline`, one capability at a time.
+   **End here.** The baselines are `/specworks-baseline`, one capability
+   per run.
 
 ---
 
