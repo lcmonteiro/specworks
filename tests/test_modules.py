@@ -356,3 +356,6 @@ def test_capability_add_refuses_a_taken_path(workspace):
     code, data = run_json("capability", "add", "login", "--path", "src/auth")
     assert code == 1 and "auth" in data["error"] and "src/auth/docs" in data["error"]
     assert (workspace / "spec.yml").read_text() == before
+    code, data = run_json("capability", "add", "login", "--path", "src\\auth\\")  # stored as src/auth
+    assert code == 1 and "already used by auth" in data["error"]
+    assert (workspace / "spec.yml").read_text() == before

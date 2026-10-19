@@ -11,6 +11,7 @@ from .. import __version__
 from ..core.changes import archived_as, list_archived
 from ..core.config import DEFAULT_DIR, Config, ConfigError, config_name, find_config, load_config
 from ..core.config_file import add_capability_entry, add_module_entry, write_default_config
+from ..core.validators import validate_relative
 from ..core.workspace import Workspace, capability_prefix, load_module_config, load_workspace, require_workspace
 from ..specs.capabilities import capability_ref, describe
 from ..tools.skills import install_skills, parse_tools
@@ -251,7 +252,7 @@ def capability_add(
     owner = ws.prefixes().get(id_prefix)
     if owner and owner != target.qualify(name):  # the same name is reported as "already exists" below
         raise ConfigError(f"the ID prefix {id_prefix} is already used by {owner}; choose another with --prefix")
-    folder = ws.docs_folder(target, path)
+    folder = ws.docs_folder(target, validate_relative(path, f"capability '{name}' path"))  # as the config will store it
     if (taken := ws.docs_folders().get(folder)) and taken != target.qualify(name):  # @req REQ-PROJ-016
         where = ws.rel(folder) if folder.is_relative_to(ws.root) else folder.as_posix()
         raise ConfigError(f"the docs folder {where} is already used by {taken}; give {name} its own --path")
