@@ -74,6 +74,7 @@ diagrams:
 """
 
 
+# @req REQ-PROJ-009
 def write_default_config(root: Path, dir: str, diagram_theme: str | None = None) -> Path:
     path = root / config_name(validate_dir(dir))
     text = DEFAULT_CONFIG
@@ -84,6 +85,7 @@ def write_default_config(root: Path, dir: str, diagram_theme: str | None = None)
     return path
 
 
+# @req REQ-PROJ-008
 def add_module_entry(root: Path, name: str, path: str) -> None:
     """Add ``name: path`` under ``modules:`` in the project's config, keeping the user's comments.
 
@@ -102,6 +104,7 @@ def add_module_entry(root: Path, name: str, path: str) -> None:
     _insert_entry(root, "modules", [f"  {name}: {path}"], lambda cfg: cfg.modules.get(name) == path)
 
 
+# @req REQ-PROJ-008
 def _insert_entry(root: Path, key: str, entry: list[str], applied) -> None:
     """Append ``entry`` lines to the ``key:`` block of the config as text (keeping comments), then re-read to check.
 
@@ -142,6 +145,7 @@ def _insert_entry(root: Path, key: str, entry: list[str], applied) -> None:
         raise ConfigError(f"could not add it to {config_file} automatically; add it by hand:\n{key}:\n{body}")
 
 
+# @req REQ-PROJ-008
 def add_capability_entry(root: Path, name: str, path: str, prefix: str = "", description: str = "") -> None:
     """Register a capability (name -> code path) in the config at ``root``, keeping the user's comments."""
     validate_capability_name(name)

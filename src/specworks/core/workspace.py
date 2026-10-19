@@ -28,6 +28,7 @@ from .errors import SpecworksError
 SEP = ":"
 
 
+# @req REQ-PROJ-004
 def capability_prefix(module_name: str, name: str, prefix: str = "") -> str:
     """The ID prefix (REQ-<prefix>-NNN) of a capability: its own ``prefix:``, else its module path and name in upper case.
 
@@ -108,6 +109,7 @@ class Workspace:
             return self.module(module_name), item
         return None, ref
 
+    # @req REQ-PROJ-007
     def context_chain(self, module: Module | None = None) -> list[dict]:
         """Inherited context, top level first. A module adds to its parents' context; it cannot drop it."""
         return [
@@ -122,6 +124,7 @@ class Workspace:
             return chain[0]["context"]
         return "\n\n".join(f"[{item['module']}]\n{item['context']}" for item in chain)
 
+    # @req REQ-PROJ-007
     def commands(self, module: Module | None = None) -> dict[str, str]:
         """Commands for a module: the top level's, overridden key by key down to the module."""
         merged: dict[str, str] = {}
@@ -164,6 +167,7 @@ def _may_link(directory: Path, child_root: Path) -> bool:
     return False
 
 
+# @req REQ-PROJ-006
 def load_module_config(root: Path, name: str, workspace_dir: str) -> Config | None:
     """Config of a module, which must use the workspace's file name (<dir>.yml); None if it has none."""
     found = find_config(root)
@@ -178,6 +182,7 @@ def load_module_config(root: Path, name: str, workspace_dir: str) -> Config | No
     return load_config(root, workspace_dir)
 
 
+# @req REQ-PROJ-006
 def _load_tree(config: Config, name: str, parent: Module | None, missing: list[MissingModule]) -> Module:
     module = Module(name=name, config=config, parent=parent)
     for child_name, child_path in config.modules.items():
@@ -199,6 +204,7 @@ def require_workspace(start: Path) -> Workspace:
     return ws
 
 
+# @req REQ-PROJ-006
 def load_workspace(start: Path | None = None) -> Workspace | None:
     """Load the workspace containing ``start``; None when there is no specworks config above it.
 
@@ -232,6 +238,7 @@ def load_workspace(start: Path | None = None) -> Workspace | None:
     return ws
 
 
+# @req REQ-PROJ-005
 def _check_prefixes(ws: Workspace) -> None:
     """Every capability has its own ID prefix, or two of them would hand out the same requirement IDs."""
     owners: dict[str, str] = {}

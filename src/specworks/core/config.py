@@ -90,6 +90,7 @@ class DiagramSettings:
 COMMAND_KEYS = ("test", "lint", "typecheck", "build", "format")
 
 
+# @req REQ-PROJ-003
 def load_commands(raw: object) -> dict[str, str]:
     """Shell commands the skills run (tests, lint, ...); empty values are left out."""
     if raw is None:
@@ -107,6 +108,7 @@ def load_commands(raw: object) -> dict[str, str]:
     return commands
 
 
+# @req REQ-PROJ-003
 def load_globs(raw: object, key: str) -> list[str]:
     """A list of glob strings; a single string is a common slip, so it gets its own message."""
     if raw is None:
@@ -121,6 +123,7 @@ def load_globs(raw: object, key: str) -> list[str]:
     return [g.strip() for g in raw]
 
 
+# @req REQ-PROJ-003
 def load_diagram_settings(raw: object) -> DiagramSettings:
     if raw is None:
         return DiagramSettings()
@@ -171,6 +174,7 @@ def config_name(dir: str) -> str:
     return f"{dir}{CONFIG_EXT}"
 
 
+# @req REQ-PROJ-001
 def is_config_file(path: Path) -> bool:
     try:
         return path.is_file() and MARKER_RE.search(path.read_text(encoding="utf-8")) is not None
@@ -178,6 +182,7 @@ def is_config_file(path: Path) -> bool:
         return False
 
 
+# @req REQ-PROJ-001
 def find_config(directory: Path) -> Path | None:
     """The specworks config in ``directory`` (any ``*.yml`` with the marker), if there is one."""
     if not directory.is_dir():
@@ -189,6 +194,7 @@ def find_config(directory: Path) -> Path | None:
     return found[0] if found else None
 
 
+# @req REQ-PROJ-001
 def find_root(start: Path | None = None) -> Path | None:
     """Walk up from ``start`` until a directory holding a specworks config is found."""
     current = (start or Path.cwd()).resolve()
@@ -198,6 +204,7 @@ def find_root(start: Path | None = None) -> Path | None:
     return None
 
 
+# @req REQ-PROJ-002, REQ-PROJ-003, REQ-PROJ-004
 def load_config(root: Path, dir: str | None = None) -> Config:
     """Load ``root/<dir>.yml``, or the only specworks config in ``root`` when ``dir`` is None."""
     if dir is not None:

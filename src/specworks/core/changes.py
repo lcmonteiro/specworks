@@ -55,6 +55,7 @@ class Change:
         (self.path / META_FILE).write_text(yaml.safe_dump(data, sort_keys=False), encoding="utf-8")
 
 
+# @req REQ-PROJ-010
 def create_change(cfg: Config, name: str) -> Change:
     validate_kebab(name, "change name", "add-user-auth")
     if name == ARCHIVE_DIR:
@@ -73,6 +74,7 @@ def create_change(cfg: Config, name: str) -> Change:
     return change
 
 
+# @req REQ-PROJ-011
 def _read_change(path: Path, name: str, where: str) -> Change:
     try:
         meta = yaml.safe_load((path / META_FILE).read_text(encoding="utf-8")) or {}
@@ -112,6 +114,7 @@ def list_changes(cfg: Config) -> list[Change]:
     ]
 
 
+# @req REQ-PROJ-012
 def list_archived(cfg: Config) -> list[Change]:
     """Closed and abandoned changes, oldest first; a folder whose metadata cannot be read is left out."""
     if not cfg.archive_path.is_dir():
@@ -133,6 +136,7 @@ def archived_as(cfg: Config, name: str) -> Change | None:
     return found[-1] if found else None
 
 
+# @req REQ-PROJ-011
 def set_phase(change: Change, phase: str) -> None:
     if phase not in PHASES:
         raise ChangeError(f"unknown phase '{phase}'; expected one of {', '.join(PHASES)}")

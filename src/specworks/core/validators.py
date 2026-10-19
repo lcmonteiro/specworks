@@ -12,6 +12,7 @@ KEBAB_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")  # module, capability and c
 PREFIX_RE = re.compile(r"^[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)*$")
 
 
+# @req REQ-PROJ-003
 def validate_relative(value: object, what: str) -> str:
     """A plain relative path that stays inside the project folder."""
     if not isinstance(value, str) or not value.strip():
@@ -22,6 +23,7 @@ def validate_relative(value: object, what: str) -> str:
     return str(path)
 
 
+# @req REQ-PROJ-009
 def validate_dir(value: object) -> str:
     """The workflow folder is a single folder name; it also names the config file (<dir>.yml)."""
     if not isinstance(value, str) or not DIR_RE.match(value.strip()):
@@ -31,6 +33,7 @@ def validate_dir(value: object) -> str:
     return value.strip()
 
 
+# @req REQ-PROJ-004, REQ-PROJ-010
 def validate_kebab(name: object, what: str, example: str) -> str:
     """A module, capability or change name: ``what`` names it in the error (``capability name``)."""
     if not isinstance(name, str) or not KEBAB_RE.match(name):
@@ -53,6 +56,7 @@ def validate_prefix(prefix: str, where: str = "") -> str:
     return prefix
 
 
+# @req REQ-PROJ-002
 def check_keys(raw: dict, allowed: tuple[str, ...], where: str) -> None:
     unknown = set(raw) - set(allowed)
     if unknown:
