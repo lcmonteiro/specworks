@@ -51,6 +51,12 @@ does the same for that command.
    phase each failed check names (`-> /specworks-<phase>`; `/specworks-validate`
    explains them). `specworks close` refuses a change that does not pass.
 
+   The gate cannot see what `/specworks-validate` found by reading (step 3).
+   If validate reported FAIL for this change in this conversation, its
+   reading included, and nothing changed since, stop as well: closing it
+   anyway would make `/specworks-validate` + `/specworks-close` close what
+   `/specworks-done` refuses.
+
 2. **Register new capabilities**
 
    For every capability under "New Capabilities" in proposal.md (or any delta

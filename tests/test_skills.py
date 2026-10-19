@@ -178,6 +178,15 @@ def test_done_closes_only_after_validate_passes():
     assert "does not skip it" in text
 
 
+def test_done_is_validate_then_close():
+    # /specworks-validate then /specworks-close must end where /specworks-done ends: done adds no rule of its own
+    # (the phase a change may validate from is validate's call), and close refuses what validate's reading failed.
+    done = read_skill("specworks-done")
+    assert "specworks status" not in done and "specworks start" not in done and "specworks gate" not in done
+    assert "It adds no check of its own and skips none." in done
+    assert "If validate reported FAIL for this change in this conversation" in read_skill("specworks-close")
+
+
 def test_baseline_checks_the_suite_before_creating_its_change():
     text = read_skill("specworks-baseline")
     assert 'specworks new "baseline-<capability>" --json' in text and "/specworks-done" in text

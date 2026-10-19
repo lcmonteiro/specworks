@@ -6,7 +6,9 @@ description: Finish a reviewed change in one run - validate it (the read-only PA
 Done: take a reviewed change through **validate → close** in one run. The
 change is closed only if validate passes: a FAIL stops here, with every
 failure pointing to the phase that fixes it. Each phase is done exactly as
-its own skill says; this skill only chains them.
+its own skill says; this skill only chains them, so `/specworks-done <ref>`
+ends where `/specworks-validate <ref>` followed by `/specworks-close <ref>`
+ends. It adds no check of its own and skips none.
 
 It covers the last two phases of `refine → specify → design → test → code → review → validate → close`.
 
@@ -46,18 +48,10 @@ does the same for that command.
 
 1. **Pick the change**
 
-   Pick the change (above), then:
-   ```bash
-   specworks status --change "<ref>" --json
-   ```
-   - In `review`: start at validate (step 2).
-   - Already in `validate`: run validate again (step 2); the code may have
-     changed since.
-   - Already in `close`: go on with close (step 4).
-   - Earlier than `review`: stop. It is not ready; suggest the phase it is
-     in (`/specworks-build <ref>` for design, test or code).
-
-   Say the plan: `Done <ref>: validate → close`.
+   Pick the change (above) and say the plan: `Done <ref>: validate → close`.
+   Whatever phase the change is in, start with validate (step 2): its first
+   step decides, as it does on its own, whether the change can enter
+   validate (a change not yet reviewed fails there).
 
 2. **Validate**
 
