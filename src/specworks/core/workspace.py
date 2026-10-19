@@ -143,6 +143,14 @@ class Workspace:
         """ID prefix -> the registered capability (``module:name``) that uses it."""
         return {capability_prefix(m.name, cap.name, cap.prefix): m.qualify(cap.name) for m, cap in self.capabilities()}
 
+    def docs_folder(self, module: Module, path: str) -> Path:
+        """The living-docs folder a capability on ``path`` (relative to ``module``) writes to, resolved."""
+        return (module.root / path.strip().rstrip("/") / module.config.docs_dir).resolve()
+
+    def docs_folders(self) -> dict[Path, str]:
+        """Resolved living-docs folder -> the registered capability (``module:name``) that uses it."""
+        return {self.docs_folder(m, cap.path): m.qualify(cap.name) for m, cap in self.capabilities()}
+
 
 def _links_to(parent: Config, child_root: Path) -> str | None:
     """Name under which ``parent`` lists ``child_root`` as a module, if it does."""
@@ -235,6 +243,7 @@ def load_workspace(start: Path | None = None) -> Workspace | None:
     current = next(m for m in top.walk() if m.root == nearest)
     ws = Workspace(top=top, current=current, missing=missing)
     _check_prefixes(ws)
+    _check_docs_folders(ws)
     return ws
 
 
@@ -250,3 +259,17 @@ def _check_prefixes(ws: Workspace) -> None:
                 f"give one of them its own 'prefix:' in its config (IDs already written keep the prefix they have)"
             )
         owners[prefix] = ref
+
+
+# @req REQ-PROJ-016
+def _check_docs_folders(ws: Workspace) -> None:
+    """Every capability has its own living-docs folder, or close would write two capabilities' specs into one file."""
+    owners: dict[Path, str] = {}
+    for module, cap in ws.capabilities():
+        folder, ref = ws.docs_folder(module, cap.path), module.qualify(cap.name)
+        if folder in owners:
+            where = ws.rel(folder) if folder.is_relative_to(ws.root) else folder.as_posix()
+            raise ConfigError(
+                f"capabilities {owners[folder]} and {ref} both use the docs folder {where}; give one of them its own 'path:'"
+            )
+        owners[folder] = ref

@@ -251,6 +251,10 @@ def capability_add(
     owner = ws.prefixes().get(id_prefix)
     if owner and owner != target.qualify(name):  # the same name is reported as "already exists" below
         raise ConfigError(f"the ID prefix {id_prefix} is already used by {owner}; choose another with --prefix")
+    folder = ws.docs_folder(target, path)
+    if (taken := ws.docs_folders().get(folder)) and taken != target.qualify(name):  # @req REQ-PROJ-016
+        where = ws.rel(folder) if folder.is_relative_to(ws.root) else folder.as_posix()
+        raise ConfigError(f"the docs folder {where} is already used by {taken}; give {name} its own --path")
     add_capability_entry(target.root, name, path, prefix=prefix, description=description)
     ws = require_workspace(target.root)
     data = describe(ws, capability_ref(ws.module(target.name), name), with_scenarios=False)
