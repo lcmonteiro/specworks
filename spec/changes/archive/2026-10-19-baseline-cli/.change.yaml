@@ -1,6 +1,6 @@
 name: baseline-cli
 created: '2026-10-19T22:04:23'
-phase: review
+phase: done
 specified:
   REQ-CLI-001: 816b5ba63b41
   REQ-CLI-002: 44bf2b3085e2
