@@ -50,6 +50,7 @@ def test_module_add_links_parent_and_creates_module(workspace):
     assert not (workspace / "services/billing/specworks.yml").exists()
 
 
+# @ac AC-PROJ-008.1
 def test_module_add_keeps_comments(workspace):
     assert "# Modules: sub-projects" in (workspace / "spec.yml").read_text()
 
@@ -60,6 +61,7 @@ def test_module_list_shows_tree(workspace):
     assert data["modules"][0]["current"] is True
 
 
+# @ac AC-PROJ-004.2, AC-PROJ-006.1, AC-PROJ-007.1
 def test_context_inside_module_inherits_and_sees_whole_workspace(workspace, monkeypatch):
     monkeypatch.chdir(workspace / "services/billing/tax")
     code, data = run_json("context")
@@ -82,6 +84,7 @@ def test_context_inside_module_inherits_and_sees_whole_workspace(workspace, monk
     ]
 
 
+# @ac AC-PROJ-001.5
 def test_new_goes_to_nearest_module(workspace, monkeypatch):
     (workspace / "services/billing/src").mkdir()
     monkeypatch.chdir(workspace / "services/billing/src")
@@ -158,6 +161,7 @@ def test_init_no_link_keeps_project_independent(workspace, monkeypatch):
     assert data["module"] == "(top)"
 
 
+# @ac AC-PROJ-006.2
 def test_missing_module_is_reported_not_fatal(workspace):
     (workspace / "spec.yml").write_text(
         (workspace / "spec.yml").read_text().replace("\nmodules:\n", "\nmodules:\n  ghost: vendor/ghost\n")
@@ -167,6 +171,7 @@ def test_missing_module_is_reported_not_fatal(workspace):
     assert data["missingModules"] == [{"name": "ghost", "path": "vendor/ghost"}]
 
 
+# @ac AC-PROJ-008.3
 def test_duplicate_module_rejected(workspace):
     code, data = run_json("module", "add", "services/billing", "--name", "billing2")
     assert code == 1 and "already linked" in data["error"]
@@ -174,6 +179,7 @@ def test_duplicate_module_rejected(workspace):
     assert code == 1 and "already exists" in data["error"]
 
 
+# @ac AC-PROJ-003.1
 @pytest.mark.parametrize("modules", ["  bad: ../x\n", "  Bad_Name: x\n"])
 def test_invalid_module_entries_rejected(workspace, modules):
     (workspace / "spec.yml").write_text(
@@ -202,6 +208,7 @@ def test_nested_module_uses_the_top_level_folder_name(workspace):
     assert data["path"] == "services/billing/tax/spec/changes/add-vat"
 
 
+# @ac AC-PROJ-006.3
 def test_module_with_different_config_name_is_an_error(workspace):
     billing = workspace / "services/billing"
     (billing / "spec.yml").rename(billing / "docs.yml")
@@ -262,6 +269,7 @@ def test_init_in_a_nested_module_reports_its_full_name(workspace, monkeypatch):
     assert "as module 'billing/vat'" in run("init", "vat", "--no-skills")
 
 
+# @ac AC-PROJ-005.1
 def test_derived_prefixes_may_not_collide_across_modules(workspace):
     # billing:invoices derives BILLING-INVOICES; so would a top-level billing-invoices.
     cfg = workspace / "spec.yml"
@@ -278,3 +286,14 @@ def test_a_new_capability_of_a_module_is_registered_with_module(workspace):
                      "#### Scenario: AC-BILLING-REFUNDS-001.1 Refunded\n- **WHEN** x\n- **THEN** y\n")
     code, data = run_json("check", "--change", "add-refunds")
     assert any(i["message"].endswith("specworks capability add refunds --path <code path> --module billing") for i in data["issues"])
+
+
+# @ac AC-PROJ-007.2
+def test_a_module_inherits_the_commands_it_does_not_set(workspace):
+    top, billing = workspace / "spec.yml", workspace / "services/billing/spec.yml"
+    top.write_text(top.read_text().replace("commands:\n  test:\n  lint:\n", "commands:\n  test: top-test\n  lint: top-lint\n"))
+    billing.write_text(billing.read_text().replace("commands:\n  test:\n", "commands:\n  test: billing-test\n"))
+    ws = load_workspace(workspace)
+    assert ws is not None
+    assert ws.commands(ws.module("billing")) == {"test": "billing-test", "lint": "top-lint"}
+    assert ws.commands(ws.module("billing/tax")) == {"test": "billing-test", "lint": "top-lint"}

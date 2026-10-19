@@ -55,6 +55,7 @@ def test_other_commands_say_the_change_is_archived(project):
     assert code == 1 and "not found in any module, active or archived" in data["error"]
 
 
+# @ac AC-PROJ-010.4
 def test_new_refuses_an_archived_name_and_the_archive_folder(project):
     abandon()
     code, data = run_json("new", REF)
@@ -81,6 +82,7 @@ def test_abandoning_twice_on_one_day_fails_without_moving(project):
     assert (project / "spec/changes" / REF).is_dir()
 
 
+# @ac AC-PROJ-012.1
 def test_unreadable_or_misnamed_archive_folders_are_left_out(project):
     abandon()
     (project / "spec/changes/archive/2026-01-01-broken").mkdir()

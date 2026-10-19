@@ -36,6 +36,7 @@ def checks(data):
 # --- specworks run ----------------------------------------------------------
 
 
+# @ac AC-PROJ-013.1
 def test_run_passes_the_exit_code_through(project):
     set_test_command(project, FAIL)
     code, data = run_json("run", "test")
@@ -45,6 +46,7 @@ def test_run_passes_the_exit_code_through(project):
     assert code == 0 and data["ok"] is True and data["cwd"] == "."
 
 
+# @ac AC-PROJ-013.2
 def test_run_in_the_module_of_the_change(project):
     runner.invoke(app, ["module", "add", "web"])
     web_cfg = project / "web/spec.yml"
@@ -55,6 +57,7 @@ def test_run_in_the_module_of_the_change(project):
     assert code == 0 and data["cwd"] == "web" and data["tail"] == ["web"]
 
 
+# @ac AC-PROJ-013.3
 def test_run_unconfigured_command(project):
     code, data = run_json("run", "lint")
     assert code == 1 and "no 'lint' command configured" in data["error"]

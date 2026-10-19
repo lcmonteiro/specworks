@@ -363,6 +363,7 @@ def test_changes_started_on_the_same_day_without_a_time_are_ordered_by_name(chan
     assert run_json("check", "--change", "other-change")[0] == 1
 
 
+# @ac AC-PROJ-010.1
 def test_a_new_change_records_when_it_started(project):
     run_json("new", "other-change")
     meta = (project / "spec/changes/other-change/.change.yaml").read_text()
@@ -631,6 +632,7 @@ def test_skip_specs_change(project):
     assert data["skipSpecs"] is False
 
 
+# @ac AC-PROJ-005.1
 def test_two_capabilities_with_one_prefix_is_an_error(project):
     cfg = project / "spec.yml"
     cfg.write_text(cfg.read_text().replace("    prefix: AUTH\n", "    prefix: AUTH\n  login:\n    path: src/login\n    prefix: AUTH\n", 1))
@@ -710,6 +712,7 @@ def test_modified_block_dropping_a_criterion_is_warned(change, project):
     assert row["ok"] is False and row["blocking"] is False
 
 
+# @ac AC-PROJ-015.1
 def test_a_file_that_is_not_utf8_is_a_clear_error(change):
     (change / "specs/user-auth/spec.md").write_bytes(DELTA.encode().replace(b"single-use", b"single\xe9use"))
     code, data = run_json("check", "--change", "add-password-reset")

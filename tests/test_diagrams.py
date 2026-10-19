@@ -224,6 +224,7 @@ def test_diagrams_needs_change_or_themes(change):
     assert code == 1 and "--change" in data["error"]
 
 
+# @ac AC-PROJ-009.3
 def test_init_sets_the_diagram_theme(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     assert runner.invoke(app, ["init", "--no-skills", "--diagram-theme", "Cool Classics"]).exit_code == 0
@@ -232,6 +233,7 @@ def test_init_sets_the_diagram_theme(tmp_path, monkeypatch):
     assert data["theme"] == "cool-classics"
 
 
+# @ac AC-PROJ-009.3
 def test_init_rejects_unknown_diagram_theme(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     result = runner.invoke(app, ["init", "--no-skills", "--diagram-theme", "rainbow"])

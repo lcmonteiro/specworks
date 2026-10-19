@@ -21,6 +21,7 @@ def run_json(*args):
     return result.exit_code, json.loads(result.output)
 
 
+# @ac AC-PROJ-001.4
 def test_context_without_project_reports_null_root(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     code, data = run_json("context")
@@ -40,6 +41,7 @@ def test_init_prints_paths_relative_to_the_project_root(tmp_path, monkeypatch):
     assert result.exit_code == 0 and result.output == "created spec.yml\nready   spec/changes/\n"
 
 
+# @ac AC-PROJ-010.1
 def test_new_change_starts_in_refine_phase(project):
     code, data = run_json("new", "add-login")
     assert code == 0
@@ -48,6 +50,7 @@ def test_new_change_starts_in_refine_phase(project):
     assert [c["name"] for c in data["changes"]] == ["add-login"]
 
 
+# @ac AC-PROJ-010.2
 @pytest.mark.parametrize("name", ["Add_Login", "add login", "x--y", "archive-"])
 def test_new_rejects_non_kebab_names(project, name):
     code, data = run_json("new", name)
@@ -55,6 +58,7 @@ def test_new_rejects_non_kebab_names(project, name):
     assert "kebab-case" in data["error"]
 
 
+# @ac AC-PROJ-010.3
 def test_new_rejects_duplicates(project):
     run_json("new", "add-login")
     code, data = run_json("new", "add-login")
@@ -110,6 +114,7 @@ def test_phase_takes_the_change_like_start_and_gate(project, args, hint):
     assert code == 1 and hint in data["error"]
 
 
+# @ac AC-PROJ-011.2
 def test_only_close_makes_a_change_done(project):
     run_json("new", "add-login")
     code, data = run_json("phase", "done", "--change", "add-login")
@@ -118,6 +123,7 @@ def test_only_close_makes_a_change_done(project):
     assert [c["phase"] for c in data["changes"]] == ["refine"]
 
 
+# @ac AC-PROJ-001.1, AC-PROJ-009.1
 @pytest.mark.parametrize("folder", ["spec", "docs", "context", "specworks"])
 def test_init_with_custom_dir_names_config_after_folder(tmp_path, monkeypatch, folder):
     monkeypatch.chdir(tmp_path)
@@ -131,12 +137,14 @@ def test_init_with_custom_dir_names_config_after_folder(tmp_path, monkeypatch, f
     assert data["dir"] == folder and data["changesDir"] == f"{folder}/changes"
 
 
+# @ac AC-PROJ-001.1
 def test_renaming_config_renames_folder(project):
     (project / "specworks.yml").rename(project / "context.yml")
     code, data = run_json("new", "add-login")
     assert data["path"] == "context/changes/add-login"
 
 
+# @ac AC-PROJ-001.2
 def test_unrelated_yml_is_not_a_project(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     (tmp_path / "docs.yml").write_text("site_name: my docs\n")
@@ -144,12 +152,14 @@ def test_unrelated_yml_is_not_a_project(tmp_path, monkeypatch):
     assert code == 1 and data["root"] is None
 
 
+# @ac AC-PROJ-001.3
 def test_two_configs_in_one_folder_is_an_error(project):
     (project / "spec.yml").write_text("specworks: 1\n")
     code, data = run_json("context")
     assert code == 1 and "several specworks configs" in data["error"]
 
 
+# @ac AC-PROJ-002.4
 def test_old_dir_key_is_rejected(project):
     cfg = project / "specworks.yml"
     cfg.write_text(cfg.read_text() + "dir: spec\n")
@@ -157,6 +167,7 @@ def test_old_dir_key_is_rejected(project):
     assert code == 1 and "'dir' is no longer a setting" in data["error"]
 
 
+# @ac AC-PROJ-002.3, AC-PROJ-003.1, AC-PROJ-003.2
 @pytest.mark.parametrize(
     "setting, message",
     [
@@ -188,6 +199,7 @@ def test_nested_docs_dir_is_allowed(project):
     assert code == 0, data
 
 
+# @ac AC-PROJ-009.2
 @pytest.mark.parametrize("folder", ["/abs", "../outside", ".", "", "docs/spec", ".hidden"])
 def test_init_rejects_bad_dir(tmp_path, monkeypatch, folder):
     monkeypatch.chdir(tmp_path)
@@ -196,6 +208,7 @@ def test_init_rejects_bad_dir(tmp_path, monkeypatch, folder):
     assert list(tmp_path.glob("*.yml")) == []
 
 
+# @ac AC-PROJ-011.1
 def test_phases_follow_the_workflow(project):
     run_json("new", "add-login")
     code, data = run_json("status", "--change", "add-login")
@@ -212,6 +225,7 @@ def test_skills_are_installed_with_specworks_prefix(project):
     assert "name: specworks-refine" in text and "sw-" not in text
 
 
+# @ac AC-PROJ-011.3
 @pytest.mark.parametrize(
     "meta, message",
     [
@@ -239,6 +253,7 @@ def test_a_broken_change_file_is_an_error_not_a_crash(project, monkeypatch, caps
     assert exit_info.value.code == 1 and err.startswith("error: ") and message in err
 
 
+# @ac AC-PROJ-004.3
 def test_null_description_is_empty(project):
     cfg = project / "specworks.yml"
     cfg.write_text(cfg.read_text().replace("capabilities: {}", "capabilities:\n  user-auth:\n    path: src/auth\n    description:"))
@@ -255,6 +270,7 @@ def test_archived_changes_are_not_addressable(project):
     assert "phase: refine" in (archived / ".change.yaml").read_text()
 
 
+# @ac AC-PROJ-003.5
 @pytest.mark.parametrize("pad", ["true", "-1", "'24'"])
 def test_diagram_pad_must_be_a_non_negative_number(project, pad):
     cfg = project / "specworks.yml"
@@ -263,6 +279,7 @@ def test_diagram_pad_must_be_a_non_negative_number(project, pad):
     assert code == 1 and "'diagrams.pad' a non-negative number" in data["error"], data
 
 
+# @ac AC-PROJ-002.1, AC-PROJ-002.2, AC-PROJ-003.2, AC-PROJ-003.3, AC-PROJ-003.4, AC-PROJ-003.5
 @pytest.mark.parametrize(
     "config, message",
     [
@@ -286,18 +303,21 @@ def test_invalid_config_values_are_clear_errors(project, config, message):
     assert code == 1 and message in data["error"], data
 
 
+# @ac AC-PROJ-004.1
 def test_a_capability_can_be_given_as_name_and_path(project):
     (project / "specworks.yml").write_text("specworks: 1\ncapabilities:\n  user-auth: src/auth/\n")
     code, data = run_json("context")
     assert code == 0 and [(c["name"], c["path"], c["prefix"]) for c in data["capabilities"]] == [("user-auth", "src/auth", "USER-AUTH")]
 
 
+# @ac AC-PROJ-001.2
 def test_a_yml_file_that_is_not_text_is_never_taken_for_a_config(project):
     (project / "logo.yml").write_bytes(b"\xff\xfe specworks: 1\n")  # not UTF-8: skipped, not an error
     code, data = run_json("context")
     assert code == 0 and data["root"] == str(project)
 
 
+# @ac AC-PROJ-006.4
 def test_a_broken_unrelated_outer_config_does_not_break_an_inner_project(tmp_path, monkeypatch):
     (tmp_path / "spec.yml").write_text("specworks: 1\nbogus: true\n")
     inner = tmp_path / "inner"
@@ -308,6 +328,7 @@ def test_a_broken_unrelated_outer_config_does_not_break_an_inner_project(tmp_pat
     assert code == 0 and data["changes"] == []
 
 
+# @ac AC-PROJ-006.5
 def test_a_broken_parent_that_links_this_module_is_still_an_error(tmp_path, monkeypatch):
     (tmp_path / "spec.yml").write_text("specworks: 1\nbogus: true\nmodules:\n  inner: inner\n")
     (tmp_path / "inner").mkdir()

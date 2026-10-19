@@ -108,6 +108,7 @@ def test_close_refuses_when_verify_fails(repo):
     assert (repo / CHANGE_DIR).is_dir()
 
 
+# @ac AC-PROJ-008.2
 def test_new_capability_must_be_registered_first(ready):
     delta = ready / CHANGE_DIR / "specs/audit-log/spec.md"
     delta.parent.mkdir(parents=True)
@@ -139,6 +140,7 @@ def test_new_capability_must_be_registered_first(ready):
     assert [r.id for r in parse_spec(text).requirements] == ["REQ-AUDIT-LOG-001"]
 
 
+# @ac AC-PROJ-003.1, AC-PROJ-004.4, AC-PROJ-008.3
 def test_capability_add_validates(ready):
     code, data = run_json("capability", "add", "user-auth", "--path", "src/x")
     assert code == 1 and "already exists" in data["error"]
@@ -148,6 +150,7 @@ def test_capability_add_validates(ready):
     assert code == 1
 
 
+# @ac AC-PROJ-008.4
 def test_capability_add_never_drops_existing_capabilities(project):
     # A flow mapping is not a block the text edit can extend; appending a second
     # `capabilities:` would make YAML keep only the new entry.

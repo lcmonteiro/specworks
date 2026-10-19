@@ -31,6 +31,7 @@ def runs(counter):
     return len(counter.read_text())
 
 
+# @ac AC-PROJ-014.1
 def test_same_tree_reuses_the_run(counted):
     repo, counter = counted
     first, second = gate_tests(), gate_tests()
@@ -39,6 +40,7 @@ def test_same_tree_reuses_the_run(counted):
     assert first["ok"] == second["ok"]
 
 
+# @ac AC-PROJ-014.2
 def test_code_changes_rerun_but_workflow_files_do_not(counted):
     repo, counter = counted
     gate_tests()
@@ -55,6 +57,7 @@ def test_code_changes_rerun_but_workflow_files_do_not(counted):
     assert runs(counter) == 4
 
 
+# @ac AC-PROJ-014.3
 def test_a_failing_run_is_reused_too(counted, monkeypatch):
     repo, counter = counted
     cfg = repo / "spec.yml"
@@ -64,6 +67,7 @@ def test_a_failing_run_is_reused_too(counted, monkeypatch):
     assert runs(counter) == 1 and not first["ok"] and not second["ok"] and "exit 3" in second["details"][0]
 
 
+# @ac AC-PROJ-014.4
 def test_cache_can_be_turned_off(counted, monkeypatch):
     repo, counter = counted
     monkeypatch.setenv("SPECWORKS_RUN_CACHE", "0")
@@ -72,6 +76,7 @@ def test_cache_can_be_turned_off(counted, monkeypatch):
     assert runs(counter) == 2
 
 
+# @ac AC-PROJ-014.5
 def test_specworks_run_always_runs(counted):
     repo, counter = counted
     gate_tests()
@@ -80,6 +85,7 @@ def test_specworks_run_always_runs(counted):
     assert runs(counter) == 3
 
 
+# @ac AC-PROJ-014.4
 def test_without_git_every_run_is_real(project, tmp_path_factory):
     counter = tmp_path_factory.mktemp("runs") / "count"
     counter.write_text("")
@@ -91,6 +97,7 @@ def test_without_git_every_run_is_real(project, tmp_path_factory):
     assert runs(counter) == 2
 
 
+# @ac AC-PROJ-014.6
 def test_edits_inside_a_git_submodule_rerun(counted, tmp_path_factory):
     repo, counter = counted
     lib = tmp_path_factory.mktemp("lib")
@@ -112,6 +119,7 @@ def test_edits_inside_a_git_submodule_rerun(counted, tmp_path_factory):
     assert runs(counter) == 5
 
 
+# @ac AC-PROJ-014.5
 def test_specworks_run_replaces_the_reused_result(repo):
     # The suite needs a git-ignored file: the fingerprint cannot see it come and go.
     (repo / ".gitignore").write_text("local.cfg\n")
