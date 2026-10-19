@@ -107,7 +107,7 @@ def test_test_gate_rejects_tags_to_unknown_ids(project):
 
 def test_ac_tag_in_source_file_is_a_warning(project):
     write_tests(project, "AC-AUTH-003.1", "AC-AUTH-003.2", "AC-AUTH-002.1")
-    (project / "src/auth/reset.py").write_text("# @ac AC-AUTH-003.1\n")
+    (project / "src/auth/reset.py").write_text("# @ac AC-AUTH-003.1\n")  # specworks: ignore-tags
     code, data = run_json("gate", "test", "--change", REF)
     assert code == 0
     warn = [c for c in data["checks"] if not c["ok"]]

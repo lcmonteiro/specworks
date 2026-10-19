@@ -245,12 +245,12 @@ def test_test_globs_are_relative_to_their_module_and_apply_only_to_it(workspace)
     cfg = billing / "spec.yml"
     cfg.write_text(cfg.read_text().replace("test_globs: []", 'test_globs: ["qa/*.py"]'))
     (billing / "qa").mkdir()
-    (billing / "qa/check_invoices.py").write_text("# @ac AC-BILLING-INVOICES-001.1\n")
+    (billing / "qa/check_invoices.py").write_text("# @ac AC-BILLING-INVOICES-001.1\n")  # specworks: ignore-tags
     (billing / "src").mkdir()
-    (billing / "src/invoices.py").write_text("# @req REQ-BILLING-INVOICES-001\n")
+    (billing / "src/invoices.py").write_text("# @req REQ-BILLING-INVOICES-001\n")  # specworks: ignore-tags
     (workspace / "tests").mkdir()
-    (workspace / "tests/test_top.py").write_text("# @ac AC-TOP-001.1\n")
-    (workspace / "app.py").write_text("# @req REQ-TOP-001\n")
+    (workspace / "tests/test_top.py").write_text("# @ac AC-TOP-001.1\n")  # specworks: ignore-tags
+    (workspace / "app.py").write_text("# @req REQ-TOP-001\n")  # specworks: ignore-tags
     ws = load_workspace(workspace)
     assert ws is not None
     found = {(t.file, t.is_test) for t in scan_tags(ws)}

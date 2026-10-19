@@ -31,7 +31,7 @@ def test_review_finds_untagged_code_and_tests(repo):
 
 def test_review_finds_spec_side_gaps(repo):
     (repo / "src/auth/lockout.py").write_text("LIMIT = 3\n")
-    (repo / "tests/test_reset.py").write_text("# @ac AC-AUTH-003.1\n# @ac AC-AUTH-003.7\n")
+    (repo / "tests/test_reset.py").write_text("# @ac AC-AUTH-003.1\n# @ac AC-AUTH-003.7\n")  # specworks: ignore-tags
     code, data = run_json("review", "--change", REF, "--base", "main")
     f = findings(data)
     assert f["reqWithoutCode"] == ["REQ-AUTH-002"]
@@ -193,7 +193,7 @@ def test_on_the_base_branch_the_diff_starts_where_the_change_did(on_main):
 
 
 def test_on_the_base_branch_without_a_commit_of_the_change_the_gate_warns(on_main):
-    (on_main / "src/auth/reset.py").write_text("# @req REQ-AUTH-003\n")
+    (on_main / "src/auth/reset.py").write_text("# @req REQ-AUTH-003\n")  # specworks: ignore-tags
     code, data = run_json("gate", "review", "--change", REF, "--base", "main", "--no-run")
     check = next(c for c in data["checks"] if c["name"] == "the change's commits are compared with its base")
     assert not check["ok"] and not check["blocking"]

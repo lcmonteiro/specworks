@@ -478,9 +478,9 @@ def test_tasks_not_written_is_only_a_warning(change):
 
 def test_trace_links_tasks_tests_and_code(change, project):
     (project / "tests").mkdir()
-    (project / "tests/test_reset.py").write_text("# @ac AC-AUTH-003.1\ndef test_request(): ...\n")
-    (project / "src/auth/reset.py").write_text("def reset():  # @req REQ-AUTH-003\n    ...\n")
-    (project / "src/auth/lockout.go").write_text("// @req REQ-AUTH-002\n// @req REQ-AUTH-077\n")
+    (project / "tests/test_reset.py").write_text("# @ac AC-AUTH-003.1\ndef test_request(): ...\n")  # specworks: ignore-tags
+    (project / "src/auth/reset.py").write_text("def reset():  # @req REQ-AUTH-003\n    ...\n")  # specworks: ignore-tags
+    (project / "src/auth/lockout.go").write_text("// @req REQ-AUTH-002\n// @req REQ-AUTH-077\n")  # specworks: ignore-tags
     code, data = run_json("trace", "--change", "add-password-reset", "--write")
     assert code == 0
     rows = {r["ac"]: r for r in data["rows"]}
@@ -498,17 +498,17 @@ def test_trace_links_tasks_tests_and_code(change, project):
 
 def test_trace_skips_workflow_and_hidden_folders(change, project):
     (project / ".venv").mkdir()
-    (project / ".venv/x_test.py").write_text("# @ac AC-AUTH-003.1\n")
-    (change / "notes_test.py").write_text("# @ac AC-AUTH-003.1\n")
+    (project / ".venv/x_test.py").write_text("# @ac AC-AUTH-003.1\n")  # specworks: ignore-tags
+    (change / "notes_test.py").write_text("# @ac AC-AUTH-003.1\n")  # specworks: ignore-tags
     code, data = run_json("trace", "--change", "add-password-reset")
     assert {r["ac"]: r for r in data["rows"]}["AC-AUTH-003.1"]["tests"] == []
 
 
 def test_trace_does_not_count_tags_quoted_in_docs(change, project):
-    (project / "NOTES.md").write_text("TODO: implement `@req REQ-AUTH-003`\n")
+    (project / "NOTES.md").write_text("TODO: implement `@req REQ-AUTH-003`\n")  # specworks: ignore-tags
     (project / "tests").mkdir()
-    (project / "tests/README.txt").write_text("covers @ac AC-AUTH-003.1\n")
-    (project / "tests/reset.feature").write_text("# @ac AC-AUTH-003.2\nScenario: expired link\n")
+    (project / "tests/README.txt").write_text("covers @ac AC-AUTH-003.1\n")  # specworks: ignore-tags
+    (project / "tests/reset.feature").write_text("# @ac AC-AUTH-003.2\nScenario: expired link\n")  # specworks: ignore-tags
     code, data = run_json("trace", "--change", "add-password-reset")
     rows = {r["ac"]: r for r in data["rows"]}
     assert rows["AC-AUTH-003.1"]["code"] == [] and rows["AC-AUTH-003.1"]["tests"] == []
@@ -520,7 +520,7 @@ def test_globs_that_name_docs_scan_them(change, project):
     cfg = project / "spec.yml"
     cfg.write_text(cfg.read_text().replace("source_globs: []", 'source_globs: ["docs/*"]'))
     (project / "docs").mkdir()
-    (project / "docs/impl.md").write_text("@req REQ-AUTH-003\n")
+    (project / "docs/impl.md").write_text("@req REQ-AUTH-003\n")  # specworks: ignore-tags
     code, data = run_json("trace", "--change", "add-password-reset")
     assert {r["ac"]: r for r in data["rows"]}["AC-AUTH-003.1"]["code"] == ["docs/impl.md:1"]
 
@@ -529,7 +529,7 @@ def test_trace_respects_test_globs(change, project):
     cfg = project / "spec.yml"
     cfg.write_text(cfg.read_text().replace("test_globs: []", 'test_globs: ["qa/*.py"]'))
     (project / "qa").mkdir()
-    (project / "qa/reset_checks.py").write_text("# @ac AC-AUTH-003.2\n")
+    (project / "qa/reset_checks.py").write_text("# @ac AC-AUTH-003.2\n")  # specworks: ignore-tags
     code, data = run_json("trace", "--change", "add-password-reset")
     assert {r["ac"]: r for r in data["rows"]}["AC-AUTH-003.2"]["tests"] == ["qa/reset_checks.py:1"]
 
@@ -538,14 +538,14 @@ def test_tags_of_a_capability_with_a_longer_prefix_are_not_unknown(change, proje
     # The change touches AUTH; REQ-AUTH-ADMIN-001 belongs to another capability (prefix AUTH-ADMIN).
     run_json("capability", "add", "auth-admin", "--path", "src/admin", "--prefix", "AUTH-ADMIN")
     (project / "src/admin").mkdir(exist_ok=True)
-    (project / "src/admin/users.py").write_text("# @req REQ-AUTH-ADMIN-001\n# @req REQ-AUTH-078\n")
+    (project / "src/admin/users.py").write_text("# @req REQ-AUTH-ADMIN-001\n# @req REQ-AUTH-078\n")  # specworks: ignore-tags
     code, data = run_json("trace", "--change", "add-password-reset")
     assert data["unknownTags"] == [{"id": "REQ-AUTH-078", "where": "src/admin/users.py:2"}]
 
 
 def test_a_tag_with_a_prefix_no_capability_uses_is_unknown(change, project):
     (project / "tests").mkdir()
-    (project / "tests/test_reset.py").write_text("# @ac AC-AUHT-003.1\n# @req REQ-AUTH\n")
+    (project / "tests/test_reset.py").write_text("# @ac AC-AUHT-003.1\n# @req REQ-AUTH\n")  # specworks: ignore-tags
     code, data = run_json("trace", "--change", "add-password-reset")
     assert data["unknownTags"] == [
         {"id": "AC-AUHT-003.1", "where": "tests/test_reset.py:1", "hint": "no capability uses the prefix AUHT; did you mean AUTH?"},
@@ -565,7 +565,7 @@ def test_tags_of_another_active_change_are_not_unknown(change, project):
         "#### Scenario: AC-AUDIT-LOG-001.1 Logged\n- **WHEN** x\n- **THEN** y\n"
     )
     (project / "tests").mkdir()
-    (project / "tests/test_other.py").write_text("# @ac AC-AUTH-004.1\n# @ac AC-AUDIT-LOG-001.1\n# @ac AC-AUTH-005.1\n")
+    (project / "tests/test_other.py").write_text("# @ac AC-AUTH-004.1\n# @ac AC-AUDIT-LOG-001.1\n# @ac AC-AUTH-005.1\n")  # specworks: ignore-tags
     code, data = run_json("trace", "--change", "add-password-reset")
     assert data["unknownTags"] == [{"id": "AC-AUTH-005.1", "where": "tests/test_other.py:3"}]
 
@@ -598,8 +598,8 @@ def test_test_globs_do_not_hide_source_tags(change, project):
     cfg = project / "spec.yml"
     cfg.write_text(cfg.read_text().replace("test_globs: []", 'test_globs: ["qa/*.py"]'))
     (project / "qa").mkdir()
-    (project / "qa/reset_checks.py").write_text("# @ac AC-AUTH-003.2\n")
-    (project / "src/auth/reset.py").write_text("# @req REQ-AUTH-003\n")
+    (project / "qa/reset_checks.py").write_text("# @ac AC-AUTH-003.2\n")  # specworks: ignore-tags
+    (project / "src/auth/reset.py").write_text("# @req REQ-AUTH-003\n")  # specworks: ignore-tags
     code, data = run_json("trace", "--change", "add-password-reset")
     rows = {r["ac"]: r for r in data["rows"]}
     assert rows["AC-AUTH-003.2"]["tests"] == ["qa/reset_checks.py:1"]
@@ -609,11 +609,11 @@ def test_test_globs_do_not_hide_source_tags(change, project):
 def test_source_globs_limit_the_other_files_but_not_tests(change, project):
     cfg = project / "spec.yml"
     cfg.write_text(cfg.read_text().replace("source_globs: []", 'source_globs: ["src/**"]'))
-    (project / "src/auth/reset.py").write_text("# @req REQ-AUTH-003\n")
+    (project / "src/auth/reset.py").write_text("# @req REQ-AUTH-003\n")  # specworks: ignore-tags
     (project / "scripts").mkdir()
-    (project / "scripts/tool.py").write_text("# @req REQ-AUTH-003\n")
+    (project / "scripts/tool.py").write_text("# @req REQ-AUTH-003\n")  # specworks: ignore-tags
     (project / "tests").mkdir()
-    (project / "tests/test_reset.py").write_text("# @ac AC-AUTH-003.1\n")
+    (project / "tests/test_reset.py").write_text("# @ac AC-AUTH-003.1\n")  # specworks: ignore-tags
     code, data = run_json("trace", "--change", "add-password-reset")
     rows = {r["ac"]: r for r in data["rows"]}
     assert rows["AC-AUTH-003.1"]["code"] == ["src/auth/reset.py:1"]
@@ -675,7 +675,7 @@ def test_globs_follow_folder_aware_rules(rel, pattern, expected):
 
 def test_one_tag_may_list_several_ids(change, project):
     (project / "tests").mkdir()
-    (project / "tests/test_reset.py").write_text("# @ac AC-AUTH-003.1, AC-AUTH-003.2\n")
+    (project / "tests/test_reset.py").write_text("# @ac AC-AUTH-003.1, AC-AUTH-003.2\n")  # specworks: ignore-tags
     code, data = run_json("trace", "--change", "add-password-reset")
     rows = {r["ac"]: r for r in data["rows"]}
     assert rows["AC-AUTH-003.1"]["tests"] == rows["AC-AUTH-003.2"]["tests"] == ["tests/test_reset.py:1"]

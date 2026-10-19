@@ -76,20 +76,20 @@ def test_a_modified_requirement_whose_tests_did_not_change_is_named(repo):
     # The lockout test is on main already: the feature branch changes REQ-AUTH-002 (5 -> 3 attempts) but not it.
     git(repo, "checkout", "-q", "main")
     (repo / "tests").mkdir(exist_ok=True)
-    (repo / "tests/test_lockout.py").write_text("# @ac AC-AUTH-002.1\ndef test_lockout(): ...\n")
+    (repo / "tests/test_lockout.py").write_text("# @ac AC-AUTH-002.1\ndef test_lockout(): ...\n")  # specworks: ignore-tags
     git(repo, "add", "-A")
     git(repo, "commit", "-q", "-m", "lockout test")
     git(repo, "checkout", "-q", "feature")
     git(repo, "merge", "-q", "main")
     reset = repo / "tests/test_reset.py"
-    reset.write_text(reset.read_text().replace("# @ac AC-AUTH-002.1\n", ""))
+    reset.write_text(reset.read_text().replace("# @ac AC-AUTH-002.1\n", ""))  # specworks: ignore-tags
     git(repo, "commit", "-qam", "the lockout test lives in its own file")
     code, data = run_json("gate", "review", "--change", REF, "--base", "main", "--no-run", "--allow-open")
     stale = check(data, MODIFIED_TESTS)
     assert not stale["ok"] and not stale["blocking"]
     assert stale["details"] == ["REQ-AUTH-002: none of its tests changed (tests/test_lockout.py); make sure they check the new behaviour"]
 
-    (repo / "tests/test_lockout.py").write_text("# @ac AC-AUTH-002.1\ndef test_lockout_after_three(): ...\n")
+    (repo / "tests/test_lockout.py").write_text("# @ac AC-AUTH-002.1\ndef test_lockout_after_three(): ...\n")  # specworks: ignore-tags
     code, data = run_json("gate", "review", "--change", REF, "--base", "main", "--no-run", "--allow-open")
     assert check(data, MODIFIED_TESTS)["ok"]
 

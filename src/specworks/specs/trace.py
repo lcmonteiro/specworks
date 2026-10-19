@@ -1,3 +1,4 @@
+# specworks: ignore-tags-start
 """Traceability: requirement -> acceptance criteria -> tasks -> tests -> code.
 
 Tests and code link back to the specs with comment tags, in any language::
@@ -19,7 +20,16 @@ not code or a test. Globs that name such files scan them.
 Globs follow the usual rules: ``*`` and ``?`` stay within one folder, ``**``
 spans any number of folders (``tests/**/*.py`` includes ``tests/test_x.py``).
 A tag may list several IDs: ``# @ac AC-AUTH-001.1, AC-AUTH-001.2``.
+
+Sample tags that are not the project's own (fixtures a test writes, examples in
+a docstring) are kept out with markers, in any comment syntax: the tags on a
+line holding ``specworks: ignore-tags`` are skipped, and so are the lines from
+a line holding only ``specworks: ignore-tags-start`` to one holding only
+``specworks: ignore-tags-end`` (or to the end of the file). A marker quoted in
+prose, like these, counts for nothing. Skipped tags count neither as tests or
+code nor as unknown tags.
 """
+# specworks: ignore-tags-end
 
 from __future__ import annotations
 
@@ -44,6 +54,8 @@ TEST_DIRS = {"test", "tests", "__tests__", "testing"}
 TEST_NAME_RE = re.compile(r"(^test_|_test\.|\.test\.|\.spec\.|Test\.|Tests\.|_spec\.)")
 MAX_FILE_BYTES = 1_000_000
 DOC_EXTENSIONS = {".md", ".markdown", ".mdx", ".rst", ".txt", ".adoc", ".asciidoc", ".org"}
+IGNORE_LINE_RE = re.compile(r"specworks: ignore-tags(?![-\w])")
+IGNORE_START, IGNORE_END = "specworks: ignore-tags-start", "specworks: ignore-tags-end"
 
 
 @dataclass
@@ -103,6 +115,27 @@ def scan_rule(module: Module, path: Path) -> tuple[bool, bool]:
     return not is_doc, False
 
 
+def _is_marker(line: str, marker: str) -> bool:
+    """``marker`` alone on the line, around comment punctuation only: a doc that quotes it in prose is not one."""
+    return marker in line and not any(ch.isalnum() for ch in line.replace(marker, "", 1))
+
+
+# @req REQ-SPECS-001, REQ-SPECS-002
+def _tag_lines(text: str) -> list[tuple[int, str]]:
+    """(number, line) of the lines whose tags count: not marked ``specworks: ignore-tags`` and not inside an
+    ignore block (``ignore-tags-start`` .. ``ignore-tags-end``, or the end of the file)."""
+    lines, ignoring = [], False
+    for number, line in enumerate(text.splitlines(), start=1):
+        if _is_marker(line, IGNORE_START):
+            ignoring = True
+        elif _is_marker(line, IGNORE_END):
+            ignoring = False
+        elif not ignoring and not IGNORE_LINE_RE.search(line):
+            lines.append((number, line))
+    return lines
+
+
+# @req REQ-SPECS-003
 def scan_tags(ws: Workspace) -> list[Tag]:
     """Every @req / @ac tag in the workspace, skipping hidden, vendored and workflow folders."""
     skip_roots = {(m.root / m.config.dir).resolve() for m in ws.modules()}
@@ -128,7 +161,7 @@ def scan_tags(ws: Workspace) -> list[Tag]:
                 continue
             if "@req" not in text and "@ac" not in text:
                 continue
-            for number, line in enumerate(text.splitlines(), start=1):
+            for number, line in _tag_lines(text):  # ignored lines never become tags, so no check sees them
                 for match in TAG_RE.finditer(line):
                     for tag_id in re.findall(TAG_ID, match.group("ids")):
                         tags.append(Tag(id=tag_id, kind=match.group("kind"), file=rel, line=number, is_test=is_test))

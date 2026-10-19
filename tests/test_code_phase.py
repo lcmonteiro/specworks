@@ -24,8 +24,8 @@ def set_test_command(root, command):
 def implement_everything(root):
     """Tests for every AC, @req tags for every requirement, every task ticked."""
     write_tests(root, "AC-AUTH-003.1", "AC-AUTH-003.2", "AC-AUTH-002.1")
-    (root / "src/auth/reset.py").write_text("# @req REQ-AUTH-003\ndef reset(): ...\n")
-    (root / "src/auth/lockout.py").write_text("# @req REQ-AUTH-002\nLIMIT = 3\n")
+    (root / "src/auth/reset.py").write_text("# @req REQ-AUTH-003\ndef reset(): ...\n")  # specworks: ignore-tags
+    (root / "src/auth/lockout.py").write_text("# @req REQ-AUTH-002\nLIMIT = 3\n")  # specworks: ignore-tags
     run_json("task", "done", "1.1", "1.2", "--change", REF)
 
 
@@ -77,7 +77,7 @@ def test_implement_gate_passes_when_everything_is_done(project):
 def test_implement_gate_lists_what_is_missing(project):
     set_test_command(project, PASS)
     write_tests(project, "AC-AUTH-003.1", "AC-AUTH-003.2", "AC-AUTH-002.1")
-    (project / "src/auth/reset.py").write_text("# @req REQ-AUTH-003\n")
+    (project / "src/auth/reset.py").write_text("# @req REQ-AUTH-003\n")  # specworks: ignore-tags
     code, data = run_json("gate", "code", "--change", REF)
     assert code == 1
     c = checks(data)
@@ -118,7 +118,7 @@ def test_removed_requirement_still_tagged_blocks_implement(project):
     )
     tasks = project / "spec/changes" / REF / "tasks.md"
     tasks.write_text(tasks.read_text() + "- [x] 2.2 Remove password login (REQ-AUTH-001)\n")
-    (project / "src/auth/login.py").write_text("# @req REQ-AUTH-001\n")
+    (project / "src/auth/login.py").write_text("# @req REQ-AUTH-001\n")  # specworks: ignore-tags
     code, data = run_json("gate", "code", "--change", REF)
     assert code == 1 and checks(data)["removed requirements and criteria are gone from tests and code"]["details"] == ["REQ-AUTH-001"]
 
@@ -134,7 +134,7 @@ def test_criteria_of_a_removed_requirement_still_tested_block_implement(project)
     )
     tasks = project / "spec/changes" / REF / "tasks.md"
     tasks.write_text(tasks.read_text() + "- [x] 2.2 Remove password login (REQ-AUTH-001)\n")
-    (project / "tests/test_login.py").write_text("# @ac AC-AUTH-001.1\ndef test_login(): ...\n")
+    (project / "tests/test_login.py").write_text("# @ac AC-AUTH-001.1\ndef test_login(): ...\n")  # specworks: ignore-tags
     code, data = run_json("gate", "code", "--change", REF)
     assert code == 1 and checks(data)["removed requirements and criteria are gone from tests and code"]["details"] == ["AC-AUTH-001.1"]
     (project / "tests/test_login.py").unlink()
@@ -149,7 +149,7 @@ def test_criterion_a_modified_requirement_drops_must_lose_its_tests(project):
     living.write_text(living.read_text() + "\n#### Scenario: AC-AUTH-002.2 Unlock by email\n- **WHEN** the user follows the email link\n- **THEN** the account is unlocked\n")
     set_test_command(project, PASS)
     implement_everything(project)
-    (project / "tests/test_unlock.py").write_text("# @ac AC-AUTH-002.2\ndef test_unlock(): ...\n")
+    (project / "tests/test_unlock.py").write_text("# @ac AC-AUTH-002.2\ndef test_unlock(): ...\n")  # specworks: ignore-tags
     code, data = run_json("gate", "test", "--change", REF)
     assert code == 0 and checks(data)["removed requirements and criteria are gone from tests and code"]["details"] == ["AC-AUTH-002.2"]
     code, data = run_json("gate", "code", "--change", REF)
@@ -161,16 +161,16 @@ def test_criterion_a_modified_requirement_drops_must_lose_its_tests(project):
     assert code == 0, data
 
 def test_tag_scan_skips_files_too_large_or_not_text(project):
-    (project / "src/auth/lockout.py").write_text("# @req REQ-AUTH-002\nLIMIT = 3\n")
-    (project / "src/auth/big.py").write_text("# @req REQ-AUTH-003\n" + "x = 1\n" * 200_000)  # over 1 MB: not read
-    (project / "src/auth/legacy.py").write_bytes("# @req REQ-AUTH-003 café\n".encode("latin-1"))  # not UTF-8: not read
+    (project / "src/auth/lockout.py").write_text("# @req REQ-AUTH-002\nLIMIT = 3\n")  # specworks: ignore-tags
+    (project / "src/auth/big.py").write_text("# @req REQ-AUTH-003\n" + "x = 1\n" * 200_000)  # over 1 MB: not read  # specworks: ignore-tags
+    (project / "src/auth/legacy.py").write_bytes("# @req REQ-AUTH-003 café\n".encode("latin-1"))  # not UTF-8: not read  # specworks: ignore-tags
     code, data = run_json("trace", "--change", REF)
     assert data["gaps"]["reqWithoutCode"] == ["REQ-AUTH-003"]
 
 
 def test_tag_scan_follows_a_symlink_to_a_file_outside_the_workspace(project, tmp_path_factory):
     shared = tmp_path_factory.mktemp("shared") / "reset.py"
-    shared.write_text("# @req REQ-AUTH-003\n")
+    shared.write_text("# @req REQ-AUTH-003\n")  # specworks: ignore-tags
     try:
         (project / "src/auth/reset.py").symlink_to(shared)
     except OSError:  # Windows without the symlink privilege

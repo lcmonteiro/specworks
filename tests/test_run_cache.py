@@ -47,7 +47,7 @@ def test_code_changes_rerun_but_workflow_files_do_not(counted):
     (repo / "spec/changes" / REF / "review.md").write_text("# Review\n")  # workflow folder: not part of the tree
     gate_tests()
     assert runs(counter) == 1
-    (repo / "src/auth/reset.py").write_text("# @req REQ-AUTH-003\ndef reset(): return 1\n")  # tracked file changed
+    (repo / "src/auth/reset.py").write_text("# @req REQ-AUTH-003\ndef reset(): return 1\n")  # tracked file changed  # specworks: ignore-tags
     gate_tests()
     assert runs(counter) == 2
     (repo / "src/auth/notes.py").write_text("a = 1\n")  # new untracked file

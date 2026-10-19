@@ -117,9 +117,9 @@ def test_new_capability_must_be_registered_first(ready):
         "### Requirement: REQ-AUDIT-LOG-001 Log resets\nThe system SHALL log every password reset.\n\n"
         "#### Scenario: AC-AUDIT-LOG-001.1 Reset logged\n- **WHEN** a reset is requested\n- **THEN** an audit event is stored\n"
     )
-    (ready / "tests/test_audit.py").write_text("# @ac AC-AUDIT-LOG-001.1\n")
+    (ready / "tests/test_audit.py").write_text("# @ac AC-AUDIT-LOG-001.1\n")  # specworks: ignore-tags
     (ready / "src/audit").mkdir()
-    (ready / "src/audit/log.py").write_text("# @req REQ-AUDIT-LOG-001\n")
+    (ready / "src/audit/log.py").write_text("# @req REQ-AUDIT-LOG-001\n")  # specworks: ignore-tags
     tasks = ready / CHANGE_DIR / "tasks.md"
     tasks.write_text(tasks.read_text() + "- [x] 2.2 Log resets (AC-AUDIT-LOG-001.1)\n")
     review = ready / CHANGE_DIR / "review.md"

@@ -137,10 +137,10 @@ def test_red_suite_is_only_a_warning_once_the_change_has_tests(planned):
     write_design(planned, "None.")
     set_commands(planned, test=FAIL)
     (planned / "tests").mkdir()
-    (planned / "tests/test_other.py").write_text("# @ac AC-OTHER-001.1\ndef test_other(): ...\n")  # not this change
+    (planned / "tests/test_other.py").write_text("# @ac AC-OTHER-001.1\ndef test_other(): ...\n")  # not this change  # specworks: ignore-tags
     code, checks = gate()
     assert code == 1 and checks[TESTS]["blocking"] is True
-    (planned / "tests/test_reset.py").write_text("# @ac AC-AUTH-003.1\ndef test_request(): assert False\n")
+    (planned / "tests/test_reset.py").write_text("# @ac AC-AUTH-003.1\ndef test_request(): assert False\n")  # specworks: ignore-tags
     code, checks = gate()
     assert code == 0 and checks[TESTS]["ok"] is False and checks[TESTS]["blocking"] is False
     assert "already has @ac tests" in checks[TESTS]["details"][0]
