@@ -321,3 +321,38 @@ def test_module_add_refuses_a_folder_outside_the_project(workspace, tmp_path_fac
         code, data = run_json("module", "add", path)
         assert code == 1 and "must be a folder inside" in data["error"], path
     assert "elsewhere" not in (workspace / "spec.yml").read_text()
+
+
+def set_capabilities(cfg, block):
+    cfg.write_text(cfg.read_text().replace("capabilities: {}", "capabilities:\n" + block))
+
+
+# @ac AC-PROJ-016.1
+def test_two_capabilities_on_one_path_are_refused(workspace):
+    set_capabilities(workspace / "spec.yml", "  auth:\n    path: src/auth\n  login:\n    path: src/auth/\n")
+    code, data = run_json("context")
+    assert code == 1 and "auth" in data["error"] and "login" in data["error"] and "src/auth/docs" in data["error"]
+
+
+# @ac AC-PROJ-016.2
+def test_capabilities_of_two_modules_on_one_folder_are_refused(workspace):
+    set_capabilities(workspace / "spec.yml", "  top-invoices:\n    path: services/billing/src/invoices\n")
+    code, data = run_json("context")
+    assert code == 1 and "top-invoices" in data["error"] and "billing:invoices" in data["error"]
+
+
+# @ac AC-PROJ-016.3
+def test_nested_capability_paths_load(workspace):
+    set_capabilities(workspace / "spec.yml", "  auth:\n    path: src/auth\n  admin:\n    path: src/auth/admin\n")
+    code, data = run_json("context")
+    docs = {c["name"]: c["docsPath"] for c in data["capabilities"]}
+    assert code == 0 and docs["auth"] == "src/auth/docs" and docs["admin"] == "src/auth/admin/docs"
+
+
+# @ac AC-PROJ-016.4
+def test_capability_add_refuses_a_taken_path(workspace):
+    run_json("capability", "add", "auth", "--path", "src/auth")
+    before = (workspace / "spec.yml").read_text()
+    code, data = run_json("capability", "add", "login", "--path", "src/auth")
+    assert code == 1 and "auth" in data["error"] and "src/auth/docs" in data["error"]
+    assert (workspace / "spec.yml").read_text() == before
