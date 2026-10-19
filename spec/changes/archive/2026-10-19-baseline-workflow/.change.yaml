@@ -1,6 +1,6 @@
 name: baseline-workflow
 created: '2026-10-19T21:16:42'
-phase: review
+phase: done
 specified:
   REQ-FLOW-001: 8b6864998344
   REQ-FLOW-002: 09f288d2c002
