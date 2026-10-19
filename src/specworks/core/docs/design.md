@@ -74,7 +74,7 @@ exits 1. (baseline-project)
 - `src/specworks/core/workspace.py`: `load_workspace(start=None) -> Workspace | None`,
   `require_workspace(start) -> Workspace`, `Workspace` (`modules`,
   `module(name)`, `split(ref)`, `context_chain`, `merged_context`, `commands`,
-  `owner(path)`, `capabilities`, `prefixes`), `Module`,
+  `owner(path)`, `capabilities`, `prefixes`, `docs_folder(module, path)`, `docs_folders`), `Module`,
   `capability_prefix(module_name, name, prefix="")`.
 - `src/specworks/core/config_file.py`: `write_default_config`,
   `add_module_entry`, `add_capability_entry`.
