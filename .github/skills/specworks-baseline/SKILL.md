@@ -1,6 +1,6 @@
 ---
 name: specworks-baseline
-description: Baseline one capability of a project that already has code - record the behaviour the code already has as requirements, tie them to the existing tests and code with @ac / @req tags, and hand the change over to close so the capability gets its living spec. No behaviour change. Use after /specworks-adopt, once per capability (each baseline closed before the next), whenever a specworks capability has no living spec yet, or when the user says "baseline", "baseline <capability>", "record what <capability> does today" or "specworks baseline".
+description: Baseline one capability of a project that already has code - record the behaviour the code already has as requirements, tie them to the existing tests and code with @ac / @req tags, and hand the reviewed change over to /specworks-done (validate, then close) so the capability gets its living spec. No behaviour change. Use after /specworks-adopt, once per capability (each baseline closed before the next), whenever a specworks capability has no living spec yet, or when the user says "baseline", "baseline <capability>", "record what <capability> does today" or "specworks baseline".
 ---
 
 Baseline: record the behaviour one capability already has, so later changes
