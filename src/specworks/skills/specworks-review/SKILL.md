@@ -145,7 +145,8 @@ earliest of those phases (`specworks cycle --change "<ref>"`).
    modified), the design/API changes, the code changes, anything accepted, and
    any change sent back to an earlier phase (then stop there instead of
    suggesting validate). End with: "When you are
-   ready, run `/specworks-validate <ref>` for the final check before closing."
+   ready, run `/specworks-done <ref>` to validate and close it (or
+   `/specworks-validate <ref>` for the final check alone)."
 
 ---
 

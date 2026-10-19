@@ -16,7 +16,7 @@ capability:
 /specworks-adopt
 for each capability:
     /specworks-baseline <capability>
-    /specworks-close baseline-<capability>
+    /specworks-done baseline-<capability>     # validate, then close
 ```
 
 Adopt itself never baselines: it ends by handing over to the first
@@ -141,7 +141,7 @@ does the same for that command.
 
    "specworks is set up. Next, each capability gets its living spec, one
    at a time: run `/specworks-baseline <first capability>`, then
-   `/specworks-close baseline-<first capability>`, and so on for the
+   `/specworks-done baseline-<first capability>`, and so on for the
    others (in the order of the table). A baseline records the behaviour the
    capability already has, so later changes can MODIFY its requirements
    instead of only ADDING them."

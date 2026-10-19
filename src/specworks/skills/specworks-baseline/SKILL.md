@@ -8,8 +8,9 @@ Baseline: record the behaviour one capability already has, so later changes
 can MODIFY its requirements instead of only ADDING them. A baseline is an
 ordinary change named `baseline-<capability>` whose specs ADD the existing
 behaviour. Its tests and code exist, so the test and code phases only add
-tags; `/specworks-close` then writes the living spec exactly as for any other
-change.
+tags. This skill runs the change up to review; `/specworks-done` then
+validates it and closes it, which writes the living spec exactly as for any
+other change.
 
 **One capability per run.** After `/specworks-adopt`, the capabilities are
 baselined one after another, each closed before the next:
@@ -17,7 +18,7 @@ baselined one after another, each closed before the next:
 ```
 for each capability:
     /specworks-baseline <capability>
-    /specworks-close baseline-<capability>
+    /specworks-done baseline-<capability>     # validate, then close
 ```
 
 **Boundary**: a baseline changes no behaviour. It writes a change folder and
@@ -153,7 +154,7 @@ fixes the code, even a bug it finds.
    function or class that decides the behaviour, not every caller). Change
    nothing else. Tick the code tasks.
 
-8. **Review and validate**
+8. **Review**
 
    ```bash
    specworks start review --change "<ref>"
@@ -161,19 +162,15 @@ fixes the code, even a bug it finds.
    ```
    Write `review.md` (`specworks instructions review --change "<ref>" --json`).
    The only changed files should be tests and code that gained tags (and any
-   new test); a code change other than a tag is a finding. Then:
-   ```bash
-   specworks start validate --change "<ref>"
-   specworks validate --change "<ref>"
-   ```
-   Every failure names the step to go back to.
+   new test); a code change other than a tag is a finding: undo it, then
+   close the finding. Leave no finding open.
 
-9. **Hand over to close**
+9. **Hand over to done**
 
    Show the summary: requirements and criteria recorded, tests tagged and
    added, files tagged, the suspected bugs left out. End with:
-   "The baseline of `<capability>` passes validate. Run `/specworks-close
-   baseline-<capability>` to write its living spec; then
+   "The baseline of `<capability>` is reviewed. Run `/specworks-done
+   baseline-<capability>` to validate it and write its living spec; then
    `/specworks-baseline` for the next capability. The suspected bugs can
    each start with `/specworks-refine`."
 

@@ -148,8 +148,8 @@ does the same for that command.
    Summarize per cycle: the phases run, the API agreed or changed, tests
    added, the code written, and the findings (found, resolved, accepted).
    Run `specworks trace --change "<ref>" --write`. End with: "The build is
-   complete. When you are ready, run `/specworks-validate <ref>` for the final
-   check before closing."
+   complete. When you are ready, run `/specworks-done <ref>` to validate and
+   close it (or `/specworks-validate <ref>` for the final check alone)."
 
 ---
 

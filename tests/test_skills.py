@@ -161,15 +161,27 @@ def test_adopt_stops_after_mapping_and_hands_baselines_to_their_own_skill():
 
 def test_adopt_baseline_and_close_chain_through_every_capability():
     # After adopt, each capability is baselined and closed in turn; each skill names the next step.
-    loop = "for each capability:\n    /specworks-baseline <capability>\n    /specworks-close baseline-<capability>"
+    loop = "for each capability:\n    /specworks-baseline <capability>\n    /specworks-done baseline-<capability>"
     assert loop in read_skill("specworks-adopt") and loop in read_skill("specworks-baseline")
     assert "then\n   `/specworks-baseline` for the next capability" in read_skill("specworks-baseline")
     assert "the next capability with 0 requirements" in read_skill("specworks-close")
 
 
+def test_done_closes_only_after_validate_passes():
+    # done chains the two phase skills; a FAIL must stop it before close changes anything.
+    text = read_skill("specworks-done")
+    assert "`specworks-validate` and `specworks-close`" in text
+    steps = text.split("## Steps", 1)[1]
+    assert steps.index("follow `specworks-validate`") < steps.index("follow `specworks-close`")
+    assert "**FAIL**" in steps and "Nothing is closed." in steps
+    # Running both phases in one go still waits for the go-ahead on the merge plan.
+    assert "does not skip it" in text
+
+
 def test_baseline_checks_the_suite_before_creating_its_change():
     text = read_skill("specworks-baseline")
-    assert 'specworks new "baseline-<capability>" --json' in text and "/specworks-close" in text
+    assert 'specworks new "baseline-<capability>" --json' in text and "/specworks-done" in text
+    assert "specworks validate" not in text  # validate runs once, in /specworks-done
     # A red suite fails the design and code gates; checking it first stops before the change is created.
     assert text.index("specworks run test\n") < text.index('specworks new "baseline-<capability>"')
     # A project with no capabilities is adopted first; the baseline never registers one itself.

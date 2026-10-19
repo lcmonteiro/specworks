@@ -57,8 +57,9 @@ Then, in your agent:
 3. **`/specworks-specify`**: requirements and acceptance criteria, confirmed with you,
    then design notes and tasks.
 4. **`/specworks-build`**: design → test → code → review, in cycles until the review is clean.
-5. **`/specworks-validate`**, then **`/specworks-close`**: the final check, then the
-   requirements merged into the living spec next to the code.
+5. **`/specworks-done`**: the final check (`/specworks-validate`) and, only if it
+   passes, the requirements merged into the living spec next to the code
+   (`/specworks-close`). The two skills also run on their own.
 
 The [walkthrough](https://github.com/lcmonteiro/specworks/wiki/Walkthrough) follows one small change through every
 phase in five minutes.
@@ -70,19 +71,23 @@ gets its living spec, one at a time:
 /specworks-adopt
 for each capability:
     /specworks-baseline <capability>
-    /specworks-close baseline-<capability>
+    /specworks-done baseline-<capability>     # validate, then close
 ```
 
 **`/specworks-baseline`** records the behaviour the code already has as a
 `baseline-<capability>` change: requirements read from the existing tests and code,
 confirmed with you, `@ac` / `@req` tags added, no behaviour change. Suspected bugs
-are left out, each a candidate for its own change. `/specworks-close` writes the
-capability's living spec and names the next capability to baseline.
+are left out, each a candidate for its own change. `/specworks-done` validates it,
+writes the capability's living spec and names the next capability to baseline.
 
 **`/specworks-build`** runs design → test → code → review in one go, each phase
 exactly as its own skill. When the review has findings, it asks whether to start a
 new cycle, and starts it at the earliest phase the findings need; a spec finding
 stops the build and hands over to `/specworks-specify`.
+
+**`/specworks-done`** finishes a reviewed change: it runs `/specworks-validate` and,
+only on PASS, `/specworks-close`, each exactly as its own skill. A FAIL stops before
+anything is closed and names the phase to go back to.
 
 ## AI tools
 
