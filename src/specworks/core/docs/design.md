@@ -34,6 +34,17 @@ config that doesn't list the project is ignored, so an unrelated project
 around it can't break it. Context is inherited top level first, and commands
 are overridden key by key. (baseline-project)
 
+### Each capability owns its ID prefix and its docs folder
+
+A workspace refuses to load when two capabilities, in any modules, share an ID
+prefix, given or derived, or resolve to the same living-docs folder
+(`<module root>/<path>/<docs_dir>`). Either would let one capability's
+requirements land in the other's IDs or spec.md. Nested paths are fine.
+`capability add` checks both before writing, against the path as the config
+will store it, so its error names the capability that owns the prefix or
+folder. Sharing a folder on purpose (one docs file per capability) was rejected
+as unasked-for. (baseline-project, unique-capability-paths)
+
 ### Config edits keep comments
 
 Entries are added by editing the config as text, never by dumping YAML. The
