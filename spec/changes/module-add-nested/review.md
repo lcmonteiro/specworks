@@ -6,6 +6,7 @@ Base: `origin/main`
 
 - [ ] R1 **spec-gap** `module add` around an existing module (`module add services` after `module add services/billing`, from the top level) writes the link, after which the new loading check (AC-PROJ-006.8) refuses the workspace and every command fails until the config is fixed by hand. No criterion of REQ-CLI-005 covers a folder that holds a module (`src/specworks/cli/project.py:220`)
   - **Decision**: back to specify: add AC-CLI-005.7 to REQ-CLI-005: `module add` refuses a folder that holds a module already in the workspace, naming that module, and writes nothing. Chosen with the user over moving the inner links or accepting the load error.
+  - done in specify: REQ-CLI-005 MODIFIED again: its description says `module add` refuses a folder that holds a module, and AC-CLI-005.7 was added; design decision and tasks 3.1-3.2 added
 
 ## Changed files without tags
 

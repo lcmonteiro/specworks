@@ -41,6 +41,16 @@ loaded, so they are not checked. Checking inside `_load_tree` was rejected: a
 later sibling can be the container, so the check needs the whole tree.
 Serves: REQ-PROJ-006.
 
+### `module add` refuses a folder around a module before writing
+
+Before creating any config, `module_add` looks for a module of the loaded
+workspace whose folder lies strictly inside the new folder, and fails naming
+it: `services holds module 'billing' (services/billing); a module can't be
+added around another one`. A folder that is itself a module keeps today's
+"already linked" refusal. Rolling back after a failed re-load was rejected: it
+would still leave the new folder's config and changes folder behind. Moving the
+inner links was rejected with the user (review R1). Serves: REQ-CLI-005.
+
 ## Interfaces
 
 None: `module add`'s arguments and JSON output keep their shape; the new check

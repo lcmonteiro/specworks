@@ -9,3 +9,8 @@
 
 - [x] 2.1 Write a failing test in `tests/test_modules.py` for AC-CLI-005.6 (`module add services/billing/sub` from the top level) tagged `@ac`; verify it fails because the link lands in the top level's config
 - [x] 2.2 In `module_add`, write the link into `ws.owner(root)`'s config with the path relative to it, and print the full module name (REQ-CLI-005) tagged `@req REQ-CLI-005`; verify the 2.1 test and the existing AC-CLI-005.x tests pass
+
+## 3. `module add` refuses a folder around a module (review R1)
+
+- [ ] 3.1 Write a failing test in `tests/test_modules.py` for AC-CLI-005.7 (`module add services` around `services/billing`) tagged `@ac`; verify it fails because the link is written and the workspace no longer loads
+- [ ] 3.2 In `module_add`, refuse a folder that holds a module of the workspace, naming it, before writing anything (REQ-CLI-005) tagged `@req REQ-CLI-005`; verify the 3.1 test and the existing AC-CLI-005.x tests pass
