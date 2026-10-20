@@ -31,7 +31,11 @@ so a skill can tell "not set up" from a crash. (baseline-cli)
 ### Paths are relative to the workspace root
 
 Every path printed is relative to the top-level project, which `context` prints
-as `root`. (baseline-cli)
+as `root`. An option that names a folder of the workspace (`diagrams --dir`) is
+read from the root too, so a printed path works from any folder, and a folder
+that doesn't exist is refused. `init <path>` and `module add <path>` stay
+relative to the working directory: they name a folder where the user stands.
+(baseline-cli, diagrams-dir-root)
 
 ### A change reference is forgiving but never ambiguous
 

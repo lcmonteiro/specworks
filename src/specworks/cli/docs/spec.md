@@ -246,8 +246,9 @@ real close runs the project's commands before writing.
 `diagrams` SHALL render the diagrams of a change (`--change`) or of a folder
 inside the workspace (`--dir`), or list the themes (`--themes`) with the ones in
 use and the d2 found. It requires one of these. `--check` SHALL only report the
-diagrams' states and exit 1 when any is missing or stale. A folder outside the
-workspace SHALL be refused.
+diagrams' states and exit 1 when any is missing or stale. A relative `--dir` SHALL be
+resolved from the workspace root, wherever the command runs. A folder outside
+the workspace, or one that doesn't exist, SHALL be refused.
 
 #### Scenario: AC-CLI-008.1 What to render
 
@@ -273,3 +274,14 @@ workspace SHALL be refused.
 
 - **WHEN** `--dir` names a folder outside the workspace
 - **THEN** it is refused with `is outside the workspace`
+
+#### Scenario: AC-CLI-008.6 From a subfolder
+
+- **GIVEN** a working directory inside a module of the workspace
+- **WHEN** `diagrams --dir src/auth/docs` runs, the folder named relative to the workspace root
+- **THEN** that folder's diagrams are rendered
+
+#### Scenario: AC-CLI-008.7 A folder that doesn't exist
+
+- **WHEN** `--dir` names a folder that doesn't exist
+- **THEN** it fails with `no folder`, naming the folder relative to the root, and renders nothing
