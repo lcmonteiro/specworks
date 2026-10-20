@@ -65,7 +65,9 @@ tags at the base) was left for later. (review-deleted-files)
 A checkbox the parser can't read, or an open finding with no known type or
 `back to <phase>:`, fails the review gate and validate, even inside a build.
 A finding the parser misses would otherwise let a gate pass with it still open.
-(baseline-workflow)
+The same goes for any checkbox outside a finding, at the top level or indented
+under another bullet: only sub-steps inside a finding's block are allowed, so
+open work can't hide behind indentation. (baseline-workflow, review-indented-checkboxes)
 
 ### Build cycles start at the earliest phase a finding needs
 

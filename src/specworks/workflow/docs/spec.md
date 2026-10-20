@@ -296,9 +296,9 @@ The system SHALL read each finding in review.md as a checkbox with its ID
 first bold word that is a known type, in any case). It SHALL route the finding
 to the phase of its type, or to the phase of a `back to <phase>:` in its own
 block, and after a `done in <phase>:` to the phase after that one. HTML comments
-and code fences SHALL be ignored. A top-level checkbox that is not a finding,
-and an open finding with no known type or phase, SHALL be reported as
-unreadable.
+and code fences SHALL be ignored. A checkbox outside a finding's block (at the
+top level or indented, ticked or not), and an open finding with no known type or
+phase, SHALL be reported as unreadable.
 
 #### Scenario: AC-FLOW-010.1 Finding variants
 
@@ -319,6 +319,12 @@ unreadable.
 
 - **WHEN** a finding appears in a code fence, or a fence or sub-checkbox sits under a finding
 - **THEN** the fenced finding is an example, and the finding above the fence stays open and routed
+
+#### Scenario: AC-FLOW-010.5 A checkbox indented outside any finding
+
+- **GIVEN** review.md with `- Follow-ups:` followed by `  - [ ] reset still ignores case`, and no finding above it
+- **WHEN** it is read
+- **THEN** the checkbox is reported as unreadable, so the review gate fails (also with `--allow-open`); the same checkbox under a finding stays part of that finding
 
 ### Requirement: REQ-FLOW-011 Gate review
 
