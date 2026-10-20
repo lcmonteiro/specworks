@@ -147,7 +147,9 @@ modules, have the same requirement ID prefix, given or derived.
 
 The system SHALL load a workspace made of a top-level project and the modules
 its config lists (recursively), each a project with its own config of the same
-file name. A folder SHALL be at most one module: a module whose folder (with
+file name. A module's folder (with symlinks resolved) SHALL be
+inside the top level's, or loading SHALL fail naming the module and where its
+folder is. A folder SHALL be at most one module: a module whose folder (with
 symlinks resolved) is an ancestor or another module of the workspace SHALL make
 loading fail, naming both. A module SHALL be listed by the innermost
 module whose folder contains it: one listed by a module further up SHALL make
@@ -199,6 +201,12 @@ nearest config to each ancestor that lists it as a module.
 - **GIVEN** a top level listing `billing: services/billing` and `sub: services/billing/sub`
 - **WHEN** the workspace is loaded
 - **THEN** it fails naming module `sub` and `billing`, the module it belongs under
+
+#### Scenario: AC-PROJ-006.9 A module outside the workspace
+
+- **GIVEN** a project listing `ext: ext`, where `ext` is a symlink to a folder outside the project
+- **WHEN** the workspace is loaded
+- **THEN** it fails (no crash) naming module `ext` and the folder it leads to, whether or not that folder has a config
 
 ### Requirement: REQ-PROJ-007 What a module inherits
 

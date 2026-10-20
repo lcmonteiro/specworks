@@ -38,9 +38,12 @@ ancestor, or a folder linked twice, fails with an error naming both instead of
 recursing or loading the folder under two names.
 A module must be listed by the innermost module holding its folder: one listed
 further up fails with an error naming the module it belongs under, so the
-workspace has the same shape from every folder. A module no other module holds
-(one symlinked outside the workspace) is not checked.
-(baseline-project, module-cycle-detection, module-add-nested)
+workspace has the same shape from every folder. A module's folder, with
+symlinks resolved, must be inside the top level's, so every path the CLI prints
+is relative to the root; it is checked before the module's config is read.
+Supporting modules outside the workspace was rejected: every path is resolved,
+so each one would need rethinking.
+(baseline-project, module-cycle-detection, module-add-nested, module-outside-workspace)
 
 ### Each capability owns its ID prefix and its docs folder
 
