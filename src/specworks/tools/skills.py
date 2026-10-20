@@ -144,7 +144,10 @@ def remove_stale_skills(root: Path, tools: list[Tool]) -> list[Path]:
         skills = root / tool.skills_dir
         for folder in sorted(skills.iterdir()) if skills.is_dir() else []:
             if folder.is_dir() and _stale(folder.name, shipped):
-                shutil.rmtree(folder)
+                if folder.is_symlink():
+                    folder.unlink()  # only the link: its target is not ours to delete
+                else:
+                    shutil.rmtree(folder)
                 removed.append(folder)
         prompts = root / tool.prompts_dir if tool.prompts_dir else None
         for prompt in sorted(prompts.glob("*.prompt.md")) if prompts and prompts.is_dir() else []:

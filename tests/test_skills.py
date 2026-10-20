@@ -313,3 +313,19 @@ def test_skills_that_are_no_longer_shipped_are_removed(tmp_path, monkeypatch):
         else:
             assert not (tmp_path / path).exists() and f"removed {path}" in result.output, path
     assert all((tmp_path / f".claude/skills/{name}/SKILL.md").is_file() for name in packaged_skills())
+
+
+# @ac AC-INTEG-005.6
+def test_a_stale_skill_that_is_a_symlink_is_unlinked_not_followed(tmp_path, monkeypatch):
+    init(tmp_path, monkeypatch, "--tools", "claude")
+    target = tmp_path / "elsewhere/specworks-verify"
+    target.mkdir(parents=True)
+    (target / "SKILL.md").write_text("old\n")
+    try:
+        (tmp_path / ".claude/skills/specworks-verify").symlink_to(target, target_is_directory=True)
+    except OSError:  # Windows without the symlink privilege
+        pytest.skip("cannot create symlinks here")
+    result = runner.invoke(app, ["skills", "--tools", "claude"])
+    assert result.exit_code == 0, result.output
+    assert "removed .claude/skills/specworks-verify" in result.output
+    assert not (tmp_path / ".claude/skills/specworks-verify").exists() and (target / "SKILL.md").is_file()
