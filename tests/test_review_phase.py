@@ -236,3 +236,38 @@ def test_a_change_from_the_first_commit_has_nothing_to_start_from(project, monke
     git(project, "commit", "-q", "-m", "everything at once")
     code, data = run_json("review", "--change", REF, "--base", "main")
     assert f"HEAD is on main and no earlier commit marks where {REF} started" in data["note"]
+
+
+def delete_on_the_branch(repo):
+    """main gains a test file and a doc; the feature branch then deletes them and a source file."""
+    git(repo, "checkout", "-q", "main")
+    (repo / "tests").mkdir(exist_ok=True)
+    (repo / "tests/test_old.py").write_text("def test_old(): ...\n")
+    (repo / "README.md").write_text("docs\n")
+    git(repo, "add", "-A")
+    git(repo, "commit", "-q", "-m", "old test and readme")
+    git(repo, "checkout", "-q", "feature")
+    git(repo, "merge", "-q", "main")
+    for path in ("src/auth/session.py", "tests/test_old.py", "README.md"):
+        (repo / path).unlink()
+
+
+# @ac AC-FLOW-009.7
+def test_review_lists_deleted_files(repo):
+    delete_on_the_branch(repo)
+    code, data = run_json("review", "--change", REF, "--base", "main")
+    deleted = {f["path"]: f.get("was") for f in data["changedFiles"] if f["kind"] == "deleted"}
+    assert deleted == {"src/auth/session.py": "source", "tests/test_old.py": "test", "README.md": "other"}
+    assert findings(data)["deletedFiles"] == ["src/auth/session.py", "tests/test_old.py"]
+
+
+# @ac AC-FLOW-011.6
+def test_gate_review_requires_deleted_files_accounted_for(repo):
+    delete_on_the_branch(repo)
+    write_review(repo, "None.\n")
+    code, data = run_json("gate", "review", "--change", REF, "--base", "main")
+    assert code == 1
+    assert checks(data)["changed files without tags are accounted for in review.md"]["details"] == ["src/auth/session.py", "tests/test_old.py"]
+    write_review(repo, "None.\n\n## Changed files without tags\n\n- `src/auth/session.py`: dead code\n- `tests/test_old.py`: its test\n")
+    code, data = run_json("gate", "review", "--change", REF, "--base", "main")
+    assert code == 0, data
