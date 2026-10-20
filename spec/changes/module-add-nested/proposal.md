@@ -14,6 +14,9 @@ suspected bug 11 of `baseline-cli`; refinement.md, option A).
   folder's full module name (`billing/sub`).
 - Loading a workspace fails when a module's folder lies inside another module
   of the workspace that doesn't list it, naming the module it belongs under.
+- `module add` refuses a folder that holds a module of the workspace, naming
+  it, before writing anything; otherwise the new loading check would refuse
+  the workspace it leaves behind (review R1).
 - `module add` keeps refusing what it refuses today (a folder outside the
   current project, an existing config with another name, a duplicate).
 
@@ -27,7 +30,7 @@ None.
 
 - `cli`: REQ-CLI-005 "Registering modules and capabilities" MODIFIED. Its
   description says the link goes into the innermost module containing the
-  folder, and it gets a new criterion, AC-CLI-005.6.
+  folder, and it gets new criteria AC-CLI-005.6 and AC-CLI-005.7.
 - `project`: REQ-PROJ-006 "Workspace of modules" MODIFIED. Its description says
   a module must be listed by the innermost module containing it, and it gets a
   new criterion, AC-PROJ-006.8.

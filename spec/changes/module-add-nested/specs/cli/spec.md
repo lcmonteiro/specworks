@@ -7,7 +7,8 @@
 `module add <path>` SHALL refuse a folder that is not inside the current
 project, create the module's config with the workspace's name when it has none,
 and link it in the config of the innermost module that contains the folder,
-printing the folder's full module name. `capability add` SHALL refuse an ID prefix, given or derived,
+printing the folder's full module name. It SHALL refuse a folder that holds a
+module of the workspace, naming that module, before writing anything. `capability add` SHALL refuse an ID prefix, given or derived,
 already used by another capability, and SHALL register a capability in the
 module `--module` names.
 
@@ -41,3 +42,9 @@ module `--module` names.
 - **GIVEN** module `billing` at `services/billing`
 - **WHEN** `module add services/billing/sub` runs from the top level
 - **THEN** billing's config lists `sub: sub`, the top level's config is unchanged, and the output names module `billing/sub`
+
+#### Scenario: AC-CLI-005.7 A folder around an existing module
+
+- **GIVEN** module `billing` at `services/billing`
+- **WHEN** `module add services` runs from the top level
+- **THEN** it is refused naming module `billing`, no config is written or changed, and the workspace still loads
