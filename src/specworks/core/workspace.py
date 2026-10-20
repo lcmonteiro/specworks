@@ -195,16 +195,20 @@ def _load_tree(config: Config, name: str, parent: Module | None, missing: list[M
     """``seen``: the resolved folder of every module loaded so far -> its label; a folder is at most one module."""
     module = Module(name=name, config=config, parent=parent)
     seen[config.root.resolve()] = module.label
+    top_root = next(iter(seen))  # the first folder loaded is the top level's
     for child_name, child_path in config.modules.items():
         child_root = (config.root / child_path).resolve()
         full_name = f"{name}/{child_name}" if name else child_name
         if child_root in seen:  # a symlink back to an ancestor (a cycle), or a folder linked twice
             owner = seen[child_root] if seen[child_root] == "(top)" else f"module '{seen[child_root]}'"
-            top_root = next(iter(seen))  # the first folder loaded is the top level's
-            where = child_root.relative_to(top_root).as_posix() or "." if child_root.is_relative_to(top_root) else child_root.as_posix()
             raise ConfigError(
-                f"module '{full_name}' ({where}) is the same folder as {owner}; "
+                f"module '{full_name}' ({child_root.relative_to(top_root).as_posix() or '.'}) is the same folder as {owner}; "
                 "a folder can be only one module, so remove one of the links"
+            )
+        if not child_root.is_relative_to(top_root):  # every path the CLI prints is relative to the top level
+            raise ConfigError(
+                f"module '{full_name}' ({child_path}) leads outside the workspace, to {child_root}; "
+                "a module's folder must be inside the top level's"
             )
         child_config = load_module_config(child_root, full_name, config.dir)
         if child_config is None:
@@ -267,9 +271,8 @@ def _check_nesting(ws: Workspace) -> None:
         container = max(
             (m for m in ws.modules() if m is not module and module.root.is_relative_to(m.root)),
             key=lambda m: len(m.root.parts),
-            default=None,  # e.g. a module symlinked to a folder outside the workspace: nothing can list it past its container
-        )
-        if container is not None and container is not module.parent:
+        )  # never empty: every module is inside the top level's folder
+        if container is not module.parent:
             raise ConfigError(
                 f"module '{module.name}' ({ws.rel(module.root)}) is inside module '{container.label}'; "
                 f"list it in {container.label}'s config instead of {module.parent.label}'s"
