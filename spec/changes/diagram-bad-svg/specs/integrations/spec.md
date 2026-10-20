@@ -27,5 +27,5 @@ a crash.
 
 #### Scenario: AC-INTEG-003.4 An SVG that can't be stamped
 
-- **WHEN** d2 succeeds but writes an SVG whose `<?xml` declaration never closes, writes no SVG, or writes one that isn't UTF-8
-- **THEN** that diagram fails with `cannot render <name>.d2: …`, the other diagrams of the run still render, and the command exits 1
+- **WHEN** d2 succeeds but writes an SVG whose `<?xml` declaration never closes, or one that isn't UTF-8, or writes no SVG at all
+- **THEN** that diagram fails, with `cannot render <name>.d2: …` for the first two and d2's own `… no SVG was written …` message naming it for the third; the other diagrams of the run still render, and the command exits 1

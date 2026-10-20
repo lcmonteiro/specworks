@@ -9,9 +9,11 @@ bug 8 of `baseline-integrations`; refinement.md, option A).
 
 ## What Changes
 
-- Reading and stamping the SVG d2 wrote join the render's error handling. Each
-  of those cases is reported as `cannot render <name>.d2: …` for that diagram.
-  The other diagrams still render, and the command exits 1.
+- Reading and stamping the SVG d2 wrote join the render's error handling. An
+  unclosed declaration and non-UTF-8 output are reported as
+  `cannot render <name>.d2: …` for that diagram. No SVG at all was already
+  reported by pyd2 (`… no SVG was written …`), and stays as it is. The other
+  diagrams still render, and the command exits 1.
 - A well-formed SVG is stamped exactly as today.
 
 ## Capabilities

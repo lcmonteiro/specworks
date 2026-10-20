@@ -1,5 +1,5 @@
 name: diagram-bad-svg
 created: '2026-10-20T18:09:15'
-phase: test
+phase: specify
 specified:
   REQ-INTEG-003: 9c44b4657c8b
