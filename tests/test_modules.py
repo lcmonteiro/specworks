@@ -422,3 +422,13 @@ def test_a_module_no_other_module_holds_passes_the_nesting_check(workspace, tmp_
     link_module(workspace, "ext", outside)  # the symlink's target is outside every module's folder
     ws = load_workspace(workspace)
     assert ws is not None and ws.module("ext").parent is ws.top
+
+
+# @ac AC-CLI-003.6
+def test_init_refuses_a_folder_around_a_module(workspace):
+    configs = {p: p.read_text() for p in workspace.rglob("spec.yml")}
+    result = runner.invoke(app, ["init", "services", "--no-skills"])
+    assert result.exit_code == 1 and "module 'billing'" in result.output
+    assert {p: p.read_text() for p in workspace.rglob("spec.yml")} == configs
+    assert not (workspace / "services/spec").exists()
+    assert load_workspace(workspace) is not None
