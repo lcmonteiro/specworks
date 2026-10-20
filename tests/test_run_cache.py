@@ -1,8 +1,10 @@
 """Gates reuse the result of a project command run on an identical working tree."""
 
 import json
+import os
 import re
 import sys
+from pathlib import Path
 
 import pytest
 
@@ -172,3 +174,33 @@ def test_fresh_runs_each_command_once_for_all_the_gates_of_a_start(counted):
     code, data = run_json("start", "review", "--change", REF, "--fresh")  # gates design, test and code
     assert code == 0, data
     assert runs(counter) == 2
+
+
+# @ac AC-PROJ-014.7
+def test_an_untracked_file_name_that_is_not_utf8_is_fingerprinted(counted):
+    repo, counter = counted
+    try:
+        (repo / os.fsdecode(b"src/auth/caf\xe9.py")).write_text("x = 1\n")
+    except (OSError, UnicodeError):  # a file system that only takes UTF-8 names (macOS, Windows)
+        pytest.skip("cannot create a file whose name is not UTF-8 here")
+    first, second = run_json("gate", "code", "--change", REF), run_json("gate", "code", "--change", REF)
+    assert "checks" in first[1] and "checks" in second[1], (first, second)  # no crash
+    assert runs(counter) == 1 and "same code as the run at" in gate_tests()["details"][0]
+
+
+# @ac AC-PROJ-014.8
+def test_an_untracked_file_that_cannot_be_read_means_a_real_run(counted, monkeypatch):
+    repo, counter = counted
+    secret = repo / "src/auth/secret.py"
+    secret.write_text("token = 1\n")
+    read_bytes = Path.read_bytes
+
+    def unreadable(path):
+        if path.name == secret.name:
+            raise PermissionError(13, "Permission denied", str(path))
+        return read_bytes(path)
+
+    monkeypatch.setattr(Path, "read_bytes", unreadable)
+    first, second = gate_tests(), gate_tests()
+    assert runs(counter) == 2
+    assert not any("same code as the run at" in d for d in first["details"] + second["details"])
