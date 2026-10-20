@@ -292,3 +292,24 @@ def test_skills_only_show_cli_calls_that_exist():
 )
 def test_the_skill_call_check_catches_drift(call, problem):
     assert problem in call_problems(call)
+
+
+# @ac AC-INTEG-005.6
+def test_skills_that_are_no_longer_shipped_are_removed(tmp_path, monkeypatch):
+    init(tmp_path, monkeypatch, "--tools", "all")
+    stale = []
+    for name in ("specworks-propose", "sw-refine", "my-skill"):
+        for folder in (".claude/skills", ".github/skills"):
+            (tmp_path / folder / name).mkdir(parents=True)
+            (tmp_path / folder / name / "SKILL.md").write_text("old\n")
+            stale.append(f"{folder}/{name}")
+        (tmp_path / f".github/prompts/{name}.prompt.md").write_text("old\n")
+        stale.append(f".github/prompts/{name}.prompt.md")
+    result = runner.invoke(app, ["skills", "--tools", "all"])
+    assert result.exit_code == 0, result.output
+    for path in stale:
+        if "my-skill" in path:
+            assert (tmp_path / path).exists(), path  # not specworks': never touched
+        else:
+            assert not (tmp_path / path).exists() and f"removed {path}" in result.output, path
+    assert all((tmp_path / f".claude/skills/{name}/SKILL.md").is_file() for name in packaged_skills())
