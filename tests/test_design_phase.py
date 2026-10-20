@@ -179,3 +179,22 @@ def test_no_interfaces_heading_means_no_section(planned):
     (planned / "spec/changes" / REF / "design.md").write_text("# Design\n\n## Interfaced systems\n\n- `src/auth/reset.py`\n")
     code, checks = gate()
     assert checks[SECTION]["ok"] is False
+
+
+# @ac AC-FLOW-006.6
+def test_a_module_change_needs_its_interface_files_in_the_module(planned):
+    assert run_json("module", "add", "services/billing")[0] == 0
+    run_json("new", "add-invoices", "--module", "billing")
+    design = planned / "services/billing/spec/changes/add-invoices/design.md"
+    (planned / "src/invoices.py").write_text("def invoice(): ...\n")  # the top level's, not billing's
+
+    def files_check(body):
+        design.write_text(f"# Design\n\n## Interfaces\n\n{body}\n")
+        _, data = run_json("gate", "design", "--change", "billing:add-invoices", "--no-run")
+        return next(c for c in data["checks"] if c["name"] == FILES)
+
+    assert files_check("- `src/invoices.py`: `invoice()`")["details"] == ["src/invoices.py"]
+    (planned / "services/billing/src").mkdir()
+    (planned / "services/billing/src/invoices.py").write_text("def invoice(): ...\n")
+    assert files_check("- `src/invoices.py`: `invoice()`")["ok"]
+    assert files_check("- `services/billing/src/invoices.py`: `invoice()`")["ok"]
