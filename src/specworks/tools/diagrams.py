@@ -105,8 +105,6 @@ def render(diagram: Diagram, settings: DiagramSettings) -> None:
     name = diagram.source.name
     try:
         diagram.svg.write_text(stamp(diagram.svg.read_text(encoding="utf-8"), source_hash(diagram, settings)), encoding="utf-8")
-    except FileNotFoundError:
-        raise DiagramError(f"cannot render {name}: d2 wrote no SVG") from None
     except UnicodeDecodeError:
         raise DiagramError(f"cannot render {name}: the SVG d2 wrote is not UTF-8 text") from None
     except (OSError, ValueError) as exc:

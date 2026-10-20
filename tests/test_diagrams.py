@@ -280,5 +280,6 @@ def test_an_svg_that_cannot_be_stamped_is_a_render_error(change, tmp_path_factor
     code, data = run_json("diagrams", "--change", CHANGE)
     result = {d["source"].rsplit("/", 1)[-1]: d for d in data["diagrams"]}
     assert code == 1 and result["reset-flow.d2"]["status"] == "rendered"
-    for name in ("unclosed", "latin", "nofile"):
+    for name in ("unclosed", "latin"):
         assert result[f"{name}.d2"]["status"] == "error" and result[f"{name}.d2"]["error"].startswith(f"cannot render {name}.d2: ")
+    assert result["nofile.d2"]["status"] == "error" and "nofile.d2: no SVG was written" in result["nofile.d2"]["error"]
