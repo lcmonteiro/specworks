@@ -17,6 +17,8 @@ suspected bug 11 of `baseline-cli`; refinement.md, option A).
 - `module add` refuses a folder that holds a module of the workspace, naming
   it, before writing anything; otherwise the new loading check would refuse
   the workspace it leaves behind (review R1).
+- `init <path>` refuses the same folders, before writing anything, unless
+  `--no-link` is given (review R3).
 - `module add` keeps refusing what it refuses today (a folder outside the
   current project, an existing config with another name, a duplicate).
 
@@ -31,6 +33,8 @@ None.
 - `cli`: REQ-CLI-005 "Registering modules and capabilities" MODIFIED. Its
   description says the link goes into the innermost module containing the
   folder, and it gets new criteria AC-CLI-005.6 and AC-CLI-005.7.
+- `cli`: REQ-CLI-003 "init" MODIFIED. Its description says `init` refuses a
+  folder that holds a module, and it gets a new criterion, AC-CLI-003.6.
 - `project`: REQ-PROJ-006 "Workspace of modules" MODIFIED. Its description says
   a module must be listed by the innermost module containing it, and it gets a
   new criterion, AC-PROJ-006.8.
@@ -45,4 +49,3 @@ message saying where to move the link.
 ## Out of Scope
 
 - Moving existing links automatically; the error says where it belongs.
-- Changing `init <path>`, which already links to the nearest project above.
