@@ -271,3 +271,11 @@ def test_gate_review_requires_deleted_files_accounted_for(repo):
     write_review(repo, "None.\n\n## Changed files without tags\n\n- `src/auth/session.py`: dead code\n- `tests/test_old.py`: its test\n")
     code, data = run_json("gate", "review", "--change", REF, "--base", "main")
     assert code == 0, data
+
+
+# @ac AC-FLOW-010.5
+def test_a_loose_indented_checkbox_fails_the_review_gate_even_in_a_build(repo):
+    write_review(repo, "None.\n\n- Follow-ups:\n  - [ ] reset still ignores case\n")
+    code, data = run_json("gate", "review", "--change", REF, "--base", "main", "--allow-open")
+    readable = checks(data)["every finding in review.md is readable (- [ ] R<n> ...)"]
+    assert code == 1 and not readable["ok"] and readable["blocking"]
