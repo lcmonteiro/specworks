@@ -12,9 +12,10 @@ Base: `origin/main`
 - [x] R2 **code-gap** `_check_nesting` crashes with `ValueError: max() arg is an empty sequence` when no other module's folder holds a module, e.g. a module symlinked to a folder outside the workspace; REQ-PROJ-006 (`src/specworks/core/workspace.py:265`)
   - **Decision**: back to code: pass `default=None` to `max` and skip a module no other module holds (nothing can list it past its container), with a test that such a workspace gets past the check. That a module outside the workspace folder already crashes `context` on `origin/main` (`Workspace.rel`) is a separate, pre-existing bug, left out of this change.
   - **Resolved**: `_check_nesting` passes `default=None` and skips a module no other module holds; tested with a module symlinked outside the workspace, tagged AC-PROJ-006.8 (cycle 3)
-- [ ] R3 **spec-gap** `init <path>` links a folder that holds a module just as `module add` did before R1 (`init services` after `module add services/billing`), and the workspace then no longer loads. REQ-CLI-003 has no criterion for it (`src/specworks/cli/project.py:50`, `link_to_parent`)
+- [x] R3 **spec-gap** `init <path>` links a folder that holds a module just as `module add` did before R1 (`init services` after `module add services/billing`), and the workspace then no longer loads. REQ-CLI-003 has no criterion for it (`src/specworks/cli/project.py:50`, `link_to_parent`)
   - **Decision**: back to specify: REQ-CLI-003 MODIFIED with a new criterion: `init <path>` refuses a folder that holds a module of the parent workspace, naming it, and writes nothing; `--no-link` still creates an unlinked project. Chosen with the user over initialising without the link or tracking it separately.
   - done in specify: REQ-CLI-003 MODIFIED: its description says `init` refuses a folder that holds a module, and AC-CLI-003.6 was added; design decision (shared `held_module` helper) and tasks 4.1-4.2 added
+  - **Resolved**: AC-CLI-003.6 tested in `tests/test_modules.py`; `init` calls the shared `held_module` check before writing anything, as `module add` does. Only these two commands write module links (`add_module_entry`) (cycle 4)
 
 ## Changed files without tags
 
@@ -32,4 +33,4 @@ refuses a module listed past that module (AC-CLI-005.6, AC-PROJ-006.8). One
 spec gap: adding a folder around an existing module leaves a workspace that no
 longer loads; sent back to specify (R1) and fixed in cycle 2. Cycle 2 review: the
 nesting check crashes on a module no other module holds (R2), back to code, fixed in cycle 3. Cycle 3 review: `init <path>` has the same gap
-as R1 (R3), back to specify.
+as R1 (R3), back to specify, fixed in cycle 4. Cycle 4 review: no findings.
