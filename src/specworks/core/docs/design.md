@@ -32,7 +32,11 @@ A parent lists each module under `modules:`. Looking up the workspace rises
 from the nearest config only through ancestors that list it. A broken outer
 config that doesn't list the project is ignored, so an unrelated project
 around it can't break it. Context is inherited top level first, and commands
-are overridden key by key. (baseline-project)
+are overridden key by key. A folder is at most one module: loading records each
+module's resolved folder before loading its children, so a symlink back to an
+ancestor, or a folder linked twice, fails with an error naming both instead of
+recursing or loading the folder under two names.
+(baseline-project, module-cycle-detection)
 
 ### Each capability owns its ID prefix and its docs folder
 
