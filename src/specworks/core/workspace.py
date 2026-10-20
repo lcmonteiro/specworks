@@ -252,9 +252,26 @@ def load_workspace(start: Path | None = None) -> Workspace | None:
     top = _load_tree(load_config(top_root), "", None, missing, {})
     current = next(m for m in top.walk() if m.root == nearest)
     ws = Workspace(top=top, current=current, missing=missing)
+    _check_nesting(ws)
     _check_prefixes(ws)
     _check_docs_folders(ws)
     return ws
+
+
+# @req REQ-PROJ-006
+def _check_nesting(ws: Workspace) -> None:
+    """Each module is listed by the innermost module holding its folder, so the workspace looks the same from any folder."""
+    for module in ws.modules():
+        if module.parent is None:
+            continue
+        container = max(
+            (m for m in ws.modules() if m is not module and module.root.is_relative_to(m.root)), key=lambda m: len(m.root.parts)
+        )
+        if container is not module.parent:
+            raise ConfigError(
+                f"module '{module.name}' ({ws.rel(module.root)}) is inside module '{container.label}'; "
+                f"list it in {container.label}'s config instead of {module.parent.label}'s"
+            )
 
 
 # @req REQ-PROJ-005

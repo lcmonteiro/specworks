@@ -208,7 +208,7 @@ def module_add(
     name: str | None = typer.Option(None, "--name", help="Module name (default: folder name)."),
     as_json: bool = JsonOpt,
 ) -> None:
-    """Link a folder as a module of the current project, creating its config if needed.
+    """Link a folder as a module of the innermost module holding it, creating its config if needed.
 
     The module uses the workspace's config file and folder name (e.g. spec.yml and spec/).
     """
@@ -217,6 +217,7 @@ def module_add(
     owner = ws.current
     if root == owner.root or not root.is_relative_to(owner.root):
         fail(f"{path} must be a folder inside {owner.root}", as_json)
+    owner = ws.owner(root.parent)  # the innermost module holding the folder lists it, as with init
     module_name = name or default_module_name(root)
     ensure_module_config(root, module_name, ws.top.config.dir)
     add_module_entry(owner.root, module_name, root.relative_to(owner.root).as_posix())
