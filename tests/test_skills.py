@@ -9,7 +9,7 @@ from typer.testing import CliRunner
 from specworks.cli import app
 from specworks.core.changes import PHASES
 from specworks.core.config import COMMAND_KEYS
-from specworks.tools.skills import packaged_skills, read_skill
+from specworks.tools.skills import TOOLS, packaged_skills, read_skill, render_prompt, render_skill
 from specworks.workflow.artifacts import load_artifacts
 from specworks.workflow.gate import GATES
 
@@ -329,3 +329,30 @@ def test_a_stale_skill_that_is_a_symlink_is_unlinked_not_followed(tmp_path, monk
     assert result.exit_code == 0, result.output
     assert "removed .claude/skills/specworks-verify" in result.output
     assert not (tmp_path / ".claude/skills/specworks-verify").exists() and (target / "SKILL.md").is_file()
+
+
+MULTILINE = (
+    "---\nname: specworks-x\ndescription: >\n  Does x.\n  Use when: the user asks for x.\n"
+    "allowed-tools: Bash(specworks:*),\n  Read\n---\n# Body\n"
+)
+
+
+# @ac AC-INTEG-005.7
+def test_a_multi_line_frontmatter_value_is_kept_or_dropped_whole():
+    description = "description: >\n  Does x.\n  Use when: the user asks for x.\n"
+    copilot, claude, prompt = render_skill(MULTILINE, TOOLS["copilot"]), render_skill(MULTILINE, TOOLS["claude"]), render_prompt(MULTILINE)
+    assert copilot == "---\nname: specworks-x\n" + description + "---\n# Body\n"  # allowed-tools dropped with its second line
+    assert claude == MULTILINE
+    assert prompt == "---\n" + description + "agent: agent\n---\n# Body\n"
+
+
+# @ac AC-INTEG-005.7
+@pytest.mark.parametrize("name", packaged_skills())
+def test_one_line_frontmatter_is_copied_as_before(name):
+    text = read_skill(name)
+    head, body = text.split("---\n", 2)[1], text.split("---\n", 2)[2]
+    lines = [line for line in head.splitlines() if ":" in line]  # every packaged skill: one line per key
+    assert all(not line.startswith((" ", "\t")) for line in head.splitlines())
+    copilot = [line for line in lines if line.split(":", 1)[0] in ("name", "description")]
+    assert render_skill(text, TOOLS["copilot"]) == "---\n" + "\n".join(copilot) + "\n---\n" + body
+    assert render_skill(text, TOOLS["claude"]) == "---\n" + "\n".join(lines) + "\n---\n" + body
