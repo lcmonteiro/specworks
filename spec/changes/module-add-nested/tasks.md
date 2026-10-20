@@ -14,3 +14,8 @@
 
 - [x] 3.1 Write a failing test in `tests/test_modules.py` for AC-CLI-005.7 (`module add services` around `services/billing`) tagged `@ac`; verify it fails because the link is written and the workspace no longer loads
 - [x] 3.2 In `module_add`, refuse a folder that holds a module of the workspace, naming it, before writing anything (REQ-CLI-005) tagged `@req REQ-CLI-005`; verify the 3.1 test and the existing AC-CLI-005.x tests pass
+
+## 4. `init <path>` refuses a folder around a module (review R3)
+
+- [ ] 4.1 Write a failing test in `tests/test_modules.py` for AC-CLI-003.6 (`init services` around `services/billing`) tagged `@ac`; verify it fails because the config and the link are written and the workspace no longer loads
+- [ ] 4.2 Move the check into `held_module(ws, root)` and call it from `init` before anything is written, as well as from `module_add` (REQ-CLI-003, REQ-CLI-005) tagged `@req REQ-CLI-003`; verify the 4.1 test and the existing AC-CLI-003.x and AC-CLI-005.x tests pass

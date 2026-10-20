@@ -14,6 +14,7 @@ Base: `origin/main`
   - **Resolved**: `_check_nesting` passes `default=None` and skips a module no other module holds; tested with a module symlinked outside the workspace, tagged AC-PROJ-006.8 (cycle 3)
 - [ ] R3 **spec-gap** `init <path>` links a folder that holds a module just as `module add` did before R1 (`init services` after `module add services/billing`), and the workspace then no longer loads. REQ-CLI-003 has no criterion for it (`src/specworks/cli/project.py:50`, `link_to_parent`)
   - **Decision**: back to specify: REQ-CLI-003 MODIFIED with a new criterion: `init <path>` refuses a folder that holds a module of the parent workspace, naming it, and writes nothing; `--no-link` still creates an unlinked project. Chosen with the user over initialising without the link or tracking it separately.
+  - done in specify: REQ-CLI-003 MODIFIED: its description says `init` refuses a folder that holds a module, and AC-CLI-003.6 was added; design decision (shared `held_module` helper) and tasks 4.1-4.2 added
 
 ## Changed files without tags
 

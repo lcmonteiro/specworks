@@ -51,6 +51,17 @@ added around another one`. A folder that is itself a module keeps today's
 would still leave the new folder's config and changes folder behind. Moving the
 inner links was rejected with the user (review R1). Serves: REQ-CLI-005.
 
+### `init <path>` refuses the same folders, through one shared helper
+
+`init` loads the parent workspace before writing (to check `--dir`), so it can
+run the same check right after that one, before `ensure_module_config`. The
+check moves out of `module_add` into a private helper in
+`src/specworks/cli/project.py`, `held_module(ws, root) -> Module | None`: the
+first module strictly inside `root`, or None when there is none or `root` is a
+module itself (re-running `init` on a module, or "already linked"). `init`
+raises a `ConfigError` with the same message as `module add`. With `--no-link`
+no parent is loaded and nothing is checked. Serves: REQ-CLI-003, REQ-CLI-005.
+
 ## Interfaces
 
 None: `module add`'s arguments and JSON output keep their shape; the new check
