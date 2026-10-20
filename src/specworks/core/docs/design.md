@@ -58,7 +58,11 @@ untracked files with their contents, leaving out the workflow folders. Every
 real run replaces the stored result, so `specworks run` can refresh a result
 the fingerprint can't see changing. The store sits inside `.git/` and keeps
 the 50 newest runs. Reuse is off without git, with `SPECWORKS_RUN_CACHE=0`,
-and when a submodule holds untracked files. (baseline-project)
+when a submodule holds untracked files, and when an untracked file can't be
+read: whenever the fingerprint can't see the whole tree, the command runs for
+real rather than risk a stale result. Untracked names count as the raw bytes
+git reports, so a name that isn't UTF-8 is fingerprinted like any other.
+(baseline-project, run-reuse-unreadable-files)
 
 ### Expected failures are `SpecworksError`s
 
