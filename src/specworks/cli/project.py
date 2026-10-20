@@ -12,7 +12,7 @@ from ..core.changes import archived_as, list_archived
 from ..core.config import DEFAULT_DIR, Config, ConfigError, config_name, find_config, load_config
 from ..core.config_file import add_capability_entry, add_module_entry, write_default_config
 from ..core.validators import validate_relative
-from ..core.workspace import Workspace, capability_prefix, load_module_config, load_workspace, require_workspace
+from ..core.workspace import Module, Workspace, capability_prefix, load_module_config, load_workspace, require_workspace
 from ..specs.capabilities import capability_ref, describe
 from ..tools.skills import install_skills, parse_tools, remove_stale_skills
 from .app import app, capability_app, module_app
@@ -59,6 +59,19 @@ def link_to_parent(root: Path, name: str | None) -> str | None:
         linked = name or default_module_name(root)
         add_module_entry(owner.root, linked, rel)
     return f"{owner.name}/{linked}" if owner.name else linked  # nested modules are named parent/child
+
+
+def held_module(ws: Workspace, root: Path) -> Module | None:
+    """A module of ``ws`` inside the folder ``root``, unless ``root`` is a module itself.
+
+    Linking such a folder would leave that module listed past it, which loading refuses.
+    """
+    inner = [m for m in ws.modules() if m.root.is_relative_to(root)]
+    return inner[0] if inner and all(m.root != root for m in inner) else None
+
+
+def held_message(ws: Workspace, path: Path, inner: Module) -> str:
+    return f"{path} holds module '{inner.label}' ({ws.rel(inner.root)}); a module can't be added around another one"
 
 
 def module_lines(ws: Workspace, indent: str = "") -> list[str]:
@@ -218,10 +231,8 @@ def module_add(
     if root == owner.root or not root.is_relative_to(owner.root):
         fail(f"{path} must be a folder inside {owner.root}", as_json)
     owner = ws.owner(root.parent)  # the innermost module holding the folder lists it, as with init
-    # Linking it would leave a module listed past it, which loading refuses (a module itself is "already linked" below).
-    inner = [m for m in ws.modules() if m.root.is_relative_to(root)]
-    if inner and all(m.root != root for m in inner):
-        fail(f"{path} holds module '{inner[0].label}' ({ws.rel(inner[0].root)}); a module can't be added around another one", as_json)
+    if inner := held_module(ws, root):
+        fail(held_message(ws, path, inner), as_json)
     module_name = name or default_module_name(root)
     ensure_module_config(root, module_name, ws.top.config.dir)
     add_module_entry(owner.root, module_name, root.relative_to(owner.root).as_posix())

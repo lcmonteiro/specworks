@@ -56,7 +56,7 @@ inner links was rejected with the user (review R1). Serves: REQ-CLI-005.
 `init` loads the parent workspace before writing (to check `--dir`), so it can
 run the same check right after that one, before `ensure_module_config`. The
 check moves out of `module_add` into a private helper in
-`src/specworks/cli/project.py`, `held_module(ws, root) -> Module | None`: the
+`src/specworks/cli/project.py`, `held_module(ws, root) -> Module | None` (with `held_message` for the shared error): the
 first module strictly inside `root`, or None when there is none or `root` is a
 module itself (re-running `init` on a module, or "already linked"). `init`
 raises a `ConfigError` with the same message as `module add`. With `--no-link`
