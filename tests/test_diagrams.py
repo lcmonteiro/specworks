@@ -261,3 +261,24 @@ def test_init_rejects_unknown_diagram_theme(tmp_path, monkeypatch):
     result = runner.invoke(app, ["init", "--no-skills", "--diagram-theme", "rainbow"])
     assert result.exit_code == 1 and "unknown theme" in result.output
     assert not list(tmp_path.glob("*.yml"))
+
+
+# @ac AC-INTEG-003.4
+def test_an_svg_that_cannot_be_stamped_is_a_render_error(change, tmp_path_factory, monkeypatch):
+    script = fake_executable(
+        tmp_path_factory.mktemp("bin"),
+        "d2",
+        "import sys, pathlib\n"
+        "src, out = pathlib.Path(sys.argv[-2]).read_text(), pathlib.Path(sys.argv[-1])\n"
+        "if 'UNCLOSED' in src:\n    out.write_text('<?xml version=\"1.0\"<svg/>')\n"
+        "elif 'LATIN' in src:\n    out.write_bytes(b'<svg>caf\\xe9</svg>')\n"
+        "elif 'NOFILE' not in src:\n    out.write_text('<?xml version=\"1.0\"?><svg/>')\n",
+    )
+    monkeypatch.setenv("SPECWORKS_D2", str(script))
+    for name in ("unclosed", "latin", "nofile"):
+        (change / f"diagrams/{name}.d2").write_text(name.upper() + "\n")
+    code, data = run_json("diagrams", "--change", CHANGE)
+    result = {d["source"].rsplit("/", 1)[-1]: d for d in data["diagrams"]}
+    assert code == 1 and result["reset-flow.d2"]["status"] == "rendered"
+    for name in ("unclosed", "latin", "nofile"):
+        assert result[f"{name}.d2"]["status"] == "error" and result[f"{name}.d2"]["error"].startswith(f"cannot render {name}.d2: ")
