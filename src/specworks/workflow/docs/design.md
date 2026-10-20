@@ -42,6 +42,15 @@ Leaving specify through `start` records a fingerprint of each requirement.
 Later gates warn, without blocking, when the specs drift from that agreement,
 and starting design again accepts the new specs. (baseline-workflow)
 
+### Deleted code is reviewed like changed code
+
+The drift report lists files deleted on the branch (kind `deleted`, with the
+kind they had). Deleted source and test files must be accounted for in
+review.md, like untagged changed files, because the trace only checks the
+change's own requirements: a deletion is where another requirement can silently
+lose its code. Detecting that loss automatically (reading the deleted file's
+tags at the base) was left for later. (review-deleted-files)
+
 ### review.md is parsed strictly
 
 A checkbox the parser can't read, or an open finding with no known type or
@@ -65,6 +74,7 @@ cycle. (baseline-workflow)
   `run_gate(ctx, phase)`, `gates_to_start(current, phase)`,
   `start_phase(ctx, phase)`.
 - `src/specworks/workflow/review.py`: `review_change(analysis, base)`,
+  `changed_paths(ws, since)`, `deleted_paths(ws, since)`, `ChangedFile` (`kind`, `was`),
   `ReviewReport`, `parse_review(text)`, `read_review(change)`, `ReviewDoc`,
   `Finding`.
 - `src/specworks/workflow/cycle.py`: `next_cycle(change)`.
