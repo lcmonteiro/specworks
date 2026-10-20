@@ -191,16 +191,26 @@ def load_module_config(root: Path, name: str, workspace_dir: str) -> Config | No
 
 
 # @req REQ-PROJ-006
-def _load_tree(config: Config, name: str, parent: Module | None, missing: list[MissingModule]) -> Module:
+def _load_tree(config: Config, name: str, parent: Module | None, missing: list[MissingModule], seen: dict[Path, str]) -> Module:
+    """``seen``: the resolved folder of every module loaded so far -> its label; a folder is at most one module."""
     module = Module(name=name, config=config, parent=parent)
+    seen[config.root.resolve()] = module.label
     for child_name, child_path in config.modules.items():
         child_root = (config.root / child_path).resolve()
         full_name = f"{name}/{child_name}" if name else child_name
+        if child_root in seen:  # a symlink back to an ancestor (a cycle), or a folder linked twice
+            owner = seen[child_root] if seen[child_root] == "(top)" else f"module '{seen[child_root]}'"
+            top_root = next(iter(seen))  # the first folder loaded is the top level's
+            where = child_root.relative_to(top_root).as_posix() or "." if child_root.is_relative_to(top_root) else child_root.as_posix()
+            raise ConfigError(
+                f"module '{full_name}' ({where}) is the same folder as {owner}; "
+                "a folder can be only one module, so remove one of the links"
+            )
         child_config = load_module_config(child_root, full_name, config.dir)
         if child_config is None:
             missing.append(MissingModule(name=full_name, path=child_root))
             continue
-        module.children.append(_load_tree(child_config, full_name, module, missing))
+        module.children.append(_load_tree(child_config, full_name, module, missing, seen))
     return module
 
 
@@ -239,7 +249,7 @@ def load_workspace(start: Path | None = None) -> Workspace | None:
         top_root = ancestor
 
     missing: list[MissingModule] = []
-    top = _load_tree(load_config(top_root), "", None, missing)
+    top = _load_tree(load_config(top_root), "", None, missing, {})
     current = next(m for m in top.walk() if m.root == nearest)
     ws = Workspace(top=top, current=current, missing=missing)
     _check_prefixes(ws)
