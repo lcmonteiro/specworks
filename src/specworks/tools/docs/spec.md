@@ -128,7 +128,8 @@ be refused before anything is written.
 The system SHALL write every packaged skill, with its shared parts filled in, to
 each chosen tool's skills folder (`.claude/skills/<name>/SKILL.md`,
 `.github/skills/<name>/SKILL.md`), keeping only the frontmatter keys that tool
-understands. For Copilot, it SHALL also write a prompt file per skill
+understands, each with its whole value (the indented lines that continue it
+included). For Copilot, it SHALL also write a prompt file per skill
 (`.github/prompts/<name>.prompt.md`) holding the description, agent mode and the
 skill's instructions. In the same folders, it SHALL remove every skill folder and
 prompt file named `specworks-…` (or the older `sw-refine`) that is no longer
@@ -165,3 +166,9 @@ go to the workspace root and are refreshed by `specworks skills`.
 - **GIVEN** a project whose `.claude/skills/` and `.github/` hold `specworks-propose` and `sw-refine` (skill folders and Copilot prompt files) and a user's own `my-skill`
 - **WHEN** `specworks skills --tools all` runs
 - **THEN** the stale `specworks-propose` and `sw-refine` folders and prompt files are removed, each printed as `removed <path>`, and `my-skill` and every shipped skill are kept
+
+#### Scenario: AC-INTEG-005.7 A value over several lines
+
+- **GIVEN** a skill whose frontmatter has a folded `description: >` over two indented lines (one containing `Use when:`) and a multi-line `allowed-tools`
+- **WHEN** it is copied for Copilot, for Claude Code, and as a Copilot prompt file
+- **THEN** every copy that keeps `description` keeps all its lines, the Copilot copy drops `allowed-tools` with all its lines, and single-line frontmatter is copied exactly as before

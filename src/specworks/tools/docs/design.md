@@ -34,9 +34,12 @@ goes on. (baseline-integrations, diagram-bad-svg)
 Skills follow the Agent Skills format (`<name>/SKILL.md` with frontmatter).
 Shared text lives once in `skills/_shared/` and is filled in at install time.
 Each tool keeps only the frontmatter keys it understands, so Copilot drops
-Claude Code's `allowed-tools`. Copilot also gets a prompt file per skill, so
-each phase is a slash command. `auto` installs for the tools a project already
-uses, or for all of them when none is detected. (baseline-integrations)
+Claude Code's `allowed-tools`. The frontmatter is copied as text, line by line,
+not through a YAML parser, so today's skills install byte-for-byte as written.
+An indented line belongs to the key above it, so a multi-line value is kept or
+dropped whole. Copilot also gets a prompt file per skill, so each phase is a
+slash command. `auto` installs for the tools a project already uses, or for all
+of them when none is detected. (baseline-integrations, skill-frontmatter-multiline)
 
 ### Stale specworks skills are removed by name
 
