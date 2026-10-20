@@ -414,14 +414,17 @@ def test_module_add_refuses_a_folder_around_a_module(workspace):
     assert load_workspace(workspace) is not None
 
 
-# @ac AC-PROJ-006.8
-def test_a_module_no_other_module_holds_passes_the_nesting_check(workspace, tmp_path_factory, monkeypatch):
+# @ac AC-PROJ-006.9
+@pytest.mark.parametrize("with_config", [True, False])
+def test_a_module_outside_the_workspace_is_refused(workspace, tmp_path_factory, monkeypatch, with_config):
     outside = tmp_path_factory.mktemp("outside")
-    monkeypatch.chdir(outside)
-    run("init", "--dir", "spec", "--no-link", "--no-skills")
-    link_module(workspace, "ext", outside)  # the symlink's target is outside every module's folder
-    ws = load_workspace(workspace)
-    assert ws is not None and ws.module("ext").parent is ws.top
+    if with_config:
+        monkeypatch.chdir(outside)
+        run("init", "--dir", "spec", "--no-link", "--no-skills")
+        monkeypatch.chdir(workspace)
+    link_module(workspace, "ext", outside)
+    code, data = run_json("context")
+    assert code == 1 and "module 'ext'" in data["error"] and str(outside) in data["error"]
 
 
 # @ac AC-CLI-003.6
