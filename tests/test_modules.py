@@ -402,3 +402,13 @@ def test_module_add_links_to_the_module_that_contains_the_folder(workspace):
     assert "  sub: sub\n" in (workspace / "services/billing/spec.yml").read_text()
     assert (workspace / "spec.yml").read_text() == top_before
     assert "billing/sub" in run("module", "list")
+
+
+# @ac AC-CLI-005.7
+def test_module_add_refuses_a_folder_around_a_module(workspace):
+    configs = {p: p.read_text() for p in workspace.rglob("spec.yml")}
+    code, data = run_json("module", "add", "services")
+    assert code == 1 and "module 'billing'" in data["error"]
+    assert {p: p.read_text() for p in workspace.rglob("spec.yml")} == configs
+    assert not (workspace / "services/spec").exists()
+    assert load_workspace(workspace) is not None
