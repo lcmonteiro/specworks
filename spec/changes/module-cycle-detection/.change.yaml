@@ -1,3 +1,5 @@
 name: module-cycle-detection
 created: '2026-10-20T06:42:57'
-phase: specify
+phase: test
+specified:
+  REQ-PROJ-006: 38881708b411

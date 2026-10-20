@@ -359,3 +359,27 @@ def test_capability_add_refuses_a_taken_path(workspace):
     code, data = run_json("capability", "add", "login", "--path", "src\\auth\\")  # stored as src/auth
     assert code == 1 and "already used by auth" in data["error"]
     assert (workspace / "spec.yml").read_text() == before
+
+
+def link_module(workspace, name, target):
+    """Link the folder ``target`` as module ``name`` of the top level, through a symlink called ``name``."""
+    try:
+        (workspace / name).symlink_to(target, target_is_directory=True)
+    except OSError:  # Windows without the symlink privilege
+        pytest.skip("cannot create symlinks here")
+    cfg = workspace / "spec.yml"
+    cfg.write_text(cfg.read_text().replace("\nmodules:\n", f"\nmodules:\n  {name}: {name}\n", 1))
+
+
+# @ac AC-PROJ-006.6
+def test_a_module_that_leads_back_to_an_ancestor_is_refused(workspace):
+    link_module(workspace, "loop", workspace)
+    code, data = run_json("context")
+    assert code == 1 and "module 'loop'" in data["error"] and "(top)" in data["error"]
+
+
+# @ac AC-PROJ-006.7
+def test_a_folder_linked_as_a_module_twice_is_refused(workspace):
+    link_module(workspace, "other", workspace / "services/billing")
+    code, data = run_json("context")
+    assert code == 1 and "'billing'" in data["error"] and "'other'" in data["error"]
