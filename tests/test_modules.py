@@ -383,3 +383,22 @@ def test_a_folder_linked_as_a_module_twice_is_refused(workspace):
     link_module(workspace, "other", workspace / "services/billing")
     code, data = run_json("context")
     assert code == 1 and "'billing'" in data["error"] and "'other'" in data["error"]
+
+
+# @ac AC-PROJ-006.8
+def test_a_module_listed_past_the_module_that_contains_it_is_refused(workspace):
+    run("init", "services/billing/sub", "--dir", "spec", "--no-link", "--no-skills")
+    cfg = workspace / "spec.yml"
+    cfg.write_text(cfg.read_text().replace("\nmodules:\n", "\nmodules:\n  sub: services/billing/sub\n", 1))
+    code, data = run_json("context")
+    assert code == 1 and "module 'sub'" in data["error"] and "module 'billing'" in data["error"]
+
+
+# @ac AC-CLI-005.6
+def test_module_add_links_to_the_module_that_contains_the_folder(workspace):
+    top_before = (workspace / "spec.yml").read_text()
+    code, data = run_json("module", "add", "services/billing/sub")
+    assert code == 0 and data["name"] == "billing/sub"
+    assert "  sub: sub\n" in (workspace / "services/billing/spec.yml").read_text()
+    assert (workspace / "spec.yml").read_text() == top_before
+    assert "billing/sub" in run("module", "list")
