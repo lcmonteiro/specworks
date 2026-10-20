@@ -1,5 +1,5 @@
 name: module-outside-workspace
 created: '2026-10-20T23:02:33'
-phase: code
+phase: review
 specified:
   REQ-PROJ-006: 7a89a5ca3be6
