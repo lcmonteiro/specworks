@@ -22,6 +22,7 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 
+from .config import COMMAND_KEYS
 from .errors import SpecworksError
 from .git import GitError, git, git_text
 from .workspace import Module, Workspace
@@ -53,10 +54,12 @@ class RunResult:
 # @req REQ-PROJ-013
 def run_command(ws: Workspace, module: Module, key: str, capture: bool = True) -> RunResult:
     """Run ``commands.<key>`` (merged top level -> module) in the module's folder, through the shell."""
+    if key not in COMMAND_KEYS:  # the config refuses any other key, so don't suggest adding it there
+        raise CommandError(f"unknown command '{key}'; use one of {', '.join(COMMAND_KEYS)}")
     command = ws.commands(module).get(key)
     if not command:
         where = ws.rel(module.config.config_path)
-        raise CommandError(f"no '{key}' command configured; add it under commands: in {where} (e.g. test: uv run pytest)")
+        raise CommandError(f"no '{key}' command configured; add it under commands: in {where} (e.g. {key}: <command>)")
     proc = subprocess.run(
         command,
         shell=True,
