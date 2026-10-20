@@ -130,8 +130,10 @@ each chosen tool's skills folder (`.claude/skills/<name>/SKILL.md`,
 `.github/skills/<name>/SKILL.md`), keeping only the frontmatter keys that tool
 understands. For Copilot, it SHALL also write a prompt file per skill
 (`.github/prompts/<name>.prompt.md`) holding the description, agent mode and the
-skill's instructions. Skills always go to the workspace root and are refreshed
-by `specworks skills`.
+skill's instructions. In the same folders, it SHALL remove every skill folder and
+prompt file named `specworks-…` (or the older `sw-refine`) that is no longer
+shipped, report each removal, and leave every other name alone. Skills always
+go to the workspace root and are refreshed by `specworks skills`.
 
 #### Scenario: AC-INTEG-005.1 Every skill
 
@@ -157,3 +159,9 @@ by `specworks skills`.
 
 - **WHEN** a module is initialised, or `specworks skills` runs for another tool
 - **THEN** the module gets no skills folder of its own, and the refresh writes the other tool's skills
+
+#### Scenario: AC-INTEG-005.6 Skills that are no longer shipped
+
+- **GIVEN** a project whose `.claude/skills/` and `.github/` hold `specworks-propose` and `sw-refine` (skill folders and Copilot prompt files) and a user's own `my-skill`
+- **WHEN** `specworks skills --tools all` runs
+- **THEN** the stale `specworks-propose` and `sw-refine` folders and prompt files are removed, each printed as `removed <path>`, and `my-skill` and every shipped skill are kept

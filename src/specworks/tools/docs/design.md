@@ -38,6 +38,16 @@ Claude Code's `allowed-tools`. Copilot also gets a prompt file per skill, so
 each phase is a slash command. `auto` installs for the tools a project already
 uses, or for all of them when none is detected. (baseline-integrations)
 
+### Stale specworks skills are removed by name
+
+Before installing, specworks deletes from the chosen tools' folders every
+skill folder and Copilot prompt file in its own namespace (the `specworks-`
+prefix, or a retired name such as `sw-refine`) that it no longer ships, and
+prints each one. Any other name is never touched, and a symlinked skill is
+unlinked without following it. A manifest of installed files was rejected: it
+would add a file to every project and miss the copies older versions already
+left behind. (remove-stale-skills)
+
 ## Interfaces
 
 - `src/specworks/tools/diagrams.py`: `Diagram`, `diagrams_in(folder)`,
@@ -46,6 +56,7 @@ uses, or for all of them when none is detected. (baseline-integrations)
   `referenced_images(markdown)`.
 - `src/specworks/tools/skills.py`: `TOOLS`, `Tool`, `parse_tools(value, root)`
   (raises `ToolError`), `install_skills(root, tools) -> list[Path]`,
+  `remove_stale_skills(root, tools) -> list[Path]`, `RETIRED_NAMES`,
   `packaged_skills()`, `read_skill(name)`.
 
 ## Constraints
