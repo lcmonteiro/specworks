@@ -96,6 +96,7 @@ def review(
         "unknownTags": "tags to unknown IDs",
         "untracedSource": "changed code files without `@req` tags",
         "untracedTests": "changed test files without `@ac` tags",
+        "deletedFiles": "deleted code and test files",
     }
     lines = [f"base: {report.since or report.base or '-'}"] + ([f"note: {report.note}"] if report.note else [])
     lines += [f"spec error: {e}" for e in report.spec_errors]
