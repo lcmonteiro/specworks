@@ -1,6 +1,6 @@
 name: module-add-nested
 created: '2026-10-20T22:00:31'
-phase: review
+phase: done
 specified:
   REQ-CLI-003: 956ec4c87e15
   REQ-CLI-005: 955c20731563

@@ -149,7 +149,9 @@ The system SHALL load a workspace made of a top-level project and the modules
 its config lists (recursively), each a project with its own config of the same
 file name. A folder SHALL be at most one module: a module whose folder (with
 symlinks resolved) is an ancestor or another module of the workspace SHALL make
-loading fail, naming both. Looking up the workspace, it SHALL rise from the
+loading fail, naming both. A module SHALL be listed by the innermost
+module whose folder contains it: one listed by a module further up SHALL make
+loading fail, naming the module it belongs under. Looking up the workspace, it SHALL rise from the
 nearest config to each ancestor that lists it as a module.
 
 #### Scenario: AC-PROJ-006.1 The whole workspace from inside a module
@@ -191,6 +193,12 @@ nearest config to each ancestor that lists it as a module.
 - **GIVEN** a folder linked as module `billing` and, through a symlink, as module `other`
 - **WHEN** the workspace is loaded
 - **THEN** it fails naming both `billing` and `other` and the folder
+
+#### Scenario: AC-PROJ-006.8 A module listed past the module that contains it
+
+- **GIVEN** a top level listing `billing: services/billing` and `sub: services/billing/sub`
+- **WHEN** the workspace is loaded
+- **THEN** it fails naming module `sub` and `billing`, the module it belongs under
 
 ### Requirement: REQ-PROJ-007 What a module inherits
 

@@ -36,7 +36,11 @@ are overridden key by key. A folder is at most one module: loading records each
 module's resolved folder before loading its children, so a symlink back to an
 ancestor, or a folder linked twice, fails with an error naming both instead of
 recursing or loading the folder under two names.
-(baseline-project, module-cycle-detection)
+A module must be listed by the innermost module holding its folder: one listed
+further up fails with an error naming the module it belongs under, so the
+workspace has the same shape from every folder. A module no other module holds
+(one symlinked outside the workspace) is not checked.
+(baseline-project, module-cycle-detection, module-add-nested)
 
 ### Each capability owns its ID prefix and its docs folder
 

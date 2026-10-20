@@ -46,6 +46,15 @@ runs validate first and takes `--no-run` only with `--dry-run`, and `init`
 rejects a bad `--tools` or a module's `--dir` before writing anything.
 (baseline-cli)
 
+### Modules are linked where the folder lives
+
+`module add <path>` and `init <path>` both link the folder in the config of the
+innermost module that contains it, wherever they run. Before writing anything,
+both refuse a folder that holds a module (`held_module`): linking it would
+leave that module listed past it, which loading refuses. Refusing was chosen
+over moving the inner module's link, which would edit a config the user didn't
+name. (module-add-nested)
+
 ## Interfaces
 
 - `src/specworks/cli/__init__.py`: `app`, `main()` (the `specworks` entry
