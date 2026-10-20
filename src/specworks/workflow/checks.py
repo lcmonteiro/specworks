@@ -186,11 +186,12 @@ def review_closed(ctx: GateContext) -> Check:
 
 # @req REQ-FLOW-011
 def files_accounted(ctx: GateContext) -> Check:
-    """Every changed file without tags is listed under "Changed files without tags" in review.md."""
+    """Every changed file without tags, and every deleted source or test file, is listed under "Changed files without tags" in review.md."""
     report = ctx.report
     if report.changed is None:
         return Check("changed files without tags are accounted for", False, [report.note], blocking=False)
-    missing = [path for path in report.untraced_source + report.untraced_tests if not ctx.review.accounts_for(path)]
+    unseen = report.untraced_source + report.untraced_tests + report.deleted_files
+    missing = [path for path in unseen if not ctx.review.accounts_for(path)]
     return _listed(f"changed files without tags are accounted for in {REVIEW_FILE} (base {report.since})", missing)
 
 

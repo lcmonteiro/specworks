@@ -38,11 +38,12 @@ REVIEW_FILE = "review.md"
 @dataclass
 class ChangedFile:
     path: str  # relative to the workspace root
-    kind: str  # "source", "test" or "other" (docs, config, data)
+    kind: str  # "source", "test", "other" (docs, config, data) or "deleted"
     tags: list[str] = field(default_factory=list)
+    was: str = ""  # for a deleted file, the kind it had
 
     def to_dict(self) -> dict:
-        return {"path": self.path, "kind": self.kind, "tags": self.tags}
+        return {"path": self.path, "kind": self.kind, "tags": self.tags} | ({"was": self.was} if self.was else {})
 
 
 @dataclass
@@ -66,6 +67,11 @@ class ReviewReport:
     def untraced_tests(self) -> list[str]:
         return [f.path for f in self.changed or [] if f.kind == "test" and not any(t.startswith("AC-") for t in f.tags)]
 
+    @property
+    def deleted_files(self) -> list[str]:
+        """Source and test files deleted on the branch: deleted code is reviewed like changed code."""
+        return [f.path for f in self.changed or [] if f.kind == "deleted" and f.was in ("source", "test")]
+
     def findings(self) -> dict[str, list[str]]:
         found = self.analysis.gaps
         return {
@@ -75,6 +81,7 @@ class ReviewReport:
             "unknownTags": [t.at for t in self.analysis.unknown_tags],
             "untracedSource": self.untraced_source,
             "untracedTests": self.untraced_tests,
+            "deletedFiles": self.deleted_files,
         }
 
     def to_dict(self) -> dict:
@@ -119,18 +126,24 @@ def change_start(ws: Workspace, change: Change) -> str | None:
 
 
 # @req REQ-FLOW-009
-def changed_paths(ws: Workspace, since: str) -> list[str]:
-    """Files changed since the commit ``since`` (committed, uncommitted, untracked), relative to the workspace."""
+def _changed_names(ws: Workspace, since: str) -> list[Path]:
+    """Every path git reports as changed since the commit ``since`` (committed, uncommitted, untracked), resolved."""
     git_root = Path(git_text(ws.root, "rev-parse", "--show-toplevel").strip()).resolve()
     # -z: NUL-separated and never quoted, so names with non-ASCII characters or newlines come through as they are.
     names = set(git_text(ws.root, "diff", "--name-only", "-z", since).split("\0"))
     names |= set(git_text(ws.root, "ls-files", "-z", "--others", "--exclude-standard", "--full-name").split("\0"))
-    paths = []
-    for name in sorted(n for n in names if n):
-        path = (git_root / name).resolve()
-        if path.is_file() and path.is_relative_to(ws.root):
-            paths.append(ws.rel(path))
-    return paths
+    return [(git_root / name).resolve() for name in sorted(n for n in names if n)]
+
+
+def changed_paths(ws: Workspace, since: str) -> list[str]:
+    """Files changed since the commit ``since`` (committed, uncommitted, untracked), relative to the workspace."""
+    return [ws.rel(path) for path in _changed_names(ws, since) if path.is_file() and path.is_relative_to(ws.root)]
+
+
+# @req REQ-FLOW-009
+def deleted_paths(ws: Workspace, since: str) -> list[str]:
+    """Files changed since the commit ``since`` that no longer exist, relative to the workspace."""
+    return [ws.rel(path) for path in _changed_names(ws, since) if not path.exists() and path.is_relative_to(ws.root)]
 
 
 def changed_file_kind(ws: Workspace, rel: str) -> str | None:
@@ -164,7 +177,7 @@ def review_change(analysis: Analysis, base: str | None = None) -> ReviewReport:
                     f"HEAD is on {report.base} and no earlier commit marks where {analysis.change.name} started, so only "
                     "uncommitted files are compared; work on a branch, or pass --base <the commit before the change started>"
                 )
-        paths = changed_paths(ws, since)
+        paths, deleted = changed_paths(ws, since), deleted_paths(ws, since)
     except (GitError, OSError) as exc:
         report.note = f"changed files unknown ({exc}); only spec -> code drift was checked"
         return report
@@ -177,6 +190,9 @@ def review_change(analysis: Analysis, base: str | None = None) -> ReviewReport:
         kind = changed_file_kind(ws, rel)
         if kind is not None:
             report.changed.append(ChangedFile(path=rel, kind=kind, tags=sorted(set(tags_by_file.get(rel, [])))))
+    for rel in deleted:  # what each one was decides whether it must be accounted for in review.md
+        if (was := changed_file_kind(ws, rel)) is not None:
+            report.changed.append(ChangedFile(path=rel, kind="deleted", was=was))
     return report
 
 
@@ -279,7 +295,8 @@ def parse_review(text: str) -> ReviewDoc:
                 routed=kind in TYPE_PHASE,
             )
             doc.findings.append(current)
-        elif CHECKBOX_RE.match(line) and not line.startswith((" ", "\t")):  # indented ones belong to a finding
+        elif CHECKBOX_RE.match(line) and (current is None or not line.startswith((" ", "\t"))):
+            # Indented under a finding, it is part of that finding (a sub-step); anywhere else it could hide open work.
             doc.problems.append(f"line {number}: {line.strip()!r} is not a finding; write it as '- [ ] R<n> **<type>** ...'")
             current = None
         elif current is not None and line.strip() and not line.startswith((" ", "\t")):

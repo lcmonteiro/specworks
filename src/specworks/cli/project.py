@@ -11,9 +11,10 @@ from .. import __version__
 from ..core.changes import archived_as, list_archived
 from ..core.config import DEFAULT_DIR, Config, ConfigError, config_name, find_config, load_config
 from ..core.config_file import add_capability_entry, add_module_entry, write_default_config
-from ..core.workspace import Workspace, capability_prefix, load_module_config, load_workspace, require_workspace
+from ..core.validators import validate_relative
+from ..core.workspace import Module, Workspace, capability_prefix, load_module_config, load_workspace, require_workspace
 from ..specs.capabilities import capability_ref, describe
-from ..tools.skills import install_skills, parse_tools
+from ..tools.skills import install_skills, parse_tools, remove_stale_skills
 from .app import app, capability_app, module_app
 from .output import AllOpt, JsonOpt, ToolsOpt, change_dict, changes_of, emit, fail, missing_dicts, module_dict, workspace
 
@@ -26,6 +27,8 @@ def write_skills(ws: Workspace, tools: str) -> None:
     """Install the skills at the workspace root (shared by every module)."""
     selected = parse_tools(tools, ws.root)
     typer.echo(f"tools   {', '.join(t.label for t in selected)}")
+    for removed in remove_stale_skills(ws.root, selected):  # renamed or dropped by this version  @req REQ-INTEG-005
+        typer.echo(f"removed {ws.rel(removed)}")
     for written in install_skills(ws.root, selected):
         typer.echo(f"skill   {ws.rel(written)}")
 
@@ -56,6 +59,19 @@ def link_to_parent(root: Path, name: str | None) -> str | None:
         linked = name or default_module_name(root)
         add_module_entry(owner.root, linked, rel)
     return f"{owner.name}/{linked}" if owner.name else linked  # nested modules are named parent/child
+
+
+def held_module(ws: Workspace, root: Path) -> Module | None:
+    """A module of ``ws`` inside the folder ``root``, unless ``root`` is a module itself.
+
+    Linking such a folder would leave that module listed past it, which loading refuses.
+    """
+    inner = [m for m in ws.modules() if m.root.is_relative_to(root)]
+    return inner[0] if inner and all(m.root != root for m in inner) else None
+
+
+def held_message(ws: Workspace, path: Path, inner: Module) -> str:
+    return f"{path} holds module '{inner.label}' ({ws.rel(inner.root)}); a module can't be added around another one"
 
 
 def module_lines(ws: Workspace, indent: str = "") -> list[str]:
@@ -97,6 +113,8 @@ def init(
                 f"this folder is inside the workspace at {parent.root}, which uses {config_name(workspace_dir)}; "
                 f"modules use the same name (drop --dir, or use --no-link for an independent project)"
             )
+        if inner := held_module(parent, root):
+            raise ConfigError(held_message(parent, path, inner))
         cfg, created = ensure_module_config(root, name or default_module_name(root), workspace_dir)
     else:
         existing = find_config(root)
@@ -205,7 +223,7 @@ def module_add(
     name: str | None = typer.Option(None, "--name", help="Module name (default: folder name)."),
     as_json: bool = JsonOpt,
 ) -> None:
-    """Link a folder as a module of the current project, creating its config if needed.
+    """Link a folder as a module of the innermost module holding it, creating its config if needed.
 
     The module uses the workspace's config file and folder name (e.g. spec.yml and spec/).
     """
@@ -214,6 +232,9 @@ def module_add(
     owner = ws.current
     if root == owner.root or not root.is_relative_to(owner.root):
         fail(f"{path} must be a folder inside {owner.root}", as_json)
+    owner = ws.owner(root.parent)  # the innermost module holding the folder lists it, as with init
+    if inner := held_module(ws, root):
+        fail(held_message(ws, path, inner), as_json)
     module_name = name or default_module_name(root)
     ensure_module_config(root, module_name, ws.top.config.dir)
     add_module_entry(owner.root, module_name, root.relative_to(owner.root).as_posix())
@@ -251,6 +272,10 @@ def capability_add(
     owner = ws.prefixes().get(id_prefix)
     if owner and owner != target.qualify(name):  # the same name is reported as "already exists" below
         raise ConfigError(f"the ID prefix {id_prefix} is already used by {owner}; choose another with --prefix")
+    folder = ws.docs_folder(target, validate_relative(path, f"capability '{name}' path"))  # as the config will store it
+    if (taken := ws.docs_folders().get(folder)) and taken != target.qualify(name):  # @req REQ-PROJ-016
+        where = ws.rel(folder) if folder.is_relative_to(ws.root) else folder.as_posix()
+        raise ConfigError(f"the docs folder {where} is already used by {taken}; give {name} its own --path")
     add_capability_entry(target.root, name, path, prefix=prefix, description=description)
     ws = require_workspace(target.root)
     data = describe(ws, capability_ref(ws.module(target.name), name), with_scenarios=False)

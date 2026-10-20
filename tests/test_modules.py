@@ -321,3 +321,117 @@ def test_module_add_refuses_a_folder_outside_the_project(workspace, tmp_path_fac
         code, data = run_json("module", "add", path)
         assert code == 1 and "must be a folder inside" in data["error"], path
     assert "elsewhere" not in (workspace / "spec.yml").read_text()
+
+
+def set_capabilities(cfg, block):
+    cfg.write_text(cfg.read_text().replace("capabilities: {}", "capabilities:\n" + block))
+
+
+# @ac AC-PROJ-016.1
+def test_two_capabilities_on_one_path_are_refused(workspace):
+    set_capabilities(workspace / "spec.yml", "  auth:\n    path: src/auth\n  login:\n    path: src/auth/\n")
+    code, data = run_json("context")
+    assert code == 1 and "auth" in data["error"] and "login" in data["error"] and "src/auth/docs" in data["error"]
+
+
+# @ac AC-PROJ-016.2
+def test_capabilities_of_two_modules_on_one_folder_are_refused(workspace):
+    set_capabilities(workspace / "spec.yml", "  top-invoices:\n    path: services/billing/src/invoices\n")
+    code, data = run_json("context")
+    assert code == 1 and "top-invoices" in data["error"] and "billing:invoices" in data["error"]
+
+
+# @ac AC-PROJ-016.3
+def test_nested_capability_paths_load(workspace):
+    set_capabilities(workspace / "spec.yml", "  auth:\n    path: src/auth\n  admin:\n    path: src/auth/admin\n")
+    code, data = run_json("context")
+    docs = {c["name"]: c["docsPath"] for c in data["capabilities"]}
+    assert code == 0 and docs["auth"] == "src/auth/docs" and docs["admin"] == "src/auth/admin/docs"
+
+
+# @ac AC-PROJ-016.4
+def test_capability_add_refuses_a_taken_path(workspace):
+    run_json("capability", "add", "auth", "--path", "src/auth")
+    before = (workspace / "spec.yml").read_text()
+    code, data = run_json("capability", "add", "login", "--path", "src/auth")
+    assert code == 1 and "auth" in data["error"] and "src/auth/docs" in data["error"]
+    assert (workspace / "spec.yml").read_text() == before
+    code, data = run_json("capability", "add", "login", "--path", "src\\auth\\")  # stored as src/auth
+    assert code == 1 and "already used by auth" in data["error"]
+    assert (workspace / "spec.yml").read_text() == before
+
+
+def link_module(workspace, name, target):
+    """Link the folder ``target`` as module ``name`` of the top level, through a symlink called ``name``."""
+    try:
+        (workspace / name).symlink_to(target, target_is_directory=True)
+    except OSError:  # Windows without the symlink privilege
+        pytest.skip("cannot create symlinks here")
+    cfg = workspace / "spec.yml"
+    cfg.write_text(cfg.read_text().replace("\nmodules:\n", f"\nmodules:\n  {name}: {name}\n", 1))
+
+
+# @ac AC-PROJ-006.6
+def test_a_module_that_leads_back_to_an_ancestor_is_refused(workspace):
+    link_module(workspace, "loop", workspace)
+    code, data = run_json("context")
+    assert code == 1 and "module 'loop'" in data["error"] and "(top)" in data["error"]
+
+
+# @ac AC-PROJ-006.7
+def test_a_folder_linked_as_a_module_twice_is_refused(workspace):
+    link_module(workspace, "other", workspace / "services/billing")
+    code, data = run_json("context")
+    assert code == 1 and "'billing'" in data["error"] and "'other'" in data["error"]
+
+
+# @ac AC-PROJ-006.8
+def test_a_module_listed_past_the_module_that_contains_it_is_refused(workspace):
+    run("init", "services/billing/sub", "--dir", "spec", "--no-link", "--no-skills")
+    cfg = workspace / "spec.yml"
+    cfg.write_text(cfg.read_text().replace("\nmodules:\n", "\nmodules:\n  sub: services/billing/sub\n", 1))
+    code, data = run_json("context")
+    assert code == 1 and "module 'sub'" in data["error"] and "module 'billing'" in data["error"]
+
+
+# @ac AC-CLI-005.6
+def test_module_add_links_to_the_module_that_contains_the_folder(workspace):
+    top_before = (workspace / "spec.yml").read_text()
+    code, data = run_json("module", "add", "services/billing/sub")
+    assert code == 0 and data["name"] == "billing/sub"
+    assert "  sub: sub\n" in (workspace / "services/billing/spec.yml").read_text()
+    assert (workspace / "spec.yml").read_text() == top_before
+    assert "billing/sub" in run("module", "list")
+
+
+# @ac AC-CLI-005.7
+def test_module_add_refuses_a_folder_around_a_module(workspace):
+    configs = {p: p.read_text() for p in workspace.rglob("spec.yml")}
+    code, data = run_json("module", "add", "services")
+    assert code == 1 and "module 'billing'" in data["error"]
+    assert {p: p.read_text() for p in workspace.rglob("spec.yml")} == configs
+    assert not (workspace / "services/spec").exists()
+    assert load_workspace(workspace) is not None
+
+
+# @ac AC-PROJ-006.9
+@pytest.mark.parametrize("with_config", [True, False])
+def test_a_module_outside_the_workspace_is_refused(workspace, tmp_path_factory, monkeypatch, with_config):
+    outside = tmp_path_factory.mktemp("outside")
+    if with_config:
+        monkeypatch.chdir(outside)
+        run("init", "--dir", "spec", "--no-link", "--no-skills")
+        monkeypatch.chdir(workspace)
+    link_module(workspace, "ext", outside)
+    code, data = run_json("context")
+    assert code == 1 and "module 'ext'" in data["error"] and str(outside) in data["error"]
+
+
+# @ac AC-CLI-003.6
+def test_init_refuses_a_folder_around_a_module(workspace):
+    configs = {p: p.read_text() for p in workspace.rglob("spec.yml")}
+    result = runner.invoke(app, ["init", "services", "--no-skills"])
+    assert result.exit_code == 1 and "module 'billing'" in result.output
+    assert {p: p.read_text() for p in workspace.rglob("spec.yml")} == configs
+    assert not (workspace / "services/spec").exists()
+    assert load_workspace(workspace) is not None

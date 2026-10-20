@@ -143,6 +143,14 @@ class Workspace:
         """ID prefix -> the registered capability (``module:name``) that uses it."""
         return {capability_prefix(m.name, cap.name, cap.prefix): m.qualify(cap.name) for m, cap in self.capabilities()}
 
+    def docs_folder(self, module: Module, path: str) -> Path:
+        """The living-docs folder a capability on ``path`` (relative to ``module``) writes to, resolved."""
+        return (module.root / path.strip().rstrip("/") / module.config.docs_dir).resolve()
+
+    def docs_folders(self) -> dict[Path, str]:
+        """Resolved living-docs folder -> the registered capability (``module:name``) that uses it."""
+        return {self.docs_folder(m, cap.path): m.qualify(cap.name) for m, cap in self.capabilities()}
+
 
 def _links_to(parent: Config, child_root: Path) -> str | None:
     """Name under which ``parent`` lists ``child_root`` as a module, if it does."""
@@ -183,16 +191,30 @@ def load_module_config(root: Path, name: str, workspace_dir: str) -> Config | No
 
 
 # @req REQ-PROJ-006
-def _load_tree(config: Config, name: str, parent: Module | None, missing: list[MissingModule]) -> Module:
+def _load_tree(config: Config, name: str, parent: Module | None, missing: list[MissingModule], seen: dict[Path, str]) -> Module:
+    """``seen``: the resolved folder of every module loaded so far -> its label; a folder is at most one module."""
     module = Module(name=name, config=config, parent=parent)
+    seen[config.root.resolve()] = module.label
+    top_root = next(iter(seen))  # the first folder loaded is the top level's
     for child_name, child_path in config.modules.items():
         child_root = (config.root / child_path).resolve()
         full_name = f"{name}/{child_name}" if name else child_name
+        if child_root in seen:  # a symlink back to an ancestor (a cycle), or a folder linked twice
+            owner = seen[child_root] if seen[child_root] == "(top)" else f"module '{seen[child_root]}'"
+            raise ConfigError(
+                f"module '{full_name}' ({child_root.relative_to(top_root).as_posix() or '.'}) is the same folder as {owner}; "
+                "a folder can be only one module, so remove one of the links"
+            )
+        if not child_root.is_relative_to(top_root):  # every path the CLI prints is relative to the top level
+            raise ConfigError(
+                f"module '{full_name}' ({child_path}) leads outside the workspace, to {child_root}; "
+                "a module's folder must be inside the top level's"
+            )
         child_config = load_module_config(child_root, full_name, config.dir)
         if child_config is None:
             missing.append(MissingModule(name=full_name, path=child_root))
             continue
-        module.children.append(_load_tree(child_config, full_name, module, missing))
+        module.children.append(_load_tree(child_config, full_name, module, missing, seen))
     return module
 
 
@@ -231,11 +253,30 @@ def load_workspace(start: Path | None = None) -> Workspace | None:
         top_root = ancestor
 
     missing: list[MissingModule] = []
-    top = _load_tree(load_config(top_root), "", None, missing)
+    top = _load_tree(load_config(top_root), "", None, missing, {})
     current = next(m for m in top.walk() if m.root == nearest)
     ws = Workspace(top=top, current=current, missing=missing)
+    _check_nesting(ws)
     _check_prefixes(ws)
+    _check_docs_folders(ws)
     return ws
+
+
+# @req REQ-PROJ-006
+def _check_nesting(ws: Workspace) -> None:
+    """Each module is listed by the innermost module holding its folder, so the workspace looks the same from any folder."""
+    for module in ws.modules():
+        if module.parent is None:
+            continue
+        container = max(
+            (m for m in ws.modules() if m is not module and module.root.is_relative_to(m.root)),
+            key=lambda m: len(m.root.parts),
+        )  # never empty: every module is inside the top level's folder
+        if container is not module.parent:
+            raise ConfigError(
+                f"module '{module.name}' ({ws.rel(module.root)}) is inside module '{container.label}'; "
+                f"list it in {container.label}'s config instead of {module.parent.label}'s"
+            )
 
 
 # @req REQ-PROJ-005
@@ -250,3 +291,17 @@ def _check_prefixes(ws: Workspace) -> None:
                 f"give one of them its own 'prefix:' in its config (IDs already written keep the prefix they have)"
             )
         owners[prefix] = ref
+
+
+# @req REQ-PROJ-016
+def _check_docs_folders(ws: Workspace) -> None:
+    """Every capability has its own living-docs folder, or close would write two capabilities' specs into one file."""
+    owners: dict[Path, str] = {}
+    for module, cap in ws.capabilities():
+        folder, ref = ws.docs_folder(module, cap.path), module.qualify(cap.name)
+        if folder in owners:
+            where = ws.rel(folder) if folder.is_relative_to(ws.root) else folder.as_posix()
+            raise ConfigError(
+                f"capabilities {owners[folder]} and {ref} both use the docs folder {where}; give one of them its own 'path:'"
+            )
+        owners[folder] = ref

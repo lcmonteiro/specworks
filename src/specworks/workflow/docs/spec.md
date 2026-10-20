@@ -151,7 +151,8 @@ not checked.
 
 The design gate SHALL require an Interfaces section in design.md (found by its
 heading in any case, HTML comments and code fences ignored), with every file
-named in its code spans existing. `None` SHALL pass without files, and prose
+named in its code spans existing inside the change's module folder, written
+relative to that folder or to the workspace root. `None` SHALL pass without files, and prose
 naming no file SHALL be a warning. It SHALL run the build and typecheck commands
 when they are configured. The existing test suite must pass, except once the
 change already has `@ac` tests, when a red suite is only a warning.
@@ -180,6 +181,12 @@ change already has `@ac` tests, when a red suite is only a warning.
 
 - **WHEN** `build` and `typecheck` are configured
 - **THEN** they run as checks of their own, and none are shown when they are not configured
+
+#### Scenario: AC-FLOW-006.6 A file outside the change's module
+
+- **GIVEN** a change in module `billing` (at `services/billing`) whose Interfaces name `src/invoices.py`, and a `src/invoices.py` that exists only at the workspace root
+- **WHEN** the design gate runs
+- **THEN** it fails listing `src/invoices.py`; it passes once the file exists in the module, named either `src/invoices.py` or `services/billing/src/invoices.py`
 
 ### Requirement: REQ-FLOW-007 Gate test
 
@@ -239,7 +246,9 @@ requirements or to criteria a MODIFIED block drops, and a passing test suite
 `specworks review` SHALL compare the files changed since the merge base with the
 base branch (committed, uncommitted and untracked; workflow folders left out),
 classify each as source, test or other, and report untagged source and test
-files next to the spec-side gaps. The base SHALL default to origin's default
+files next to the spec-side gaps. A file deleted on the branch SHALL be listed
+with kind `deleted` and the kind it had, and a deleted source or test file SHALL
+be reported as a drift candidate. The base SHALL default to origin's default
 branch, then `origin/main`, `main`, `origin/master`, `master`. On the base
 branch itself, the diff SHALL start at the commit before the change was created.
 Without git, or without a base, only the spec side SHALL be checked, with a note
@@ -275,6 +284,11 @@ saying why.
 - **WHEN** a changed file's name has non-ASCII characters
 - **THEN** it is listed by its real name
 
+#### Scenario: AC-FLOW-009.7 Deleted files
+
+- **WHEN** the branch deletes a source file, a test file and a doc
+- **THEN** each is listed with kind `deleted` and the kind it had (`source`, `test`, `other`); the source and test files are reported under `deletedFiles`, the doc is not
+
 ### Requirement: REQ-FLOW-010 Reading review.md
 
 The system SHALL read each finding in review.md as a checkbox with its ID
@@ -282,9 +296,9 @@ The system SHALL read each finding in review.md as a checkbox with its ID
 first bold word that is a known type, in any case). It SHALL route the finding
 to the phase of its type, or to the phase of a `back to <phase>:` in its own
 block, and after a `done in <phase>:` to the phase after that one. HTML comments
-and code fences SHALL be ignored. A top-level checkbox that is not a finding,
-and an open finding with no known type or phase, SHALL be reported as
-unreadable.
+and code fences SHALL be ignored. A checkbox outside a finding's block (at the
+top level or indented, ticked or not), and an open finding with no known type or
+phase, SHALL be reported as unreadable.
 
 #### Scenario: AC-FLOW-010.1 Finding variants
 
@@ -306,11 +320,18 @@ unreadable.
 - **WHEN** a finding appears in a code fence, or a fence or sub-checkbox sits under a finding
 - **THEN** the fenced finding is an example, and the finding above the fence stays open and routed
 
+#### Scenario: AC-FLOW-010.5 A checkbox indented outside any finding
+
+- **GIVEN** review.md with `- Follow-ups:` followed by `  - [ ] reset still ignores case`, and no finding above it
+- **WHEN** it is read
+- **THEN** the checkbox is reported as unreadable, so the review gate fails (also with `--allow-open`); the same checkbox under a finding stays part of that finding
+
 ### Requirement: REQ-FLOW-011 Gate review
 
 The review gate SHALL require review.md with no open finding (with
 `--allow-open`, open findings are a warning), every changed file without tags
-named as a whole path under "Changed files without tags", and the code gate's
+and every deleted source or test file named as a whole path under "Changed
+files without tags", and the code gate's
 tag and test checks. It SHALL warn about each MODIFIED requirement whose
 behaviour changed while none of its tests changed, and about a diff that may be
 incomplete because HEAD is on the base branch.
@@ -339,6 +360,11 @@ incomplete because HEAD is on the base branch.
 
 - **WHEN** HEAD is on the base branch with no commit marking the change's start
 - **THEN** the gate warns that the change's commits are compared with nothing; on a branch, no such warning
+
+#### Scenario: AC-FLOW-011.6 Deleted files accounted for
+
+- **WHEN** a deleted source or test file is not named under "Changed files without tags"
+- **THEN** the gate fails listing it; naming it there with a reason makes the gate pass
 
 ### Requirement: REQ-FLOW-012 Build cycles
 

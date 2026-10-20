@@ -246,6 +246,24 @@ def test_diagrams_refuses_a_folder_outside_the_workspace(change, tmp_path_factor
     code, data = run_json("diagrams", "--dir", str(tmp_path_factory.mktemp("elsewhere")))
     assert code == 1 and "is outside the workspace" in data["error"]
 
+
+# @ac AC-CLI-008.6
+def test_diagrams_dir_is_relative_to_the_workspace_root(change, monkeypatch):
+    root = change.parents[2]
+    (root / "src/auth/docs/diagrams").mkdir(parents=True)
+    (root / "src/auth/docs/diagrams/flow.d2").write_text(FLOW)
+    assert runner.invoke(app, ["module", "add", "web"]).exit_code == 0
+    monkeypatch.chdir(root / "web")
+    code, data = run_json("diagrams", "--dir", "src/auth/docs", "--check")
+    assert data["dir"] == "src/auth/docs"
+    assert [d["source"] for d in data["diagrams"]] == ["src/auth/docs/diagrams/flow.d2"]
+
+
+# @ac AC-CLI-008.7
+def test_diagrams_refuses_a_folder_that_does_not_exist(change, fake_d2):
+    code, data = run_json("diagrams", "--dir", "src/nope")
+    assert code == 1 and "no folder" in data["error"] and "src/nope" in data["error"]
+
 # @ac AC-PROJ-009.3
 def test_init_sets_the_diagram_theme(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
@@ -261,3 +279,25 @@ def test_init_rejects_unknown_diagram_theme(tmp_path, monkeypatch):
     result = runner.invoke(app, ["init", "--no-skills", "--diagram-theme", "rainbow"])
     assert result.exit_code == 1 and "unknown theme" in result.output
     assert not list(tmp_path.glob("*.yml"))
+
+
+# @ac AC-INTEG-003.4
+def test_an_svg_that_cannot_be_stamped_is_a_render_error(change, tmp_path_factory, monkeypatch):
+    script = fake_executable(
+        tmp_path_factory.mktemp("bin"),
+        "d2",
+        "import sys, pathlib\n"
+        "src, out = pathlib.Path(sys.argv[-2]).read_text(), pathlib.Path(sys.argv[-1])\n"
+        "if 'UNCLOSED' in src:\n    out.write_text('<?xml version=\"1.0\"<svg/>')\n"
+        "elif 'LATIN' in src:\n    out.write_bytes(b'<svg>caf\\xe9</svg>')\n"
+        "elif 'NOFILE' not in src:\n    out.write_text('<?xml version=\"1.0\"?><svg/>')\n",
+    )
+    monkeypatch.setenv("SPECWORKS_D2", str(script))
+    for name in ("unclosed", "latin", "nofile"):
+        (change / f"diagrams/{name}.d2").write_text(name.upper() + "\n")
+    code, data = run_json("diagrams", "--change", CHANGE)
+    result = {d["source"].rsplit("/", 1)[-1]: d for d in data["diagrams"]}
+    assert code == 1 and result["reset-flow.d2"]["status"] == "rendered"
+    for name in ("unclosed", "latin"):
+        assert result[f"{name}.d2"]["status"] == "error" and result[f"{name}.d2"]["error"].startswith(f"cannot render {name}.d2: ")
+    assert result["nofile.d2"]["status"] == "error" and "nofile.d2: no SVG was written" in result["nofile.d2"]["error"]

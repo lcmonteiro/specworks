@@ -81,8 +81,14 @@ def interfaces_recorded(ctx: GateContext) -> Check:
 
 # @req REQ-FLOW-006
 def interface_files_exist(ctx: GateContext) -> Check:
-    files = interface_files(interfaces_section(ctx.change) or "")
-    missing = [path for path in files if not (ctx.module.root / path).exists() and not (ctx.ws.root / path).exists()]
+    """A named file counts when it exists inside the change's module, named relative to it or to the workspace root."""
+    module_root = ctx.module.root.resolve()
+
+    def in_module(path: str) -> bool:
+        found = ((base / path).resolve() for base in (ctx.module.root, ctx.ws.root))
+        return any(p.exists() and p.is_relative_to(module_root) for p in found)
+
+    missing = [path for path in interface_files(interfaces_section(ctx.change) or "") if not in_module(path)]
     return Check("every file named under Interfaces exists", not missing, missing)
 
 

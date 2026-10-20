@@ -29,6 +29,15 @@ commands. Anything that needs judgement (whether a test fails for the right
 reason, whether the code matches the spec's intent) stays with the skills.
 (baseline-workflow)
 
+### A change's interfaces live in its own module
+
+The design gate counts a file named under Interfaces only when it exists inside
+the change's module folder. The path may be written relative to the module or
+to the workspace root, the form every CLI path is printed in. A same-named file
+elsewhere in the workspace must not stand in for a missing stub, and work
+across modules belongs to a change at the top level or in the lowest common
+module. (module-interface-paths)
+
 ### One definition per check, shared by gates and validate
 
 Gates and validate are lists of the same check functions. Validate adds a
@@ -42,12 +51,23 @@ Leaving specify through `start` records a fingerprint of each requirement.
 Later gates warn, without blocking, when the specs drift from that agreement,
 and starting design again accepts the new specs. (baseline-workflow)
 
+### Deleted code is reviewed like changed code
+
+The drift report lists files deleted on the branch (kind `deleted`, with the
+kind they had). Deleted source and test files must be accounted for in
+review.md, like untagged changed files, because the trace only checks the
+change's own requirements: a deletion is where another requirement can silently
+lose its code. Detecting that loss automatically (reading the deleted file's
+tags at the base) was left for later. (review-deleted-files)
+
 ### review.md is parsed strictly
 
 A checkbox the parser can't read, or an open finding with no known type or
 `back to <phase>:`, fails the review gate and validate, even inside a build.
 A finding the parser misses would otherwise let a gate pass with it still open.
-(baseline-workflow)
+The same goes for any checkbox outside a finding, at the top level or indented
+under another bullet: only sub-steps inside a finding's block are allowed, so
+open work can't hide behind indentation. (baseline-workflow, review-indented-checkboxes)
 
 ### Build cycles start at the earliest phase a finding needs
 
@@ -65,6 +85,7 @@ cycle. (baseline-workflow)
   `run_gate(ctx, phase)`, `gates_to_start(current, phase)`,
   `start_phase(ctx, phase)`.
 - `src/specworks/workflow/review.py`: `review_change(analysis, base)`,
+  `changed_paths(ws, since)`, `deleted_paths(ws, since)`, `ChangedFile` (`kind`, `was`),
   `ReviewReport`, `parse_review(text)`, `read_review(change)`, `ReviewDoc`,
   `Finding`.
 - `src/specworks/workflow/cycle.py`: `next_cycle(change)`.

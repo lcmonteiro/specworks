@@ -101,7 +101,7 @@ def diagrams(
     themes: bool = typer.Option(False, "--themes", help="List the diagram themes and the one in use."),
     check: bool = typer.Option(False, "--check", help="Only report missing or outdated SVGs (exit 1 if any); no d2 needed."),
     force: bool = typer.Option(False, "--force", help="Re-render every diagram, even up-to-date ones."),
-    dir: Path | None = typer.Option(None, "--dir", help="Render <dir>/diagrams/*.d2 instead (e.g. a capability's living docs folder)."),
+    dir: Path | None = typer.Option(None, "--dir", help="Render <dir>/diagrams/*.d2 instead, <dir> relative to the workspace root (e.g. a capability's docsPath)."),
     as_json: bool = JsonOpt,
 ) -> None:
     """Render D2 diagrams (diagrams/*.d2) of a change, or of a docs folder, to SVG with the workspace's settings."""
@@ -127,9 +127,11 @@ def diagrams(
     if (change is None) == (dir is None):
         fail("give either --change <ref> or --dir <folder> (or --themes)", as_json)
     if dir is not None:
-        folder = dir.resolve()
+        folder = (ws.root / dir).resolve()  # like every path the CLI prints: relative to the root, from any folder
         if not folder.is_relative_to(ws.root):
             fail(f"{dir} is outside the workspace", as_json)
+        if not folder.is_dir():
+            fail(f"no folder {ws.rel(folder)} in the workspace (--dir is relative to its root)", as_json)
         header = {"root": str(ws.root), "dir": ws.rel(folder)}
     else:
         assert change is not None  # exactly one of --change / --dir, checked above

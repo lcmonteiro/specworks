@@ -147,8 +147,14 @@ modules, have the same requirement ID prefix, given or derived.
 
 The system SHALL load a workspace made of a top-level project and the modules
 its config lists (recursively), each a project with its own config of the same
-file name. Looking up the workspace, it SHALL rise from the nearest config to
-each ancestor that lists it as a module.
+file name. A module's folder (with symlinks resolved) SHALL be
+inside the top level's, or loading SHALL fail naming the module and where its
+folder is. A folder SHALL be at most one module: a module whose folder (with
+symlinks resolved) is an ancestor or another module of the workspace SHALL make
+loading fail, naming both. A module SHALL be listed by the innermost
+module whose folder contains it: one listed by a module further up SHALL make
+loading fail, naming the module it belongs under. Looking up the workspace, it SHALL rise from the
+nearest config to each ancestor that lists it as a module.
 
 #### Scenario: AC-PROJ-006.1 The whole workspace from inside a module
 
@@ -177,6 +183,30 @@ each ancestor that lists it as a module.
 - **GIVEN** a broken config that lists the current project as a module
 - **WHEN** the workspace is loaded
 - **THEN** loading fails with that config's error
+
+#### Scenario: AC-PROJ-006.6 A module that leads back to an ancestor
+
+- **GIVEN** a project listing `loop: loop`, where `loop` is a symlink to the project's own folder
+- **WHEN** the workspace is loaded
+- **THEN** it fails (no crash) naming module `loop` and `(top)`, the module whose folder it already is
+
+#### Scenario: AC-PROJ-006.7 A folder linked as a module twice
+
+- **GIVEN** a folder linked as module `billing` and, through a symlink, as module `other`
+- **WHEN** the workspace is loaded
+- **THEN** it fails naming both `billing` and `other` and the folder
+
+#### Scenario: AC-PROJ-006.8 A module listed past the module that contains it
+
+- **GIVEN** a top level listing `billing: services/billing` and `sub: services/billing/sub`
+- **WHEN** the workspace is loaded
+- **THEN** it fails naming module `sub` and `billing`, the module it belongs under
+
+#### Scenario: AC-PROJ-006.9 A module outside the workspace
+
+- **GIVEN** a project listing `ext: ext`, where `ext` is a symlink to a folder outside the project
+- **WHEN** the workspace is loaded
+- **THEN** it fails (no crash) naming module `ext` and the folder it leads to, whether or not that folder has a config
 
 ### Requirement: REQ-PROJ-007 What a module inherits
 
@@ -311,8 +341,10 @@ cannot be read.
 
 The system SHALL run a configured command (`commands.<key>`, merged from the
 top level down to the module) through the shell in the module's folder, and
-report its exit code and output. A command that is not configured SHALL be an
-error saying where to add it.
+report its exit code and output. A key that is not a command key (`test`,
+`lint`, `typecheck`, `build`, `format`) SHALL be an error listing the valid
+keys. A command key that is not configured SHALL be an error saying where to
+add it, with an example for that key.
 
 #### Scenario: AC-PROJ-013.1 Exit code and output
 
@@ -327,7 +359,12 @@ error saying where to add it.
 #### Scenario: AC-PROJ-013.3 Not configured
 
 - **WHEN** a command that is not configured is run
-- **THEN** it fails with `no '<key>' command configured` and the config to add it to
+- **THEN** it fails with `no '<key>' command configured`, the config to add it to, and an example for that key (`lint: <command>`)
+
+#### Scenario: AC-PROJ-013.4 Not a command key
+
+- **WHEN** a key that is not a command key, such as `frobnicate`, is run
+- **THEN** it fails with `unknown command 'frobnicate'` listing `test, lint, typecheck, build, format`, and doesn't suggest adding it to the config
 
 ### Requirement: REQ-PROJ-014 Reusing command results
 
@@ -335,8 +372,9 @@ The system SHALL reuse the result of a command run on an identical working tree
 (same command and folder, same `HEAD`, same uncommitted changes, same untracked
 files and contents, the workflow folders left out), passing or failing. Every
 real run SHALL replace the recorded result for its tree. Reuse SHALL be off
-without git, when `SPECWORKS_RUN_CACHE=0`, and when a git submodule holds
-untracked files.
+without git, when `SPECWORKS_RUN_CACHE=0`, when a git submodule holds untracked
+files, and when an untracked file cannot be read. An untracked file's name SHALL
+count as the bytes git reports, whatever its encoding.
 
 #### Scenario: AC-PROJ-014.1 Same tree
 
@@ -368,6 +406,18 @@ untracked files.
 - **WHEN** a submodule's tracked files change
 - **THEN** the command runs again; while it holds untracked files, no result is reused
 
+#### Scenario: AC-PROJ-014.7 A file name that is not UTF-8
+
+- **GIVEN** an untracked file whose name is not valid UTF-8 (e.g. `caf\xe9.py`)
+- **WHEN** a gate runs the same command twice on the same tree
+- **THEN** nothing crashes, the command runs once, and the second result is reused
+
+#### Scenario: AC-PROJ-014.8 An untracked file that cannot be read
+
+- **GIVEN** an untracked file the fingerprint cannot read
+- **WHEN** a gate runs the command, twice
+- **THEN** nothing crashes, and the command runs for real both times
+
 ### Requirement: REQ-PROJ-015 Reading project files
 
 The system SHALL report a project file that is not UTF-8 text as an error
@@ -377,3 +427,34 @@ naming the file and asking to save it as UTF-8, instead of crashing.
 
 - **WHEN** a project file the workflow reads (e.g. a delta spec) is not UTF-8
 - **THEN** the command fails with `is not UTF-8 text` and the file's name
+
+### Requirement: REQ-PROJ-016 Unique docs folders
+
+The system SHALL refuse to load a workspace in which two capabilities, in any
+modules, resolve to the same living-docs folder (`<module root>/<path>/<docs_dir>`),
+with an error naming both capabilities and the folder. Capabilities whose paths
+are nested SHALL still load. Registering a capability that would share a docs
+folder SHALL be refused, leaving the config unchanged.
+
+#### Scenario: AC-PROJ-016.1 Two capabilities on one path
+
+- **GIVEN** a config with capabilities `auth` and `login`, both on `src/auth` (written the same or with a trailing `/`)
+- **WHEN** the workspace is loaded
+- **THEN** it fails naming `auth`, `login` and `src/auth/docs`
+
+#### Scenario: AC-PROJ-016.2 Across modules
+
+- **GIVEN** a top-level capability on `services/billing/src/invoices` and a capability of module `billing` (at `services/billing`) on `src/invoices`
+- **WHEN** the workspace is loaded
+- **THEN** it fails naming both capabilities (`billing:invoices` for the module's)
+
+#### Scenario: AC-PROJ-016.3 Nested paths
+
+- **GIVEN** capabilities on `src/auth` and `src/auth/admin`
+- **WHEN** the workspace is loaded
+- **THEN** it loads, and each capability has its own docs folder
+
+#### Scenario: AC-PROJ-016.4 Registering one on a taken path
+
+- **WHEN** `capability add login --path src/auth` runs while `auth` is on `src/auth`
+- **THEN** it fails naming `auth`, and the config file is unchanged

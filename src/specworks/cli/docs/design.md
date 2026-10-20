@@ -31,7 +31,11 @@ so a skill can tell "not set up" from a crash. (baseline-cli)
 ### Paths are relative to the workspace root
 
 Every path printed is relative to the top-level project, which `context` prints
-as `root`. (baseline-cli)
+as `root`. An option that names a folder of the workspace (`diagrams --dir`) is
+read from the root too, so a printed path works from any folder, and a folder
+that doesn't exist is refused. `init <path>` and `module add <path>` stay
+relative to the working directory: they name a folder where the user stands.
+(baseline-cli, diagrams-dir-root)
 
 ### A change reference is forgiving but never ambiguous
 
@@ -45,6 +49,15 @@ The commands refuse option combinations that would skip a safeguard: `close`
 runs validate first and takes `--no-run` only with `--dry-run`, and `init`
 rejects a bad `--tools` or a module's `--dir` before writing anything.
 (baseline-cli)
+
+### Modules are linked where the folder lives
+
+`module add <path>` and `init <path>` both link the folder in the config of the
+innermost module that contains it, wherever they run. Before writing anything,
+both refuse a folder that holds a module (`held_module`): linking it would
+leave that module listed past it, which loading refuses. Refusing was chosen
+over moving the inner module's link, which would edit a config the user didn't
+name. (module-add-nested)
 
 ## Interfaces
 

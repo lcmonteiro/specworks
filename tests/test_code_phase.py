@@ -61,6 +61,14 @@ def test_run_in_the_module_of_the_change(project):
 def test_run_unconfigured_command(project):
     code, data = run_json("run", "lint")
     assert code == 1 and "no 'lint' command configured" in data["error"]
+    assert "(e.g. lint: <command>)" in data["error"]
+
+
+# @ac AC-PROJ-013.4
+def test_run_unknown_command_key(project):
+    code, data = run_json("run", "frobnicate")
+    assert code == 1 and "unknown command 'frobnicate'" in data["error"]
+    assert "test, lint, typecheck, build, format" in data["error"] and "commands:" not in data["error"]
 
 
 # --- gate code ---------------------------------------------------------

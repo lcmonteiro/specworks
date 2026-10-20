@@ -11,6 +11,7 @@ Skills follow the Agent Skills format (``<name>/SKILL.md`` with ``name`` and
 from __future__ import annotations
 
 import re
+import shutil
 from dataclasses import dataclass, field
 from importlib import resources
 from pathlib import Path
@@ -79,12 +80,21 @@ def read_skill(name: str) -> str:
     return INCLUDE_RE.sub(lambda m: skills.joinpath("_shared", f"{m.group('name')}.md").read_text(encoding="utf-8"), text)
 
 
+# @req REQ-INTEG-005
 def split_frontmatter(text: str) -> tuple[list[tuple[str, str]], str]:
-    """``---``-delimited frontmatter as ordered (key, line) pairs, and the body after it."""
+    """``---``-delimited frontmatter as ordered (key, lines) pairs, and the body after it.
+
+    An indented line continues the key above it (a folded ``description: >``), so a key is kept or dropped whole.
+    """
     match = FRONTMATTER_RE.match(text)
     if not match:
         return [], text
-    pairs = [(line.split(":", 1)[0].strip(), line) for line in match.group(1).splitlines() if ":" in line]
+    pairs: list[tuple[str, str]] = []
+    for line in match.group(1).splitlines():
+        if line.startswith((" ", "\t")) and pairs:
+            pairs[-1] = (pairs[-1][0], pairs[-1][1] + "\n" + line)
+        elif ":" in line:
+            pairs.append((line.split(":", 1)[0].strip(), line))
     return pairs, text[match.end() :]
 
 
@@ -124,6 +134,36 @@ def parse_tools(value: str, root: Path) -> list[Tool]:
     if not tools:
         raise ToolError("no tool given; use auto, all or a list such as claude,copilot")
     return tools
+
+
+# Skills shipped before every skill took the specworks- prefix; removed like any stale specworks-* skill.
+RETIRED_NAMES: tuple[str, ...] = ("sw-refine",)
+
+
+def _stale(name: str, shipped: set[str]) -> bool:
+    """A specworks skill name (its prefix, or a retired one) that this version does not ship; any other name is not ours."""
+    return (name.startswith("specworks-") or name in RETIRED_NAMES) and name not in shipped
+
+
+# @req REQ-INTEG-005
+def remove_stale_skills(root: Path, tools: list[Tool]) -> list[Path]:
+    """Delete the specworks skills (and Copilot prompt files) of ``tools`` that are no longer shipped; return what was deleted."""
+    shipped, removed = set(packaged_skills()), []
+    for tool in tools:
+        skills = root / tool.skills_dir
+        for folder in sorted(skills.iterdir()) if skills.is_dir() else []:
+            if folder.is_dir() and _stale(folder.name, shipped):
+                if folder.is_symlink():
+                    folder.unlink()  # only the link: its target is not ours to delete
+                else:
+                    shutil.rmtree(folder)
+                removed.append(folder)
+        prompts = root / tool.prompts_dir if tool.prompts_dir else None
+        for prompt in sorted(prompts.glob("*.prompt.md")) if prompts and prompts.is_dir() else []:
+            if _stale(prompt.name.removesuffix(".prompt.md"), shipped):
+                prompt.unlink()
+                removed.append(prompt)
+    return removed
 
 
 # @req REQ-INTEG-005

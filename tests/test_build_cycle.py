@@ -148,3 +148,12 @@ def test_finding_types_match_in_any_case_and_after_other_bold_words():
     text = "- [ ] R1 **BREAKING** **Spec-Gap** reset changes\n- [ ] R2 **spec_gap** typo\n"
     found = [(f.type, f.phase, f.routed) for f in parse_review(text).findings]
     assert found == [("spec-gap", "specify", True), ("spec_gap", "code", False)]
+
+
+# @ac AC-FLOW-010.5
+def test_a_checkbox_indented_outside_any_finding_is_unreadable():
+    loose = "## Findings\n\nNone.\n\n- Follow-ups:\n  - [ ] reset still ignores case\n"
+    problems = parse_review(loose).problems
+    assert len(problems) == 1 and "'- [ ] reset still ignores case' is not a finding" in problems[0]
+    under_a_finding = "## Findings\n\n- [x] R1 **code-gap** x\n  - **Decision**: code fixed\n  - [ ] reset still ignores case\n"
+    assert parse_review(under_a_finding).problems == []

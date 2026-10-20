@@ -87,8 +87,9 @@ def state(diagram: Diagram, settings: DiagramSettings) -> str:
 def stamp(svg_text: str, digest: str) -> str:
     mark = STAMP.format(digest)
     if svg_text.startswith("<?xml"):
-        end = svg_text.index("?>") + 2
-        return svg_text[:end] + mark + svg_text[end:]
+        if (end := svg_text.find("?>")) < 0:
+            raise ValueError("the SVG's <?xml declaration is not closed")
+        return svg_text[: end + 2] + mark + svg_text[end + 2 :]
     return mark + svg_text
 
 
@@ -100,7 +101,14 @@ def render(diagram: Diagram, settings: DiagramSettings) -> None:
         raise DiagramError(str(exc)) from exc
     except OSError as exc:  # pyd2 has no binary, or SPECWORKS_D2 does not run
         raise DiagramError(f"cannot render {diagram.source.name}: {exc}") from exc
-    diagram.svg.write_text(stamp(diagram.svg.read_text(encoding="utf-8"), source_hash(diagram, settings)), encoding="utf-8")
+    # d2 succeeded, but what it wrote must still be an SVG that can be stamped.
+    name = diagram.source.name
+    try:
+        diagram.svg.write_text(stamp(diagram.svg.read_text(encoding="utf-8"), source_hash(diagram, settings)), encoding="utf-8")
+    except UnicodeDecodeError:
+        raise DiagramError(f"cannot render {name}: the SVG d2 wrote is not UTF-8 text") from None
+    except (OSError, ValueError) as exc:
+        raise DiagramError(f"cannot render {name}: {exc}") from None
 
 
 def referenced_images(markdown: str) -> list[str]:

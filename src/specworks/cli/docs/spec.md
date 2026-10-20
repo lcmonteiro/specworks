@@ -75,7 +75,8 @@ by archive folder. A path into the archive is not a change name.
 install the agent skills unless `--no-skills` is given. Inside a specworks
 project, it SHALL link the new project as a module (named by its full path)
 using the workspace's config name, unless `--no-link` is given, and SHALL refuse
-another `--dir` before writing anything. `--diagram-theme` SHALL apply only to a
+another `--dir`, or a folder that holds a module of the workspace (naming it),
+before writing anything. `--diagram-theme` SHALL apply only to a
 new top-level config; elsewhere it SHALL print a note saying it wasn't applied.
 
 #### Scenario: AC-CLI-003.1 A new project
@@ -102,6 +103,12 @@ new top-level config; elsewhere it SHALL print a note saying it wasn't applied.
 
 - **WHEN** `--diagram-theme` is given for an existing project
 - **THEN** init succeeds and says `--diagram-theme not applied`
+
+#### Scenario: AC-CLI-003.6 A folder around an existing module
+
+- **GIVEN** module `billing` at `services/billing`
+- **WHEN** `init services` runs from the top level
+- **THEN** it is refused naming module `billing`, nothing is written (no config, no link), and the workspace still loads
 
 ### Requirement: REQ-CLI-004 Overview commands
 
@@ -136,7 +143,9 @@ show every module with the current one marked.
 
 `module add <path>` SHALL refuse a folder that is not inside the current
 project, create the module's config with the workspace's name when it has none,
-and link it. `capability add` SHALL refuse an ID prefix, given or derived,
+and link it in the config of the innermost module that contains the folder,
+printing the folder's full module name. It SHALL refuse a folder that holds a
+module of the workspace, naming that module, before writing anything. `capability add` SHALL refuse an ID prefix, given or derived,
 already used by another capability, and SHALL register a capability in the
 module `--module` names.
 
@@ -164,6 +173,18 @@ module `--module` names.
 
 - **WHEN** `capability add --module billing` runs
 - **THEN** the capability is registered in billing's config with its own prefix and paths
+
+#### Scenario: AC-CLI-005.6 A folder inside another module
+
+- **GIVEN** module `billing` at `services/billing`
+- **WHEN** `module add services/billing/sub` runs from the top level
+- **THEN** billing's config lists `sub: sub`, the top level's config is unchanged, and the output names module `billing/sub`
+
+#### Scenario: AC-CLI-005.7 A folder around an existing module
+
+- **GIVEN** module `billing` at `services/billing`
+- **WHEN** `module add services` runs from the top level
+- **THEN** it is refused naming module `billing`, no config is written or changed, and the workspace still loads
 
 ### Requirement: REQ-CLI-006 Creating, moving and dropping changes
 
@@ -225,8 +246,9 @@ real close runs the project's commands before writing.
 `diagrams` SHALL render the diagrams of a change (`--change`) or of a folder
 inside the workspace (`--dir`), or list the themes (`--themes`) with the ones in
 use and the d2 found. It requires one of these. `--check` SHALL only report the
-diagrams' states and exit 1 when any is missing or stale. A folder outside the
-workspace SHALL be refused.
+diagrams' states and exit 1 when any is missing or stale. A relative `--dir` SHALL be
+resolved from the workspace root, wherever the command runs. A folder outside
+the workspace, or one that doesn't exist, SHALL be refused.
 
 #### Scenario: AC-CLI-008.1 What to render
 
@@ -252,3 +274,14 @@ workspace SHALL be refused.
 
 - **WHEN** `--dir` names a folder outside the workspace
 - **THEN** it is refused with `is outside the workspace`
+
+#### Scenario: AC-CLI-008.6 From a subfolder
+
+- **GIVEN** a working directory inside a module of the workspace
+- **WHEN** `diagrams --dir src/auth/docs` runs, the folder named relative to the workspace root
+- **THEN** that folder's diagrams are rendered
+
+#### Scenario: AC-CLI-008.7 A folder that doesn't exist
+
+- **WHEN** `--dir` names a folder that doesn't exist
+- **THEN** it fails with `no folder`, naming the folder relative to the root, and renders nothing

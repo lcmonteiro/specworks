@@ -22,6 +22,7 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 
+from .config import COMMAND_KEYS
 from .errors import SpecworksError
 from .git import GitError, git, git_text
 from .workspace import Module, Workspace
@@ -53,10 +54,12 @@ class RunResult:
 # @req REQ-PROJ-013
 def run_command(ws: Workspace, module: Module, key: str, capture: bool = True) -> RunResult:
     """Run ``commands.<key>`` (merged top level -> module) in the module's folder, through the shell."""
+    if key not in COMMAND_KEYS:  # the config refuses any other key, so don't suggest adding it there
+        raise CommandError(f"unknown command '{key}'; use one of {', '.join(COMMAND_KEYS)}")
     command = ws.commands(module).get(key)
     if not command:
         where = ws.rel(module.config.config_path)
-        raise CommandError(f"no '{key}' command configured; add it under commands: in {where} (e.g. test: uv run pytest)")
+        raise CommandError(f"no '{key}' command configured; add it under commands: in {where} (e.g. {key}: <command>)")
     proc = subprocess.run(
         command,
         shell=True,
@@ -85,7 +88,7 @@ def _untracked_in_submodule(root: Path, excluded: list[str]) -> bool:
 
 # @req REQ-PROJ-014
 def tree_fingerprint(ws: Workspace, module: Module, command: str) -> tuple[str, Path] | None:
-    """(digest of the command and the working tree, cache file), or None when git cannot tell."""
+    """(digest of the command and the working tree, cache file), or None when git cannot tell or an untracked file cannot be read."""
     try:
         root = Path(git_text(module.root, "rev-parse", "--show-toplevel").strip())
         head = git_text(module.root, "rev-parse", "HEAD").strip()
@@ -102,8 +105,12 @@ def tree_fingerprint(ws: Workspace, module: Module, command: str) -> tuple[str, 
     digest = hashlib.sha256("\0".join([command, str(module.root.resolve()), head]).encode())
     digest.update(diff)
     for name in sorted(n for n in untracked.split(b"\0") if n):
-        path = root / name.decode()
-        digest.update(name + b"\0" + (hashlib.sha256(path.read_bytes()).digest() if path.is_file() else b""))
+        path = root / os.fsdecode(name)  # the bytes git reports, whatever their encoding
+        try:
+            content = hashlib.sha256(path.read_bytes()).digest() if path.is_file() else b""
+        except OSError:
+            return None  # its content cannot be seen, so no earlier result may be reused
+        digest.update(name + b"\0" + content)
     return digest.hexdigest(), (module.root / cache).resolve()
 
 
