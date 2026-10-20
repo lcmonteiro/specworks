@@ -126,6 +126,15 @@ def parse_tools(value: str, root: Path) -> list[Tool]:
     return tools
 
 
+# Skills shipped before every skill took the specworks- prefix; removed like any stale specworks-* skill.
+RETIRED_NAMES: tuple[str, ...] = ("sw-refine",)
+
+
+def remove_stale_skills(root: Path, tools: list[Tool]) -> list[Path]:
+    """Delete the specworks skills (and Copilot prompt files) of ``tools`` that are no longer shipped; return what was deleted."""
+    raise NotImplementedError
+
+
 # @req REQ-INTEG-005
 def install_skills(root: Path, tools: list[Tool]) -> list[Path]:
     """Write every packaged skill (and Copilot prompt files) for ``tools``; return written files."""

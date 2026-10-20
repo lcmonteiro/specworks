@@ -1,3 +1,5 @@
 name: remove-stale-skills
 created: '2026-10-20T19:04:48'
-phase: specify
+phase: design
+specified:
+  REQ-INTEG-005: 83d2d43d08a5
