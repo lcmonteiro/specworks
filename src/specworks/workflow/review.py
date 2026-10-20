@@ -38,11 +38,12 @@ REVIEW_FILE = "review.md"
 @dataclass
 class ChangedFile:
     path: str  # relative to the workspace root
-    kind: str  # "source", "test" or "other" (docs, config, data)
+    kind: str  # "source", "test", "other" (docs, config, data) or "deleted"
     tags: list[str] = field(default_factory=list)
+    was: str = ""  # for a deleted file, the kind it had
 
     def to_dict(self) -> dict:
-        return {"path": self.path, "kind": self.kind, "tags": self.tags}
+        return {"path": self.path, "kind": self.kind, "tags": self.tags} | ({"was": self.was} if self.was else {})
 
 
 @dataclass
@@ -65,6 +66,11 @@ class ReviewReport:
     @property
     def untraced_tests(self) -> list[str]:
         return [f.path for f in self.changed or [] if f.kind == "test" and not any(t.startswith("AC-") for t in f.tags)]
+
+    @property
+    def deleted_files(self) -> list[str]:
+        """Source and test files deleted on the branch: deleted code is reviewed like changed code."""
+        raise NotImplementedError
 
     def findings(self) -> dict[str, list[str]]:
         found = self.analysis.gaps
@@ -131,6 +137,11 @@ def changed_paths(ws: Workspace, since: str) -> list[str]:
         if path.is_file() and path.is_relative_to(ws.root):
             paths.append(ws.rel(path))
     return paths
+
+
+def deleted_paths(ws: Workspace, since: str) -> list[str]:
+    """Files changed since the commit ``since`` that no longer exist, relative to the workspace."""
+    raise NotImplementedError
 
 
 def changed_file_kind(ws: Workspace, rel: str) -> str | None:

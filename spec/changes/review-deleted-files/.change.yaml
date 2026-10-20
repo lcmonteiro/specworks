@@ -1,3 +1,6 @@
 name: review-deleted-files
 created: '2026-10-20T16:47:15'
-phase: specify
+phase: design
+specified:
+  REQ-FLOW-009: 5fa92bd91979
+  REQ-FLOW-011: 54e8f0f8f6ce
