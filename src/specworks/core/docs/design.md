@@ -76,7 +76,9 @@ git reports, so a name that isn't UTF-8 is fingerprinted like any other.
 
 Bad configs, unknown changes, unreadable files and git failures all raise a
 `SpecworksError` subclass with a message for the user. The CLI prints it and
-exits 1. (baseline-project)
+exits 1. A message never suggests a fix the config would refuse: `run_command`
+refuses a key that is not a command key, listing the valid ones, before saying
+where to configure one. (baseline-project, run-unknown-key)
 
 ## Interfaces
 
