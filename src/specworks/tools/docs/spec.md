@@ -72,8 +72,9 @@ specworks). Checking SHALL not need d2.
 
 The system SHALL render with the d2 that pyd2 provides (its pinned release),
 or with the program named by `SPECWORKS_D2` when that is set. A missing d2, a d2
-that doesn't run, and a d2 compile error SHALL each be reported as an error
-naming the diagram.
+that doesn't run, a d2 compile error, and an SVG that d2 wrote but that can't be
+read or stamped SHALL each be reported as an error naming the diagram, never as
+a crash.
 
 #### Scenario: AC-INTEG-003.1 Which d2
 
@@ -89,6 +90,11 @@ naming the diagram.
 
 - **WHEN** d2 fails to compile a source
 - **THEN** the error d2 printed is reported for that diagram
+
+#### Scenario: AC-INTEG-003.4 An SVG that can't be stamped
+
+- **WHEN** d2 succeeds but writes an SVG whose `<?xml` declaration never closes, or one that isn't UTF-8, or writes no SVG at all
+- **THEN** that diagram fails, with `cannot render <name>.d2: …` for the first two and d2's own `… no SVG was written …` message naming it for the third; the other diagrams of the run still render, and the command exits 1
 
 ### Requirement: REQ-INTEG-004 Choosing the AI tools
 

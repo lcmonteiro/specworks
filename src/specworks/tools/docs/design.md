@@ -24,7 +24,10 @@ must stay stable. (baseline-integrations)
 Rendering uses pyd2's pinned d2 release, so every user gets the same output.
 `SPECWORKS_D2` names another program, which the tests use for a fake d2. Every
 failure (no binary, a program that doesn't run, a compile error) becomes a
-`DiagramError` naming the diagram. (baseline-integrations)
+`DiagramError` naming the diagram, and so does an SVG that d2 wrote but that
+can't be read or stamped (an unclosed `<?xml` declaration, non-UTF-8 output):
+a render error for that diagram, never a crash, while the rest of the run
+goes on. (baseline-integrations, diagram-bad-svg)
 
 ### One skill source, rendered per tool
 
