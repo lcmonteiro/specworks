@@ -412,3 +412,13 @@ def test_module_add_refuses_a_folder_around_a_module(workspace):
     assert {p: p.read_text() for p in workspace.rglob("spec.yml")} == configs
     assert not (workspace / "services/spec").exists()
     assert load_workspace(workspace) is not None
+
+
+# @ac AC-PROJ-006.8
+def test_a_module_no_other_module_holds_passes_the_nesting_check(workspace, tmp_path_factory, monkeypatch):
+    outside = tmp_path_factory.mktemp("outside")
+    monkeypatch.chdir(outside)
+    run("init", "--dir", "spec", "--no-link", "--no-skills")
+    link_module(workspace, "ext", outside)  # the symlink's target is outside every module's folder
+    ws = load_workspace(workspace)
+    assert ws is not None and ws.module("ext").parent is ws.top

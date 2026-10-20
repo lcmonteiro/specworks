@@ -265,9 +265,11 @@ def _check_nesting(ws: Workspace) -> None:
         if module.parent is None:
             continue
         container = max(
-            (m for m in ws.modules() if m is not module and module.root.is_relative_to(m.root)), key=lambda m: len(m.root.parts)
+            (m for m in ws.modules() if m is not module and module.root.is_relative_to(m.root)),
+            key=lambda m: len(m.root.parts),
+            default=None,  # e.g. a module symlinked to a folder outside the workspace: nothing can list it past its container
         )
-        if container is not module.parent:
+        if container is not None and container is not module.parent:
             raise ConfigError(
                 f"module '{module.name}' ({ws.rel(module.root)}) is inside module '{container.label}'; "
                 f"list it in {container.label}'s config instead of {module.parent.label}'s"
