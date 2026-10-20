@@ -14,7 +14,7 @@ from ..core.config_file import add_capability_entry, add_module_entry, write_def
 from ..core.validators import validate_relative
 from ..core.workspace import Workspace, capability_prefix, load_module_config, load_workspace, require_workspace
 from ..specs.capabilities import capability_ref, describe
-from ..tools.skills import install_skills, parse_tools
+from ..tools.skills import install_skills, parse_tools, remove_stale_skills
 from .app import app, capability_app, module_app
 from .output import AllOpt, JsonOpt, ToolsOpt, change_dict, changes_of, emit, fail, missing_dicts, module_dict, workspace
 
@@ -27,6 +27,8 @@ def write_skills(ws: Workspace, tools: str) -> None:
     """Install the skills at the workspace root (shared by every module)."""
     selected = parse_tools(tools, ws.root)
     typer.echo(f"tools   {', '.join(t.label for t in selected)}")
+    for removed in remove_stale_skills(ws.root, selected):  # renamed or dropped by this version  @req REQ-INTEG-005
+        typer.echo(f"removed {ws.rel(removed)}")
     for written in install_skills(ws.root, selected):
         typer.echo(f"skill   {ws.rel(written)}")
 

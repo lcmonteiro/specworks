@@ -11,6 +11,7 @@ Skills follow the Agent Skills format (``<name>/SKILL.md`` with ``name`` and
 from __future__ import annotations
 
 import re
+import shutil
 from dataclasses import dataclass, field
 from importlib import resources
 from pathlib import Path
@@ -130,9 +131,27 @@ def parse_tools(value: str, root: Path) -> list[Tool]:
 RETIRED_NAMES: tuple[str, ...] = ("sw-refine",)
 
 
+def _stale(name: str, shipped: set[str]) -> bool:
+    """A specworks skill name (its prefix, or a retired one) that this version does not ship; any other name is not ours."""
+    return (name.startswith("specworks-") or name in RETIRED_NAMES) and name not in shipped
+
+
+# @req REQ-INTEG-005
 def remove_stale_skills(root: Path, tools: list[Tool]) -> list[Path]:
     """Delete the specworks skills (and Copilot prompt files) of ``tools`` that are no longer shipped; return what was deleted."""
-    raise NotImplementedError
+    shipped, removed = set(packaged_skills()), []
+    for tool in tools:
+        skills = root / tool.skills_dir
+        for folder in sorted(skills.iterdir()) if skills.is_dir() else []:
+            if folder.is_dir() and _stale(folder.name, shipped):
+                shutil.rmtree(folder)
+                removed.append(folder)
+        prompts = root / tool.prompts_dir if tool.prompts_dir else None
+        for prompt in sorted(prompts.glob("*.prompt.md")) if prompts and prompts.is_dir() else []:
+            if _stale(prompt.name.removesuffix(".prompt.md"), shipped):
+                prompt.unlink()
+                removed.append(prompt)
+    return removed
 
 
 # @req REQ-INTEG-005
