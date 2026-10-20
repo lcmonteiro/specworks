@@ -218,6 +218,10 @@ def module_add(
     if root == owner.root or not root.is_relative_to(owner.root):
         fail(f"{path} must be a folder inside {owner.root}", as_json)
     owner = ws.owner(root.parent)  # the innermost module holding the folder lists it, as with init
+    # Linking it would leave a module listed past it, which loading refuses (a module itself is "already linked" below).
+    inner = [m for m in ws.modules() if m.root.is_relative_to(root)]
+    if inner and all(m.root != root for m in inner):
+        fail(f"{path} holds module '{inner[0].label}' ({ws.rel(inner[0].root)}); a module can't be added around another one", as_json)
     module_name = name or default_module_name(root)
     ensure_module_config(root, module_name, ws.top.config.dir)
     add_module_entry(owner.root, module_name, root.relative_to(owner.root).as_posix())
