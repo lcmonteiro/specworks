@@ -295,7 +295,8 @@ def parse_review(text: str) -> ReviewDoc:
                 routed=kind in TYPE_PHASE,
             )
             doc.findings.append(current)
-        elif CHECKBOX_RE.match(line) and not line.startswith((" ", "\t")):  # indented ones belong to a finding
+        elif CHECKBOX_RE.match(line) and (current is None or not line.startswith((" ", "\t"))):
+            # Indented under a finding, it is part of that finding (a sub-step); anywhere else it could hide open work.
             doc.problems.append(f"line {number}: {line.strip()!r} is not a finding; write it as '- [ ] R<n> **<type>** ...'")
             current = None
         elif current is not None and line.strip() and not line.startswith((" ", "\t")):
