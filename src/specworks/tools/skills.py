@@ -80,12 +80,21 @@ def read_skill(name: str) -> str:
     return INCLUDE_RE.sub(lambda m: skills.joinpath("_shared", f"{m.group('name')}.md").read_text(encoding="utf-8"), text)
 
 
+# @req REQ-INTEG-005
 def split_frontmatter(text: str) -> tuple[list[tuple[str, str]], str]:
-    """``---``-delimited frontmatter as ordered (key, line) pairs, and the body after it."""
+    """``---``-delimited frontmatter as ordered (key, lines) pairs, and the body after it.
+
+    An indented line continues the key above it (a folded ``description: >``), so a key is kept or dropped whole.
+    """
     match = FRONTMATTER_RE.match(text)
     if not match:
         return [], text
-    pairs = [(line.split(":", 1)[0].strip(), line) for line in match.group(1).splitlines() if ":" in line]
+    pairs: list[tuple[str, str]] = []
+    for line in match.group(1).splitlines():
+        if line.startswith((" ", "\t")) and pairs:
+            pairs[-1] = (pairs[-1][0], pairs[-1][1] + "\n" + line)
+        elif ":" in line:
+            pairs.append((line.split(":", 1)[0].strip(), line))
     return pairs, text[match.end() :]
 
 
