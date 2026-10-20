@@ -85,7 +85,7 @@ def _untracked_in_submodule(root: Path, excluded: list[str]) -> bool:
 
 # @req REQ-PROJ-014
 def tree_fingerprint(ws: Workspace, module: Module, command: str) -> tuple[str, Path] | None:
-    """(digest of the command and the working tree, cache file), or None when git cannot tell."""
+    """(digest of the command and the working tree, cache file), or None when git cannot tell or an untracked file cannot be read."""
     try:
         root = Path(git_text(module.root, "rev-parse", "--show-toplevel").strip())
         head = git_text(module.root, "rev-parse", "HEAD").strip()
@@ -102,8 +102,12 @@ def tree_fingerprint(ws: Workspace, module: Module, command: str) -> tuple[str, 
     digest = hashlib.sha256("\0".join([command, str(module.root.resolve()), head]).encode())
     digest.update(diff)
     for name in sorted(n for n in untracked.split(b"\0") if n):
-        path = root / name.decode()
-        digest.update(name + b"\0" + (hashlib.sha256(path.read_bytes()).digest() if path.is_file() else b""))
+        path = root / os.fsdecode(name)  # the bytes git reports, whatever their encoding
+        try:
+            content = hashlib.sha256(path.read_bytes()).digest() if path.is_file() else b""
+        except OSError:
+            return None  # its content cannot be seen, so no earlier result may be reused
+        digest.update(name + b"\0" + content)
     return digest.hexdigest(), (module.root / cache).resolve()
 
 

@@ -1,5 +1,5 @@
 name: run-reuse-unreadable-files
 created: '2026-10-19T23:03:09'
-phase: test
+phase: code
 specified:
   REQ-PROJ-014: 72cf1e0c9227
