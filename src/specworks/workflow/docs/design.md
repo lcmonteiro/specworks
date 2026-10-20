@@ -29,6 +29,15 @@ commands. Anything that needs judgement (whether a test fails for the right
 reason, whether the code matches the spec's intent) stays with the skills.
 (baseline-workflow)
 
+### A change's interfaces live in its own module
+
+The design gate counts a file named under Interfaces only when it exists inside
+the change's module folder. The path may be written relative to the module or
+to the workspace root, the form every CLI path is printed in. A same-named file
+elsewhere in the workspace must not stand in for a missing stub, and work
+across modules belongs to a change at the top level or in the lowest common
+module. (module-interface-paths)
+
 ### One definition per check, shared by gates and validate
 
 Gates and validate are lists of the same check functions. Validate adds a

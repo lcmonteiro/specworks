@@ -151,7 +151,8 @@ not checked.
 
 The design gate SHALL require an Interfaces section in design.md (found by its
 heading in any case, HTML comments and code fences ignored), with every file
-named in its code spans existing. `None` SHALL pass without files, and prose
+named in its code spans existing inside the change's module folder, written
+relative to that folder or to the workspace root. `None` SHALL pass without files, and prose
 naming no file SHALL be a warning. It SHALL run the build and typecheck commands
 when they are configured. The existing test suite must pass, except once the
 change already has `@ac` tests, when a red suite is only a warning.
@@ -180,6 +181,12 @@ change already has `@ac` tests, when a red suite is only a warning.
 
 - **WHEN** `build` and `typecheck` are configured
 - **THEN** they run as checks of their own, and none are shown when they are not configured
+
+#### Scenario: AC-FLOW-006.6 A file outside the change's module
+
+- **GIVEN** a change in module `billing` (at `services/billing`) whose Interfaces name `src/invoices.py`, and a `src/invoices.py` that exists only at the workspace root
+- **WHEN** the design gate runs
+- **THEN** it fails listing `src/invoices.py`; it passes once the file exists in the module, named either `src/invoices.py` or `services/billing/src/invoices.py`
 
 ### Requirement: REQ-FLOW-007 Gate test
 
