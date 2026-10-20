@@ -113,6 +113,8 @@ def init(
                 f"this folder is inside the workspace at {parent.root}, which uses {config_name(workspace_dir)}; "
                 f"modules use the same name (drop --dir, or use --no-link for an independent project)"
             )
+        if inner := held_module(parent, root):
+            raise ConfigError(held_message(parent, path, inner))
         cfg, created = ensure_module_config(root, name or default_module_name(root), workspace_dir)
     else:
         existing = find_config(root)
