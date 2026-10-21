@@ -1,3 +1,15 @@
 name: baseline-specs
 created: '2026-10-20T23:22:57'
-phase: specify
+phase: test
+specified:
+  REQ-SPECS-004: 93899cbefe28
+  REQ-SPECS-005: 6982814becac
+  REQ-SPECS-006: 0cf1e545b529
+  REQ-SPECS-007: e3215fd137e8
+  REQ-SPECS-008: 493973fbd926
+  REQ-SPECS-009: ffa372ba3761
+  REQ-SPECS-010: 2a0e5b48fe7a
+  REQ-SPECS-011: 60fb0bfc1918
+  REQ-SPECS-012: e6572d591a13
+  REQ-SPECS-013: eb2fa6a2c7bb
+  REQ-SPECS-014: 4a31905895d9

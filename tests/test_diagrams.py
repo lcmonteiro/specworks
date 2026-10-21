@@ -156,6 +156,7 @@ def test_d2_errors_are_reported(change, fake_d2):
     assert code == 1 and "unexpected token" in data["diagrams"][0]["error"]
 
 
+# @ac AC-SPECS-014.1
 def test_validate_reports_diagram_problems(change, fake_d2):
     (change / "diagrams/orphan.d2").write_text("a -> b\n")
     (change / "design.md").write_text((change / "design.md").read_text() + "![gone](diagrams/gone.svg)\n")

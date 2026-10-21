@@ -65,6 +65,7 @@ def test_close_without_dry_run_refuses_no_run(ready):
     assert code == 0, data
 
 
+# @ac AC-SPECS-013.1
 def test_close_merges_indexes_and_archives(ready):
     code, data = run_json("close", "--change", REF, "--base", "main")
     assert code == 0, data
@@ -94,6 +95,7 @@ def test_close_merges_indexes_and_archives(ready):
     assert data["nextId"] == "REQ-AUTH-004"
 
 
+# @ac AC-SPECS-013.3
 def test_close_refuses_to_merge_into_a_broken_living_spec(ready):
     living = ready / "src/auth/docs/spec.md"
     living.write_text(living.read_text() + "\n### Requirement: Search by title\nThe system SHALL search.\n")
@@ -196,12 +198,14 @@ class FakeDelta:
         ("## ADDED Requirements\n\n### Requirement: REQ-AUTH-001 Dup\nThe system SHALL x.\n", "REQ-AUTH-001 is ADDED but already"),
     ],
 )
+# @ac AC-SPECS-013.3
 def test_merge_errors(delta, message):
     living = "# user-auth\n\n## Requirements\n\n### Requirement: REQ-AUTH-001 Login\nThe system SHALL log in.\n"
     with pytest.raises(MergeError, match=message):
         apply_delta(living, FakeDelta(delta))
 
 
+# @ac AC-SPECS-013.2
 def test_removed_requirement_is_deleted_and_other_sections_kept():
     living = (
         "# user-auth\n\nIntro.\n\n## Requirements\n\n### Requirement: REQ-AUTH-001 A\nThe system SHALL a.\n\n"
@@ -221,12 +225,14 @@ MODIFY_A = "## MODIFIED Requirements\n\n### Requirement: REQ-AUTH-001 A\nThe sys
 @pytest.mark.parametrize(
     "delta", [MODIFY_A, "## REMOVED Requirements\n\n### Requirement: REQ-AUTH-001 A\n**Reason**: x\n**Migration**: y\n"]
 )
+# @ac AC-SPECS-013.2
 def test_a_heading_after_the_last_requirement_is_kept(delta):
     living = "# user-auth\n\n## Requirements\n\n### Requirement: REQ-AUTH-001 A\nThe system SHALL a.\n\n### Notes\nKeep me.\n"
     text, *_ = apply_delta(living, FakeDelta(delta))
     assert text.endswith("### Notes\nKeep me.\n") and "SHALL a." not in text
 
 
+# @ac AC-SPECS-013.2
 def test_merge_only_tidies_blank_lines_where_it_splices():
     living = (
         "# user-auth\n\n## Purpose\n\n```\nline 1\n\n\n\nline 2\n```\n\n## Requirements\n\n"
@@ -242,6 +248,7 @@ def test_a_heading_inside_a_delta_requirement_is_reported():
     assert [line for line, _ in doc.problems] == [6] and "### Details" in doc.problems[0][1]
     assert "More." not in doc.requirements[0].description
 
+# @ac AC-SPECS-013.2
 def test_headings_in_a_code_fence_are_text_when_merging():
     living = (
         "# user-auth\n\n## Requirements\n\n### Requirement: REQ-AUTH-001 A\nThe system SHALL read:\n\n"
@@ -271,6 +278,7 @@ def test_diagrams_in_a_docs_folder(ready, monkeypatch):
     assert code == 1 and "--change" in data["error"]
 
 
+# @ac AC-SPECS-013.4
 def test_a_taken_archive_folder_fails_before_anything_is_written(ready):
     # e.g. a change with the same name was already closed today
     (ready / f"spec/changes/archive/{date.today().isoformat()}-{REF}").mkdir(parents=True)
@@ -281,6 +289,7 @@ def test_a_taken_archive_folder_fails_before_anything_is_written(ready):
     assert snapshot(ready) == before
 
 
+# @ac AC-SPECS-013.4
 def test_a_failed_archive_puts_the_living_docs_back(ready, monkeypatch):
     import shutil
 
@@ -301,6 +310,7 @@ def test_a_failed_archive_puts_the_living_docs_back(ready, monkeypatch):
     assert code == 0, data
 
 
+# @ac AC-SPECS-010.2
 def test_a_removed_id_is_never_handed_out_again(project):
     shutil.rmtree(project / CHANGE_DIR)  # its delta takes REQ-AUTH-003; only the living spec counts here
     run_json("new", "drop-lockout")

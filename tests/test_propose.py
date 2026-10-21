@@ -54,6 +54,7 @@ def errors(data):
 # --- parser ------------------------------------------------------------------
 
 
+# @ac AC-SPECS-004.1
 def test_parse_living_spec():
     doc = parse_spec(LIVING)
     assert doc.purpose == "Lets users prove who they are."
@@ -64,6 +65,7 @@ def test_parse_living_spec():
     assert [s.id for s in doc.requirements[0].scenarios] == ["AC-AUTH-001.1"]
 
 
+# @ac AC-SPECS-004.2
 def test_parse_ignores_headers_inside_code_fences():
     doc = parse_spec("## ADDED Requirements\n### Requirement: REQ-X-001 A\nSHALL x\n```\n### Requirement: REQ-X-002 B\n```\n")
     assert [r.id for r in doc.requirements] == ["REQ-X-001"]
@@ -77,11 +79,13 @@ def test_parse_ignores_headers_inside_code_fences():
         "~~~\n```\n### Requirement: REQ-X-002 B\n~~~\n",  # backticks do not close a tilde fence
     ],
 )
+# @ac AC-SPECS-004.2
 def test_parse_ignores_headers_inside_any_code_fence(fence):
     doc = parse_spec("## ADDED Requirements\n### Requirement: REQ-X-001 A\nSHALL x\n" + fence + "### Requirement: REQ-X-003 C\nSHALL y\n")
     assert [r.id for r in doc.requirements] == ["REQ-X-001", "REQ-X-003"]
 
 
+# @ac AC-SPECS-004.3
 def test_ids_helpers():
     assert find_ids("covers AC-BILLING-INVOICES-001.2 and REQ-AUTH-003.") == ["AC-BILLING-INVOICES-001.2", "REQ-AUTH-003"]
     assert ac_parent("AC-BILLING-INVOICES-001.2") == "REQ-BILLING-INVOICES-001"
@@ -89,6 +93,7 @@ def test_ids_helpers():
     assert id_prefix("REQ-V2-001") == "V2" and id_prefix("REQ-AUTH") is None and id_prefix("nope") is None
 
 
+# @ac AC-SPECS-004.3
 def test_ids_with_an_all_digit_prefix_segment():
     assert find_ids("task (REQ-OAUTH-2-001, AC-OAUTH-2-001.1)") == ["REQ-OAUTH-2-001", "AC-OAUTH-2-001.1"]
     assert id_prefix("REQ-OAUTH-2-001") == "OAUTH-2" and ac_parent("AC-OAUTH-2-001.1") == "REQ-OAUTH-2-001"
@@ -112,6 +117,7 @@ def test_change_for_a_capability_with_an_all_digit_prefix_segment(project):
     assert code == 0, errors(data)
 
 
+# @ac AC-SPECS-004.1
 def test_requirement_markdown_round_trips():
     req = parse_spec(DELTA).requirements[0]
     assert parse_spec("## ADDED Requirements\n" + req.markdown()).requirements[0].scenarios[1].id == "AC-AUTH-003.2"
@@ -120,6 +126,7 @@ def test_requirement_markdown_round_trips():
 # --- spec show / context -----------------------------------------------------
 
 
+# @ac AC-SPECS-010.1
 def test_spec_show_existing_capability(project):
     code, data = run_json("spec", "show", "user-auth")
     assert code == 0
@@ -129,11 +136,13 @@ def test_spec_show_existing_capability(project):
     assert [r["id"] for r in data["requirements"]] == ["REQ-AUTH-001", "REQ-AUTH-002"]
 
 
+# @ac AC-SPECS-010.1
 def test_spec_show_new_capability_derives_prefix(project):
     code, data = run_json("spec", "show", "audit-log")
     assert data["new"] is True and data["prefix"] == "AUDIT-LOG" and data["nextId"] == "REQ-AUDIT-LOG-001"
 
 
+# @ac AC-SPECS-010.2
 def test_next_id_counts_ids_added_by_active_changes(change):
     code, data = run_json("spec", "show", "user-auth")
     assert data["nextId"] == "REQ-AUTH-004"
@@ -142,24 +151,37 @@ def test_next_id_counts_ids_added_by_active_changes(change):
 REMOVED_HISTORY = "# Requirements: user-auth\n\n## History\n\n- 2026-01-02 `drop-sso`: REMOVED REQ-AUTH-003, REQ-AUTH-005\n"
 
 
+# @ac AC-SPECS-010.2
 def test_next_id_skips_removed_requirements(project):
     (project / "src/auth/docs/requirements.md").write_text(REMOVED_HISTORY)
     code, data = run_json("spec", "show", "user-auth")
     assert data["nextId"] == "REQ-AUTH-006"
 
 
+# @ac AC-SPECS-006.2
 def test_a_removed_id_cannot_be_added_again(change, project):
     (project / "src/auth/docs/requirements.md").write_text(REMOVED_HISTORY)
     code, data = run_json("check", "--change", "add-password-reset")
     assert any("REQ-AUTH-003 was removed from user-auth" in m and "never reused" in m for m in errors(data))
 
 
+# @ac AC-SPECS-010.1
 def test_spec_show_in_module_uses_module_path_and_prefix(project, monkeypatch):
     runner.invoke(app, ["module", "add", "services/pay"])
     cfg = project / "services/pay/spec.yml"
     cfg.write_text(cfg.read_text().replace("capabilities: {}", "capabilities:\n  refunds:\n    path: src/refunds"))
     code, data = run_json("spec", "show", "pay:refunds")
     assert data["prefix"] == "PAY-REFUNDS" and data["deltaPath"] == "specs/pay/refunds/spec.md"
+
+
+# @ac AC-SPECS-010.3
+def test_a_capability_name_in_two_modules_is_ambiguous(project):
+    for module in ("a", "b"):
+        runner.invoke(app, ["module", "add", f"services/{module}"])
+        cfg = project / f"services/{module}/spec.yml"
+        cfg.write_text(cfg.read_text().replace("capabilities: {}", "capabilities:\n  refunds:\n    path: src/refunds"))
+    code, data = run_json("spec", "show", "refunds")
+    assert code == 1 and "several modules" in data["error"] and "a:refunds" in data["error"] and "b:refunds" in data["error"]
 
 
 # @ac AC-FLOW-002.3
@@ -188,12 +210,14 @@ def test_status_after_planning(change):
 # --- validate ----------------------------------------------------------------
 
 
+# @ac AC-SPECS-008.1
 def test_valid_change(change):
     code, data = run_json("check", "--change", "add-password-reset")
     assert errors(data) == []
     assert code == 0 and data["valid"] is True
 
 
+# @ac AC-SPECS-008.2
 def test_missing_proposal_and_specs(project):
     code, data = run_json("check", "--change", "add-password-reset")
     assert code == 1
@@ -201,6 +225,7 @@ def test_missing_proposal_and_specs(project):
     assert "proposal.md is missing" in msgs and "no delta specs" in msgs
 
 
+# @ac AC-SPECS-008.2
 def test_proposal_section_in_a_code_fence_does_not_count(change):
     (change / "proposal.md").write_text(PROPOSAL.replace("## Why\nUsers get locked out.\n", "```\n## Why\n```\n"))
     code, data = run_json("check", "--change", "add-password-reset")
@@ -230,6 +255,7 @@ def replace_delta(change, old, new):
         ("## MODIFIED Requirements", "## Requirements", "uses '## ADDED/MODIFIED/REMOVED Requirements', not '## Requirements'"),
     ],
 )
+# @ac AC-SPECS-005.1, AC-SPECS-006.1
 def test_delta_errors(change, old, new, message):
     replace_delta(change, old, new)
     code, data = run_json("check", "--change", "add-password-reset")
@@ -237,36 +263,42 @@ def test_delta_errors(change, old, new, message):
     assert any(message in m for m in errors(data)), errors(data)
 
 
+# @ac AC-SPECS-005.2
 def test_requirement_id_used_twice(change):
     replace_delta(change, "REQ-AUTH-002 Lockout after failures", "REQ-AUTH-003 Lockout after failures")
     code, data = run_json("check", "--change", "add-password-reset")
     assert code == 1 and any("REQ-AUTH-003 is used twice" in m for m in errors(data)), errors(data)
 
 
+# @ac AC-SPECS-005.3
 def test_delta_without_requirements(change):
     (change / "specs/user-auth/spec.md").write_text("# Spec Delta: user-auth\n\nNothing yet.\n")
     code, data = run_json("check", "--change", "add-password-reset")
     assert code == 1 and any(m.startswith("no requirements; add '## ADDED Requirements'") for m in errors(data)), errors(data)
 
 
+# @ac AC-SPECS-005.4
 def test_long_description_is_a_warning(change):
     replace_delta(change, "valid for 30 minutes.", "valid for 30 minutes." + " Really." * 200)
     code, data = run_json("check", "--change", "add-password-reset")
     assert code == 0 and any("REQ-AUTH-003: description is long" in i["message"] for i in data["issues"] if i["level"] == "warning")
 
 
+# @ac AC-SPECS-009.4
 def test_tasks_without_any_task(change):
     (change / "tasks.md").write_text("# Tasks\n\nTo do.\n")
     code, data = run_json("check", "--change", "add-password-reset")
     assert code == 1 and any(m.startswith("no tasks;") for m in errors(data)), errors(data)
 
 
+# @ac AC-SPECS-008.3
 def test_skip_specs_with_delta_specs(change):
     run_json("skip-specs", "--change", "add-password-reset")
     code, data = run_json("check", "--change", "add-password-reset")
     assert code == 1 and "skip_specs is set but the change has delta specs" in errors(data)
 
 
+# @ac AC-SPECS-005.3
 def test_requirement_without_scenario(change):
     replace_delta(
         change,
@@ -277,6 +309,7 @@ def test_requirement_without_scenario(change):
     assert any("REQ-AUTH-004 needs at least one" in m for m in errors(data))
 
 
+# @ac AC-SPECS-006.3
 def test_removed_needs_reason_and_migration(change):
     replace_delta(change, "## MODIFIED", "## REMOVED Requirements\n\n### Requirement: REQ-AUTH-001 Password login\n\n## MODIFIED")
     code, data = run_json("check", "--change", "add-password-reset")
@@ -292,6 +325,7 @@ def test_removed_needs_reason_and_migration(change):
         ("**Reason**:\n**Migration**: use SSO\n", "Reason"),  # a label without its text
     ],
 )
+# @ac AC-SPECS-006.3
 def test_removed_needs_reason_and_migration_lines(change, body, missing):
     replace_delta(change, "## MODIFIED", f"## REMOVED Requirements\n\n### Requirement: REQ-AUTH-001 Password login\n{body}\n## MODIFIED")
     code, data = run_json("check", "--change", "add-password-reset")
@@ -302,6 +336,7 @@ def test_removed_needs_reason_and_migration_lines(change, body, missing):
         assert len(found) == 1 and f"(missing: {missing})" in found[0]
 
 
+# @ac AC-SPECS-006.4
 def test_new_capability_only_adds_and_needs_purpose(change):
     path = change / "specs/audit-log/spec.md"
     path.parent.mkdir()
@@ -311,6 +346,7 @@ def test_new_capability_only_adds_and_needs_purpose(change):
     assert any("add '## Purpose'" in i["message"] for i in data["issues"] if i["level"] == "warning")
 
 
+# @ac AC-SPECS-006.4
 def test_a_new_capability_that_is_not_registered_is_a_warning(change):
     path = change / "specs/audit-log/spec.md"
     path.parent.mkdir()
@@ -323,6 +359,7 @@ def test_a_new_capability_that_is_not_registered_is_a_warning(change):
     )
 
 
+# @ac AC-SPECS-008.4
 def test_delta_under_unknown_module(change):
     path = change / "specs/nope/thing/spec.md"
     path.parent.mkdir(parents=True)
@@ -340,6 +377,7 @@ def warnings(data):
     return [i["message"] for i in data["issues"] if i["level"] == "warning"]
 
 
+# @ac AC-SPECS-007.1
 def test_id_clash_is_an_error_only_in_the_change_that_started_later(change, project):
     run_json("new", "other-change")
     other = project / "spec/changes/other-change/specs/user-auth"
@@ -354,6 +392,7 @@ def test_id_clash_is_an_error_only_in_the_change_that_started_later(change, proj
     assert any("REQ-AUTH-003 is also added by change other-change, which started later" in m for m in warnings(data))
 
 
+# @ac AC-SPECS-007.1
 def test_changes_started_on_the_same_day_without_a_time_are_ordered_by_name(change, project):
     run_json("new", "other-change")
     other = project / "spec/changes/other-change/specs/user-auth"
@@ -381,6 +420,7 @@ def test_a_new_change_records_when_it_started(project):
     ],
     ids=["modified", "removed"],
 )
+# @ac AC-SPECS-007.2
 def test_two_changes_editing_one_requirement_do_not_block_each_other(change, project, other_delta):
     run_json("new", "other-change")
     other = project / "spec/changes/other-change/specs/user-auth"
@@ -409,6 +449,7 @@ The system SHALL search.
 """
 
 
+# @ac AC-SPECS-006.6
 def test_check_warns_about_a_broken_living_spec(change, project):
     living = project / "src/auth/docs/spec.md"
     living.write_text(living.read_text() + BROKEN_LIVING)
@@ -436,14 +477,17 @@ def test_check_warns_about_a_broken_living_spec(change, project):
     ],
     ids=["no-shall", "no-scenario", "scenario-without-id", "scenario-under-another", "delta-section"],
 )
+# @ac AC-SPECS-004.4
 def test_living_problems(text, problem):
     assert [message for _, message in living_problems(parse_spec(text))] == [problem]
 
 
+# @ac AC-SPECS-004.4
 def test_a_valid_living_spec_has_no_problems():
     assert living_problems(parse_spec(LIVING)) == []
 
 
+# @ac AC-SPECS-008.3
 def test_skip_specs(project):
     path = project / "spec/changes/add-password-reset"
     (path / "proposal.md").write_text(PROPOSAL)
@@ -452,12 +496,14 @@ def test_skip_specs(project):
     assert errors(data) == [] and code == 0
 
 
+# @ac AC-SPECS-009.2
 def test_tasks_must_cover_every_acceptance_criterion(change):
     (change / "tasks.md").write_text(TASKS.replace("AC-AUTH-003.1 and AC-AUTH-003.2", "AC-AUTH-003.1").replace(" (REQ-AUTH-003)", ""))
     code, data = run_json("check", "--change", "add-password-reset")
     assert any("AC-AUTH-003.2 (user-auth) is not covered by any task" in m for m in errors(data))
 
 
+# @ac AC-SPECS-009.1
 def test_tasks_format_and_unknown_ids(change):
     (change / "tasks.md").write_text(TASKS + "- [ ] fix stuff\n- [ ] 3.1 Cover REQ-AUTH-042\n- [ ] 1.1 duplicate\n")
     code, data = run_json("check", "--change", "add-password-reset")
@@ -467,6 +513,7 @@ def test_tasks_format_and_unknown_ids(change):
     assert "task 1.1 is numbered twice" in msgs
 
 
+# @ac AC-SPECS-009.4
 def test_tasks_not_written_is_only_a_warning(change):
     (change / "tasks.md").unlink()
     code, data = run_json("check", "--change", "add-password-reset")
@@ -478,6 +525,7 @@ def test_tasks_not_written_is_only_a_warning(change):
 # --- trace -------------------------------------------------------------------
 
 
+# @ac AC-SPECS-011.1, AC-SPECS-012.1
 def test_trace_links_tasks_tests_and_code(change, project):
     (project / "tests").mkdir()
     (project / "tests/test_reset.py").write_text("# @ac AC-AUTH-003.1\ndef test_request(): ...\n")  # specworks: ignore-tags
@@ -498,6 +546,32 @@ def test_trace_links_tasks_tests_and_code(change, project):
     assert "Acceptance criteria without a test (`@ac`): AC-AUTH-003.2, AC-AUTH-002.1" in text
 
 
+# @ac AC-SPECS-011.6
+def test_files_too_big_or_not_utf8_are_not_scanned(change, project):
+    (project / "tests").mkdir()
+    tag = "# @ac AC-AUTH-003.1\n"  # specworks: ignore-tags
+    (project / "tests/test_big.py").write_text(tag + "x" * 1_000_001)
+    (project / "tests/test_latin.py").write_bytes(tag.encode() + "caf\xe9\n".encode("latin-1"))
+    (project / "tests/test_ok.py").write_text("# @ac AC-AUTH-003.2\n")  # specworks: ignore-tags
+    code, data = run_json("trace", "--change", "add-password-reset")
+    rows = {r["ac"]: r for r in data["rows"]}
+    assert rows["AC-AUTH-003.1"]["tests"] == [] and rows["AC-AUTH-003.2"]["tests"] == ["tests/test_ok.py:1"]
+
+
+# @ac AC-SPECS-012.2
+def test_removed_requirements_and_dropped_criteria_still_tagged_are_gaps(change, project):
+    delta = change / "specs/user-auth/spec.md"
+    text = delta.read_text().replace("AC-AUTH-002.1 Third failure", "AC-AUTH-002.2 Third failure")
+    delta.write_text(text + "\n## REMOVED Requirements\n\n### Requirement: REQ-AUTH-001 Password login\n"
+                            "**Reason**: SSO only\n**Migration**: use SSO\n")
+    (project / "tests").mkdir()
+    (project / "tests/test_lockout.py").write_text("# @ac AC-AUTH-002.1\n")  # specworks: ignore-tags
+    (project / "src/auth/login.py").write_text("# @req REQ-AUTH-001\n")  # specworks: ignore-tags
+    code, data = run_json("trace", "--change", "add-password-reset")
+    assert data["gaps"]["removedStillTagged"] == ["AC-AUTH-002.1", "REQ-AUTH-001"]
+
+
+# @ac AC-SPECS-011.4
 def test_trace_skips_workflow_and_hidden_folders(change, project):
     (project / ".venv").mkdir()
     (project / ".venv/x_test.py").write_text("# @ac AC-AUTH-003.1\n")  # specworks: ignore-tags
@@ -506,6 +580,7 @@ def test_trace_skips_workflow_and_hidden_folders(change, project):
     assert {r["ac"]: r for r in data["rows"]}["AC-AUTH-003.1"]["tests"] == []
 
 
+# @ac AC-SPECS-011.3
 def test_trace_does_not_count_tags_quoted_in_docs(change, project):
     (project / "NOTES.md").write_text("TODO: implement `@req REQ-AUTH-003`\n")  # specworks: ignore-tags
     (project / "tests").mkdir()
@@ -518,6 +593,7 @@ def test_trace_does_not_count_tags_quoted_in_docs(change, project):
     assert "REQ-AUTH-003" in data["gaps"]["reqWithoutCode"]
 
 
+# @ac AC-SPECS-011.3
 def test_globs_that_name_docs_scan_them(change, project):
     cfg = project / "spec.yml"
     cfg.write_text(cfg.read_text().replace("source_globs: []", 'source_globs: ["docs/*"]'))
@@ -527,6 +603,7 @@ def test_globs_that_name_docs_scan_them(change, project):
     assert {r["ac"]: r for r in data["rows"]}["AC-AUTH-003.1"]["code"] == ["docs/impl.md:1"]
 
 
+# @ac AC-SPECS-011.2
 def test_trace_respects_test_globs(change, project):
     cfg = project / "spec.yml"
     cfg.write_text(cfg.read_text().replace("test_globs: []", 'test_globs: ["qa/*.py"]'))
@@ -536,6 +613,7 @@ def test_trace_respects_test_globs(change, project):
     assert {r["ac"]: r for r in data["rows"]}["AC-AUTH-003.2"]["tests"] == ["qa/reset_checks.py:1"]
 
 
+# @ac AC-SPECS-012.4
 def test_tags_of_a_capability_with_a_longer_prefix_are_not_unknown(change, project):
     # The change touches AUTH; REQ-AUTH-ADMIN-001 belongs to another capability (prefix AUTH-ADMIN).
     run_json("capability", "add", "auth-admin", "--path", "src/admin", "--prefix", "AUTH-ADMIN")
@@ -545,6 +623,7 @@ def test_tags_of_a_capability_with_a_longer_prefix_are_not_unknown(change, proje
     assert data["unknownTags"] == [{"id": "REQ-AUTH-078", "where": "src/admin/users.py:2"}]
 
 
+# @ac AC-SPECS-012.3
 def test_a_tag_with_a_prefix_no_capability_uses_is_unknown(change, project):
     (project / "tests").mkdir()
     (project / "tests/test_reset.py").write_text("# @ac AC-AUHT-003.1\n# @req REQ-AUTH\n")  # specworks: ignore-tags
@@ -555,6 +634,7 @@ def test_a_tag_with_a_prefix_no_capability_uses_is_unknown(change, project):
     ]
 
 
+# @ac AC-SPECS-012.4
 def test_tags_of_another_active_change_are_not_unknown(change, project):
     # other-change adds REQ-AUTH-004 to the same capability and a new, not yet registered one.
     run_json("new", "other-change")
@@ -572,6 +652,7 @@ def test_tags_of_another_active_change_are_not_unknown(change, project):
     assert data["unknownTags"] == [{"id": "AC-AUTH-005.1", "where": "tests/test_other.py:3"}]
 
 
+# @ac AC-SPECS-012.4
 def test_a_broken_delta_of_another_change_does_not_break_this_ones_trace(change, project):
     run_json("new", "other-change")
     bad = project / "spec/changes/other-change/specs/nope/thing"
@@ -592,10 +673,12 @@ def test_a_broken_delta_of_another_change_does_not_break_this_ones_trace(change,
         ("api/spec/openapi.py", False),
     ],
 )
+# @ac AC-SPECS-011.2
 def test_test_file_detection(path, is_test):
     assert is_test_file(path, []) is is_test
 
 
+# @ac AC-SPECS-011.2
 def test_test_globs_do_not_hide_source_tags(change, project):
     cfg = project / "spec.yml"
     cfg.write_text(cfg.read_text().replace("test_globs: []", 'test_globs: ["qa/*.py"]'))
@@ -608,6 +691,7 @@ def test_test_globs_do_not_hide_source_tags(change, project):
     assert rows["AC-AUTH-003.2"]["code"] == ["src/auth/reset.py:1"]
 
 
+# @ac AC-SPECS-011.3
 def test_source_globs_limit_the_other_files_but_not_tests(change, project):
     cfg = project / "spec.yml"
     cfg.write_text(cfg.read_text().replace("source_globs: []", 'source_globs: ["src/**"]'))
@@ -643,6 +727,7 @@ def test_two_capabilities_with_one_prefix_is_an_error(project):
     assert code == 1 and "user-auth and login both use the ID prefix AUTH" in data["error"]
 
 
+# @ac AC-SPECS-006.4
 def test_new_capability_may_not_take_a_prefix_in_use(change):
     path = change / "specs/auth"
     path.mkdir(parents=True)
@@ -652,11 +737,19 @@ def test_new_capability_may_not_take_a_prefix_in_use(change):
     assert code == 1 and any("new capability auth would use the ID prefix AUTH, already used by user-auth" in m for m in messages), messages
 
 
+# @ac AC-SPECS-009.3
 def test_tasks_in_a_code_fence_are_examples_not_tasks():
     text = "## 1. Reset\n\n- [ ] 1.1 Add reset (REQ-AUTH-003)\n\n```markdown\n- [ ] 9.9 an example task\n- [x] bad example\n```\n"
     tasks, problems = parse_tasks(text)
     assert [t.num for t in tasks] == ["1.1"] and problems == []
 
+
+
+# @ac AC-SPECS-009.3
+def test_bullets_under_workflow_follow_up_are_not_tasks():
+    text = "## 1. Reset\n\n- [ ] 1.1 Add reset (REQ-AUTH-003)\n\n## Workflow follow-up\n\n- [ ] 2.1 later, maybe\n- [x] bad\n- a note\n"
+    tasks, problems = parse_tasks(text)
+    assert [t.num for t in tasks] == ["1.1"] and problems == []
 
 @pytest.mark.parametrize(
     "rel, pattern, expected",
@@ -672,10 +765,12 @@ def test_tasks_in_a_code_fence_are_examples_not_tasks():
         ("qa/x/1.py", "qa/x?1.py", False),
     ],
 )
+# @ac AC-SPECS-011.5
 def test_globs_follow_folder_aware_rules(rel, pattern, expected):
     assert glob_match(rel, pattern) is expected
 
 
+# @ac AC-SPECS-011.1
 def test_one_tag_may_list_several_ids(change, project):
     (project / "tests").mkdir()
     (project / "tests/test_reset.py").write_text("# @ac AC-AUTH-003.1, AC-AUTH-003.2\n")  # specworks: ignore-tags
@@ -684,6 +779,7 @@ def test_one_tag_may_list_several_ids(change, project):
     assert rows["AC-AUTH-003.1"]["tests"] == rows["AC-AUTH-003.2"]["tests"] == ["tests/test_reset.py:1"]
 
 
+# @ac AC-SPECS-004.2
 def test_html_comments_are_not_spec_content():
     text = "## Purpose\n\n<!-- hint -->\n\n## ADDED Requirements\n\n<!--\n### Requirement: REQ-AUTH-009 Idea\n-->\n### Requirement: REQ-AUTH-010 Real\nThe system SHALL x.\n"
     doc = parse_spec(text)
@@ -696,6 +792,7 @@ def check_warnings(ref="add-password-reset"):
     return [i["message"] for i in data["issues"] if i["level"] == "warning"]
 
 
+# @ac AC-SPECS-006.5
 @pytest.mark.parametrize("closed, warned", [("2999-01-01", True), ("2000-01-01", False)])
 def test_requirement_modified_by_a_later_close_is_warned(change, project, closed, warned):
     # Another change closed after this one started: this MODIFIED block may predate its edits.
@@ -705,6 +802,7 @@ def test_requirement_modified_by_a_later_close_is_warned(change, project, closed
     assert bool(found) is warned
 
 
+# @ac AC-SPECS-006.5
 def test_modified_block_dropping_a_criterion_is_warned(change, project):
     delta = change / "specs/user-auth/spec.md"
     delta.write_text(DELTA.replace("AC-AUTH-002.1 Third failure", "AC-AUTH-002.2 Third failure"))

@@ -41,6 +41,7 @@ def test_task_list(project):
     assert [t["num"] for t in data["tasks"]] == ["1.1", "1.2"]
 
 
+# @ac AC-SPECS-009.5
 def test_task_done_and_undo_only_touch_the_checkbox(project):
     path = project / "spec/changes" / REF / "tasks.md"
     before = path.read_text()
@@ -52,6 +53,7 @@ def test_task_done_and_undo_only_touch_the_checkbox(project):
     assert path.read_text() == before
 
 
+# @ac AC-SPECS-009.5
 def test_task_done_rejects_unknown_numbers(project):
     path = project / "spec/changes" / REF / "tasks.md"
     before = path.read_text()
