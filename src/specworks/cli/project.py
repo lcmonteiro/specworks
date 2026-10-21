@@ -14,7 +14,7 @@ from ..core.config_file import add_capability_entry, add_module_entry, write_def
 from ..core.validators import validate_relative
 from ..core.workspace import Module, Workspace, capability_prefix, load_module_config, load_workspace, require_workspace
 from ..specs.capabilities import capability_ref, describe
-from ..tools.skills import install_skills, parse_tools, remove_stale_skills
+from ..tools.skills import install_skills, installed_tools, parse_tools, remove_stale_skills, skills_state, update_skills
 from .app import app, capability_app, module_app
 from .output import AllOpt, JsonOpt, ToolsOpt, change_dict, changes_of, emit, fail, missing_dicts, module_dict, workspace
 
@@ -145,6 +145,26 @@ def skills(tools: str = ToolsOpt) -> None:
     write_skills(workspace(False), tools)
 
 
+# @req REQ-CLI-009
+@app.command()
+def update(
+    tools: str | None = typer.Option(
+        None, "--tools", help="AI tools to update: the installed ones by default, or auto, all, or a list such as claude,copilot."
+    ),
+) -> None:
+    """Bring the project's agent skills up to this specworks (run after `uv tool upgrade specworks`)."""
+    ws = workspace(False)
+    selected = parse_tools(tools, ws.root) if tools else installed_tools(ws.root) or parse_tools("auto", ws.root)
+    typer.echo(f"tools   {', '.join(t.label for t in selected)}")
+    updated, removed = update_skills(ws.root, selected)
+    for path in removed:
+        typer.echo(f"removed {ws.rel(path)}")
+    for path in updated:
+        typer.echo(f"updated {ws.rel(path)}")
+    if not updated and not removed:
+        typer.echo("skills up to date")
+
+
 # @req REQ-CLI-004
 @app.command()
 def context(as_json: bool = JsonOpt, all_modules: bool = AllOpt) -> None:
@@ -167,6 +187,7 @@ def context(as_json: bool = JsonOpt, all_modules: bool = AllOpt) -> None:
             }
         )
     changes = changes_of(ws, all_modules)
+    skills = skills_state(ws.root)
     data = {
         "root": str(ws.root),
         "module": ws.current.label,
@@ -179,10 +200,15 @@ def context(as_json: bool = JsonOpt, all_modules: bool = AllOpt) -> None:
         "missingModules": missing_dicts(ws),
         "capabilities": capabilities,
         "changes": [change_dict(ws, m, c) for m, c in changes],
+        "skills": {"state": skills.state, "files": [{"path": f.path, "reason": f.reason} for f in skills.files]},
     }
     lines = [f"root:    {ws.root}", f"module:  {ws.current.label}", "modules:", *module_lines(ws, "  ")]
     lines += ["capabilities:"] + ([f"  {c['name']:<24} {c['path']}" for c in capabilities] or ["  (none)"])
     lines += ["changes:"] + ([f"  {m.qualify(c.name):<24} {c.phase}" for m, c in changes] or ["  (none)"])
+    if skills.state == "outdated":
+        lines += [f"skills:  outdated ({len(skills.files)} files)", "skills out of date: run specworks update"]
+    else:
+        lines += [f"skills:  {skills.state}"]
     emit(data, as_json, "\n".join(lines))
 
 

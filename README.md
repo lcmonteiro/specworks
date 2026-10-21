@@ -41,6 +41,16 @@ The install includes [D2](https://d2lang.com) for diagrams, through the pinned
 [`pyd2`](https://github.com/lcmonteiro/pyd2) dependency, so every machine renders
 identical SVGs. Set `SPECWORKS_D2` to use another `d2`.
 
+### Upgrade
+
+```bash
+uv tool upgrade specworks   # the CLI
+specworks update            # in each project: its agent skills, to match the CLI
+```
+
+`specworks context` says `skills out of date: run specworks update` when a
+project's skills differ from the ones the CLI installs.
+
 ## Quick start
 
 ```bash

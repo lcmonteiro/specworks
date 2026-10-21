@@ -1,0 +1,7 @@
+name: upgrade-project
+created: '2026-10-21T13:05:31'
+phase: done
+specified:
+  REQ-CLI-009: 67758a36f971
+  REQ-CLI-004: 37d7bd582e67
+  REQ-INTEG-006: 40eced711f72
