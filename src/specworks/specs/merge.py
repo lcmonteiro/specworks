@@ -26,7 +26,7 @@ from ..core.files import read_text
 from ..core.workspace import Workspace
 from .capabilities import HISTORY_HEADING, REQUIREMENTS_FILE, CapabilityRef, history_lines
 from .check import ChangeSpecs, Delta
-from .specfile import LIVING_SECTION, Requirement, living_problems, parse_spec, section_kind
+from .specfile import LIVING_SECTION, Requirement, living_problems, parse_spec, section_kind, table_cell
 
 
 class MergeError(SpecworksError):
@@ -157,7 +157,7 @@ def requirements_index(cap: CapabilityRef, spec_text: str, history: list[str]) -
     ]
     for req in doc.section(LIVING_SECTION):
         acs = ", ".join(s.id for s in req.scenarios if s.id) or "—"
-        out.append(f"| {req.id} | {req.title} | {acs} |")
+        out.append(f"| {req.id} | {table_cell(req.title)} | {acs} |")
     out += ["", HISTORY_HEADING, ""] + (history or ["- (none)"])
     return "\n".join(out) + "\n"
 

@@ -43,7 +43,7 @@ from pathlib import Path
 from ..core.changes import Change
 from ..core.workspace import Module, Workspace
 from .check import ChangeSpecs, Issue, check_change, other_deltas
-from .specfile import id_prefix
+from .specfile import id_prefix, table_cell
 
 TAG_ID = r"(?:REQ|AC)-[A-Z0-9][A-Z0-9.-]*[A-Z0-9]"
 TAG_RE = re.compile(rf"@(?P<kind>req|ac)\s+(?P<ids>{TAG_ID}(?:\s*,\s*{TAG_ID})*)")
@@ -277,15 +277,15 @@ def to_markdown(change_ref: str, rows: list[Row], found: dict[str, list[str]]) -
     for r in rows:
         if r.section == "REMOVED":
             continue
-        ac = f"{r.ac} {r.ac_title}".strip() if r.ac else "—"
+        ac = f"{r.ac} {table_cell(r.ac_title)}".strip() if r.ac else "—"
         out.append(
-            f"| {r.capability} | {r.req} {r.title} ({r.section}) | {ac} | {', '.join(r.tasks) or '—'} | {cell(r.tests)} | {cell(r.code)} |"
+            f"| {r.capability} | {r.req} {table_cell(r.title)} ({r.section}) | {ac} | {', '.join(r.tasks) or '—'} | {cell(r.tests)} | {cell(r.code)} |"
         )
     removed = [r for r in rows if r.section == "REMOVED"]
     if removed:
         out += ["", "## Removed", "", "| Capability | Requirement or criterion | Tasks | Still tagged in |", "|---|---|---|---|"]
         out += [
-            f"| {r.capability} | {f'{r.ac} {r.ac_title}' if r.ac else f'{r.req} {r.title}'} | {', '.join(r.tasks) or '—'} | {cell(r.tests + r.code)} |"
+            f"| {r.capability} | {f'{r.ac} {table_cell(r.ac_title)}' if r.ac else f'{r.req} {table_cell(r.title)}'} | {', '.join(r.tasks) or '—'} | {cell(r.tests + r.code)} |"
             for r in removed
         ]
     out += ["", "## Gaps", ""]

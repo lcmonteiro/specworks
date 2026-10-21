@@ -247,9 +247,10 @@ def find_ids(text: str) -> list[str]:
 
 
 # @req REQ-SPECS-004
+# @req REQ-SPECS-012, REQ-SPECS-013
 def table_cell(text: str) -> str:
     """``text`` for a markdown table cell: a ``|`` escaped so it doesn't end the cell."""
-    return text
+    return text.replace("|", "\\|")
 
 
 def living_problems(doc: SpecDoc) -> list[tuple[int, str]]:
