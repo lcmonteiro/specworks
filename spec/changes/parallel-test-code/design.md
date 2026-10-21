@@ -86,30 +86,63 @@ the markers.
 
 ## Interfaces
 
-- `src/specworks/core/changes.py`: `PHASES` (implement instead of test,
-  code); `HALVES = ("test", "code")`; `_read_change` maps a half to
-  `implement`; `set_phase` raises `ChangeError` for a half (REQ-PROJ-011)
-- `src/specworks/specs/tasks.py`: `Task.half: str`, in `Task.to_dict()` as
-  `"half"` (REQ-SPECS-009)
-- `src/specworks/specs/check.py`: warning when a half has no task
-  (REQ-SPECS-009)
-- `src/specworks/workflow/checks.py`: `tasks_done(half: str | None = None) ->
-  CheckFn` (the half's tasks, or every task); `tests_pass` non-blocking with
-  own `@ac` tests (code gate) or with open findings under `--allow-open`
-  (review gate) (REQ-FLOW-007, 008, 011)
-- `src/specworks/workflow/gate.py`: `GATES` with `implement`;
-  `gates_to_start` expands implement to `test`, `code` and refuses a half
-  (REQ-FLOW-014)
+Proposed: waiting for the user's agreement
+
+- `src/specworks/core/changes.py`: `PHASES = ("refine", "specify", "design",
+  "implement", "review", "validate", "close", "done")` (**BREAKING**: `test`
+  and `code` are no longer phases); `HALVES = ("test", "code")` (new);
+  `_read_change` reads a half as `implement`; `set_phase(change, phase)`
+  raises `ChangeError` naming `implement` for a half (REQ-PROJ-011)
+- `src/specworks/specs/tasks.py`: `Task.half: str = ""` (new field: `"test"`,
+  `"code"` or `""`, from a leading `[test]`/`[code]` in any case, which stays
+  in `text`); `Task.to_dict()` gains `"half"` (REQ-SPECS-009)
+- `src/specworks/specs/check.py`: no new API; `check_change` adds a warning
+  naming the half (`[test]` or `[code]`) that has no task (REQ-SPECS-009)
+- `src/specworks/workflow/checks.py`: `half_tasks_done(half: str) -> CheckFn`
+  (new: every task of that half done, listing only its open tasks);
+  `code_tests_pass(ctx) -> Check` (new: `tests_pass`, a warning while the
+  change has `@ac` tests of its own); `review_tests_pass(ctx) -> Check` (new:
+  `tests_pass`, a warning under `--allow-open` with an open finding).
+  `tasks_done` and `tests_pass` are unchanged (validate keeps them)
+  (REQ-FLOW-007, REQ-FLOW-008, REQ-FLOW-011)
+- `src/specworks/workflow/gate.py`: `GATE_CHECKS["test"]` gains
+  `half_tasks_done("test")`; `GATE_CHECKS["code"]` uses
+  `half_tasks_done("code")` and `code_tests_pass`, without `acs_have_tests`;
+  `GATE_CHECKS["review"]` uses `review_tests_pass`; `GATES` gains `implement`;
+  `run_gate(ctx, "implement")` returns the test gate's checks then (once it
+  passes) the code gate's, each name prefixed `test: ` / `code: `;
+  `gates_to_start(current, phase)` puts `test`, `code` where implement's gate
+  goes and raises `GateError` naming `implement` for a half (REQ-FLOW-007,
+  REQ-FLOW-008, REQ-FLOW-011, REQ-FLOW-014)
 - `src/specworks/workflow/review.py`: `FINDING_STEPS = ("specify", "design",
-  "implement", "test", "code", "review")` replacing `FINDING_PHASES`;
-  `Finding.phase` holds the step (REQ-FLOW-010)
-- `src/specworks/workflow/cycle.py`: `next_cycle(change) -> dict` with the
-  same keys; `phases` are steps (REQ-FLOW-012)
-- `src/specworks/workflow/artifacts.py`: `half_progress(change) -> dict[str,
-  dict[str, int]] | None` (`{"test": {"done": 3, "total": 3}, ...}`);
-  `src/specworks/cli/changes.py`: `status` shows it as `halves` (REQ-FLOW-001)
-- `src/specworks/cli/changes.py`, `src/specworks/cli/workflow.py`: help
-  texts list the new phases and `gate implement`
+  "implement", "test", "code", "review")` (new, replacing `FINDING_PHASES`);
+  `Finding.phase` holds the step; `BACK_RE`/`DONE_RE` accept `implement`;
+  `TYPE_PHASE` unchanged (REQ-FLOW-010)
+- `src/specworks/workflow/cycle.py`: `next_cycle(change) -> dict`, same keys
+  (`reviewed`, `open`, `startAt`, `phases`, `handOver`); `startAt` is
+  `design`, `implement`, `review`, `specify` or None, and `phases` lists steps
+  from `design`, `test`, `code`, `review` (REQ-FLOW-012)
+- `src/specworks/workflow/artifacts.py`: `half_progress(change: Change) ->
+  dict[str, dict[str, int]] | None` (new: `{"test": {"done": 3, "total": 3},
+  "code": {"done": 1, "total": 4}}` in implement, else None);
+  `src/specworks/cli/changes.py`: `status` adds `halves` to its JSON and a
+  `test 3/3, code 1/4` line to its text when not None (REQ-FLOW-001)
+- `src/specworks/cli/changes.py`, `src/specworks/cli/workflow.py`: help texts
+  of `phase`, `start` and `gate` list the new phases and `gate implement`
+  (from `PHASES` and `GATES`) (REQ-FLOW-014)
+
+Stubs: the new names exist with "not implemented" bodies, and are not wired
+into the gates, `status` or the phase list yet, so the existing suite stays
+green; `PHASES`, `FINDING_PHASES` and the gates' check lists change in the
+code phase, together with the existing tests that use `test`/`code` as phases.
+`Task.half` is a field that stays `""` until the code phase reads the marker.
+
+Decisions to agree:
+- `half_tasks_done`, `code_tests_pass` and `review_tests_pass` are new checks
+  instead of giving `tasks_done`/`tests_pass` parameters: validate keeps its
+  "every task" and blocking suite checks unchanged.
+- `gate implement` reports one list of checks, names prefixed by the half, and
+  skips the code gate when the test gate fails (as `start` does).
 
 ## Risks / Trade-offs
 

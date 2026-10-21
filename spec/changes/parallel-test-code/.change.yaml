@@ -1,3 +1,13 @@
 name: parallel-test-code
 created: '2026-10-21T19:07:35'
-phase: specify
+phase: design
+specified:
+  REQ-PROJ-011: 79d565c7c97e
+  REQ-SPECS-009: a8eef188cbf8
+  REQ-FLOW-001: 10f9cd32d503
+  REQ-FLOW-007: c304bcc36448
+  REQ-FLOW-008: fa2bd6d170f4
+  REQ-FLOW-010: 11922f999904
+  REQ-FLOW-011: 49f0bafb4818
+  REQ-FLOW-012: a09a7b9978f6
+  REQ-FLOW-014: a982fccf89bc
