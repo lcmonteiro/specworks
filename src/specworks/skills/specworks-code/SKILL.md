@@ -17,6 +17,8 @@ change them to make the code easier. When the gate passes, stop and suggest
 
 <!-- specworks:include running-cli -->
 
+<!-- specworks:include asking-the-user -->
+
 <!-- specworks:include picking-the-change -->
 
 ---
@@ -37,8 +39,8 @@ change them to make the code easier. When the gate passes, stop and suggest
      `specworks phase code --change "<ref>"`.
    - `commands` in the context are this project's tools; `specworks run test`
      (and `run lint`, `run typecheck` when configured) runs them in the right
-     folder. If `test` is not configured, find it, confirm it with the user and
-     suggest adding it under `commands:`.
+     folder. If `test` is not configured, find it and ask "Use `<command>` as
+     the test command and add it under `commands:`? (yes/no)".
 
 2. **Load the plan**
 
@@ -80,7 +82,8 @@ change them to make the code easier. When the gate passes, stop and suggest
       specworks task done <N.M> --change "<ref>"
       ```
 
-   **Pause and ask** instead of guessing when:
+   **Pause and ask** instead of guessing (the ways forward as numbered
+   options, the one you recommend marked) when:
    - a task or requirement is unclear, or two of them conflict;
    - the tests and the spec disagree, or a test looks wrong: a test may only
      change if it contradicts its acceptance criterion, and then with the
@@ -117,8 +120,11 @@ change them to make the code easier. When the gate passes, stop and suggest
    Summarize: tasks done, files changed per capability, where each
    requirement is implemented (from the trace), test results, any decision
    or deviation recorded in design.md, and any test changed with the user's
-   agreement. End with: "When you are ready, run `/specworks-review <ref>` to
-   check the code and the specs agree."
+   agreement. End with:
+   ```
+   1. /specworks-review <ref> (recommended): check the code and the specs agree
+   2. Stop here
+   ```
 
 ---
 

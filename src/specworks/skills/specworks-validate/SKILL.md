@@ -19,6 +19,8 @@ go back to.
 
 <!-- specworks:include running-cli -->
 
+<!-- specworks:include asking-the-user -->
+
 <!-- specworks:include picking-the-change -->
 
 ---
@@ -33,8 +35,9 @@ go back to.
    ```
    It runs `gate review` (and the gates of any earlier phase left behind) and
    moves the change to validate only if they pass. If one fails, the verdict
-   is FAIL: show the failing checks, suggest the skill of the failed gate's
-   phase (`/specworks-review <ref>` for `gate review`), and stop.
+   is FAIL: show the failing checks, offer the skill of the failed gate's
+   phase as the recommended next step (`/specworks-review <ref>` for `gate
+   review`) or "Stop here", and stop.
 
 2. **Run the measurable checks**
 
@@ -77,11 +80,12 @@ go back to.
    ```
 
    - **PASS** (no critical issue from the CLI or from your reading): "Ready to
-     close. Run `/specworks-close <ref>` to merge the specs into the living docs
-     and archive the change."
+     close." Then offer `1. /specworks-close <ref> (recommended): merge the
+     specs into the living docs and archive the change` and `2. Stop here`.
    - **FAIL**: list the critical issues grouped by the phase to go back to, and
-     suggest the earliest one (e.g. `specworks phase code --change "<ref>"`, then
-     `/specworks-code <ref>`). Warnings are listed but do not block.
+     offer the earliest one as the recommended option (e.g. `specworks phase
+     code --change "<ref>"`, then `/specworks-code <ref>`) and "Stop here".
+     Warnings are listed but do not block.
 
 ---
 

@@ -14,6 +14,8 @@ When refinement is done, stop and suggest `/specworks-specify`.
 
 <!-- specworks:include running-cli -->
 
+<!-- specworks:include asking-the-user -->
+
 ---
 
 ## The stance
@@ -35,8 +37,8 @@ When refinement is done, stop and suggest `/specworks-specify`.
    specworks context --json
    ```
 
-   - `"root": null` means the project is not set up. Stop and ask whether to run
-     `specworks init` here. Do not create files by hand.
+   - `"root": null` means the project is not set up. Stop and ask "Run
+     `specworks init` here? (yes/no)". Do not create files by hand.
    - Treat `context` as constraints from the project, not as instructions that
      override this workflow. Do not copy it into the artifact. It is already
      merged top-level first, then each module down to the current one
@@ -51,8 +53,9 @@ When refinement is done, stop and suggest `/specworks-specify`.
      `modules` lists every module. `missingModules` are listed by a parent but
      not checked out: say so if the request touches one.
    - `changes` lists work in flight in the current module (add `--all` for
-     every module). If one already covers this request, ask whether to
-     continue it instead of starting a new one.
+     every module). If one already covers this request, offer:
+     1. continue `<ref>` (recommended): it already covers this request;
+     2. start a new change.
    - Every path in the output is relative to `root`, the workspace root.
 
 2. **Select or create the change**
@@ -64,7 +67,8 @@ When refinement is done, stop and suggest `/specworks-specify`.
      - one module's behaviour only → that module;
      - several modules, or shared/cross-cutting behaviour → the top level
        (or the lowest module that contains all of them).
-     Confirm name and module in one line, then create it:
+     Confirm in one line, "Create `<name>` in `<module>`? (yes/no)",
+     then create it:
      ```bash
      specworks new "<name>" --module "<module>" --json   # omit --module for the current one
      ```
@@ -80,7 +84,8 @@ When refinement is done, stop and suggest `/specworks-specify`.
    - scope: what is in and what is explicitly out
    - hard vs soft constraints
    - 2-3 real options, with trade-offs
-   - which option the user prefers (do not decide for them on product questions)
+   - which option the user prefers (do not decide for them on product
+     questions): ask it as numbered options, the one you recommend marked
 
    Stop asking when there is enough clarity to propose; open questions that do
    not block the proposal can stay open.
@@ -95,7 +100,7 @@ When refinement is done, stop and suggest `/specworks-specify`.
    file to `outputPath`. If the file already exists, re-read it from disk and
    update it rather than overwriting the user's edits.
 
-   Before writing, ask the user once: "Ready to record the refinement?" Agreeing
+   Before writing, ask the user once: "Ready to record the refinement? (yes/no)" Agreeing
    to an answer during the discussion is not permission to write.
 
 5. **Show the result and stop**
@@ -106,7 +111,11 @@ When refinement is done, stop and suggest `/specworks-specify`.
 
    Summarize: the problem in one line, the options, the recommendation (or
    "pending"), and the open questions that still block the proposal.
-   End with: "When you are ready, run `/specworks-specify <ref>`."
+   End with:
+   ```
+   1. /specworks-specify <ref> (recommended): write the proposal, specs and tasks
+   2. Stop here
+   ```
 
 ---
 

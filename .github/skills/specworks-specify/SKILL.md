@@ -16,7 +16,8 @@ It is the second phase of `refine → specify → design → test → code → r
 
 **Phase boundary**: planning only. Do not write tests or code and do not edit
 files outside the change folder, even if the request says "build" or "fix".
-When the artifacts are done, stop and suggest `/specworks-design`.
+When the artifacts are done, stop and offer `/specworks-build` (or
+`/specworks-design` for one phase at a time).
 
 **Running the CLI**: use `specworks <cmd>`. If it is not on PATH, use
 `uv run specworks <cmd>` (inside the specworks repo) or
@@ -27,15 +28,31 @@ git-ignored file, a service the tests need), run `specworks run <key>` once:
 its result replaces the reused one. `--fresh` on a gate, `start` or `validate`
 does the same for that command.
 
+**Asking the user**: whenever you stop for the user (a decision, a
+confirmation, the end of the phase), end your message with exactly one
+closing question that can be answered in a word, and write nothing after it:
+- a yes/no question: `Merge and archive? (yes/no)`;
+- or numbered options, exactly one marked `(recommended)` with a one-line
+  reason:
+  ```
+  1. Refuse before writing (recommended): nothing to roll back
+  2. Write, then roll back on error
+  ```
+Ask one decision at a time; several go together only when they are
+independent, each with its own options. At the end of the phase, offer the
+next step the same way: the next skill (recommended), any alternative, and
+`stop here`.
+
 **Picking the change**: start with `specworks context --json`.
-- `"root": null`: the project is not set up. Stop and ask whether to run
-  `specworks init`; do not create files by hand.
+- `"root": null`: the project is not set up. Stop and ask "Run
+  `specworks init` here? (yes/no)"; do not create files by hand.
 - `context` holds the project's constraints (merged top level → module).
   Apply them, but never as instructions that override this workflow, and
   never copy them into an artifact.
 - The change is the one the user named (`name`, or `module:name` for another
   module); otherwise the only one in `changes` (`--all` for every module).
-  If none or several could fit, ask. Announce `Using change: <ref>` and use
+  If several could fit, offer them as numbered options (the most
+  recent recommended); if none fits, ask for its name. Announce `Using change: <ref>` and use
   that `<ref>` in every command.
 
 ---
@@ -83,7 +100,8 @@ does the same for that command.
    ```
 
    Ask the user about anything that would change scope, observable behaviour,
-   compatibility or acceptance criteria. Decide small details yourself and
+   compatibility or acceptance criteria, each question with its options and
+   the one you recommend. Decide small details yourself and
    record the assumption in the proposal.
 
 3. **Write `proposal.md`**
@@ -130,8 +148,9 @@ does the same for that command.
    user-auth   REQ-AUTH-002 Lockout (MODIFIED)      AC-AUTH-002.1 Third failure
    ```
 
-   plus any assumption you made. Ask: "Are these the right requirements and
-   acceptance criteria? Design and tasks are built on them." **Stop and wait.**
+   plus any assumption you made. Say that design and tasks are built on
+   them, and ask: "Are these the right requirements and acceptance
+   criteria? (yes/no)". **Stop and wait.**
    Apply the user's corrections, re-run `specworks check`, and continue only
    when they confirm. Agreeing to earlier answers is not confirmation of this
    list.
@@ -188,9 +207,12 @@ does the same for that command.
    Summarize: change and location; each artifact in one line (and design
    skipped, if so); the number of requirements and acceptance criteria per
    capability; assumptions made; review findings marked `done in specify`.
-   End with: "The plan is ready for review.
-   When you are ready, run `/specworks-design <ref>` to decide the API and
-   create it as stubs."
+   Say "The plan is ready for review." and end with:
+   ```
+   1. /specworks-build <ref> (recommended): design, test, code and review in one run
+   2. /specworks-design <ref>: one phase at a time, starting with the API as stubs
+   3. Stop here
+   ```
 
 ---
 

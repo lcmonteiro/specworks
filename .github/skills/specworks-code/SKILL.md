@@ -23,15 +23,31 @@ git-ignored file, a service the tests need), run `specworks run <key>` once:
 its result replaces the reused one. `--fresh` on a gate, `start` or `validate`
 does the same for that command.
 
+**Asking the user**: whenever you stop for the user (a decision, a
+confirmation, the end of the phase), end your message with exactly one
+closing question that can be answered in a word, and write nothing after it:
+- a yes/no question: `Merge and archive? (yes/no)`;
+- or numbered options, exactly one marked `(recommended)` with a one-line
+  reason:
+  ```
+  1. Refuse before writing (recommended): nothing to roll back
+  2. Write, then roll back on error
+  ```
+Ask one decision at a time; several go together only when they are
+independent, each with its own options. At the end of the phase, offer the
+next step the same way: the next skill (recommended), any alternative, and
+`stop here`.
+
 **Picking the change**: start with `specworks context --json`.
-- `"root": null`: the project is not set up. Stop and ask whether to run
-  `specworks init`; do not create files by hand.
+- `"root": null`: the project is not set up. Stop and ask "Run
+  `specworks init` here? (yes/no)"; do not create files by hand.
 - `context` holds the project's constraints (merged top level → module).
   Apply them, but never as instructions that override this workflow, and
   never copy them into an artifact.
 - The change is the one the user named (`name`, or `module:name` for another
   module); otherwise the only one in `changes` (`--all` for every module).
-  If none or several could fit, ask. Announce `Using change: <ref>` and use
+  If several could fit, offer them as numbered options (the most
+  recent recommended); if none fits, ask for its name. Announce `Using change: <ref>` and use
   that `<ref>` in every command.
 
 ---
@@ -52,8 +68,8 @@ does the same for that command.
      `specworks phase code --change "<ref>"`.
    - `commands` in the context are this project's tools; `specworks run test`
      (and `run lint`, `run typecheck` when configured) runs them in the right
-     folder. If `test` is not configured, find it, confirm it with the user and
-     suggest adding it under `commands:`.
+     folder. If `test` is not configured, find it and ask "Use `<command>` as
+     the test command and add it under `commands:`? (yes/no)".
 
 2. **Load the plan**
 
@@ -95,7 +111,8 @@ does the same for that command.
       specworks task done <N.M> --change "<ref>"
       ```
 
-   **Pause and ask** instead of guessing when:
+   **Pause and ask** instead of guessing (the ways forward as numbered
+   options, the one you recommend marked) when:
    - a task or requirement is unclear, or two of them conflict;
    - the tests and the spec disagree, or a test looks wrong: a test may only
      change if it contradicts its acceptance criterion, and then with the
@@ -132,8 +149,11 @@ does the same for that command.
    Summarize: tasks done, files changed per capability, where each
    requirement is implemented (from the trace), test results, any decision
    or deviation recorded in design.md, and any test changed with the user's
-   agreement. End with: "When you are ready, run `/specworks-review <ref>` to
-   check the code and the specs agree."
+   agreement. End with:
+   ```
+   1. /specworks-review <ref> (recommended): check the code and the specs agree
+   2. Stop here
+   ```
 
 ---
 

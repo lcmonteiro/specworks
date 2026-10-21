@@ -25,15 +25,31 @@ git-ignored file, a service the tests need), run `specworks run <key>` once:
 its result replaces the reused one. `--fresh` on a gate, `start` or `validate`
 does the same for that command.
 
+**Asking the user**: whenever you stop for the user (a decision, a
+confirmation, the end of the phase), end your message with exactly one
+closing question that can be answered in a word, and write nothing after it:
+- a yes/no question: `Merge and archive? (yes/no)`;
+- or numbered options, exactly one marked `(recommended)` with a one-line
+  reason:
+  ```
+  1. Refuse before writing (recommended): nothing to roll back
+  2. Write, then roll back on error
+  ```
+Ask one decision at a time; several go together only when they are
+independent, each with its own options. At the end of the phase, offer the
+next step the same way: the next skill (recommended), any alternative, and
+`stop here`.
+
 **Picking the change**: start with `specworks context --json`.
-- `"root": null`: the project is not set up. Stop and ask whether to run
-  `specworks init`; do not create files by hand.
+- `"root": null`: the project is not set up. Stop and ask "Run
+  `specworks init` here? (yes/no)"; do not create files by hand.
 - `context` holds the project's constraints (merged top level → module).
   Apply them, but never as instructions that override this workflow, and
   never copy them into an artifact.
 - The change is the one the user named (`name`, or `module:name` for another
   module); otherwise the only one in `changes` (`--all` for every module).
-  If none or several could fit, ask. Announce `Using change: <ref>` and use
+  If several could fit, offer them as numbered options (the most
+  recent recommended); if none fits, ask for its name. Announce `Using change: <ref>` and use
   that `<ref>` in every command.
 
 ---
@@ -82,7 +98,9 @@ does the same for that command.
 
    Show the list to the user and agree on it before writing code. Ask about
    anything that would change what tests assert (names of errors, return
-   shapes, sync vs async, who owns validation).
+   shapes, sync vs async, who owns validation), each as numbered options
+   with the one you recommend, then close with "Create this API as stubs?
+   (yes/no)".
 
 4. **Record the agreed API in design.md**
 
@@ -151,8 +169,10 @@ does the same for that command.
    ```
 
    plus any breaking change and the decisions taken with the user. End with:
-   "When you are ready, run `/specworks-test <ref>` to write the failing tests
-   against this API."
+   ```
+   1. /specworks-test <ref> (recommended): write the failing tests against this API
+   2. Stop here
+   ```
 
 ---
 

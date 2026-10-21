@@ -40,6 +40,8 @@ with only a `refinement.md` (step 4).
 
 <!-- specworks:include running-cli -->
 
+<!-- specworks:include asking-the-user -->
+
 ---
 
 ## Steps
@@ -57,9 +59,9 @@ with only a `refinement.md` (step 4).
      ```bash
      specworks spec list
      ```
-     and propose the first one with 0 requirements (no living spec yet),
-     in the order of the list; go on once the user confirms or picks
-     another. When every capability has requirements, say so and stop.
+     and offer the ones with 0 requirements (no living spec yet) as
+     numbered options, in the order of the list, the first one
+     recommended; go on with the user's pick. When every capability has requirements, say so and stop.
    - A capability that is not registered: stop and offer
      `/specworks-adopt` (or `specworks capability add`) first.
    - A change `baseline-<capability>` already in `changes`: continue it
@@ -81,9 +83,13 @@ with only a `refinement.md` (step 4).
    specworks run test
    ```
    If it fails, stop before creating anything: name the failing tests and
-   suggest fixing them first, in their own change (`/specworks-refine`), or
-   baselining a capability whose tests pass. Never narrow `commands.test`
-   to hide the failures.
+   offer:
+   ```
+   1. /specworks-refine fix-<tests> (recommended): fix the failing tests first, in their own change
+   2. /specworks-baseline <another capability>: one whose tests pass
+   3. Stop here
+   ```
+   Never narrow `commands.test` to hide the failures.
 
    Otherwise, preferably on a new branch (review compares the branch with
    its base):
@@ -133,8 +139,11 @@ with only a `refinement.md` (step 4).
    Show the requirements and criteria table as `/specworks-specify` step 5
    does, with the source of each (the test that shows it, or `code only:
    <file>` for one that gets a new test in step 6), and the
-   list of suspected bugs. **Stop and wait** for the user to confirm: a
-   baseline that records a bug as a requirement makes the bug the spec.
+   list of suspected bugs, numbered so the user can reject one by its
+   number. Ask: "Are these the right requirements, and are the listed bugs
+   real bugs? (yes/no, or the numbers to change)". **Stop and wait** for
+   the user to confirm: a baseline that records a bug as a requirement
+   makes the bug the spec.
 
    Then give each bug the user confirmed its own change, so it outlives this
    baseline (a bug the user rejects gets none):
@@ -196,14 +205,18 @@ with only a `refinement.md` (step 4).
 9. **Hand over to done**
 
    Show the summary: requirements and criteria recorded, tests tagged and
-   added, files tagged, the bug changes created. End with:
-   "The baseline of `<capability>` is reviewed. Run `/specworks-done
+   added, files tagged, the bug changes created. Say: "The baseline of
+   `<capability>` is reviewed. Run `/specworks-done
    baseline-<capability>` to validate it and write its living spec; then
-   `/specworks-baseline` for the next capability."
+   `/specworks-baseline` for the next capability." End with:
+   ```
+   1. /specworks-done baseline-<capability> (recommended): close it before the next baseline
+   2. Stop here
+   ```
 
    When this was the last capability without a living spec (`specworks spec
-   list` shows no other with 0 requirements), also list the bug changes
-   still waiting, from every baseline:
+   list` shows no other with 0 requirements), also list, before those
+   options, the bug changes still waiting, from every baseline:
    ```bash
    specworks list --all --json      # the fix-* changes in phase refine
    ```

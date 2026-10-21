@@ -25,6 +25,8 @@ fails and cannot be fixed within that phase, when the specs turn out wrong
 
 <!-- specworks:include running-cli -->
 
+<!-- specworks:include asking-the-user -->
+
 <!-- specworks:include picking-the-change -->
 
 ---
@@ -97,9 +99,9 @@ fails and cannot be fixed within that phase, when the specs turn out wrong
 
    - **No open findings**: the build is done (go to step 5).
    - **A spec finding** (`handOver` is `/specworks-specify`): stop the build.
-     Explain which requirement is missing or wrong, and suggest
-     `/specworks-specify <ref>` to fix the specs, then `/specworks-build <ref>`
-     to continue. Specify marks each finding it carried out `done in specify:
+     Explain which requirement is missing or wrong, and offer
+     `1. /specworks-specify <ref> (recommended): fix the specs; then
+     /specworks-build <ref> continues` and `2. Stop here`. Specify marks each finding it carried out `done in specify:
      ...`, so `cycle` then starts at design and the build resumes there.
    - **Otherwise** show the open findings and where each one is resolved,
      then ask:
@@ -109,7 +111,7 @@ fails and cannot be fixed within that phase, when the specs turn out wrong
        R1 code-gap    lockout counter not reset on success   -> code
        R2 design-gap  reset() should return the token        -> design
        R3 test-gap    AC-AUTH-003.2 only checks the status   -> test
-     Start cycle 2 from design: design → test → code → review?
+     Start cycle 2 from design: design → test → code → review? (yes/no)
      ```
 
      - **Yes**: go back to step 2 with the next cycle number, starting at
@@ -132,9 +134,13 @@ fails and cannot be fixed within that phase, when the specs turn out wrong
 
    Summarize per cycle: the phases run, the API agreed or changed, tests
    added, the code written, and the findings (found, resolved, accepted).
-   Run `specworks trace --change "<ref>" --write`. End with: "The build is
-   complete. When you are ready, run `/specworks-done <ref>` to validate and
-   close it (or `/specworks-validate <ref>` for the final check alone)."
+   Run `specworks trace --change "<ref>" --write`. Say "The build is
+   complete." and end with:
+   ```
+   1. /specworks-done <ref> (recommended): validate, then close
+   2. /specworks-validate <ref>: the final check alone
+   3. Stop here
+   ```
 
 ---
 

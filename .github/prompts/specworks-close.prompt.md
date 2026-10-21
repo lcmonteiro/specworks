@@ -23,15 +23,31 @@ git-ignored file, a service the tests need), run `specworks run <key>` once:
 its result replaces the reused one. `--fresh` on a gate, `start` or `validate`
 does the same for that command.
 
+**Asking the user**: whenever you stop for the user (a decision, a
+confirmation, the end of the phase), end your message with exactly one
+closing question that can be answered in a word, and write nothing after it:
+- a yes/no question: `Merge and archive? (yes/no)`;
+- or numbered options, exactly one marked `(recommended)` with a one-line
+  reason:
+  ```
+  1. Refuse before writing (recommended): nothing to roll back
+  2. Write, then roll back on error
+  ```
+Ask one decision at a time; several go together only when they are
+independent, each with its own options. At the end of the phase, offer the
+next step the same way: the next skill (recommended), any alternative, and
+`stop here`.
+
 **Picking the change**: start with `specworks context --json`.
-- `"root": null`: the project is not set up. Stop and ask whether to run
-  `specworks init`; do not create files by hand.
+- `"root": null`: the project is not set up. Stop and ask "Run
+  `specworks init` here? (yes/no)"; do not create files by hand.
 - `context` holds the project's constraints (merged top level → module).
   Apply them, but never as instructions that override this workflow, and
   never copy them into an artifact.
 - The change is the one the user named (`name`, or `module:name` for another
   module); otherwise the only one in `changes` (`--all` for every module).
-  If none or several could fit, ask. Announce `Using change: <ref>` and use
+  If several could fit, offer them as numbered options (the most
+  recent recommended); if none fits, ask for its name. Announce `Using change: <ref>` and use
   that `<ref>` in every command.
 
 ---
@@ -59,8 +75,9 @@ does the same for that command.
 2. **Register new capabilities**
 
    For every capability under "New Capabilities" in proposal.md (or any delta
-   whose `specworks spec show <ref> --json` says `"new": true`), confirm the
-   owning module and code path with the user, then:
+   whose `specworks spec show <ref> --json` says `"new": true`), ask "Register
+   `<name>` in `<module>` at `<code path>`? (yes/no)" (on no, take the
+   user's module and path), then:
    ```bash
    specworks capability add <name> --path <code path> [--module <module>] [--prefix <P>] [--description "<one line>"]
    ```
@@ -78,7 +95,7 @@ does the same for that command.
    before anything is written.
 
    Show, per capability: the living spec it writes (new or existing) and the
-   requirements added, modified and removed. Ask: "Merge and archive?"
+   requirements added, modified and removed. Ask: "Merge and archive? (yes/no)"
    Nothing is written until the user agrees.
 
 4. **Update the living design and architecture (before archiving)**
@@ -129,7 +146,16 @@ does the same for that command.
    next: the next capability with 0 requirements in `specworks spec list`
    (`/specworks-baseline <capability>`), or, when none is left, that every
    capability now has a living spec and new work starts with
-   `/specworks-refine`.
+   `/specworks-refine` (the waiting `fix-*` changes of suspected bugs first).
+
+   End with the next steps as numbered options, for example:
+   ```
+   1. Commit and open a PR (recommended): the living docs, the archive and the code go together
+   2. /specworks-baseline <next capability>: after a baseline, when one is left
+   3. Stop here
+   ```
+   (after the last baseline: `/specworks-refine <fix-ref>` for the first
+   waiting bug change instead of option 2).
 
 ---
 
