@@ -292,7 +292,7 @@ check, and SHALL refuse `done`, and `test` or `code`, naming `implement`.
 
 - **GIVEN** a change in implement whose test half passes and whose code half has an open `[code]` task
 - **WHEN** `start review` is requested
-- **THEN** the test gate and the code gate run, the change stays in implement, and the failure names `/specworks-code`
+- **THEN** the test gate and the code gate run, the change stays in implement, and the result names the code gate as not passed
 
 #### Scenario: AC-FLOW-014.7 Test and code are halves
 
