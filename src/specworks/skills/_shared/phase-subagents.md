@@ -5,9 +5,9 @@ their questions, and write the answers to disk.
 
 - **The prompt is fixed**: start each phase with your subagent tool (Claude
   Code: `Agent`) and this prompt, with only `<phase>`, `<ref>` and the skills
-  folder (the folder this skill is in) filled in. Never add a summary of the
-  conversation, an answer or a decision: what the phase needs from the user
-  is on disk.
+  folder (the one holding this skill's folder, e.g. `.claude/skills`) filled
+  in. Never add a summary of the conversation, an answer or a decision: what
+  the phase needs from the user is on disk.
   ```
   Run the <phase> phase of the change <ref>: follow
   <skills folder>/specworks-<phase>/SKILL.md, reading only the project and

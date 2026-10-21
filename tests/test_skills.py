@@ -161,7 +161,7 @@ def test_only_build_and_done_run_their_phases_in_subagents(name):
 
 def test_the_subagent_prompt_carries_only_the_phase_the_ref_and_the_skills_folder():
     # Anything else in the prompt (a summary, an answer) is the channel past the artifacts that this rule closes.
-    prompt = re.search(r"```\n(Run the <phase> phase.*?)```", read_skill("specworks-build"), re.DOTALL).group(1)
+    prompt = re.search(r"```\n *(Run the <phase> phase.*?)```", read_skill("specworks-build"), re.DOTALL).group(1)
     assert set(re.findall(r"<([a-z ]+)>", prompt.split("Result:")[0])) == {"phase", "ref", "skills folder"}
 
 
@@ -173,7 +173,7 @@ def test_build_review_proposes_every_finding_before_the_user_decides():
 
 def test_done_closes_only_through_a_second_subagent_after_the_go_ahead():
     # The go-ahead is which fixed prompt is sent, and capability registrations are written to the project first.
-    text = read_skill("specworks-done")
+    text = " ".join(read_skill("specworks-done").split())
     assert "the merge plan is approved; continue from step 4" in text
     assert "specworks capability add" in text
 

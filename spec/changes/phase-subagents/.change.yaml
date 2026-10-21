@@ -1,4 +1,4 @@
 name: phase-subagents
 created: '2026-10-21T14:21:41'
-phase: test
+phase: code
 skip_specs: true

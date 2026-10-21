@@ -1,7 +1,7 @@
 ---
 name: specworks-done
 description: Finish a reviewed change in one run - validate it (the read-only PASS/FAIL check) and, only when it passes, close it (merge its specs into the living docs and archive it), running each phase's own skill in order. Use when a specworks change has been reviewed (a feature, a fix or a baseline-<capability>) and the user wants to finish it, or says "done", "finish the change", "validate and close" or "specworks done".
-allowed-tools: Bash(specworks:*), Bash(uv run specworks:*), Bash(uvx --from git+https://github.com/lcmonteiro/specworks specworks:*), Bash(git diff:*), Bash(git log:*), Bash(git status:*), Read, Grep, Glob, Write, Edit
+allowed-tools: Bash(specworks:*), Bash(uv run specworks:*), Bash(uvx --from git+https://github.com/lcmonteiro/specworks specworks:*), Bash(git diff:*), Bash(git log:*), Bash(git status:*), Read, Grep, Glob, Write, Edit, Agent
 ---
 
 Done: take a reviewed change through **validate → close** in one run. The
@@ -14,10 +14,11 @@ ends. It adds no check of its own and skips none.
 It covers the last two phases of `refine → specify → design → test → code → review → validate → close`.
 
 **Phase skills**: `specworks-validate` and `specworks-close`, installed next
-to this skill (`../specworks-<phase>/SKILL.md`). Read each one when its phase
-starts and follow its steps, checks and guardrails, including every point
-where it asks the user (the merge plan in close). Skip only validate's final
-"Report the verdict and stop": show the verdict and go on to close (step 3).
+to this skill (`../specworks-<phase>/SKILL.md`). Each phase runs in its own
+subagent (below), which follows that skill's steps, checks and guardrails,
+including every point where it asks the user (the merge plan in close): the
+subagent returns the question and you ask it. You do not do a phase's work
+yourself.
 
 **Boundary**: validate changes nothing; close edits only the living docs
 and, for new capabilities, the config. A failure is never fixed here: it
@@ -28,6 +29,18 @@ goes back to the phase that owns it.
 <!-- specworks:include asking-the-user -->
 
 <!-- specworks:include picking-the-change -->
+
+<!-- specworks:include phase-subagents -->
+
+**In a done run**, the phases add a fixed line to the prompt:
+- validate: `End with the report of step 4 of the skill before the Result
+  line: PASS is Result: done, FAIL is Result: blocked.`
+- close, first run: `This phase runs inside /specworks-done: stop before
+  step 4 of the skill. Return the capabilities to register (step 2) as the
+  question, or, when none is left, the merge plan (step 3).`
+- close, after the user's go-ahead on the merge plan, a second subagent with
+  this line instead: `This phase runs inside /specworks-done: the merge plan
+  is approved; continue from step 4 of the skill.`
 
 ---
 
@@ -42,8 +55,11 @@ goes back to the phase that owns it.
 
 2. **Validate**
 
-   Announce `Done · validate`, then follow `specworks-validate` (it starts
-   the phase, runs `specworks validate` and reads what the CLI cannot check).
+   Announce `Done · validate` and start its subagent (above), which will
+   follow `specworks-validate`: it starts the phase, runs
+   `specworks validate`, reads what the CLI cannot check, and returns
+   validate's report with `Result: done` (PASS) or `Result: blocked` (FAIL).
+   Validate changes nothing and asks nothing.
 
 3. **Show the verdict and decide**
 
@@ -64,10 +80,21 @@ goes back to the phase that owns it.
 
 4. **Close**
 
-   Announce `Done · close`, then follow `specworks-close` (it starts the
-   phase, which runs the validate gate again on the same code, registers new
-   capabilities, shows the merge plan and waits for the user's go-ahead,
-   updates the living design, then merges and archives).
+   Announce `Done · close` and start the first close subagent (above),
+   which will follow `specworks-close`: it starts the phase (which runs the
+   validate gate again on the same code) and returns a question:
+   - **Register a capability** ("Register `<name>` in `<module>` at
+     `<code path>`? (yes/no)"): ask the user, then write the answer to the
+     project yourself (the user's module and path on no), and start the
+     first close subagent again:
+     ```bash
+     specworks capability add <name> --path <code path> [--module <module>] [--prefix <P>] [--description "<one line>"]
+     ```
+   - **The merge plan** ("Merge and archive? (yes/no)"): ask the user. On
+     yes, start the second close subagent (the merge plan is approved,
+     continue from step 4): it updates the living design, merges and
+     archives. On no, stop: nothing is written and the change stays in
+     close.
 
 5. **Report and stop**
 
@@ -95,6 +122,9 @@ goes back to the phase that owns it.
 - Never fix a failure here: no code, test or spec edits. Send it to the
   phase that owns it.
 - The user's go-ahead on the merge plan (close step 3) is still required;
-  running both phases in one go does not skip it.
+  running both phases in one go does not skip it. Only that go-ahead starts
+  the second close subagent.
+- A subagent's prompt is the fixed text above with the phase, the ref and
+  the skills folder filled in: nothing from this conversation.
 - If the user stops after validate, the change stays in `validate`;
   `/specworks-close <ref>` or `/specworks-done <ref>` finishes it later.
