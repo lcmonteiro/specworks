@@ -551,7 +551,7 @@ def test_a_pipe_in_a_title_stays_in_its_cell(change, project):
     replace_delta(change, "REQ-AUTH-003 Password reset", "REQ-AUTH-003 Password | reset")
     replace_delta(change, "AC-AUTH-003.1 Request reset", "AC-AUTH-003.1 Request | reset")
     run_json("trace", "--change", "add-password-reset", "--write")
-    rows = [line for line in (change / "traceability.md").read_text().splitlines() if line.startswith("|") and "AC-AUTH-003.1" in line]
+    rows = [line for line in (change / "traceability.md").read_text(encoding="utf-8").splitlines() if line.startswith("|") and "AC-AUTH-003.1" in line]
     assert rows == [r"| user-auth | REQ-AUTH-003 Password \| reset (ADDED) | AC-AUTH-003.1 Request \| reset | 1.1, 1.2 | — | — |"]
     assert len(re.split(r"(?<!\\)\|", rows[0])) == 8
 
