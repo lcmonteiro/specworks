@@ -306,9 +306,12 @@ name of an archived change.
 ### Requirement: REQ-PROJ-011 Change phases
 
 The system SHALL track a change through the phases refine, specify, design,
-test, code, review, validate, close and done, letting a change move to any of
-them except `done`, which only closing reaches. A change whose metadata cannot
-be read SHALL be an error naming its file.
+implement, review, validate, close and done, letting a change move to any of
+them except `done`, which only closing reaches. `test` and `code` SHALL NOT be
+phases: a change whose metadata names `test` or `code` (saved before
+`implement` existed) SHALL be read as being in `implement`, and moving a change
+to `test` or `code` SHALL be refused, naming `implement`. A change whose
+metadata cannot be read SHALL be an error naming its file.
 
 #### Scenario: AC-PROJ-011.1 Moving between phases
 
@@ -324,6 +327,17 @@ be read SHALL be an error naming its file.
 
 - **WHEN** a change's `.change.yaml` is not a mapping, is not YAML, or names an unknown phase
 - **THEN** reading the change fails with an error naming the file and the problem
+
+#### Scenario: AC-PROJ-011.4 A change saved in test or code
+
+- **GIVEN** a change whose `.change.yaml` says `phase: test` (or `phase: code`)
+- **WHEN** the change is read
+- **THEN** its phase is `implement`
+
+#### Scenario: AC-PROJ-011.5 Test and code are not phases
+
+- **WHEN** a change is moved to `test` or `code`
+- **THEN** it is refused, naming `implement`, and its phase is unchanged
 
 ### Requirement: REQ-PROJ-012 Archived changes
 

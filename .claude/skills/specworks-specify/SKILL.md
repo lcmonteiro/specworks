@@ -13,7 +13,7 @@ test or code is written. It produces, inside the change folder:
 - `tasks.md`: ordered checklist, every task naming the IDs it serves
 - `traceability.md`: generated matrix REQ → AC → tasks (→ tests → code later)
 
-It is the second phase of `refine → specify → design → test → code → review → validate → close`.
+It is the second phase of `refine → specify → design → implement (test | code) → review → validate → close`.
 
 **Phase boundary**: planning only. Do not write tests or code and do not edit
 files outside the change folder, even if the request says "build" or "fix".
@@ -164,7 +164,7 @@ next step the same way: the next skill (recommended), any alternative, and
 
    The `instruction` says when a design is worth writing. If none applies,
    skip it and tell the user why in one line. When written, name the
-   interfaces (APIs, data shapes, CLI surfaces) the test phase will target,
+   interfaces (APIs, data shapes, CLI surfaces) the test half will target,
    and resolve open questions that would change the tasks with the user now.
 
    Diagrams, when they help: write `diagrams/<name>.d2` in the change folder
@@ -220,8 +220,8 @@ next step the same way: the next skill (recommended), any alternative, and
 ## Guardrails
 
 - Planning only: write inside the change folder, nothing else. A request to
-  implement does not carry over; wait for `/specworks-design`,
-  `/specworks-test` and `/specworks-code`.
+  implement does not carry over; wait for `/specworks-design`, then
+  `/specworks-test` and `/specworks-code` (the two halves of implement).
 - IDs, prefixes and delta paths come from the CLI (`nextId`, `prefix`,
   `deltaPath`). Never renumber or reuse an existing ID; a removed requirement's
   ID is retired.

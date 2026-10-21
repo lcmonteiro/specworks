@@ -11,7 +11,7 @@ CLI checks every step: each requirement has an ID, each acceptance criterion a t
 **Documentation: the [wiki](https://github.com/lcmonteiro/specworks/wiki)**
 
 ```
-refine -> specify -> design -> test -> code -> review -> validate -> close
+refine -> specify -> design -> implement (test | code) -> review -> validate -> close
 ```
 
 ![specworks workflow: solid arrows move forward when a phase's gate passes, dashed arrows go back](assets/workflow.svg)
@@ -21,9 +21,9 @@ refine -> specify -> design -> test -> code -> review -> validate -> close
 | refine    | `/specworks-refine`    | `refinement.md`: problem, context, constraints, options, recommendation |
 | specify   | `/specworks-specify`   | `proposal.md`, delta specs (requirements + acceptance criteria), `design.md`, `tasks.md`, `traceability.md` |
 | design    | `/specworks-design`    | the API decided with you (new and extended classes, functions, signatures, errors), recorded under Interfaces in `design.md` and created as empty stubs that build |
-| test      | `/specworks-test`      | failing tests tagged `@ac` for every acceptance criterion, written against those stubs |
-| code      | `/specworks-code`      | works through `tasks.md`: real code replacing the stubs, `@req` tags, tests green |
-| review    | `/specworks-review`    | finds drift between code, spec and design/API, proposes a change to whichever is wrong (applied with you, or sent back to `specify`, `design`, `test` or `code`), records every decision in `review.md` |
+| implement | `/specworks-test`      | the test half: failing tests tagged `@ac` for every acceptance criterion, written against those stubs (`[test]` tasks) |
+| implement | `/specworks-code`      | the code half, independent of the test half: real code replacing the stubs, `@req` tags, existing tests green (`[code]` tasks) |
+| review    | `/specworks-review`    | finds drift between code, spec and design/API, proposes a change to whichever is wrong (applied with you, or sent back to `specify`, `design`, `implement`, or one of its halves `test` or `code`), records every decision in `review.md` |
 | validate  | `/specworks-validate`  | **read-only** PASS/FAIL report (completeness, correctness, coherence); every failure names the phase that fixes it |
 | close     | `/specworks-close`     | deltas merged into the living `spec.md`, `requirements.md` regenerated, design / architecture / diagrams updated in `<capability-path>/docs/`, change archived (phase `done`) |
 
@@ -66,7 +66,7 @@ Then, in your agent:
 2. **`/specworks-refine <what you want>`**: explore the problem and the options.
 3. **`/specworks-specify`**: requirements and acceptance criteria, confirmed with you,
    then design notes and tasks.
-4. **`/specworks-build`**: design → test → code → review, in cycles until the review is clean.
+4. **`/specworks-build`**: design → implement (test | code) → review, in cycles until the review is clean.
 5. **`/specworks-done`**: the final check (`/specworks-validate`) and, only if it
    passes, the requirements merged into the living spec next to the code
    (`/specworks-close`). The two skills also run on their own.
@@ -90,10 +90,12 @@ confirmed with you, `@ac` / `@req` tags added, no behaviour change. Suspected bu
 are left out, each a candidate for its own change. `/specworks-done` validates it,
 writes the capability's living spec and names the next capability to baseline.
 
-**`/specworks-build`** runs design → test → code → review in one go, each phase
-exactly as its own skill. When the review has findings, it asks whether to start a
-new cycle, and starts it at the earliest phase the findings need; a spec finding
-stops the build and hands over to `/specworks-specify`.
+**`/specworks-build`** runs design → implement (test | code) → review in one go, each
+phase exactly as its own skill, with the test and code halves in parallel. When the
+review has findings, it asks whether to start a new cycle, which runs only the steps
+the findings need: the code half, the test half, both halves, or design then both
+halves, then review; a spec finding stops the build and hands over to
+`/specworks-specify`.
 
 **`/specworks-done`** finishes a reviewed change: it runs `/specworks-validate` and,
 only on PASS, `/specworks-close`, each exactly as its own skill. A FAIL stops before

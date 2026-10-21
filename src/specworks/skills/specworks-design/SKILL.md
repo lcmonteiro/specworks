@@ -10,12 +10,13 @@ phase can write tests against the real names and signatures.
 At the end the API is decided, recorded under `## Interfaces` in design.md,
 and present in the code as stubs that compile and break nothing.
 
-It is the third phase of `refine → specify → design → test → code → review → validate → close`.
+It is the third phase of `refine → specify → design → implement (test | code) → review → validate → close`.
 
 **Phase boundary**: interfaces only. A stub has the real public signature
 (names, parameters, types, errors, doc comments) and a body that only
 signals "not implemented". No tests, no behaviour, no partial logic, even if
-it looks easy. When the gate passes, stop and suggest `/specworks-test`.
+it looks easy. When the gate passes, stop and suggest `/specworks-test`
+(and `/specworks-code`, the other half of implement).
 
 <!-- specworks:include running-cli -->
 
@@ -65,7 +66,7 @@ it looks easy. When the gate passes, stop and suggest `/specworks-test`.
 
    Prefer extending an existing interface over adding a parallel one, keep
    the surface as small as the requirements need, and leave internals out
-   (private helpers are the code phase's business).
+   (private helpers are the code half's business).
 
    Show the list to the user and agree on it before writing code. Ask about
    anything that would change what tests assert (names of errors, return
@@ -108,7 +109,7 @@ it looks easy. When the gate passes, stop and suggest `/specworks-test`.
    Extending an existing function: add the new parameter or method with a
    stub for the new path only; never break the behaviour existing tests rely
    on. Do not add `@req` tags: `@req` marks implemented code and is added in
-   the code phase.
+   the code half of implement.
 
 6. **Check the stubs build and break nothing, then gate**
 
@@ -124,7 +125,7 @@ it looks easy. When the gate passes, stop and suggest `/specworks-test`.
    failure means a stub broke an import, a signature or existing behaviour.
    In a later build cycle (the change already has `@ac` tests), changing an
    API turns its tests red on purpose: the gate then reports the suite as a
-   warning, and the code phase makes it green again.
+   warning, and the code half makes it green again.
    Fix every failing blocking check and re-run. Warnings: fix them or explain
    them.
 
@@ -141,8 +142,9 @@ it looks easy. When the gate passes, stop and suggest `/specworks-test`.
 
    plus any breaking change and the decisions taken with the user. End with:
    ```
-   1. /specworks-test <ref> (recommended): write the failing tests against this API
-   2. Stop here
+   1. /specworks-test <ref> (recommended): write the failing tests against this API (the test half of implement)
+   2. /specworks-code <ref>: write the code first (the code half; it does not wait for the tests)
+   3. Stop here
    ```
 
 ---
@@ -150,7 +152,8 @@ it looks easy. When the gate passes, stop and suggest `/specworks-test`.
 ## Guardrails
 
 - No tests and no behaviour: stubs only signal "not implemented". Tests
-  belong to `/specworks-test`, behaviour to `/specworks-code`.
+  belong to `/specworks-test`, behaviour to `/specworks-code` (the two
+  halves of implement).
 - The API serves the specs. If a requirement cannot be reached through a
   sensible API, or the API exposes something no requirement asks for, stop
   and suggest `/specworks-specify <ref>` to fix the spec.

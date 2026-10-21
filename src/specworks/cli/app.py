@@ -34,7 +34,7 @@ class App(typer.Typer):
         return lambda fn: register(_reporting_errors(fn))
 
 
-app = App(help="Spec-driven development: refine → specify → design → test → code → review → validate → close.")
+app = App(help="Spec-driven development: refine → specify → design → implement (test | code) → review → validate → close.")
 module_app = App(help="Manage modules (sub-projects linked to this one, like git submodules).")
 spec_app = App(help="Read capabilities and their living specs.")
 task_app = App(help="List and tick the tasks of a change (tasks.md).")

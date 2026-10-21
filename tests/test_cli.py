@@ -1,4 +1,5 @@
 import json
+import re
 
 import pytest
 from typer.testing import CliRunner
@@ -226,10 +227,32 @@ def test_init_rejects_bad_dir(tmp_path, monkeypatch, folder):
 def test_phases_follow_the_workflow(project):
     run_json("new", "add-login")
     code, data = run_json("status", "--change", "add-login")
-    assert data["phases"] == ["refine", "specify", "design", "test", "code", "review", "validate", "close", "done"]
-    for phase in ("code", "specify", "close"):  # moving back is allowed; done is close's alone
+    assert data["phases"] == ["refine", "specify", "design", "implement", "review", "validate", "close", "done"]
+    for phase in ("implement", "specify", "close"):  # moving back is allowed; done is close's alone
         code, data = run_json("phase", phase, "--change", "add-login")
         assert code == 0 and data["phase"] == phase
+
+
+# @ac AC-PROJ-011.4
+@pytest.mark.parametrize("saved", ["test", "code"])
+def test_a_change_saved_in_test_or_code_is_in_implement(project, saved):
+    run_json("new", "add-login")
+    meta = project / "specworks/changes/add-login/.change.yaml"
+    meta.write_text(re.sub(r"(?m)^phase: .*$", f"phase: {saved}", meta.read_text(encoding="utf-8")), encoding="utf-8")
+    code, data = run_json("status", "--change", "add-login")
+    assert code == 0 and data["phase"] == "implement", data
+    code, data = run_json("list")
+    assert [c["phase"] for c in data["changes"]] == ["implement"]
+
+
+# @ac AC-PROJ-011.5
+@pytest.mark.parametrize("half", ["test", "code"])
+def test_test_and_code_are_not_phases(project, half):
+    run_json("new", "add-login")
+    run_json("phase", "design", "--change", "add-login")
+    code, data = run_json("phase", half, "--change", "add-login")
+    assert code == 1 and "implement" in data.get("error", ""), data
+    assert run_json("status", "--change", "add-login")[1]["phase"] == "design"
 
 
 # @ac AC-INTEG-005.1

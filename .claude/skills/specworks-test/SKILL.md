@@ -1,22 +1,29 @@
 ---
 name: specworks-test
-description: Test phase of spec-driven development - turn a change's acceptance criteria into failing tests (tagged @ac) written against the API agreed in the design phase, before any implementation. Use when a specworks change has its interfaces and the user wants to write its acceptance tests first, or says "write the acceptance tests" or "specworks test".
+description: Test half of the implement phase of spec-driven development - turn a change's acceptance criteria into failing tests (tagged @ac) written against the API agreed in the design phase, independently of the code half. Use when a specworks change has its interfaces and the user wants to write its acceptance tests first, or says "write the acceptance tests" or "specworks test".
 allowed-tools: Bash(specworks:*), Bash(uv run specworks:*), Bash(uvx --from git+https://github.com/lcmonteiro/specworks specworks:*), Read, Grep, Glob, Write, Edit
 ---
 
-Test phase: write the tests that prove each acceptance criterion, through the
-API stubs created in the design phase, so the code phase has a
-precise, executable target.
+Test half of implement: write the tests that prove each acceptance
+criterion, through the API stubs created in the design phase. The code half
+(`/specworks-code`) writes the code from the same specs and design without
+reading these tests, so the two are independent readings of the spec, and
+review is where they meet.
 At the end every acceptance criterion has at least one test tagged
-`@ac <AC-ID>`, and those tests **fail for the right reason** (not implemented
-yet), not because they cannot compile or import.
+`@ac <AC-ID>`, every `[test]` task is ticked, and the tests **fail for the
+right reason** against the stubs (not implemented yet), not because they
+cannot compile or import.
 
-It is the fourth phase of `refine → specify → design → test → code → review → validate → close`.
+It is the test half of the fourth phase of `refine → specify → design → implement (test | code) → review → validate → close`.
+In `/specworks-build` it runs in parallel with the code half, in its own git
+worktree that holds only design's stubs.
 
 **Phase boundary**: write tests only, against the interfaces recorded in
 design.md. Do not add or change public interfaces here: if a test needs one,
 go back to `/specworks-design`. No behaviour, no partial logic, even if it
-looks easy. When the gate passes, stop and suggest `/specworks-code`.
+looks easy. Work only on the `[test]` tasks: the `[code]` tasks are the
+other half's. When the test gate passes, stop and suggest `/specworks-code`
+(or `/specworks-review` when the code half is done).
 
 **Running the CLI**: use `specworks <cmd>`. If it is not on PATH, use
 `uv run specworks <cmd>` (inside the specworks repo) or
@@ -58,15 +65,16 @@ next step the same way: the next skill (recommended), any alternative, and
 
 ## Steps
 
-1. **Pick the change and start the phase once the interfaces are ready**
+1. **Pick the change and start implement once the interfaces are ready**
 
    - Pick the change (above), then:
      ```bash
-     specworks start test --change "<ref>"
+     specworks start implement --change "<ref>"
      ```
      It runs the gates of the phases left behind (`gate design`, and
      `gate specify` too if the change skips design) and moves the change to
-     test only if they pass.
+     implement only if they pass. When the change is already in implement
+     (the code half started it), it re-checks `gate design` only.
    - If a gate fails, stop: show the failing checks and suggest
      `/specworks-design <ref>` (or `/specworks-specify <ref>` when the specs
      themselves fail). Tests built on an undecided API test the wrong thing.
@@ -82,7 +90,8 @@ next step the same way: the next skill (recommended), any alternative, and
      and its acceptance criteria, and every REMOVED requirement;
    - `design.md`, above all **Interfaces**: the agreed public APIs, data
      shapes and CLI surfaces, and the files whose stubs the tests call;
-   - the pending tasks: `specworks task list --change "<ref>" --pending`.
+   - the pending tasks: `specworks task list --change "<ref>" --pending`;
+     yours are the ones marked `[test]`.
 
    Then study the existing tests next to the code each capability owns
    (`codePath` from `specworks spec show <ref> --json`): framework, folder
@@ -146,21 +155,25 @@ next step the same way: the next skill (recommended), any alternative, and
      are bugs in the tests or stubs, not "red";
    - unrelated existing tests still pass.
 
-   A test that already passes either checks nothing new or the behaviour
-   already exists: look at it, then strengthen the test or tell the user.
+   A test that already passes either checks nothing new, or the behaviour
+   already exists (outside a build, the code half may have run first): look
+   at it, then strengthen the test or tell the user. Do not read or change
+   the code half's work to make a test fit it: review compares the two.
    Never weaken an assertion, skip a test or mark it expected-to-fail to get
    the right colour.
 
-6. **Tick the test tasks, gate and trace**
+6. **Tick the `[test]` tasks, gate and trace**
 
    ```bash
-   specworks task done <N.M> [<N.M> ...] --change "<ref>"   # the test-writing tasks you completed
+   specworks task done <N.M> [<N.M> ...] --change "<ref>"   # the [test] tasks you completed
    specworks gate test --change "<ref>"
    specworks trace --change "<ref>" --write
    ```
 
-   Fix every failing blocking check (an untested criterion, a tag with a
-   wrong ID) and re-run. Warnings: fix them or explain them.
+   The test gate checks only this half: every `[test]` task done, a test
+   for every criterion, no tag to an unknown ID. Open `[code]` tasks do not
+   affect it. Fix every failing blocking check (an untested criterion, a tag
+   with a wrong ID) and re-run. Warnings: fix them or explain them.
 
 7. **Report and stop**
 
@@ -174,10 +187,11 @@ next step the same way: the next skill (recommended), any alternative, and
 
    plus tests updated or deleted for MODIFIED/REMOVED criteria, and anything
    you had to decide. Mention that the
-   test suite is red on purpose until the code phase. End with:
+   test suite is red on purpose until the code half is done. End with:
    ```
-   1. /specworks-code <ref> (recommended): make these tests pass
-   2. Stop here
+   1. /specworks-code <ref> (recommended): the code half, from the specs and design
+   2. /specworks-review <ref>: the code half is already done; the tests meet the code
+   3. Stop here
    ```
 
 ---
@@ -187,6 +201,8 @@ next step the same way: the next skill (recommended), any alternative, and
 - No implementation and no new interfaces: tests call the stubs from the
   design phase. Behaviour belongs to `/specworks-code`, API changes to
   `/specworks-design`.
+- Only this half: the `[test]` tasks and the test gate. Do not tick `[code]`
+  tasks or run `gate code`.
 - Tests verify the acceptance criteria as written. If a criterion is wrong,
   ambiguous or untestable, stop and suggest `/specworks-specify <ref>` to fix
   the spec instead of testing your own interpretation.

@@ -13,6 +13,7 @@ from .specfile import fenced, find_ids
 TASKS_FILE = "tasks.md"
 TASK_RE = re.compile(r"^(?P<lead>\s*- \[)(?P<mark>[^\]]*)(?P<close>\]\s+)(?P<num>\d+\.\d+)\s+(?P<text>\S.*)$")
 TASKISH_RE = re.compile(r"^\s*[-*]\s*\[")
+HALF_RE = re.compile(r"^\[(?P<half>test|code)\]", re.IGNORECASE)  # the half of implement a task belongs to
 FOLLOW_UP_RE = re.compile(r"^##\s+Workflow follow-up\s*$", re.IGNORECASE)
 
 
@@ -26,13 +27,14 @@ class Task:
     text: str
     done: bool
     line: int
+    half: str = ""  # "test" or "code" from a leading [test] / [code] marker (which stays in text), else "" (REQ-SPECS-009)
 
     @property
     def ids(self) -> list[str]:
         return find_ids(self.text)
 
     def to_dict(self) -> dict:
-        return {"num": self.num, "text": self.text, "done": self.done, "line": self.line, "ids": self.ids}
+        return {"num": self.num, "text": self.text, "done": self.done, "line": self.line, "ids": self.ids, "half": self.half}
 
 
 # @req REQ-SPECS-009
@@ -46,7 +48,9 @@ def parse_tasks(text: str) -> tuple[list[Task], list[tuple[int, str]]]:
             break  # plain follow-up bullets are not tracked tasks
         if match := TASK_RE.match(line):
             done = match.group("mark").strip().lower() == "x"
-            tasks.append(Task(num=match.group("num"), text=match.group("text"), done=done, line=number))
+            text = match.group("text")
+            half = marker.group("half").lower() if (marker := HALF_RE.match(text)) else ""
+            tasks.append(Task(num=match.group("num"), text=text, done=done, line=number, half=half))
         elif TASKISH_RE.match(line):
             problems.append((number, "task must be '- [ ] N.M description' (e.g. '- [ ] 1.2 Add the export endpoint')"))
     return tasks, problems

@@ -67,8 +67,8 @@ TASKS = """\
 ## 1. Slugify
 
 - [ ] 1.1 Add `slugify(title: str) -> str` as a stub in `src/textkit/slug.py` (REQ-SLUG-001); verify the existing tests pass
-- [ ] 1.2 Write failing tests for AC-SLUG-001.1 and AC-SLUG-001.2 tagged `@ac`; verify they fail on the stub
-- [ ] 1.3 Implement `slugify` (REQ-SLUG-001) tagged `@req`; verify the 1.2 tests pass
+- [ ] 1.2 [test] Write failing tests for AC-SLUG-001.1 and AC-SLUG-001.2 tagged `@ac`; verify they fail on the stub
+- [ ] 1.3 [code] Implement `slugify` (REQ-SLUG-001) tagged `@req`; verify the 1.2 tests pass
 """
 
 DESIGN = """\
@@ -179,15 +179,14 @@ def test_walkthrough(tmp_path, monkeypatch):
     sw("task", "done", "1.1", "--change", REF)
     sw("gate", "design", "--change", REF)
 
-    # test: failing tests tagged @ac, red for the right reason.
-    sw("start", "test", "--change", REF)
+    # implement, test half: failing tests tagged @ac, red for the right reason.
+    sw("start", "implement", "--change", REF)
     (tmp_path / "tests/test_slug.py").write_text(TESTS, encoding="utf-8")
     assert "NotImplementedError" in sw("run", "test", "--change", REF, "--json", ok=False)
     sw("task", "done", "1.2", "--change", REF)
     sw("gate", "test", "--change", REF)
 
-    # code: the implementation, tagged @req; tests green.
-    sw("start", "code", "--change", REF)
+    # implement, code half: the implementation, tagged @req; tests green.
     (tmp_path / "src/textkit/slug.py").write_text(CODE, encoding="utf-8")
     sw("task", "done", "1.3", "--change", REF)
     sw("gate", "code", "--change", REF)

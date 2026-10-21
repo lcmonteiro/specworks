@@ -1,19 +1,26 @@
 ---
 name: specworks-code
-description: Code phase of spec-driven development - work through a change's tasks, replacing the API stubs with real code until the acceptance tests pass, tagging code with @req and ticking tasks as they are done. Use when a specworks change has its failing tests and the user wants to implement it, or says "implement the change", "make the acceptance tests pass" or "specworks code".
+description: Code half of the implement phase of spec-driven development - work through a change's [code] tasks, replacing the API stubs with real code from the specs and design (independently of the test half), tagging code with @req and ticking tasks as they are done. Use when a specworks change has its agreed API and the user wants to implement it, or says "implement the change", "write the code" or "specworks code".
 allowed-tools: Bash(specworks:*), Bash(uv run specworks:*), Bash(uvx --from git+https://github.com/lcmonteiro/specworks specworks:*), Read, Grep, Glob, Write, Edit
 ---
 
-Code phase: make the failing tests from the test phase pass by writing
-the code the tasks describe, and nothing more. Every requirement ends up with
-code tagged `@req <REQ-ID>`, every task ticked, and the whole test suite green.
+Code half of implement: write the code the `[code]` tasks describe, from
+the specs and the design, and nothing more. The test half
+(`/specworks-test`) writes this change's tests from the same specs and
+design; you do not read them, so the two are independent readings of the
+spec, and review is where they meet. Every requirement ends up with code
+tagged `@req <REQ-ID>`, every `[code]` task ticked, and the existing tests
+still green.
 
-It is the fifth phase of `refine → specify → design → test → code → review → validate → close`.
+It is the code half of the fourth phase of `refine → specify → design → implement (test | code) → review → validate → close`.
+In `/specworks-build` it runs in the main checkout, in parallel with the
+test half.
 
-**Phase boundary**: implement what the specs and tasks say. The specs, the
-acceptance criteria and the tests from the test phase are the contract: do not
-change them to make the code easier. When the gate passes, stop and suggest
-`/specworks-review`.
+**Phase boundary**: implement what the specs, the design and the `[code]`
+tasks say. The specs and the acceptance criteria are the contract: do not
+change them to make the code easier, and do not shape the code after this
+change's tests. When the code gate passes, stop and suggest
+`/specworks-review` (or `/specworks-test` when the test half is not done).
 
 **Running the CLI**: use `specworks <cmd>`. If it is not on PATH, use
 `uv run specworks <cmd>` (inside the specworks repo) or
@@ -55,18 +62,19 @@ next step the same way: the next skill (recommended), any alternative, and
 
 ## Steps
 
-1. **Pick the change and start the phase once the tests are in place**
+1. **Pick the change and start implement once the API is agreed**
 
    - Pick the change (above), then:
      ```bash
-     specworks start code --change "<ref>"
+     specworks start implement --change "<ref>"
      ```
-     It runs `gate test` and moves the change to code only if it passes.
-   - If it fails because criteria have no tests, stop and suggest
-     `/specworks-test <ref>`. If the user explicitly wants to implement without
-     tests first, say what that loses (no executable proof per criterion) and
-     go on only with their agreement, moving the change by hand:
-     `specworks phase code --change "<ref>"`.
+     It runs the gates of the phases left behind (`gate design`, and
+     `gate specify` too if the change skips design) and moves the change to
+     implement only if they pass. When the change is already in implement
+     (the test half started it), it re-checks `gate design` only.
+   - If a gate fails, stop: show the failing checks and suggest
+     `/specworks-design <ref>` (or `/specworks-specify <ref>` when the specs
+     themselves fail).
    - `commands` in the context are this project's tools; `specworks run test`
      (and `run lint`, `run typecheck` when configured) runs them in the right
      folder. If `test` is not configured, find it and ask "Use `<command>` as
@@ -74,24 +82,26 @@ next step the same way: the next skill (recommended), any alternative, and
 
 2. **Load the plan**
 
-   Re-read from disk: the delta specs, `design.md` (decisions and interfaces),
-   and the tasks:
+   Re-read from disk: the refinement, the delta specs, `design.md`
+   (decisions and interfaces), and the tasks (yours are the ones marked
+   `[code]`):
    ```bash
    specworks task list --change "<ref>" --pending
    specworks trace --change "<ref>" --json
    ```
-   `trace` shows which tests cover each criterion and where the stubs and
-   existing code are tagged.
+   `trace` shows where the stubs and existing code are tagged. Do not open
+   the tests tagged with this change's criteria: the acceptance criteria,
+   not those tests, say what the code must do.
 
 3. **Work through the tasks, in order, one at a time**
 
-   For each pending task:
+   For each pending `[code]` task:
    1. Say which task you are on (`Task 2.1: ...`).
-   2. Read the requirements and criteria it names, the tests that cover them,
-      and the code around the change.
-   3. Write the smallest code that makes those tests pass the way the
-      requirement intends, in the project's style; follow design.md's
-      decisions. Replace stubs with real code.
+   2. Read the requirements and criteria it names, and the code around the
+      change.
+   3. Write the smallest code that does what each criterion's WHEN/THEN
+      says, the way the requirement intends, in the project's style; follow
+      design.md's decisions. Replace stubs with real code.
    4. Tag the code that implements each requirement with a comment in the
       language's syntax, at its main entry point (function, class, handler,
       route):
@@ -102,11 +112,14 @@ next step the same way: the next skill (recommended), any alternative, and
       One requirement may be tagged in several places; keep tags on the code
       that actually implements it.
    5. For REMOVED requirements, delete their code and its `@req` tags (their
-      tests were removed in the test phase).
-   6. Run the relevant tests, then the suite when the task is done:
+      tests are the test half's).
+   6. Run the suite when the task is done:
       ```bash
       specworks run test --change "<ref>"
       ```
+      Existing tests must stay green. This change's own `@ac` tests may
+      fail (or not exist yet): do not read them to make them pass; review
+      compares them with the code.
    7. Tick the task only when its verification passes:
       ```bash
       specworks task done <N.M> --change "<ref>"
@@ -115,9 +128,8 @@ next step the same way: the next skill (recommended), any alternative, and
    **Pause and ask** instead of guessing (the ways forward as numbered
    options, the one you recommend marked) when:
    - a task or requirement is unclear, or two of them conflict;
-   - the tests and the spec disagree, or a test looks wrong: a test may only
-     change if it contradicts its acceptance criterion, and then with the
-     user's agreement, and you say so in the report;
+   - an existing test contradicts a MODIFIED or REMOVED criterion: it may
+     only change with the user's agreement, and you say so in the report;
    - the design does not work in practice: propose the change, and after the
      user agrees record it under the decision in design.md;
    - you discover work the tasks do not cover: suggest adding a task (and a
@@ -131,7 +143,8 @@ next step the same way: the next skill (recommended), any alternative, and
    specworks run typecheck --change "<ref>"   # if configured
    ```
 
-   Fix what fails. Never skip, disable or loosen tests to get green.
+   Fix what fails in the existing tests, lint and typecheck. Never skip,
+   disable or loosen tests to get green.
 
 5. **Gate and trace**
 
@@ -140,10 +153,13 @@ next step the same way: the next skill (recommended), any alternative, and
    specworks trace --change "<ref>" --write
    ```
 
-   The gate checks that the specs are still valid, every task is ticked,
-   every requirement has `@req` code, every criterion still has a test, no
-   tag points to an unknown ID, removed requirements and criteria are gone, and the test
-   suite passes (it runs `commands.test`). Fix every failing check and re-run.
+   The code gate checks only this half: the specs are still valid, every
+   `[code]` task is ticked, every requirement has `@req` code, no tag points
+   to an unknown ID, removed requirements and criteria are gone, and the
+   test suite passes (it runs `commands.test`). Open `[test]` tasks and
+   criteria without tests do not affect it. While the change has `@ac` tests
+   of its own, a failing suite is a warning: those tests meet the code in
+   review. Fix every failing blocking check and re-run.
 
 6. **Report and stop**
 
@@ -152,16 +168,19 @@ next step the same way: the next skill (recommended), any alternative, and
    or deviation recorded in design.md, and any test changed with the user's
    agreement. End with:
    ```
-   1. /specworks-review <ref> (recommended): check the code and the specs agree
-   2. Stop here
+   1. /specworks-review <ref> (recommended): the test half is done; the tests meet the code
+   2. /specworks-test <ref>: the test half is not done yet
+   3. Stop here
    ```
 
 ---
 
 ## Guardrails
 
-- The specs and tests are the contract. Do not edit the delta specs here; if
-  they are wrong, stop and suggest `/specworks-specify <ref>`.
+- The specs are the contract. Do not edit the delta specs here; if they are
+  wrong, stop and suggest `/specworks-specify <ref>`.
+- Only this half: the `[code]` tasks and the code gate. Do not write or read
+  this change's `@ac` tests, tick `[test]` tasks or run `gate test`.
 - No scope creep: no features, refactors or clean-ups the tasks do not ask
   for. Note ideas for later instead.
 - Tick a task only after its verification passed; never tick ahead.

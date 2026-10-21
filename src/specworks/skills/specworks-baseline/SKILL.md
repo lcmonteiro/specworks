@@ -7,8 +7,8 @@ allowed-tools: Bash(specworks:*), Bash(uv run specworks:*), Bash(uvx --from git+
 Baseline: record the behaviour one capability already has, so later changes
 can MODIFY its requirements instead of only ADDING them. A baseline is an
 ordinary change named `baseline-<capability>` whose specs ADD the existing
-behaviour. Its tests and code exist, so the test and code phases only add
-tags. This skill runs the change up to review; `/specworks-done` then
+behaviour. Its tests and code exist, so the test and code halves of
+implement only add tags. This skill runs the change up to review; `/specworks-done` then
 validates it and closes it, which writes the living spec exactly as for any
 other change.
 
@@ -129,9 +129,9 @@ with only a `refinement.md` (step 4).
      Prefer fewer, meaningful requirements. A criterion read from the code
      alone is as valid as one a test shows; step 6 gives it a test, so
      do not mark it in the spec.
-   - `tasks.md`: per requirement, one task to tag the tests that check its
-     criteria (`@ac`) and to write a test for any criterion with none, and
-     one task to tag the code that implements it (`@req`).
+   - `tasks.md`: per requirement, one `[test]` task to tag the tests that
+     check its criteria (`@ac`) and to write a test for any criterion with
+     none, and one `[code]` task to tag the code that implements it (`@req`).
 
    ```bash
    specworks check --change "<ref>"
@@ -172,25 +172,24 @@ with only a `refinement.md` (step 4).
    None: a baseline records existing behaviour and changes no API.
    ```
 
-6. **Tag the tests**
+6. **Tag the tests** (the test half of implement)
 
    ```bash
-   specworks start test --change "<ref>"
+   specworks start implement --change "<ref>"
    ```
    Add `@ac <ID>` comments to the existing tests that check each criterion
    (one tag may list several IDs). Write a new test only for a criterion
    that none covers; it must pass against the current code (if it fails,
    the criterion is wrong or it is a bug: back to step 4, not a code fix).
-   Tick the test tasks: `specworks task done --change "<ref>" <N.M>`.
+   Tick the `[test]` tasks (`specworks task done --change "<ref>" <N.M>`),
+   then run `specworks gate test --change "<ref>"`.
 
-7. **Tag the code**
+7. **Tag the code** (the code half of implement)
 
-   ```bash
-   specworks start code --change "<ref>"
-   ```
    Add `@req <ID>` comments where each requirement is implemented (the
    function or class that decides the behaviour, not every caller). Change
-   nothing else. Tick the code tasks.
+   nothing else. Tick the `[code]` tasks, then run
+   `specworks gate code --change "<ref>"`.
 
 8. **Review**
 

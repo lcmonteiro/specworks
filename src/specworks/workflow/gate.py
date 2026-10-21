@@ -11,7 +11,7 @@ from __future__ import annotations
 import re
 from pathlib import PurePosixPath
 
-from ..core.changes import PHASES, Change, set_phase
+from ..core.changes import HALVES, PHASES, Change, half_error, set_phase
 from ..core.errors import SpecworksError
 from ..core.files import read_text
 from ..specs.check import DESIGN_FILE
@@ -116,18 +116,14 @@ def stubs_build(key: str) -> CheckFn:
 # @req REQ-FLOW-006
 def existing_tests_pass(ctx: GateContext) -> Check:
     tests = c.command_check(ctx, "test", "the existing tests still pass with the stubs (commands.test)")
-    ran = ctx.run_tests and ctx.has_command("test")  # a missing command still blocks
-    if ran and not tests.ok:
-        ids = c.change_ids(ctx)
-        if any(t.kind == "ac" and t.is_test and t.id in ids for t in ctx.analysis.tags):
-            # The test phase has started (or a later cycle reopened the API): this change's
-            # own tests are red until the code phase, whose gate requires a green suite.
-            tests.blocking = False
-            tests.details.insert(0, "not blocking: this change already has @ac tests, which fail until the code phase")
-    return tests
+    if not c.has_own_ac_tests(ctx):
+        return tests
+    # The test half has started (or a later cycle reopened the API): this change's
+    # own tests are red until the code half makes them pass.
+    return c.not_blocking(ctx, tests, "this change already has @ac tests, which fail until the code half", at=0)
 
 
-# @req REQ-FLOW-004, REQ-FLOW-006, REQ-FLOW-007, REQ-FLOW-008, REQ-FLOW-011
+# @req REQ-FLOW-004, REQ-FLOW-006, REQ-FLOW-007, REQ-FLOW-008, REQ-FLOW-011, REQ-FLOW-014
 GATE_CHECKS: dict[str, list[CheckFn]] = {
     "specify": [c.specs_valid, c.specs_warnings, c.tasks_written],  # every criterion having a task is one of specs_valid's errors
     "design": [
@@ -141,8 +137,27 @@ GATE_CHECKS: dict[str, list[CheckFn]] = {
         stubs_build("typecheck"),
         existing_tests_pass,
     ],
-    "test": [c.specs_valid, c.specs_warnings, c.specs_as_specified, c.acs_have_tests, c.no_unknown_tags, c.acs_in_test_files, c.removed_gone_warning],
-    "code": [c.specs_valid, c.specs_warnings, c.specs_as_specified, c.tasks_done, c.reqs_have_code, c.acs_have_tests, c.no_unknown_tags, c.removed_gone, c.tests_pass],
+    # The two halves of implement: each gate checks only its half (`gate implement` runs both).
+    "test": [
+        c.specs_valid,
+        c.specs_warnings,
+        c.specs_as_specified,
+        c.half_tasks_done("test"),
+        c.acs_have_tests,
+        c.no_unknown_tags,
+        c.acs_in_test_files,
+        c.removed_gone_warning,
+    ],
+    "code": [
+        c.specs_valid,
+        c.specs_warnings,
+        c.specs_as_specified,
+        c.half_tasks_done("code"),
+        c.reqs_have_code,
+        c.no_unknown_tags,
+        c.removed_gone,
+        c.code_tests_pass,
+    ],
     "review": [
         c.specs_valid,
         c.specs_warnings,
@@ -157,18 +172,35 @@ GATE_CHECKS: dict[str, list[CheckFn]] = {
         c.files_accounted,
         c.diff_base,
         c.modified_tests_changed,
-        c.tests_pass,
+        c.review_tests_pass,
     ],
 }
-GATES = (*GATE_CHECKS, "validate")
+IMPLEMENT = "implement"
+GATES = ("specify", "design", "test", "code", IMPLEMENT, "review", "validate")
 
 
 # @req REQ-FLOW-003
 def run_gate(ctx: GateContext, phase: str) -> tuple[bool, list[Check]]:
     if phase not in GATES:
         raise GateError(f"no gate for phase '{phase}' yet; gates exist for: {', '.join(GATES)}")
+    if phase == IMPLEMENT:
+        return run_implement_gate(ctx)
     checks = validate_change(ctx) if phase == "validate" else run_checks(ctx, GATE_CHECKS[phase])
     return passed(checks), checks
+
+
+# @req REQ-FLOW-014
+def run_implement_gate(ctx: GateContext) -> tuple[bool, list[Check]]:
+    """The test gate, then (once it passes) the code gate, each check named after its half."""
+    checks: list[Check] = []
+    for half in HALVES:
+        ok, half_checks = run_gate(ctx, half)
+        for check in half_checks:
+            check.name = f"{half}: {check.name}"
+        checks += half_checks
+        if not ok:
+            return False, checks
+    return True, checks
 
 
 # @req REQ-FLOW-014
@@ -179,12 +211,15 @@ def gates_to_start(current: str, phase: str) -> list[str]:
     has one). Re-entering a phase, or going back to one for rework, needs only
     the gate of the phase just before it.
     """
+    if phase in HALVES:
+        raise GateError(f"cannot start {half_error(phase)}; start `implement`")
     if phase not in PHASES or phase == "done":
         startable = ", ".join(p for p in PHASES if p != "done")
         raise GateError(f"cannot start '{phase}'; phases are {startable} (`specworks close` finishes a change)")
     target = PHASES.index(phase)
     first = PHASES.index(current) if PHASES.index(current) < target else target - 1
-    return [p for p in PHASES[max(first, 0) : target] if p in GATES]
+    gates = [p for p in PHASES[max(first, 0) : target] if p in GATES]
+    return [g for p in gates for g in (HALVES if p == IMPLEMENT else (p,))]  # implement's gate is its two halves
 
 
 # @req REQ-FLOW-014, REQ-FLOW-005

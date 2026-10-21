@@ -114,6 +114,18 @@ def tasks_done(ctx: GateContext) -> Check:
     return Check("every task is done (specworks task list --pending)", specs.tasks_found and not pending, pending)
 
 
+# @req REQ-FLOW-007, REQ-FLOW-008
+def half_tasks_done(half: str) -> CheckFn:
+    """A check that every task of ``half`` (``test`` or ``code``) is done, listing only that half's open tasks."""
+
+    def check(ctx: GateContext) -> Check:
+        specs = ctx.analysis.specs
+        pending = [f"{t.num} {t.text}" for t in specs.tasks if t.half == half and not t.done]
+        return Check(f"every [{half}] task is done (specworks task list --pending)", specs.tasks_found and not pending, pending)
+
+    return check
+
+
 # @req REQ-FLOW-005
 def specs_as_specified(ctx: GateContext) -> Check | None:
     """The delta specs are the ones `gate specify` passed with when `start` last left specify (not checked without one)."""
@@ -141,7 +153,7 @@ def _gap(name: str, key: str, blocking: bool = True) -> CheckFn:
 reqs_have_code = _gap("every requirement has code (@req tag)", "reqWithoutCode")
 acs_have_tests = _gap("every acceptance criterion has a test (@ac tag)", "acWithoutTests")
 removed_gone = _gap("removed requirements and criteria are gone from tests and code", "removedStillTagged")
-# Before the code phase, the code of a removed requirement (or criterion) may still be there.
+# Before the code half is done, the code of a removed requirement (or criterion) may still be there.
 removed_gone_warning = _gap("removed requirements and criteria are gone from tests and code", "removedStillTagged", blocking=False)
 
 
@@ -244,6 +256,38 @@ def command_check(ctx: GateContext, key: str, name: str, optional: bool = False)
 # @req REQ-FLOW-008
 def tests_pass(ctx: GateContext) -> Check:
     return command_check(ctx, "test", "the test suite passes (commands.test)")
+
+
+def has_own_ac_tests(ctx: GateContext) -> bool:
+    """The change has ``@ac`` tags of its own in test files."""
+    ids = change_ids(ctx)
+    return any(t.kind == "ac" and t.is_test and t.id in ids for t in ctx.analysis.tags)
+
+
+def not_blocking(ctx: GateContext, tests: Check, why: str, at: int = 1) -> Check:
+    """A failing run of the suite (not a missing command) as a warning, saying why at ``at`` in the details (after the command line)."""
+    if ctx.run_tests and ctx.has_command("test") and not tests.ok:
+        tests.blocking = False
+        tests.details.insert(at, f"not blocking: {why}")
+    return tests
+
+
+# @req REQ-FLOW-008
+def code_tests_pass(ctx: GateContext) -> Check:
+    """The code gate's ``tests_pass``: a warning while the change has ``@ac`` tests of its own (they meet the code in review)."""
+    tests = tests_pass(ctx)
+    if not has_own_ac_tests(ctx):
+        return tests
+    return not_blocking(ctx, tests, "this change has @ac tests of its own, which meet the code in review")
+
+
+# @req REQ-FLOW-011
+def review_tests_pass(ctx: GateContext) -> Check:
+    """The review gate's ``tests_pass``: a warning under ``--allow-open`` while review.md has an open finding."""
+    tests = tests_pass(ctx)
+    if not (ctx.allow_open and ctx.review.open):
+        return tests
+    return not_blocking(ctx, tests, "review.md has open findings, which the next cycle carries")
 
 
 def optional_command(key: str, name: str) -> CheckFn:

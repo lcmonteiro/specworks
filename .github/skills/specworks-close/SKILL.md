@@ -8,7 +8,7 @@ The deltas are merged into each capability's living docs next to its code,
 the design knowledge worth keeping moves there too, and the change folder is
 archived as the record of how it happened.
 
-It is the last phase of `refine → specify → design → test → code → review → validate → close`.
+It is the last phase of `refine → specify → design → implement (test | code) → review → validate → close`.
 
 **Phase boundary**: edit only the living docs (`<capability path>/<docs_dir>/`)
 and, for new capabilities, the config. No code, tests or delta specs change

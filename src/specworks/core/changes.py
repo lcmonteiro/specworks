@@ -18,7 +18,13 @@ ARCHIVE_DIR = "archive"
 ARCHIVED_RE = re.compile(r"^(?P<date>\d{4}-\d{2}-\d{2})-(?P<name>.+)$")  # <archive>/<date>-<name>/
 # Each phase is driven by the skill of the same name (specworks-<phase>); `close`
 # writes the living docs and archives the change, which then reads `done`.
-PHASES = ("refine", "specify", "design", "test", "code", "review", "validate", "close", "done")
+PHASES = ("refine", "specify", "design", "implement", "review", "validate", "close", "done")
+# The two halves of the implement phase: names of gates, review steps and task markers, not phases (REQ-PROJ-011).
+HALVES = ("test", "code")
+
+
+def half_error(half: str) -> str:
+    return f"'{half}' is not a phase: `test` and `code` are the halves of `implement`"
 
 
 class ChangeError(SpecworksError):
@@ -83,6 +89,8 @@ def _read_change(path: Path, name: str, where: str) -> Change:
     if not isinstance(meta, dict):
         raise ChangeError(f"{where} must be a mapping (name, created, phase), got {type(meta).__name__}")
     phase = meta.get("phase", "refine")
+    if phase in HALVES:
+        phase = "implement"  # saved before implement replaced the test and code phases
     if phase not in PHASES:
         raise ChangeError(f"change '{name}' has unknown phase '{phase}' in {where}; expected one of {', '.join(PHASES)}")
     return Change(
@@ -138,6 +146,8 @@ def archived_as(cfg: Config, name: str) -> Change | None:
 
 # @req REQ-PROJ-011
 def set_phase(change: Change, phase: str) -> None:
+    if phase in HALVES:
+        raise ChangeError(half_error(phase))
     if phase not in PHASES:
         raise ChangeError(f"unknown phase '{phase}'; expected one of {', '.join(PHASES)}")
     if phase == "done":

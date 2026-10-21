@@ -207,6 +207,24 @@ def test_status_after_planning(change):
     }
 
 
+# @ac AC-FLOW-001.4
+def test_status_shows_the_halves_of_implement(change):
+    (change / "tasks.md").write_text(
+        "# Tasks\n\n## 1. Reset\n\n"
+        "- [x] 1.1 [test] Tests for AC-AUTH-003.1\n- [x] 1.2 [test] Tests for AC-AUTH-003.2\n- [x] 1.3 [test] Tests for AC-AUTH-002.1\n"
+        "- [x] 1.4 [code] Implement REQ-AUTH-003\n- [ ] 1.5 [code] Lower the lockout (REQ-AUTH-002)\n"
+        "- [ ] 1.6 [code] Wire the email\n- [ ] 1.7 [code] Log resets\n- [ ] 1.8 Update the README\n"
+    )
+    code, data = run_json("status", "--change", "add-password-reset")
+    assert code == 0 and data.get("halves") is None  # not in implement yet
+    code, data = run_json("phase", "implement", "--change", "add-password-reset")
+    assert code == 0, data
+    code, data = run_json("status", "--change", "add-password-reset")
+    assert data["halves"] == {"test": {"done": 3, "total": 3}, "code": {"done": 1, "total": 4}}
+    text = runner.invoke(app, ["status", "--change", "add-password-reset"]).output
+    assert "test 3/3, code 1/4" in text
+
+
 # --- validate ----------------------------------------------------------------
 
 
@@ -520,6 +538,29 @@ def test_tasks_not_written_is_only_a_warning(change):
     assert code == 0 and any("tasks.md is not written yet" in i["message"] for i in data["issues"])
     code, data = run_json("check", "--change", "add-password-reset", "--strict")
     assert code == 1
+
+
+# @ac AC-SPECS-009.6
+def test_a_task_belongs_to_the_half_its_marker_names():
+    text = "## 1. Reset\n\n- [ ] 1.1 Add stubs (REQ-AUTH-003)\n- [ ] 1.2 [test] Write failing tests\n- [x] 1.3 [Code] Implement\n"
+    tasks, problems = parse_tasks(text)
+    assert problems == [] and [(t.num, t.half) for t in tasks] == [("1.1", ""), ("1.2", "test"), ("1.3", "code")]
+    assert tasks[1].text.startswith("[test] ") and tasks[1].to_dict()["half"] == "test"
+
+
+def half_warnings(data):
+    return [i["message"] for i in data["issues"] if i["level"] == "warning" and ("[test]" in i["message"] or "[code]" in i["message"])]
+
+
+# @ac AC-SPECS-009.7
+@pytest.mark.parametrize("missing, other", [("[test]", "[code]"), ("[code]", "[test]")])
+def test_a_half_with_no_task_is_a_warning(change, missing, other):
+    assert half_warnings(run_json("check", "--change", "add-password-reset")[1]) == []  # both halves have tasks
+    (change / "tasks.md").write_text(TASKS.replace(f"{missing} ", ""))
+    code, data = run_json("check", "--change", "add-password-reset")
+    warnings = half_warnings(data)
+    assert code == 0 and errors(data) == [], errors(data)
+    assert len(warnings) == 1 and missing in warnings[0] and other not in warnings[0], warnings
 
 
 # --- trace -------------------------------------------------------------------

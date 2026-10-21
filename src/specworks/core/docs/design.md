@@ -11,7 +11,8 @@ builds on:
   module and capability entries.
 - **Workspace** (`workspace.py`): the top-level project and its modules, and
   what each module inherits.
-- **Changes** (`changes.py`): changes in flight and archived, and their phases.
+- **Changes** (`changes.py`): changes in flight and archived, and their phases
+  (`refine, specify, design, implement, review, validate, close, done`).
 - **Runner** (`runner.py`): running the project's own commands and reusing
   their results.
 - **Helpers** (`files.py`, `git.py`, `errors.py`): reading project files,
@@ -75,6 +76,16 @@ real rather than risk a stale result. Untracked names count as the raw bytes
 git reports, so a name that isn't UTF-8 is fingerprinted like any other.
 (baseline-project, run-reuse-unreadable-files)
 
+### `test` and `code` are the halves of `implement`, not phases
+
+`PHASES` has one `implement` phase; `HALVES = ("test", "code")` names its two
+halves, which keep their own gates, task markers, review routing and cycle
+steps. A `.change.yaml` saved in `test` or `code` is read as `implement` (no
+rewrite on read; the next `set_phase` saves `implement`), so no migration step
+is needed. `set_phase` refuses a half with an error naming `implement`.
+Aliases that move the change to implement were rejected: two names for one
+phase. (parallel-test-code)
+
 ### Expected failures are `SpecworksError`s
 
 Bad configs, unknown changes, unreadable files and git failures all raise a
@@ -95,7 +106,7 @@ where to configure one. (baseline-project, run-unknown-key)
   `capability_prefix(module_name, name, prefix="")`.
 - `src/specworks/core/config_file.py`: `write_default_config`,
   `add_module_entry`, `add_capability_entry`.
-- `src/specworks/core/changes.py`: `PHASES`, `Change`, `create_change`,
+- `src/specworks/core/changes.py`: `PHASES`, `HALVES`, `Change`, `create_change`,
   `load_change`, `list_changes`, `list_archived`, `archived_as`, `set_phase`.
 - `src/specworks/core/runner.py`: `run_command`, `cached_run`, `RunResult`.
 - `src/specworks/core/files.py`: `read_text(path, keep_newlines=False)`.

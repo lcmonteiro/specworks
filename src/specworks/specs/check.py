@@ -325,6 +325,13 @@ def _check_tasks(ws: Workspace, change: Change, specs: ChangeSpecs, issues: list
         if req.id and req.id not in mentioned:
             issues.append(Issue("warning", file, 0, f"{req.id} is REMOVED but no task removes its code and tests"))
 
+    changed = specs.requirements("ADDED", "MODIFIED")
+    halves = {task.half for task in specs.tasks}
+    if any(req.scenarios for _, req in changed) and "test" not in halves:
+        issues.append(Issue("warning", file, 0, "no [test] task: mark the tasks that write the failing tests with '[test]' (e.g. '- [ ] 1.2 [test] ...')"))
+    if changed and "code" not in halves:
+        issues.append(Issue("warning", file, 0, "no [code] task: mark the tasks that write the code with '[code]' (e.g. '- [ ] 1.3 [code] ...')"))
+
 
 # @req REQ-SPECS-014
 def _check_diagrams(ws: Workspace, change: Change, issues: list[Issue]) -> None:

@@ -9,7 +9,7 @@ Specs and traceability, in `src/specworks/specs`:
   reference, ID prefix, delta path, living spec and next free ID.
 - **Check** (`check.py`): `specworks check` on a change's proposal, delta
   specs, tasks and diagrams.
-- **Tasks** (`tasks.py`): reading tasks.md and ticking tasks.
+- **Tasks** (`tasks.py`): reading tasks.md, each task's half, and ticking tasks.
 - **Trace** (`trace.py`): the tag scan, the trace matrix, its gaps and unknown
   tags.
 - **Merge** (`merge.py`): merging deltas into living specs and archiving the
@@ -73,6 +73,15 @@ scanned. Without globs, a test is recognised by its name or folder, and
 documentation is not scanned, so a tag quoted in a README is not coverage.
 (baseline-specs)
 
+### Tasks carry their half as a text marker
+
+A leading `[test]` or `[code]` (any case) puts a task in that half of
+implement; it stays in the task's text, and a task with no marker belongs to
+design. Each half's gate counts only its own tasks, while validate still needs
+every task done. `check` warns when a change with criteria has no `[test]`
+task, or one with requirements has no `[code]` task, so a task list written
+without markers is noticed. (parallel-test-code)
+
 ### Close is all or nothing
 
 Close computes every living spec and index first, checks the archive folder,
@@ -90,7 +99,8 @@ was. (baseline-specs)
 - `src/specworks/specs/check.py`: `check_change(ws, change) -> (ChangeSpecs, [Issue])`,
   `collect`, `other_deltas`.
 - `src/specworks/specs/tasks.py`: `parse_tasks(text)`, `read_tasks`,
-  `set_done(change_path, nums, done)`.
+  `set_done(change_path, nums, done)`, `Task` (`half`: `"test"`, `"code"` or
+  `""`; in `to_dict()` too).
 - `src/specworks/specs/trace.py`: `scan_tags(ws: Workspace) -> list[Tag]`, the
   tags of the workspace with marked lines left out (REQ-SPECS-001..003, 011);
   `build_matrix`, `gaps`, `unknown_tags`, `to_markdown`, `Analysis`.

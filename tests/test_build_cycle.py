@@ -33,17 +33,18 @@ def test_no_open_findings_means_done(project):
     assert data["reviewed"] and data["open"] == [] and data["startAt"] is None and data["phases"] == []
 
 
-# @ac AC-FLOW-012.2
+# @ac AC-FLOW-012.2, AC-FLOW-012.6
 @pytest.mark.parametrize(
     "findings, start, phases",
     [
-        (["code-gap"], "code", ["code", "review"]),
-        (["tag", "quality"], "code", ["code", "review"]),
-        (["test-gap", "code-gap"], "test", ["test", "code", "review"]),
+        (["code-gap"], "implement", ["code", "review"]),
+        (["tag", "quality"], "implement", ["code", "review"]),
+        (["test-gap"], "implement", ["test", "review"]),
+        (["test-gap", "code-gap"], "implement", ["test", "code", "review"]),
         (["code-gap", "design-gap", "test-gap"], "design", ["design", "test", "code", "review"]),
     ],
 )
-def test_the_earliest_phase_wins(project, findings, start, phases):
+def test_the_cycle_runs_the_steps_the_findings_need(project, findings, start, phases):
     write_review(project, "\n".join(f"- [ ] R{i} **{kind}** something\n  - **Decision**: pending" for i, kind in enumerate(findings, 1)))
     data = cycle()
     assert data["startAt"] == start and data["phases"] == phases and data["handOver"] is None
@@ -59,6 +60,15 @@ def test_back_to_in_the_decision_overrides_the_type(project):
     )
     data = cycle()
     assert [f["phase"] for f in data["open"]] == ["design", "code"] and data["startAt"] == "design"
+    assert data["phases"] == ["design", "test", "code", "review"]
+
+
+# @ac AC-FLOW-012.6
+def test_back_to_implement_runs_both_halves(project):
+    write_review(project, "- [ ] R1 **code-gap** reset returns None\n  - **Decision**: back to implement: return the token and test it")
+    data = cycle()
+    assert data["open"][0]["phase"] == "implement"
+    assert data["startAt"] == "implement" and data["phases"] == ["test", "code", "review"] and data["handOver"] is None
 
 
 # @ac AC-FLOW-012.4
@@ -84,10 +94,11 @@ def test_a_spec_finding_carried_out_in_specify_resumes_the_build_at_design(proje
 
 
 # @ac AC-FLOW-012.5
-@pytest.mark.parametrize("done_in, start", [("design", "test"), ("code", "review")])
-def test_a_finding_done_in_a_phase_needs_the_phases_after_it(project, done_in, start):
+@pytest.mark.parametrize("done_in, start, phases", [("design", "implement", ["test", "code", "review"]), ("code", "review", ["review"])])
+def test_a_finding_done_in_a_phase_needs_the_phases_after_it(project, done_in, start, phases):
     write_review(project, f"- [ ] R1 **design-gap** x\n  - **Decision**: back to design: y\n  - done in {done_in}: z")
-    assert cycle()["startAt"] == start
+    data = cycle()
+    assert data["startAt"] == start and data["phases"] == phases
 
 
 # @ac AC-FLOW-010.3
@@ -157,3 +168,25 @@ def test_a_checkbox_indented_outside_any_finding_is_unreadable():
     assert len(problems) == 1 and "'- [ ] reset still ignores case' is not a finding" in problems[0]
     under_a_finding = "## Findings\n\n- [x] R1 **code-gap** x\n  - **Decision**: code fixed\n  - [ ] reset still ignores case\n"
     assert parse_review(under_a_finding).problems == []
+
+
+# @ac AC-FLOW-010.6
+def test_findings_are_routed_to_the_halves_or_to_implement():
+    text = (
+        "## Findings\n\n- [ ] R1 **test-gap** weak assert\n- [ ] R2 **code-gap** reset ignores case\n"
+        "- [ ] R3 **design-gap** reset returns None\n  - **Decision**: Back to Implement: return the token and test it\n"
+    )
+    doc = parse_review(text)
+    assert [f["phase"] for f in open_findings(text)] == ["test", "code", "implement"] and doc.problems == []
+
+
+# @ac AC-FLOW-010.7
+def test_a_finding_done_in_a_step_is_routed_to_the_next_step():
+    text = (
+        "## Findings\n\n"
+        "- [ ] R1 **design-gap** x\n  - **Decision**: back to design: y\n  - done in design: z\n"
+        "- [ ] R2 **test-gap** x\n  - **Decision**: back to test: y\n  - done in test: z\n"
+        "- [ ] R3 **code-gap** x\n  - **Decision**: back to code: y\n  - done in code: z\n"
+    )
+    found = open_findings(text)
+    assert [(f["phase"], f["doneIn"]) for f in found] == [("implement", "design"), ("review", "test"), ("review", "code")]

@@ -166,8 +166,9 @@ artifacts:
     template: tasks.md
     requires: [specs, design]
     instruction: |
-      Break the work into small, ordered, checkable tasks. The design, test
-      and code phases work through this list and tick boxes.
+      Break the work into small, ordered, checkable tasks. The design and
+      implement phases work through this list and tick boxes; implement runs
+      in two halves, test and code, each doing the tasks marked for it.
 
       Rules (`specworks check` checks them):
       - Group tasks under `## N. <group>` headings, in dependency order.
@@ -178,10 +179,16 @@ artifacts:
       - Every task says how to verify it: a test, a command or an observable
         result.
       - Interfaces, then tests, then behaviour: in each group, first the task
-        that adds or extends the API as stubs (the design phase), then the
-        failing tests for its acceptance criteria (tagged `@ac <AC-ID>`), then
-        the implementation tasks (tagged `@req <REQ-ID>`). Do not push
-        testing or docs into a final group.
+        that adds or extends the API as stubs (the design phase, no marker),
+        then the failing tests for its acceptance criteria (tagged
+        `@ac <AC-ID>`), then the implementation tasks (tagged `@req <REQ-ID>`).
+        Do not push testing or docs into a final group.
+      - Mark each task of the implement phase with its half, right after the
+        number: `- [ ] 1.2 [test] ...` for the tests, `- [ ] 1.3 [code] ...`
+        for the code. The two halves run in parallel and each sees only the
+        specs and design, so a `[code]` task never depends on a `[test]` task.
+        `specworks check` warns when criteria have no `[test]` task or
+        requirements no `[code]` task.
       - REMOVED requirements get a task that deletes their code and tests.
       - Resolve design.md Open Questions that would change the tasks before
         writing them.
@@ -197,7 +204,7 @@ artifacts:
     instruction: |
       Generated, not written: run `specworks trace --change <ref> --write`.
       It maps every requirement and acceptance criterion to its tasks, and
-      (from the test phase on) to the tests and code that carry its
+      (from the implement phase on) to the tests and code that carry its
       `@ac` / `@req` tags. Re-run it whenever specs, tasks, tests or code change.
 
   - id: review
@@ -230,12 +237,13 @@ artifacts:
       `code fixed`, `spec updated (ADDED/MODIFIED REQ-...)`,
       `design updated (<interface or decision>)`, or `accepted: <reason>`
       (only with the user's agreement). A finding sent back to an earlier
-      phase stays open (`- [ ]`) with `back to <specify|design|test|code>:
-      <the agreed proposal>` until the change returns to review and it is
-      done. The phase that carries out the proposal adds `done in <phase>:
-      <what changed>` under it (the box stays open until review confirms).
-      `specworks cycle` reads these to pick where the next build cycle
-      starts: the phase a finding needs, or the one after its `done in`.
+      step stays open (`- [ ]`) with `back to <step>: <the agreed proposal>`
+      until the change returns to review and it is done; a step is specify,
+      design, implement (both halves), test or code (one half). The step
+      that carries out the proposal adds `done in <step>: <what changed>`
+      under it (the box stays open until review confirms). `specworks cycle`
+      reads these to pick the steps of the next build cycle: the step a
+      finding needs, or the one after its `done in`.
 
       "Changed files without tags" accounts for every file `specworks review`
       lists under untracedSource / untracedTests: why it needs no tag, or the
