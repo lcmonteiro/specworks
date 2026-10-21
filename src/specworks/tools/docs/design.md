@@ -51,6 +51,19 @@ unlinked without following it. A manifest of installed files was rejected: it
 would add a file to every project and miss the copies older versions already
 left behind. (remove-stale-skills)
 
+### Staleness is found by comparing files, not versions
+
+`expected_skills(tools)` renders, in memory, every file the install writes.
+`install_skills` writes from it, and `skills_state` compares it with the
+installed files: a file can be `changed`, `missing` or `stale` (a no longer
+shipped name, from the same rule as the removal). That way the comparison
+can never disagree with the install. Only the tools that already have a
+`specworks-` skill installed are checked (`installed_tools`). A version stamp
+was rejected because installs come from git and the version does not move.
+Hashes kept in a manifest were also rejected: they add one more file and miss
+hand edits. `update_skills` writes only the files that differ, so an update
+of current skills touches nothing. (upgrade-project)
+
 ## Interfaces
 
 - `src/specworks/tools/diagrams.py`: `Diagram`, `diagrams_in(folder)`,
@@ -60,7 +73,11 @@ left behind. (remove-stale-skills)
 - `src/specworks/tools/skills.py`: `TOOLS`, `Tool`, `parse_tools(value, root)`
   (raises `ToolError`), `install_skills(root, tools) -> list[Path]`,
   `remove_stale_skills(root, tools) -> list[Path]`, `RETIRED_NAMES`,
-  `packaged_skills()`, `read_skill(name)`.
+  `packaged_skills()`, `read_skill(name)`, `expected_skills(tools) ->
+  dict[str, str]`, `installed_tools(root)`, `skills_state(root) ->
+  SkillsState` (`state`: `current` | `outdated` | `none`, `files`:
+  `SkillFile(path, reason)`), `update_skills(root, tools) -> (updated,
+  removed)`.
 
 ## Constraints
 

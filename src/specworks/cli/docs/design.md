@@ -59,6 +59,17 @@ leave that module listed past it, which loading refuses. Refusing was chosen
 over moving the inner module's link, which would edit a config the user didn't
 name. (module-add-nested)
 
+### Upgrading is uv, then `update`
+
+`uv tool upgrade specworks` upgrades the CLI. `specworks update` then brings
+the project's skills up to it, by default for the tools that already have
+them installed. `context`, which every skill runs first, reports the skills
+state and the hint `skills out of date: run specworks update`, so an agent
+notices a stale project without being told. A self-upgrading `specworks
+upgrade` was rejected: the CLI would have to find out how it was installed
+and replace itself while running. Config migration will run in `update` once
+a second config format exists. (upgrade-project)
+
 ## Interfaces
 
 - `src/specworks/cli/__init__.py`: `app`, `main()` (the `specworks` entry
@@ -66,7 +77,7 @@ name. (module-add-nested)
 - `src/specworks/cli/output.py`: `emit`, `fail`, `workspace`,
   `resolve_change`, `resolve_archived`, `require_change`.
 - The commands as `specworks --help` lists them: `version`, `init`, `skills`,
-  `context`, `list`, `module add|list`, `capability add`, `new`, `status`,
+  `update`, `context`, `list`, `module add|list`, `capability add`, `new`, `status`,
   `abandon`, `phase`, `skip-specs`, `instructions`, `task list|done|undo`,
   `check`, `trace`, `spec show|list`, `diagrams`, `gate`, `start`, `review`,
   `cycle`, `validate`, `close`, `run`.
