@@ -73,10 +73,12 @@ their questions, and write the answers to disk.
   ```
   Run the <phase> phase of the change <ref>: follow
   <skills folder>/specworks-<phase>/SKILL.md, reading only the project and
-  the change's artifacts on disk. You cannot ask the user. When the skill
-  would stop for the user, first write what you propose into your own
-  artifact, then stop and return the question. Skip the skill's "Report and
-  stop". End your last message with exactly one line:
+  the change's artifacts on disk. You cannot ask the user. When the answer
+  to a question the skill would ask is already on disk, use it and go on; do
+  not ask it again. When the skill would stop for the user, first write what
+  you propose into your own artifact, then stop and return the question.
+  Skip the skill's "Report and stop". End your last message with exactly
+  one line:
   Result: done <one-line result; the gate passed>
   Result: question <the closing question as the skill asks it, options included>
   Result: blocked <what failed, and the phase or skill it goes back to>
@@ -88,7 +90,7 @@ their questions, and write the answers to disk.
 
   | Question | Where the answer goes |
   |---|---|
-  | design: the API | design.md `## Interfaces`, as agreed |
+  | design: the API | design.md `## Interfaces`: the subagent writes it with a line `Proposed: waiting for the user's agreement`; replace that line with `Agreed with the user` (and the user's changes) |
   | test, code: the test command | `spec.yml` `commands:` (`test: <command>`) |
   | code: an unclear task, a test against the spec, new work | the Decision in design.md, or a new task in tasks.md |
   | review: each finding | the finding's `**Decision**:` line in review.md |

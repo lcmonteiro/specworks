@@ -165,6 +165,13 @@ def test_the_subagent_prompt_carries_only_the_phase_the_ref_and_the_skills_folde
     assert set(re.findall(r"<([a-z ]+)>", prompt.split("Result:")[0])) == {"phase", "ref", "skills folder"}
 
 
+def test_a_restarted_phase_uses_the_answer_on_disk_instead_of_asking_again():
+    # Without it a fresh design subagent proposes the API again and returns the same question forever.
+    text = " ".join(read_skill("specworks-build").split())
+    assert "When the answer to a question the skill would ask is already on disk, use it and go on; do not ask it again." in text
+    assert "Proposed: waiting for the user's agreement" in text and "Agreed with the user" in text
+
+
 def test_build_review_proposes_every_finding_before_the_user_decides():
     # The user's decisions reach the next review subagent only through review.md.
     text = read_skill("specworks-build")
