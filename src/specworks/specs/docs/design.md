@@ -41,7 +41,10 @@ it: ADDED blocks go at the end of `## Requirements`, MODIFIED ones replace
 their block in place, REMOVED ones are deleted. Everything else (other sections,
 notes, code fences, spacing) stays as written, and blank lines are tidied only
 where a block is spliced in. A living spec the parser would misread is refused
-before anything is written. (baseline-specs)
+before anything is written. The tables specworks generates (the requirements.md
+index, traceability.md) pass every title through `table_cell`, which escapes a
+`|` so it stays in its cell; spec.md keeps titles as written.
+(baseline-specs, table-pipe-in-title)
 
 ### IDs are never reused
 
@@ -80,7 +83,7 @@ was. (baseline-specs)
 
 - `src/specworks/specs/specfile.py`: `parse_spec(text) -> SpecDoc`,
   `living_problems(doc)`, `Requirement.markdown()`, `id_prefix`, `ac_parent`,
-  `find_ids`.
+  `find_ids`, `table_cell(text)`.
 - `src/specworks/specs/capabilities.py`: `CapabilityRef`, `resolve_ref(ws, ref)`,
   `resolve_delta`, `next_id(ws, cap)`, `describe(ws, cap)`, `retired_ids`,
   `modified_since`.
