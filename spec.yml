@@ -46,10 +46,6 @@ capabilities:
     path: src/specworks/cli
     description: "The command surface and its conventions: --json output, errors as {\"error\": ...} with exit 1, and {\"root\": null} when there's no project"
     prefix: CLI
-  skills:
-    path: src/specworks/skills
-    description: "The agent skills specworks ships: what each phase skill does and the rules every skill shares"
-    prefix: SKILL
 
 # Modules: sub-projects with their own config (same file name as this one),
 # like git submodules. Each one is a complete project (own context,
