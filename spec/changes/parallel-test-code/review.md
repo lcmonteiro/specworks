@@ -26,8 +26,9 @@ CLI or the public functions.
 ## Summary
 
 Code, specs and design agree; the tests meet the code with no failure. Two
-findings, both open for the user's decision: R1 (stale README and comments,
-back to code) and R2 (the code gate's suite is a warning for any change with
-MODIFIED requirements; proposed to accept). Out of scope, a candidate for a
-new change: validate's "every task is done" names `/specworks-code` even when
-the open task is a `[test]` task.
+findings, decided with the user: R1 (stale README and review.py comments)
+stays open, back to code, for the next cycle (code half, then review); R2
+(the code gate's suite is only a warning for a change with MODIFIED
+requirements) is accepted. No spec or design/API change. Out of scope, a
+candidate for a new change: validate's "every task is done" names
+`/specworks-code` even when the open task is a `[test]` task.
