@@ -802,6 +802,17 @@ def test_requirement_modified_by_a_later_close_is_warned(change, project, closed
     assert bool(found) is warned
 
 
+# @ac AC-SPECS-006.7
+@pytest.mark.parametrize("closed, warned", [("2026-10-20 22:41:07", False), ("2026-10-20 23:10:00", True), ("2026-10-20", True)])
+def test_a_close_earlier_the_same_day_is_not_warned(change, project, closed, warned):
+    meta = change / ".change.yaml"
+    meta.write_text(re.sub(r"created: .*", "created: '2026-10-20T23:00:00'", meta.read_text()))
+    history = f"# Requirements: user-auth\n\n## History\n\n- {closed} `stricter-lockout`: MODIFIED REQ-AUTH-002\n"
+    (project / "src/auth/docs/requirements.md").write_text(history)
+    found = [w for w in check_warnings() if w.startswith("REQ-AUTH-002 was MODIFIED by stricter-lockout")]
+    assert bool(found) is warned
+
+
 # @ac AC-SPECS-006.5
 def test_modified_block_dropping_a_criterion_is_warned(change, project):
     delta = change / "specs/user-auth/spec.md"

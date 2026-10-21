@@ -1,3 +1,6 @@
 name: same-day-modified-warning
 created: '2026-10-21T06:27:05'
-phase: specify
+phase: test
+specified:
+  REQ-SPECS-006: 9919f2f06885
+  REQ-SPECS-013: 079cfa82c8f8

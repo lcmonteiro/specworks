@@ -1,6 +1,7 @@
 """Close phase: capability registration, delta merge into living specs, requirements index, archive."""
 
 import hashlib
+import re
 import shutil
 from datetime import date
 
@@ -82,7 +83,7 @@ def test_close_merges_indexes_and_archives(ready):
 
     index = (ready / "src/auth/docs/requirements.md").read_text()
     assert "| REQ-AUTH-003 | Password reset | AC-AUTH-003.1, AC-AUTH-003.2 |" in index
-    assert f"- {today} `{REF}`: ADDED REQ-AUTH-003; MODIFIED REQ-AUTH-002" in index
+    assert re.search(rf"^- {today} \d\d:\d\d:\d\d `{REF}`: ADDED REQ-AUTH-003; MODIFIED REQ-AUTH-002$", index, re.M)
 
     archived = ready / data["archivedTo"]
     assert (archived / "proposal.md").is_file() and "phase: done" in (archived / ".change.yaml").read_text()
@@ -93,6 +94,17 @@ def test_close_merges_indexes_and_archives(ready):
     assert [(c["name"], c["phase"], c.get("archived")) for c in data["changes"]] == [(REF, "done", True)]
     code, data = run_json("spec", "show", "user-auth")
     assert data["nextId"] == "REQ-AUTH-004"
+
+
+# @ac AC-SPECS-013.5
+def test_the_history_line_holds_the_close_time(ready):
+    index = ready / "src/auth/docs/requirements.md"
+    index.write_text("# Requirements: user-auth\n\n## History\n\n- 2026-01-02 `older-change`: ADDED REQ-AUTH-002\n")
+    code, data = run_json("close", "--change", REF, "--base", "main")
+    assert code == 0, data
+    history = index.read_text().split("## History", 1)[1].strip().splitlines()
+    assert history[0] == "- 2026-01-02 `older-change`: ADDED REQ-AUTH-002"
+    assert re.fullmatch(rf"- {date.today().isoformat()} \d\d:\d\d:\d\d `{REF}`: .*", history[1])
 
 
 # @ac AC-SPECS-013.3
