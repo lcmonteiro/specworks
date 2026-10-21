@@ -200,13 +200,13 @@ def review_change(analysis: Analysis, base: str | None = None) -> ReviewReport:
 #
 # Findings are checkboxes (``- [ ] R<n> **<type>** ...``, ``- [x]`` once resolved);
 # lines indented under one belong to it (its Decision). A Decision saying
-# ``back to <phase>: <proposal>`` sends the finding to that phase; otherwise its
-# type decides. A phase that carried out the proposal adds ``done in <phase>: <what
-# changed>``: the finding stays open until review confirms it, but the work left is
-# in the phases after that one. Untagged changed files are accounted for under their
-# own heading.
+# ``back to <step>: <proposal>`` sends the finding to that step (specify, design,
+# implement, test or code); otherwise its type decides. A step that carried out the
+# proposal adds ``done in <step>: <what changed>``: the finding stays open until
+# review confirms it, but the work left is in the steps after that one. Untagged
+# changed files are accounted for under their own heading.
 
-# The phase that resolves each finding type, in workflow order (specify comes first).
+# The step that resolves each finding type, in workflow order (specify comes first).
 TYPE_PHASE = {
     "spec-gap": "specify",
     "design-gap": "design",
