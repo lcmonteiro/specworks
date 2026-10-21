@@ -546,6 +546,16 @@ def test_trace_links_tasks_tests_and_code(change, project):
     assert "Acceptance criteria without a test (`@ac`): AC-AUTH-003.2, AC-AUTH-002.1" in text
 
 
+# @ac AC-SPECS-012.5
+def test_a_pipe_in_a_title_stays_in_its_cell(change, project):
+    replace_delta(change, "REQ-AUTH-003 Password reset", "REQ-AUTH-003 Password | reset")
+    replace_delta(change, "AC-AUTH-003.1 Request reset", "AC-AUTH-003.1 Request | reset")
+    run_json("trace", "--change", "add-password-reset", "--write")
+    rows = [line for line in (change / "traceability.md").read_text().splitlines() if line.startswith("|") and "AC-AUTH-003.1" in line]
+    assert rows == [r"| user-auth | REQ-AUTH-003 Password \| reset (ADDED) | AC-AUTH-003.1 Request \| reset | 1.1, 1.2 | — | — |"]
+    assert len(re.split(r"(?<!\\)\|", rows[0])) == 8
+
+
 # @ac AC-SPECS-011.6
 def test_files_too_big_or_not_utf8_are_not_scanned(change, project):
     (project / "tests").mkdir()

@@ -107,6 +107,16 @@ def test_the_history_line_holds_the_close_time(ready):
     assert re.fullmatch(rf"- {date.today().isoformat()} \d\d:\d\d:\d\d `{REF}`: .*", history[1])
 
 
+# @ac AC-SPECS-013.6
+def test_a_pipe_in_a_title_stays_in_its_index_cell(ready):
+    delta = ready / CHANGE_DIR / "specs/user-auth/spec.md"
+    delta.write_text(delta.read_text().replace("REQ-AUTH-003 Password reset", "REQ-AUTH-003 Read | write"))
+    code, data = run_json("close", "--change", REF, "--base", "main")
+    assert code == 0, data
+    assert r"| REQ-AUTH-003 | Read \| write | AC-AUTH-003.1, AC-AUTH-003.2 |" in (ready / "src/auth/docs/requirements.md").read_text()
+    assert "### Requirement: REQ-AUTH-003 Read | write" in (ready / "src/auth/docs/spec.md").read_text()
+
+
 # @ac AC-SPECS-013.3
 def test_close_refuses_to_merge_into_a_broken_living_spec(ready):
     living = ready / "src/auth/docs/spec.md"
