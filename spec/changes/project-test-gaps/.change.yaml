@@ -1,5 +1,5 @@
 name: project-test-gaps
 created: '2026-10-21T08:33:37'
-phase: test
+phase: review
 specified:
   REQ-PROJ-012: c1be5c790991
