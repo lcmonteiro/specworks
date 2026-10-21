@@ -193,7 +193,7 @@ def set_diagrams(change, block):
     cfg.write_text(text[: text.index("\ndiagrams:\n") + 1] + block)
 
 
-# @ac AC-INTEG-001.2
+# @ac AC-INTEG-001.2, AC-PROJ-003.5
 @pytest.mark.parametrize(
     "theme, dark, expected",
     [
@@ -226,7 +226,7 @@ def test_unknown_theme_name_lists_the_names(change):
     assert code == 1 and "unknown theme 'rainbow'" in data["error"] and "colorblind-clear" in data["error"]
 
 
-# @ac AC-CLI-008.2
+# @ac AC-CLI-008.2, AC-PROJ-003.5
 def test_list_themes_shows_the_one_in_use(change):
     set_diagrams(change, "diagrams:\n  theme: origami\n  dark_theme: none\n")
     code, data = run_json("diagrams", "--themes")

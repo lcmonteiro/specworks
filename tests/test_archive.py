@@ -96,3 +96,13 @@ def test_unreadable_or_misnamed_archive_folders_are_left_out(project):
     (project / "spec/changes/archive/notes/.change.yaml").write_text("name: notes\n")
     code, data = run_json("list", "--archived")
     assert code == 0 and [c["name"] for c in data["changes"]] == [REF]
+
+
+# @ac AC-PROJ-012.2
+def test_archived_changes_are_listed_oldest_first(project):
+    abandon()  # archived today
+    older = project / "spec/changes/archive/2026-01-02-zz-older"  # its name sorts after REF, its date before
+    older.mkdir()
+    (older / ".change.yaml").write_text("name: zz-older\ncreated: '2026-01-01T10:00:00'\nphase: done\n")
+    code, data = run_json("list", "--archived")
+    assert code == 0 and [c["name"] for c in data["changes"]] == ["zz-older", REF]
