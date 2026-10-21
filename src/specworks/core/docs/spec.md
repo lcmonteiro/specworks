@@ -337,6 +337,12 @@ cannot be read.
 - **WHEN** archived changes are listed
 - **THEN** only the archived change is listed, by its name
 
+#### Scenario: AC-PROJ-012.2 Oldest first
+
+- **GIVEN** changes archived on two different days
+- **WHEN** archived changes are listed
+- **THEN** the one archived on the earlier day comes first
+
 ### Requirement: REQ-PROJ-013 Running the project's commands
 
 The system SHALL run a configured command (`commands.<key>`, merged from the
