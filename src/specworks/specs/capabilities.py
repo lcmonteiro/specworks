@@ -72,6 +72,7 @@ def capability_ref(module: Module, name: str) -> CapabilityRef:
     return CapabilityRef(module=module, name=name, capability=module.config.capabilities.get(name))
 
 
+# @req REQ-SPECS-010
 def resolve_ref(ws: Workspace, ref: str) -> CapabilityRef:
     """``billing:invoices`` is exact; a bare name prefers the current module, then a unique match.
 
@@ -89,6 +90,7 @@ def resolve_ref(ws: Workspace, ref: str) -> CapabilityRef:
     return capability_ref(owners[0] if owners else ws.current, name)
 
 
+# @req REQ-SPECS-008
 def resolve_delta(ws: Workspace, change: Change, spec_file: Path) -> CapabilityRef:
     """Capability a delta spec file belongs to, from its path under ``specs/``."""
     parts = spec_file.relative_to(change.path / SPECS_DIR).parts
@@ -153,6 +155,7 @@ def modified_since(cap: CapabilityRef, since: str) -> dict[str, str]:
     return found
 
 
+# @req REQ-SPECS-006
 def retired_ids(cap: CapabilityRef) -> set[str]:
     """IDs that were used by ``cap`` and removed: never to be added again."""
     living = read_spec(cap.living_spec())
@@ -173,6 +176,7 @@ def used_numbers(ws: Workspace, cap: CapabilityRef) -> set[int]:
     return numbers
 
 
+# @req REQ-SPECS-010
 def next_id(ws: Workspace, cap: CapabilityRef) -> str:
     return f"REQ-{cap.prefix}-{max(used_numbers(ws, cap), default=0) + 1:03d}"
 

@@ -149,6 +149,7 @@ def h2_titles(text: str) -> list[str]:
     return [m.group("title") for line, example in zip(lines, fenced(lines), strict=True) if not example and (m := H2_RE.match(line))]
 
 
+# @req REQ-SPECS-004
 def parse_spec(text: str) -> SpecDoc:
     doc = SpecDoc()
     section: str | None = None
@@ -223,6 +224,7 @@ def requirement_number(req_id: str) -> int:
     return int(match.group("num")) if match else 0
 
 
+# @req REQ-SPECS-004
 def id_prefix(any_id: str) -> str | None:
     """``REQ-BILLING-INVOICES-001`` / ``AC-BILLING-INVOICES-001.2`` -> ``BILLING-INVOICES``; None if not an ID.
 
@@ -244,6 +246,7 @@ def find_ids(text: str) -> list[str]:
     return [m.group(0) for m in ANY_ID_RE.finditer(text)]
 
 
+# @req REQ-SPECS-004
 def living_problems(doc: SpecDoc) -> list[tuple[int, str]]:
     """(line, message) for each way a living spec is not one ``close`` can merge into or index."""
     problems = list(doc.problems)

@@ -1,6 +1,6 @@
 name: baseline-specs
 created: '2026-10-20T23:22:57'
-phase: test
+phase: code
 specified:
   REQ-SPECS-004: 93899cbefe28
   REQ-SPECS-005: 6982814becac

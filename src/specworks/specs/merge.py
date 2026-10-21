@@ -96,6 +96,7 @@ def new_spec_text(cap: CapabilityRef, purpose: str) -> str:
     return f"# {cap.ref}\n\n## Purpose\n\n{purpose}\n\n## Requirements\n"
 
 
+# @req REQ-SPECS-013
 def apply_delta(living_text: str, delta: Delta) -> tuple[str, list[str], list[str], list[str]]:
     """New living spec text plus the IDs added, modified and removed."""
     lines = living_text.rstrip("\n").split("\n")
@@ -143,6 +144,7 @@ def apply_delta(living_text: str, delta: Delta) -> tuple[str, list[str], list[st
     return text, added, modified, removed
 
 
+# @req REQ-SPECS-013
 def requirements_index(cap: CapabilityRef, spec_text: str, history: list[str]) -> str:
     doc = parse_spec(spec_text)
     out = [
@@ -160,6 +162,7 @@ def requirements_index(cap: CapabilityRef, spec_text: str, history: list[str]) -
     return "\n".join(out) + "\n"
 
 
+# @req REQ-SPECS-013
 def plan_merge(ws: Workspace, change: Change, specs: ChangeSpecs, change_ref: str, today: str | None = None) -> list[CapabilityMerge]:
     """Compute every living spec and requirements index this change produces, without writing."""
     today = today or date.today().isoformat()
@@ -224,6 +227,7 @@ def archive_change(change: Change, archive_root: Path, today: str | None = None,
     return target
 
 
+# @req REQ-SPECS-013
 def close_change(merges: list[CapabilityMerge], change: Change, archive_root: Path, today: str | None = None) -> Path:
     """Write the merged living docs and archive the change, all or nothing.
 
