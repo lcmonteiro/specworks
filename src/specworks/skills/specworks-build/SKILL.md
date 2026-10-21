@@ -99,9 +99,12 @@ fails and cannot be fixed within that phase, when the specs turn out wrong
 
    - **No open findings**: the build is done (go to step 5).
    - **A spec finding** (`handOver` is `/specworks-specify`): stop the build.
-     Explain which requirement is missing or wrong, and offer
-     `1. /specworks-specify <ref> (recommended): fix the specs; then
-     /specworks-build <ref> continues` and `2. Stop here`. Specify marks each finding it carried out `done in specify:
+     Explain which requirement is missing or wrong, and offer:
+     ```
+     1. /specworks-specify <ref> (recommended): fix the specs; /specworks-build <ref> then continues
+     2. Stop here
+     ```
+     Specify marks each finding it carried out `done in specify:
      ...`, so `cycle` then starts at design and the build resumes there.
    - **Otherwise** show the open findings and where each one is resolved,
      then ask:

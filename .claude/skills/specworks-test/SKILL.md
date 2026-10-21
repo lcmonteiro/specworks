@@ -50,9 +50,9 @@ next step the same way: the next skill (recommended), any alternative, and
   never copy them into an artifact.
 - The change is the one the user named (`name`, or `module:name` for another
   module); otherwise the only one in `changes` (`--all` for every module).
-  If several could fit, offer them as numbered options (the most
-  recent recommended); if none fits, ask for its name. Announce `Using change: <ref>` and use
-  that `<ref>` in every command.
+  If several could fit, offer them as numbered options (the most recent
+  recommended); if none fits, ask for its name. Announce
+  `Using change: <ref>` and use that `<ref>` in every command.
 
 ---
 

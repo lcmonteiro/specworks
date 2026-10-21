@@ -61,7 +61,8 @@ with only a `refinement.md` (step 4).
      ```
      and offer the ones with 0 requirements (no living spec yet) as
      numbered options, in the order of the list, the first one
-     recommended; go on with the user's pick. When every capability has requirements, say so and stop.
+     recommended; go on with the user's pick. When every capability has
+     requirements, say so and stop.
    - A capability that is not registered: stop and offer
      `/specworks-adopt` (or `specworks capability add`) first.
    - A change `baseline-<capability>` already in `changes`: continue it

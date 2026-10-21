@@ -55,9 +55,9 @@ next step the same way: the next skill (recommended), any alternative, and
   never copy them into an artifact.
 - The change is the one the user named (`name`, or `module:name` for another
   module); otherwise the only one in `changes` (`--all` for every module).
-  If several could fit, offer them as numbered options (the most
-  recent recommended); if none fits, ask for its name. Announce `Using change: <ref>` and use
-  that `<ref>` in every command.
+  If several could fit, offer them as numbered options (the most recent
+  recommended); if none fits, ask for its name. Announce
+  `Using change: <ref>` and use that `<ref>` in every command.
 
 ---
 
@@ -129,9 +129,12 @@ next step the same way: the next skill (recommended), any alternative, and
 
    - **No open findings**: the build is done (go to step 5).
    - **A spec finding** (`handOver` is `/specworks-specify`): stop the build.
-     Explain which requirement is missing or wrong, and offer
-     `1. /specworks-specify <ref> (recommended): fix the specs; then
-     /specworks-build <ref> continues` and `2. Stop here`. Specify marks each finding it carried out `done in specify:
+     Explain which requirement is missing or wrong, and offer:
+     ```
+     1. /specworks-specify <ref> (recommended): fix the specs; /specworks-build <ref> then continues
+     2. Stop here
+     ```
+     Specify marks each finding it carried out `done in specify:
      ...`, so `cycle` then starts at design and the build resumes there.
    - **Otherwise** show the open findings and where each one is resolved,
      then ask:
