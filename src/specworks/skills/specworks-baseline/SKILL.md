@@ -145,7 +145,7 @@ with only a `refinement.md` (step 4).
    Write its `refinement.md` at `outputPath` from the `template`: Problem
    and Context from the evidence (observed, with file and test), saying that
    the baseline of `<capability>` found it; Options and Recommendation
-   "Pending". Write nothing else in it: it waits in phase refine until the
+   "Pending". Write nothing else in that change: it waits in phase refine until the
    bugs are fixed (step 9). In this baseline's proposal, name each bug's
    change ref under Out of Scope.
 
