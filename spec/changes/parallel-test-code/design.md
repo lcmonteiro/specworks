@@ -86,7 +86,7 @@ the markers.
 
 ## Interfaces
 
-Proposed: waiting for the user's agreement
+Agreed with the user
 
 - `src/specworks/core/changes.py`: `PHASES = ("refine", "specify", "design",
   "implement", "review", "validate", "close", "done")` (**BREAKING**: `test`
