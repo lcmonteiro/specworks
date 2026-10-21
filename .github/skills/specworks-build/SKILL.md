@@ -13,10 +13,10 @@ It covers phases three to six of `refine → specify → design → test → cod
 
 **Phase skills**: `specworks-design`, `specworks-test`, `specworks-code` and
 `specworks-review`, installed next to this skill (`../specworks-<phase>/SKILL.md`).
-Read each one when its phase starts and follow its steps, checks and
-guardrails, including every point where it asks the user (agreeing the
-API, deciding review findings). Skip only its final "Report and stop": give
-a one-line result instead and go on to the next phase.
+Each phase runs in its own subagent (below), which follows that skill's
+steps, checks and guardrails. You do not do a phase's work yourself: you
+start the subagents, ask the user what they return, write the answers to
+disk, and decide where each cycle starts.
 
 **Boundary**: the build stops, and does not work around it, when a phase gate
 fails and cannot be fixed within that phase, when the specs turn out wrong
@@ -58,6 +58,55 @@ next step the same way: the next skill (recommended), any alternative, and
   recommended); if none fits, ask for its name. Announce
   `Using change: <ref>` and use that `<ref>` in every command.
 
+**Phases in subagents**: each phase runs in a fresh subagent that depends
+only on the project and the change's artifacts on disk, never on this
+conversation. You are the coordinator: you start the subagents, ask the user
+their questions, and write the answers to disk.
+
+- **The prompt is fixed**: start each phase with your subagent tool (Claude
+  Code: `Agent`) and this prompt, with only `<phase>`, `<ref>` and the skills
+  folder (the one holding this skill's folder, e.g. `.claude/skills`) filled
+  in. Never add a summary of the conversation, an answer or a decision: what
+  the phase needs from the user is on disk.
+  ```
+  Run the <phase> phase of the change <ref>: follow
+  <skills folder>/specworks-<phase>/SKILL.md, reading only the project and
+  the change's artifacts on disk. You cannot ask the user. When the answer
+  to a question the skill would ask is already on disk, use it and go on; do
+  not ask it again. When the skill would stop for the user, first write what
+  you propose into your own artifact, then stop and return the question.
+  Skip the skill's "Report and stop". End your last message with exactly
+  one line:
+  Result: done <one-line result; the gate passed>
+  Result: question <the closing question as the skill asks it, options included>
+  Result: blocked <what failed, and the phase or skill it goes back to>
+  ```
+- **On `Result: done`**: report its line and start the next phase.
+- **On `Result: question`**: ask the user the question as it is. Write the
+  answer where the next run of the phase reads it, then start a fresh
+  subagent for the same phase with the same prompt:
+
+  | Question | Where the answer goes |
+  |---|---|
+  | design: the API | design.md `## Interfaces`: the subagent writes it with a line `Proposed: waiting for the user's agreement`; replace that line with `Agreed with the user` (and the user's changes) |
+  | test, code: the test command | `spec.yml` `commands:` (`test: <command>`) |
+  | code: an unclear task, a test against the spec, new work | the Decision in design.md, or a new task in tasks.md |
+  | review: each finding | the finding's `**Decision**:` line in review.md |
+
+  Write only the answer, in the place the question is about. Never do the
+  phase's own work.
+- **On `Result: blocked`**: stop and report where and why, as for a gate
+  that cannot be fixed.
+- **No subagent tool**: follow the phase skill yourself in this
+  conversation, and still write every answer to disk as above.
+
+**In a build**, add this fixed line to every phase's prompt:
+```
+This phase runs inside /specworks-build: also follow step 2 (open review
+findings from an earlier cycle) and, in review, step 3 (propose, do not fix)
+of <skills folder>/specworks-build/SKILL.md.
+```
+
 ---
 
 ## Steps
@@ -82,10 +131,12 @@ next step the same way: the next skill (recommended), any alternative, and
 
 2. **Run the cycle's phases in order**
 
-   For each phase of the cycle, announce `Cycle <n> · <phase>`, then follow
-   that phase's skill (it moves the change with `specworks start`, does the
-   work, and runs its gate). After its gate passes, report one line (what was
-   decided or changed, gate passed) and continue with the next phase.
+   For each phase of the cycle, announce `Cycle <n> · <phase>` and start its
+   subagent (above). The phase skill moves the change with `specworks start`,
+   does the work and runs its gate. On `Result: done`, report its line and
+   start the next phase; on `Result: question`, ask, write the answer to disk
+   and start a fresh subagent for the same phase; on `Result: blocked`, stop
+   and report where and why.
 
    From the second cycle on, each phase works on the **open findings in
    review.md** that belong to it (`specworks cycle --change "<ref>" --json`
@@ -95,27 +146,35 @@ next step the same way: the next skill (recommended), any alternative, and
    that phase's part done already (e.g. the spec change from specify): carry
    out what it means for this phase. Do not redo untouched work.
 
-   If a gate fails, fix it inside the phase as its skill says. If it cannot
-   be fixed there (the specs are wrong, the user must decide something
-   outside the build), stop and report where and why.
+   If a gate fails, the phase fixes it as its skill says. If it cannot be
+   fixed there (the specs are wrong, the user must decide something outside
+   the build), the subagent returns `Result: blocked`: stop and report where
+   and why.
 
 3. **Review: propose, do not fix**
 
-   Run `specworks-review` as written, with one difference: in a build, every
-   finding that needs work is recorded **open** with its agreed proposal and
-   the phase that will carry it out, instead of being fixed inside review:
+   The review subagent runs `specworks-review` as written, with one
+   difference: in a build, every finding that needs work is recorded
+   **open** with the phase that will carry it out, instead of being fixed
+   inside review. It decides nothing with the user itself:
 
-   ```markdown
-   - [ ] R2 **design-gap** `reset()` returns None; callers need the token (REQ-AUTH-003)
-     - **Decision**: back to design: return `ResetToken` from `ResetService.request_reset`
-   ```
+   - **First run**: it writes review.md with every finding open and the
+     change it proposes, then returns them all in one `Result: question`
+     (small, obvious ones grouped into one yes/no question, as review does):
+     ```markdown
+     - [ ] R2 **design-gap** `reset()` returns None; callers need the token (REQ-AUTH-003)
+       - **Proposal**: back to design: return `ResetToken` from `ResetService.request_reset`
+     ```
+   - **You** ask the user about each finding, one at a time, and turn each
+     answer into the finding's `**Decision**:` line in review.md: the
+     proposal as agreed (`back to <phase>: ...`), the user's other choice,
+     or `accepted: <reason>` with the box ticked. Spec findings
+     (`spec-gap`) get `back to specify: ...`.
+   - **Then** a fresh review subagent reads the decided review.md, ticks
+     the findings from an earlier cycle that are now done (`- [x]`, with
+     what was done), finishes the file and gates it.
 
-   Findings from an earlier cycle that are now done are ticked (`- [x]`)
-   with what was done. Findings the user accepts as they are get
-   `accepted: <reason>` and are ticked. Spec findings (`spec-gap`) are
-   recorded open with `back to specify: ...`.
-
-   Gate it with `specworks gate review --change "<ref>" --allow-open`: open
+   The gate is `specworks gate review --change "<ref>" --allow-open`: open
    findings do not fail it here (step 4 turns them into the next cycle), but
    every other check (tests pass, untagged files accounted for, tags, a known
    type or `back to <phase>:` on every open finding) must.
@@ -147,7 +206,7 @@ next step the same way: the next skill (recommended), any alternative, and
      ```
 
      - **Yes**: go back to step 2 with the next cycle number, starting at
-       `startAt`; that phase's skill moves the change back with
+       `startAt`; that phase's subagent moves the change back with
        `specworks start <startAt>`.
      - **No**: stop. The findings stay open in review.md; the user can run a
        single phase skill, or `/specworks-build <ref>` later to resume.
@@ -178,12 +237,16 @@ next step the same way: the next skill (recommended), any alternative, and
 
 ## Guardrails
 
-- Every phase follows its own skill: same steps, same gates, same questions to
-  the user. The build never skips a gate or a decision to keep going.
+- Every phase follows its own skill, in its own subagent: same steps, same
+  gates, same questions to the user, asked by you. The build never skips a
+  gate or a decision to keep going.
+- A subagent's prompt is the fixed text above with the phase, the ref and
+  the skills folder filled in: nothing from this conversation. What it needs
+  from the user, it reads from disk.
+- You write only the user's answers, in the place the question is about;
+  never a phase's own work.
 - A new cycle only starts after the user says yes, and only from the phase the
   open findings need.
 - Spec problems are not fixed inside the build: hand over to
   `/specworks-specify`.
 - Do not weaken tests, skip gates or mark findings resolved to finish a cycle.
-- Re-read specs, design.md, tasks and review.md from disk at the start of
-  every phase.

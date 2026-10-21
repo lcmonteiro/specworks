@@ -13,10 +13,11 @@ ends. It adds no check of its own and skips none.
 It covers the last two phases of `refine → specify → design → test → code → review → validate → close`.
 
 **Phase skills**: `specworks-validate` and `specworks-close`, installed next
-to this skill (`../specworks-<phase>/SKILL.md`). Read each one when its phase
-starts and follow its steps, checks and guardrails, including every point
-where it asks the user (the merge plan in close). Skip only validate's final
-"Report the verdict and stop": show the verdict and go on to close (step 3).
+to this skill (`../specworks-<phase>/SKILL.md`). Each phase runs in its own
+subagent (below), which follows that skill's steps, checks and guardrails,
+including every point where it asks the user (the merge plan in close): the
+subagent returns the question and you ask it. You do not do a phase's work
+yourself.
 
 **Boundary**: validate changes nothing; close edits only the living docs
 and, for new capabilities, the config. A failure is never fixed here: it
@@ -58,6 +59,58 @@ next step the same way: the next skill (recommended), any alternative, and
   recommended); if none fits, ask for its name. Announce
   `Using change: <ref>` and use that `<ref>` in every command.
 
+**Phases in subagents**: each phase runs in a fresh subagent that depends
+only on the project and the change's artifacts on disk, never on this
+conversation. You are the coordinator: you start the subagents, ask the user
+their questions, and write the answers to disk.
+
+- **The prompt is fixed**: start each phase with your subagent tool (Claude
+  Code: `Agent`) and this prompt, with only `<phase>`, `<ref>` and the skills
+  folder (the one holding this skill's folder, e.g. `.claude/skills`) filled
+  in. Never add a summary of the conversation, an answer or a decision: what
+  the phase needs from the user is on disk.
+  ```
+  Run the <phase> phase of the change <ref>: follow
+  <skills folder>/specworks-<phase>/SKILL.md, reading only the project and
+  the change's artifacts on disk. You cannot ask the user. When the answer
+  to a question the skill would ask is already on disk, use it and go on; do
+  not ask it again. When the skill would stop for the user, first write what
+  you propose into your own artifact, then stop and return the question.
+  Skip the skill's "Report and stop". End your last message with exactly
+  one line:
+  Result: done <one-line result; the gate passed>
+  Result: question <the closing question as the skill asks it, options included>
+  Result: blocked <what failed, and the phase or skill it goes back to>
+  ```
+- **On `Result: done`**: report its line and start the next phase.
+- **On `Result: question`**: ask the user the question as it is. Write the
+  answer where the next run of the phase reads it, then start a fresh
+  subagent for the same phase with the same prompt:
+
+  | Question | Where the answer goes |
+  |---|---|
+  | design: the API | design.md `## Interfaces`: the subagent writes it with a line `Proposed: waiting for the user's agreement`; replace that line with `Agreed with the user` (and the user's changes) |
+  | test, code: the test command | `spec.yml` `commands:` (`test: <command>`) |
+  | code: an unclear task, a test against the spec, new work | the Decision in design.md, or a new task in tasks.md |
+  | review: each finding | the finding's `**Decision**:` line in review.md |
+
+  Write only the answer, in the place the question is about. Never do the
+  phase's own work.
+- **On `Result: blocked`**: stop and report where and why, as for a gate
+  that cannot be fixed.
+- **No subagent tool**: follow the phase skill yourself in this
+  conversation, and still write every answer to disk as above.
+
+**In a done run**, the phases add a fixed line to the prompt:
+- validate: `End with the report of step 4 of the skill before the Result
+  line: PASS is Result: done, FAIL is Result: blocked.`
+- close, first run: `This phase runs inside /specworks-done: stop before
+  step 4 of the skill. Return the capabilities to register (step 2) as the
+  question, or, when none is left, the merge plan (step 3).`
+- close, after the user's go-ahead on the merge plan, a second subagent with
+  this line instead: `This phase runs inside /specworks-done: the merge plan
+  is approved; continue from step 4 of the skill.`
+
 ---
 
 ## Steps
@@ -71,8 +124,11 @@ next step the same way: the next skill (recommended), any alternative, and
 
 2. **Validate**
 
-   Announce `Done · validate`, then follow `specworks-validate` (it starts
-   the phase, runs `specworks validate` and reads what the CLI cannot check).
+   Announce `Done · validate` and start its subagent (above), which will
+   follow `specworks-validate`: it starts the phase, runs
+   `specworks validate`, reads what the CLI cannot check, and returns
+   validate's report with `Result: done` (PASS) or `Result: blocked` (FAIL).
+   Validate changes nothing and asks nothing.
 
 3. **Show the verdict and decide**
 
@@ -93,10 +149,21 @@ next step the same way: the next skill (recommended), any alternative, and
 
 4. **Close**
 
-   Announce `Done · close`, then follow `specworks-close` (it starts the
-   phase, which runs the validate gate again on the same code, registers new
-   capabilities, shows the merge plan and waits for the user's go-ahead,
-   updates the living design, then merges and archives).
+   Announce `Done · close` and start the first close subagent (above),
+   which will follow `specworks-close`: it starts the phase (which runs the
+   validate gate again on the same code) and returns a question:
+   - **Register a capability** ("Register `<name>` in `<module>` at
+     `<code path>`? (yes/no)"): ask the user, then write the answer to the
+     project yourself (the user's module and path on no), and start the
+     first close subagent again:
+     ```bash
+     specworks capability add <name> --path <code path> [--module <module>] [--prefix <P>] [--description "<one line>"]
+     ```
+   - **The merge plan** ("Merge and archive? (yes/no)"): ask the user. On
+     yes, start the second close subagent (the merge plan is approved,
+     continue from step 4): it updates the living design, merges and
+     archives. On no, stop: nothing is written and the change stays in
+     close.
 
 5. **Report and stop**
 
@@ -124,6 +191,9 @@ next step the same way: the next skill (recommended), any alternative, and
 - Never fix a failure here: no code, test or spec edits. Send it to the
   phase that owns it.
 - The user's go-ahead on the merge plan (close step 3) is still required;
-  running both phases in one go does not skip it.
+  running both phases in one go does not skip it. Only that go-ahead starts
+  the second close subagent.
+- A subagent's prompt is the fixed text above with the phase, the ref and
+  the skills folder filled in: nothing from this conversation.
 - If the user stops after validate, the change stays in `validate`;
   `/specworks-close <ref>` or `/specworks-done <ref>` finishes it later.
