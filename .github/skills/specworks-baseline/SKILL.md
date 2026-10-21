@@ -20,9 +20,22 @@ for each capability:
     /specworks-done baseline-<capability>     # validate, then close
 ```
 
+When every capability has its living spec, each suspected bug the baselines
+found (one change `fix-<name>` per bug, waiting in phase refine) is fixed
+through the normal flow:
+
+```
+for each suspected bug change:
+    /specworks-refine <ref>
+    /specworks-specify <ref>
+    /specworks-build <ref>
+    /specworks-done <ref>
+```
+
 **Boundary**: a baseline changes no behaviour. It writes a change folder and
 adds comment tags (and tests only for criteria no test covers); it never
-fixes the code, even a bug it finds.
+fixes the code, even a bug it finds. A confirmed bug gets its own change,
+with only a `refinement.md` (step 4).
 
 **Running the CLI**: use `specworks <cmd>`. If it is not on PATH, use
 `uv run specworks <cmd>` (inside the specworks repo) or
@@ -97,7 +110,9 @@ does the same for that command.
 
    Record only observable behaviour (inputs, outputs, errors, side effects),
    not how the code does it. Keep a list of what looks like a bug or is
-   unclear: it is not specified here (step 4).
+   unclear: it is not specified here (step 4). For each one, note the
+   evidence: where it shows (file, function, test), what happens, and what
+   was expected instead.
 
 4. **Write proposal, delta spec and tasks**
 
@@ -126,6 +141,19 @@ does the same for that command.
    <file>` for one that gets a new test in step 6), and the
    list of suspected bugs. **Stop and wait** for the user to confirm: a
    baseline that records a bug as a requirement makes the bug the spec.
+
+   Then give each bug the user confirmed its own change, so it outlives this
+   baseline (a bug the user rejects gets none):
+   ```bash
+   specworks new "fix-<short-name>" --json      # --module <m> for a bug in another module
+   specworks instructions refinement --change "<fix-ref>" --json
+   ```
+   Write its `refinement.md` at `outputPath` from the `template`: Problem
+   and Context from the evidence (observed, with file and test), saying that
+   the baseline of `<capability>` found it; Options and Recommendation
+   "Pending". Write nothing else in it: it waits in phase refine until the
+   bugs are fixed (step 9). In this baseline's proposal, name each bug's
+   change ref under Out of Scope.
 
 5. **Gate specify and record the API as unchanged**
 
@@ -174,11 +202,22 @@ does the same for that command.
 9. **Hand over to done**
 
    Show the summary: requirements and criteria recorded, tests tagged and
-   added, files tagged, the suspected bugs left out. End with:
+   added, files tagged, the bug changes created. End with:
    "The baseline of `<capability>` is reviewed. Run `/specworks-done
    baseline-<capability>` to validate it and write its living spec; then
-   `/specworks-baseline` for the next capability. The suspected bugs can
-   each start with `/specworks-refine`."
+   `/specworks-baseline` for the next capability."
+
+   When this was the last capability without a living spec (`specworks spec
+   list` shows no other with 0 requirements), also list the bug changes
+   still waiting, from every baseline:
+   ```bash
+   specworks list --all --json      # the fix-* changes in phase refine
+   ```
+   and add: "Once this baseline is closed, every capability has its living
+   spec. Then fix each suspected bug through the normal flow, one change at a
+   time: `/specworks-refine <ref>`, `/specworks-specify <ref>`,
+   `/specworks-build <ref>`, `/specworks-done <ref>`. One that turns out not
+   to be a bug is dropped with `specworks abandon <ref>`."
 
 ---
 
@@ -186,7 +225,9 @@ does the same for that command.
 
 - One capability per change, closed before the next one starts.
 - Never change behaviour: no refactors, no bug fixes, no renames. A bug is
-  reported (Out of Scope), not fixed.
+  reported (Out of Scope) and gets its own `fix-<name>` change, not fixed.
+- Outside its own change folder, a baseline writes only the confirmed bugs'
+  changes and their `refinement.md`.
 - The user confirms the requirements and criteria before anything is tagged.
 - Capability names, prefixes, IDs and delta paths come from the CLI
   (`spec show`, `instructions`), never invented.

@@ -17,8 +17,15 @@ capability:
 for each capability:
     /specworks-baseline <capability>
     /specworks-done baseline-<capability>     # validate, then close
+for each suspected bug change (fix-<name>, created by the baselines):
+    /specworks-refine <ref>
+    /specworks-specify <ref>
+    /specworks-build <ref>
+    /specworks-done <ref>
 ```
 
+A baseline fixes nothing: each bug the user confirms becomes a change of its
+own, waiting in phase refine until every capability has its living spec.
 Adopt itself never baselines: it ends by handing over to the first
 `/specworks-baseline`.
 
@@ -144,7 +151,10 @@ does the same for that command.
    `/specworks-done baseline-<first capability>`, and so on for the
    others (in the order of the table). A baseline records the behaviour the
    capability already has, so later changes can MODIFY its requirements
-   instead of only ADDING them."
+   instead of only ADDING them. Each suspected bug a baseline finds becomes
+   a `fix-<name>` change; once every capability is baselined, fix them one
+   by one with `/specworks-refine`, `/specworks-specify`, `/specworks-build`
+   and `/specworks-done`."
 
    **End here.** The baselines are `/specworks-baseline`, one capability
    per run.
