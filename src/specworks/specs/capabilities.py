@@ -72,6 +72,7 @@ def capability_ref(module: Module, name: str) -> CapabilityRef:
     return CapabilityRef(module=module, name=name, capability=module.config.capabilities.get(name))
 
 
+# @req REQ-SPECS-010
 def resolve_ref(ws: Workspace, ref: str) -> CapabilityRef:
     """``billing:invoices`` is exact; a bare name prefers the current module, then a unique match.
 
@@ -89,6 +90,7 @@ def resolve_ref(ws: Workspace, ref: str) -> CapabilityRef:
     return capability_ref(owners[0] if owners else ws.current, name)
 
 
+# @req REQ-SPECS-008
 def resolve_delta(ws: Workspace, change: Change, spec_file: Path) -> CapabilityRef:
     """Capability a delta spec file belongs to, from its path under ``specs/``."""
     parts = spec_file.relative_to(change.path / SPECS_DIR).parts
@@ -134,17 +136,26 @@ def history_ids(cap: CapabilityRef) -> set[str]:
     return {i for line in lines for i in find_ids(line) if cap.id_matches(i)}
 
 
-HISTORY_LINE_RE = re.compile(r"^- (?P<date>\d{4}-\d{2}-\d{2}) `(?P<change>[^`]+)`: (?P<summary>.*)$")
+HISTORY_LINE_RE = re.compile(r"^- (?P<date>\d{4}-\d{2}-\d{2})(?: (?P<time>\d{2}:\d{2}:\d{2}))? `(?P<change>[^`]+)`: (?P<summary>.*)$")
 
 
+# @req REQ-SPECS-006
 def modified_since(cap: CapabilityRef, since: str) -> dict[str, str]:
-    """IDs a close on or after the day of ``since`` (YYYY-MM-DD, a time may follow) MODIFIED, per requirements.md History -> ``<change> on <date>``."""
-    since = since[:10]
+    """IDs a close at or after ``since`` (YYYY-MM-DD, a time may follow) MODIFIED, per requirements.md History -> ``<change> on <date>``.
+
+    A History line and ``since`` are compared by date and time when both have a time, else by day.
+    """
+    since_day, _, since_time = since.replace(" ", "T").partition("T")
     living = cap.living_spec()
     found: dict[str, str] = {}
     for line in history_lines(living.parent / REQUIREMENTS_FILE if living else None):
         match = HISTORY_LINE_RE.match(line)
-        if not match or match.group("date") < since:
+        if not match:
+            continue
+        if match.group("time") and since_time:
+            if (match.group("date"), match.group("time")) < (since_day, since_time[:8]):
+                continue
+        elif match.group("date") < since_day:
             continue
         for part in match.group("summary").split(";"):
             kind, _, ids = part.strip().partition(" ")
@@ -153,6 +164,7 @@ def modified_since(cap: CapabilityRef, since: str) -> dict[str, str]:
     return found
 
 
+# @req REQ-SPECS-006
 def retired_ids(cap: CapabilityRef) -> set[str]:
     """IDs that were used by ``cap`` and removed: never to be added again."""
     living = read_spec(cap.living_spec())
@@ -173,6 +185,7 @@ def used_numbers(ws: Workspace, cap: CapabilityRef) -> set[int]:
     return numbers
 
 
+# @req REQ-SPECS-010
 def next_id(ws: Workspace, cap: CapabilityRef) -> str:
     return f"REQ-{cap.prefix}-{max(used_numbers(ws, cap), default=0) + 1:03d}"
 

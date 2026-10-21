@@ -43,7 +43,7 @@ from pathlib import Path
 from ..core.changes import Change
 from ..core.workspace import Module, Workspace
 from .check import ChangeSpecs, Issue, check_change, other_deltas
-from .specfile import id_prefix
+from .specfile import id_prefix, table_cell
 
 TAG_ID = r"(?:REQ|AC)-[A-Z0-9][A-Z0-9.-]*[A-Z0-9]"
 TAG_RE = re.compile(rf"@(?P<kind>req|ac)\s+(?P<ids>{TAG_ID}(?:\s*,\s*{TAG_ID})*)")
@@ -89,6 +89,7 @@ class Row:
     code: list[str] = field(default_factory=list)
 
 
+# @req REQ-SPECS-011
 def glob_match(rel: str, pattern: str) -> bool:
     """``rel`` (a posix path) matches ``pattern``: ``*``/``?`` within one folder, ``**`` across folders."""
     regex = re.escape(pattern).replace(r"\*\*/", "(?:.*/)?").replace(r"\*\*", ".*").replace(r"\*", "[^/]*").replace(r"\?", "[^/]")
@@ -102,6 +103,7 @@ def is_test_file(rel: str, test_globs: list[str]) -> bool:
     return any(p in TEST_DIRS for p in parts[:-1]) or bool(TEST_NAME_RE.search(parts[-1]))
 
 
+# @req REQ-SPECS-011
 def scan_rule(module: Module, path: Path) -> tuple[bool, bool]:
     """(scanned, is_test) for a file of ``module``: its tests (by test_globs, or by name outside docs) are always
     scanned; source_globs, when set, limit the other files; otherwise everything but documentation is scanned."""
@@ -135,7 +137,7 @@ def _tag_lines(text: str) -> list[tuple[int, str]]:
     return lines
 
 
-# @req REQ-SPECS-003
+# @req REQ-SPECS-003, REQ-SPECS-011
 def scan_tags(ws: Workspace) -> list[Tag]:
     """Every @req / @ac tag in the workspace, skipping hidden, vendored and workflow folders."""
     skip_roots = {(m.root / m.config.dir).resolve() for m in ws.modules()}
@@ -168,6 +170,7 @@ def scan_tags(ws: Workspace) -> list[Tag]:
     return tags
 
 
+# @req REQ-SPECS-012
 def build_matrix(specs: ChangeSpecs, tags: list[Tag]) -> list[Row]:
     tasks_by_id: dict[str, list[str]] = {}
     for task in specs.tasks:
@@ -228,6 +231,7 @@ GAP_LABELS = {
 }
 
 
+# @req REQ-SPECS-012
 def gaps(rows: list[Row]) -> dict[str, list[str]]:
     active = [r for r in rows if r.section != "REMOVED"]
     return {
@@ -238,6 +242,7 @@ def gaps(rows: list[Row]) -> dict[str, list[str]]:
     }
 
 
+# @req REQ-SPECS-012
 def unknown_tags(specs: ChangeSpecs, tags: list[Tag], others: set[str], prefixes: set[str]) -> list[Tag]:
     """Tags to an ID of this change's capabilities that no spec has (``others``: other active changes' IDs), or with a
     prefix no capability uses."""
@@ -256,6 +261,7 @@ def unknown_tags(specs: ChangeSpecs, tags: list[Tag], others: set[str], prefixes
     return found
 
 
+# @req REQ-SPECS-012
 def to_markdown(change_ref: str, rows: list[Row], found: dict[str, list[str]]) -> str:
     def cell(items: list[str]) -> str:
         return "<br>".join(f"`{i}`" for i in items) if items else "—"
@@ -271,15 +277,15 @@ def to_markdown(change_ref: str, rows: list[Row], found: dict[str, list[str]]) -
     for r in rows:
         if r.section == "REMOVED":
             continue
-        ac = f"{r.ac} {r.ac_title}".strip() if r.ac else "—"
+        ac = f"{r.ac} {table_cell(r.ac_title)}".strip() if r.ac else "—"
         out.append(
-            f"| {r.capability} | {r.req} {r.title} ({r.section}) | {ac} | {', '.join(r.tasks) or '—'} | {cell(r.tests)} | {cell(r.code)} |"
+            f"| {r.capability} | {r.req} {table_cell(r.title)} ({r.section}) | {ac} | {', '.join(r.tasks) or '—'} | {cell(r.tests)} | {cell(r.code)} |"
         )
     removed = [r for r in rows if r.section == "REMOVED"]
     if removed:
         out += ["", "## Removed", "", "| Capability | Requirement or criterion | Tasks | Still tagged in |", "|---|---|---|---|"]
         out += [
-            f"| {r.capability} | {f'{r.ac} {r.ac_title}' if r.ac else f'{r.req} {r.title}'} | {', '.join(r.tasks) or '—'} | {cell(r.tests + r.code)} |"
+            f"| {r.capability} | {f'{r.ac} {table_cell(r.ac_title)}' if r.ac else f'{r.req} {table_cell(r.title)}'} | {', '.join(r.tasks) or '—'} | {cell(r.tests + r.code)} |"
             for r in removed
         ]
     out += ["", "## Gaps", ""]

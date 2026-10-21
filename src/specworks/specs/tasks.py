@@ -35,6 +35,7 @@ class Task:
         return {"num": self.num, "text": self.text, "done": self.done, "line": self.line, "ids": self.ids}
 
 
+# @req REQ-SPECS-009
 def parse_tasks(text: str) -> tuple[list[Task], list[tuple[int, str]]]:
     tasks, problems = [], []
     lines = text.splitlines()
@@ -58,6 +59,7 @@ def read_tasks(change_path: Path) -> list[Task]:
     return parse_tasks(read_text(path))[0]
 
 
+# @req REQ-SPECS-009
 def set_done(change_path: Path, nums: list[str], done: bool) -> None:
     """Tick (or untick) tasks by number, editing only their checkbox."""
     path = change_path / TASKS_FILE

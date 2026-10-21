@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import shutil
 from dataclasses import dataclass, field
-from datetime import date
+from datetime import date, datetime
 from pathlib import Path
 
 from ..core.changes import Change
@@ -26,7 +26,7 @@ from ..core.files import read_text
 from ..core.workspace import Workspace
 from .capabilities import HISTORY_HEADING, REQUIREMENTS_FILE, CapabilityRef, history_lines
 from .check import ChangeSpecs, Delta
-from .specfile import LIVING_SECTION, Requirement, living_problems, parse_spec, section_kind
+from .specfile import LIVING_SECTION, Requirement, living_problems, parse_spec, section_kind, table_cell
 
 
 class MergeError(SpecworksError):
@@ -96,6 +96,7 @@ def new_spec_text(cap: CapabilityRef, purpose: str) -> str:
     return f"# {cap.ref}\n\n## Purpose\n\n{purpose}\n\n## Requirements\n"
 
 
+# @req REQ-SPECS-013
 def apply_delta(living_text: str, delta: Delta) -> tuple[str, list[str], list[str], list[str]]:
     """New living spec text plus the IDs added, modified and removed."""
     lines = living_text.rstrip("\n").split("\n")
@@ -143,6 +144,7 @@ def apply_delta(living_text: str, delta: Delta) -> tuple[str, list[str], list[st
     return text, added, modified, removed
 
 
+# @req REQ-SPECS-013
 def requirements_index(cap: CapabilityRef, spec_text: str, history: list[str]) -> str:
     doc = parse_spec(spec_text)
     out = [
@@ -155,14 +157,15 @@ def requirements_index(cap: CapabilityRef, spec_text: str, history: list[str]) -
     ]
     for req in doc.section(LIVING_SECTION):
         acs = ", ".join(s.id for s in req.scenarios if s.id) or "—"
-        out.append(f"| {req.id} | {req.title} | {acs} |")
+        out.append(f"| {req.id} | {table_cell(req.title)} | {acs} |")
     out += ["", HISTORY_HEADING, ""] + (history or ["- (none)"])
     return "\n".join(out) + "\n"
 
 
+# @req REQ-SPECS-013
 def plan_merge(ws: Workspace, change: Change, specs: ChangeSpecs, change_ref: str, today: str | None = None) -> list[CapabilityMerge]:
     """Compute every living spec and requirements index this change produces, without writing."""
-    today = today or date.today().isoformat()
+    today = today or datetime.now().isoformat(sep=" ", timespec="seconds")  # the time lets check order same-day closes
     unregistered = [d.cap.ref for d in specs.deltas if d.cap.capability is None]
     if unregistered:
         raise MergeError(
@@ -224,6 +227,7 @@ def archive_change(change: Change, archive_root: Path, today: str | None = None,
     return target
 
 
+# @req REQ-SPECS-013
 def close_change(merges: list[CapabilityMerge], change: Change, archive_root: Path, today: str | None = None) -> Path:
     """Write the merged living docs and archive the change, all or nothing.
 

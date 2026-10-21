@@ -108,6 +108,7 @@ def collect(ws: Workspace, change: Change) -> ChangeSpecs:
     return result
 
 
+# @req REQ-SPECS-008
 def _check_proposal(ws: Workspace, change: Change, issues: list[Issue]) -> None:
     path = change.path / PROPOSAL_FILE
     if not path.is_file():
@@ -131,6 +132,7 @@ class Claim:
     earlier: bool  # that change started before this one
 
 
+# @req REQ-SPECS-007
 def _other_changes(ws: Workspace, change: Change, cap: CapabilityRef) -> dict[str, dict[str, Claim]]:
     """For each delta section, the IDs that other active changes put there for the same capability -> their claim."""
     claimed: dict[str, dict[str, Claim]] = {section: {} for section in DELTA_SECTIONS}
@@ -167,6 +169,7 @@ def _removal_fields(description: str) -> set[str]:
     return found
 
 
+# @req REQ-SPECS-005, REQ-SPECS-006, REQ-SPECS-007
 def _check_delta(ws: Workspace, change: Change, delta: Delta, seen: dict[str, str], issues: list[Issue]) -> None:
     cap, doc, file = delta.cap, delta.doc, ws.rel(delta.path)
 
@@ -288,6 +291,7 @@ def _check_delta(ws: Workspace, change: Change, delta: Delta, seen: dict[str, st
                 err(sc.line, f"{sc.id}: write the scenario as '- **WHEN** ...' / '- **THEN** ...'")
 
 
+# @req REQ-SPECS-009
 def _check_tasks(ws: Workspace, change: Change, specs: ChangeSpecs, issues: list[Issue]) -> None:
     file = ws.rel(change.path / TASKS_FILE)
     if not specs.tasks_found:
@@ -322,6 +326,7 @@ def _check_tasks(ws: Workspace, change: Change, specs: ChangeSpecs, issues: list
             issues.append(Issue("warning", file, 0, f"{req.id} is REMOVED but no task removes its code and tests"))
 
 
+# @req REQ-SPECS-014
 def _check_diagrams(ws: Workspace, change: Change, issues: list[Issue]) -> None:
     settings = ws.top.config.diagrams
     design = change.path / DESIGN_FILE
@@ -341,6 +346,7 @@ def _check_diagrams(ws: Workspace, change: Change, issues: list[Issue]) -> None:
             issues.append(Issue("warning", ws.rel(diagram.source), 0, f"not shown in design.md; add ![caption]({rel})"))
 
 
+# @req REQ-SPECS-008
 def check_change(ws: Workspace, change: Change) -> tuple[ChangeSpecs, list[Issue]]:
     specs = collect(ws, change)
     issues = list(specs.issues)
