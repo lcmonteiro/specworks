@@ -18,8 +18,15 @@ capability:
 for each capability:
     /specworks-baseline <capability>
     /specworks-done baseline-<capability>     # validate, then close
+for each suspected bug change (fix-<name>, created by the baselines):
+    /specworks-refine <ref>
+    /specworks-specify <ref>
+    /specworks-build <ref>
+    /specworks-done <ref>
 ```
 
+A baseline fixes nothing: each bug the user confirms becomes a change of its
+own, waiting in phase refine until every capability has its living spec.
 Adopt itself never baselines: it ends by handing over to the first
 `/specworks-baseline`.
 
@@ -35,6 +42,21 @@ git-ignored file, a service the tests need), run `specworks run <key>` once:
 its result replaces the reused one. `--fresh` on a gate, `start` or `validate`
 does the same for that command.
 
+**Asking the user**: whenever you stop for the user (a decision, a
+confirmation, the end of the phase), end your message with exactly one
+closing question that can be answered in a word, and write nothing after it:
+- a yes/no question: `Merge and archive? (yes/no)`;
+- or numbered options, exactly one marked `(recommended)` with a one-line
+  reason:
+  ```
+  1. Refuse before writing (recommended): nothing to roll back
+  2. Write, then roll back on error
+  ```
+Ask one decision at a time; several go together only when they are
+independent, each with its own options. At the end of the phase, offer the
+next step the same way: the next skill (recommended), any alternative, and
+`stop here`.
+
 ---
 
 ## Stage 1: Set up
@@ -47,8 +69,10 @@ does the same for that command.
 
    - `"root": null`: not set up yet. Look for an existing workflow-like
      folder (`spec/`, `docs/`, `openspec/`) and ask the user for the folder
-     name (`--dir`, default `specworks`); it also names the config file and
-     cannot change without renaming both. Then, with their go-ahead:
+     name (`--dir`); it also names the config file and cannot change
+     without renaming both. Offer it as options: `specworks` (the default,
+     recommended unless the project already uses that name), and any
+     free name the project suggests (`spec`, `docs/specs`). Then:
      ```bash
      specworks init --dir <dir>
      ```
@@ -57,7 +81,8 @@ does the same for that command.
      what the user wrote.
    - Several independent projects in one repository (each with its own
      build file: `services/*/pyproject.toml`, a `packages/*/package.json`
-     workspace, ...): propose one module per project and, once confirmed,
+     workspace, ...): propose one module per project, listed with their
+     paths, and ask "Add these modules? (yes/no)"; once confirmed,
      `specworks module add <path>` for each. Run stages 1-2 in each module
      from its folder.
 
@@ -70,7 +95,8 @@ does the same for that command.
    the commands the project really runs.
 
    Propose `test`, and `lint` / `typecheck` / `build` when the project has
-   them, in a short table with where each one came from. Once confirmed, write
+   them, in a short table with where each one came from, and ask "Use these
+   commands? (yes/no)" (on no, apply the user's edits). Once confirmed, write
    them under `commands:` in the config (`<dir>.yml` in the module's folder,
    `dir` in `specworks context --json`), then run each one:
    ```bash
@@ -86,8 +112,9 @@ does the same for that command.
    From the README, `CLAUDE.md` / `AGENTS.md` / `.github/copilot-instructions.md`,
    the contributing guide and the dependencies: a few lines on what the
    project is, its stack, and the conventions a change must follow (style,
-   error handling, layering, what not to touch). Show it, apply corrections,
-   and write it under `context:` in the config. Keep it short: it is read
+   error handling, layering, what not to touch). Show it and ask "Write this
+   context? (yes/no)"; apply corrections, and write it under `context:` in
+   the config. Keep it short: it is read
    before every phase. Point to those files rather than copying them.
 
 4. **Choose the files to scan for tags** (only when needed)
@@ -122,7 +149,8 @@ does the same for that command.
    - Code that is pure plumbing (build scripts, generated code) needs no
      capability.
 
-   Ask the user to confirm or edit the table. **Stop and wait.**
+   Ask "Register these capabilities? (yes/no)" (on no, apply the user's
+   edits and ask again). **Stop and wait.**
 
 6. **Register them**
 
@@ -145,7 +173,16 @@ does the same for that command.
    `/specworks-done baseline-<first capability>`, and so on for the
    others (in the order of the table). A baseline records the behaviour the
    capability already has, so later changes can MODIFY its requirements
-   instead of only ADDING them."
+   instead of only ADDING them. Each suspected bug a baseline finds becomes
+   a `fix-<name>` change; once every capability is baselined, fix them one
+   by one with `/specworks-refine`, `/specworks-specify`, `/specworks-build`
+   and `/specworks-done`."
+
+   Then offer:
+   ```
+   1. /specworks-baseline <first capability> (recommended): the first row of the table
+   2. Stop here
+   ```
 
    **End here.** The baselines are `/specworks-baseline`, one capability
    per run.

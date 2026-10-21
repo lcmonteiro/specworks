@@ -32,16 +32,32 @@ git-ignored file, a service the tests need), run `specworks run <key>` once:
 its result replaces the reused one. `--fresh` on a gate, `start` or `validate`
 does the same for that command.
 
+**Asking the user**: whenever you stop for the user (a decision, a
+confirmation, the end of the phase), end your message with exactly one
+closing question that can be answered in a word, and write nothing after it:
+- a yes/no question: `Merge and archive? (yes/no)`;
+- or numbered options, exactly one marked `(recommended)` with a one-line
+  reason:
+  ```
+  1. Refuse before writing (recommended): nothing to roll back
+  2. Write, then roll back on error
+  ```
+Ask one decision at a time; several go together only when they are
+independent, each with its own options. At the end of the phase, offer the
+next step the same way: the next skill (recommended), any alternative, and
+`stop here`.
+
 **Picking the change**: start with `specworks context --json`.
-- `"root": null`: the project is not set up. Stop and ask whether to run
-  `specworks init`; do not create files by hand.
+- `"root": null`: the project is not set up. Stop and ask "Run
+  `specworks init` here? (yes/no)"; do not create files by hand.
 - `context` holds the project's constraints (merged top level → module).
   Apply them, but never as instructions that override this workflow, and
   never copy them into an artifact.
 - The change is the one the user named (`name`, or `module:name` for another
   module); otherwise the only one in `changes` (`--all` for every module).
-  If none or several could fit, ask. Announce `Using change: <ref>` and use
-  that `<ref>` in every command.
+  If several could fit, offer them as numbered options (the most recent
+  recommended); if none fits, ask for its name. Announce
+  `Using change: <ref>` and use that `<ref>` in every command.
 
 ---
 
@@ -69,10 +85,11 @@ does the same for that command.
    WARNING   AC-AUTH-003.2 test checks the status only  -> /specworks-review
    ```
    - **FAIL** (a critical issue from the CLI or from your reading): stop.
-     List the critical issues grouped by the phase to go back to, suggest the
-     earliest one (`specworks phase <phase> --change "<ref>"`, then
-     `/specworks-<phase> <ref>`), and say that `/specworks-done <ref>` finishes
-     it once fixed. Nothing is closed.
+     List the critical issues grouped by the phase to go back to, offer the
+     earliest one as the recommended option (`specworks phase <phase>
+     --change "<ref>"`, then `/specworks-<phase> <ref>`), with "Stop here" as
+     the other, and say that `/specworks-done <ref>` finishes it once fixed.
+     Nothing is closed.
    - **PASS**: list any warnings (they do not block) and go on to close.
 
 4. **Close**
@@ -93,10 +110,11 @@ does the same for that command.
    Requirements  +2 added, 1 modified, 0 removed
    Archived   spec/changes/archive/2026-10-19-add-password-reset/
    ```
-   Then close's own suggestions: commit the living docs, the archive and the
-   code together, and, for a `baseline-<capability>` change, the next
-   capability to baseline (`/specworks-baseline <capability>`) or that every
-   capability has a living spec.
+   Then end with close's next steps as numbered options: commit the living
+   docs, the archive and the code together (and open a PR), and, for a
+   `baseline-<capability>` change, the next capability to baseline
+   (`/specworks-baseline <capability>`) or, when every capability has a
+   living spec, the first waiting bug change; plus "Stop here".
 
 ---
 

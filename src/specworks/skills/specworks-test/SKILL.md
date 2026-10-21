@@ -20,6 +20,8 @@ looks easy. When the gate passes, stop and suggest `/specworks-code`.
 
 <!-- specworks:include running-cli -->
 
+<!-- specworks:include asking-the-user -->
+
 <!-- specworks:include picking-the-change -->
 
 ---
@@ -40,8 +42,8 @@ looks easy. When the gate passes, stop and suggest `/specworks-code`.
      themselves fail). Tests built on an undecided API test the wrong thing.
    - `commands.test` in the context is how this project runs its tests. If it
      is empty, find the test command from the repository (pyproject, package.json,
-     go.mod, Cargo.toml, CMake, Makefile, CI config), confirm it with the user,
-     and suggest adding it under `commands:` in the config.
+     go.mod, Cargo.toml, CMake, Makefile, CI config), and ask "Use `<command>` as
+     the test command and add it under `commands:`? (yes/no)".
 
 2. **Load the plan and the project's test conventions**
 
@@ -142,8 +144,11 @@ looks easy. When the gate passes, stop and suggest `/specworks-code`.
 
    plus tests updated or deleted for MODIFIED/REMOVED criteria, and anything
    you had to decide. Mention that the
-   test suite is red on purpose until the code phase. End with: "When
-   you are ready, run `/specworks-code <ref>` to make these tests pass."
+   test suite is red on purpose until the code phase. End with:
+   ```
+   1. /specworks-code <ref> (recommended): make these tests pass
+   2. Stop here
+   ```
 
 ---
 

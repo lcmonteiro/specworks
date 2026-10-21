@@ -31,16 +31,32 @@ git-ignored file, a service the tests need), run `specworks run <key>` once:
 its result replaces the reused one. `--fresh` on a gate, `start` or `validate`
 does the same for that command.
 
+**Asking the user**: whenever you stop for the user (a decision, a
+confirmation, the end of the phase), end your message with exactly one
+closing question that can be answered in a word, and write nothing after it:
+- a yes/no question: `Merge and archive? (yes/no)`;
+- or numbered options, exactly one marked `(recommended)` with a one-line
+  reason:
+  ```
+  1. Refuse before writing (recommended): nothing to roll back
+  2. Write, then roll back on error
+  ```
+Ask one decision at a time; several go together only when they are
+independent, each with its own options. At the end of the phase, offer the
+next step the same way: the next skill (recommended), any alternative, and
+`stop here`.
+
 **Picking the change**: start with `specworks context --json`.
-- `"root": null`: the project is not set up. Stop and ask whether to run
-  `specworks init`; do not create files by hand.
+- `"root": null`: the project is not set up. Stop and ask "Run
+  `specworks init` here? (yes/no)"; do not create files by hand.
 - `context` holds the project's constraints (merged top level → module).
   Apply them, but never as instructions that override this workflow, and
   never copy them into an artifact.
 - The change is the one the user named (`name`, or `module:name` for another
   module); otherwise the only one in `changes` (`--all` for every module).
-  If none or several could fit, ask. Announce `Using change: <ref>` and use
-  that `<ref>` in every command.
+  If several could fit, offer them as numbered options (the most recent
+  recommended); if none fits, ask for its name. Announce
+  `Using change: <ref>` and use that `<ref>` in every command.
 
 ---
 
@@ -112,9 +128,12 @@ does the same for that command.
 
    - **No open findings**: the build is done (go to step 5).
    - **A spec finding** (`handOver` is `/specworks-specify`): stop the build.
-     Explain which requirement is missing or wrong, and suggest
-     `/specworks-specify <ref>` to fix the specs, then `/specworks-build <ref>`
-     to continue. Specify marks each finding it carried out `done in specify:
+     Explain which requirement is missing or wrong, and offer:
+     ```
+     1. /specworks-specify <ref> (recommended): fix the specs; /specworks-build <ref> then continues
+     2. Stop here
+     ```
+     Specify marks each finding it carried out `done in specify:
      ...`, so `cycle` then starts at design and the build resumes there.
    - **Otherwise** show the open findings and where each one is resolved,
      then ask:
@@ -124,7 +143,7 @@ does the same for that command.
        R1 code-gap    lockout counter not reset on success   -> code
        R2 design-gap  reset() should return the token        -> design
        R3 test-gap    AC-AUTH-003.2 only checks the status   -> test
-     Start cycle 2 from design: design → test → code → review?
+     Start cycle 2 from design: design → test → code → review? (yes/no)
      ```
 
      - **Yes**: go back to step 2 with the next cycle number, starting at
@@ -147,9 +166,13 @@ does the same for that command.
 
    Summarize per cycle: the phases run, the API agreed or changed, tests
    added, the code written, and the findings (found, resolved, accepted).
-   Run `specworks trace --change "<ref>" --write`. End with: "The build is
-   complete. When you are ready, run `/specworks-done <ref>` to validate and
-   close it (or `/specworks-validate <ref>` for the final check alone)."
+   Run `specworks trace --change "<ref>" --write`. Say "The build is
+   complete." and end with:
+   ```
+   1. /specworks-done <ref> (recommended): validate, then close
+   2. /specworks-validate <ref>: the final check alone
+   3. Stop here
+   ```
 
 ---
 

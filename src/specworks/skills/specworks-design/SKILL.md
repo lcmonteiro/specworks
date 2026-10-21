@@ -19,6 +19,8 @@ it looks easy. When the gate passes, stop and suggest `/specworks-test`.
 
 <!-- specworks:include running-cli -->
 
+<!-- specworks:include asking-the-user -->
+
 <!-- specworks:include picking-the-change -->
 
 ---
@@ -67,7 +69,9 @@ it looks easy. When the gate passes, stop and suggest `/specworks-test`.
 
    Show the list to the user and agree on it before writing code. Ask about
    anything that would change what tests assert (names of errors, return
-   shapes, sync vs async, who owns validation).
+   shapes, sync vs async, who owns validation), each as numbered options
+   with the one you recommend, then close with "Create this API as stubs?
+   (yes/no)".
 
 4. **Record the agreed API in design.md**
 
@@ -136,8 +140,10 @@ it looks easy. When the gate passes, stop and suggest `/specworks-test`.
    ```
 
    plus any breaking change and the decisions taken with the user. End with:
-   "When you are ready, run `/specworks-test <ref>` to write the failing tests
-   against this API."
+   ```
+   1. /specworks-test <ref> (recommended): write the failing tests against this API
+   2. Stop here
+   ```
 
 ---
 

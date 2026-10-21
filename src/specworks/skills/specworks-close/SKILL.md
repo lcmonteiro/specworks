@@ -17,6 +17,8 @@ here; if something is wrong, go back to the phase that owns it.
 
 <!-- specworks:include running-cli -->
 
+<!-- specworks:include asking-the-user -->
+
 <!-- specworks:include picking-the-change -->
 
 ---
@@ -44,8 +46,9 @@ here; if something is wrong, go back to the phase that owns it.
 2. **Register new capabilities**
 
    For every capability under "New Capabilities" in proposal.md (or any delta
-   whose `specworks spec show <ref> --json` says `"new": true`), confirm the
-   owning module and code path with the user, then:
+   whose `specworks spec show <ref> --json` says `"new": true`), ask "Register
+   `<name>` in `<module>` at `<code path>`? (yes/no)" (on no, take the
+   user's module and path), then:
    ```bash
    specworks capability add <name> --path <code path> [--module <module>] [--prefix <P>] [--description "<one line>"]
    ```
@@ -63,7 +66,7 @@ here; if something is wrong, go back to the phase that owns it.
    before anything is written.
 
    Show, per capability: the living spec it writes (new or existing) and the
-   requirements added, modified and removed. Ask: "Merge and archive?"
+   requirements added, modified and removed. Ask: "Merge and archive? (yes/no)"
    Nothing is written until the user agrees.
 
 4. **Update the living design and architecture (before archiving)**
@@ -114,7 +117,16 @@ here; if something is wrong, go back to the phase that owns it.
    next: the next capability with 0 requirements in `specworks spec list`
    (`/specworks-baseline <capability>`), or, when none is left, that every
    capability now has a living spec and new work starts with
-   `/specworks-refine`.
+   `/specworks-refine` (the waiting `fix-*` changes of suspected bugs first).
+
+   End with the next steps as numbered options, for example:
+   ```
+   1. Commit and open a PR (recommended): the living docs, the archive and the code go together
+   2. /specworks-baseline <next capability>: after a baseline, when one is left
+   3. Stop here
+   ```
+   (after the last baseline: `/specworks-refine <fix-ref>` for the first
+   waiting bug change instead of option 2).
 
 ---
 

@@ -28,6 +28,8 @@ earliest of those phases (`specworks cycle --change "<ref>"`).
 
 <!-- specworks:include running-cli -->
 
+<!-- specworks:include asking-the-user -->
+
 <!-- specworks:include picking-the-change -->
 
 ---
@@ -92,8 +94,11 @@ earliest of those phases (`specworks cycle --change "<ref>"`).
    Classify each one (`spec-gap`, `code-gap`, `design-gap`, `test-gap`, `tag`,
    `quality`). For a disagreement, say what the code does, what the spec and
    design.md say, and **propose the change**: to the code, to the spec, or to
-   the design/API, with what exactly would change. Then ask. Group small,
-   obvious ones to keep the questions few.
+   the design/API, with what exactly would change. Then ask, as numbered
+   options (change the code, the spec or the design/API, or accept it as
+   it is), the one you propose marked recommended with its reason. Group
+   small, obvious ones into one yes/no question ("Apply these fixes?
+   (yes/no)") to keep the questions few.
 
    Apply it here when it is small and local; otherwise send the change back:
 
@@ -107,7 +112,8 @@ earliest of those phases (`specworks cycle --change "<ref>"`).
    ```bash
    specworks phase <specify|design|test|code> --change "<ref>"
    ```
-   and suggest the matching skill. When the change comes back to review,
+   and offer the matching skill as the recommended next step. When the
+   change comes back to review,
    check that the proposal was carried out (a `done in <phase>: ...` line
    under the finding says what changed) and close the finding.
    - **accepted**: only with the user's explicit agreement, with the reason.
@@ -144,9 +150,12 @@ earliest of those phases (`specworks cycle --change "<ref>"`).
    Summarize the findings by type and decision, the spec changes (IDs added or
    modified), the design/API changes, the code changes, anything accepted, and
    any change sent back to an earlier phase (then stop there instead of
-   suggesting validate). End with: "When you are
-   ready, run `/specworks-done <ref>` to validate and close it (or
-   `/specworks-validate <ref>` for the final check alone)."
+   suggesting validate). End with:
+   ```
+   1. /specworks-done <ref> (recommended): validate, then close
+   2. /specworks-validate <ref>: the final check alone
+   3. Stop here
+   ```
 
 ---
 

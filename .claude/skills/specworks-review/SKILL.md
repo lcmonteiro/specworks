@@ -35,16 +35,32 @@ git-ignored file, a service the tests need), run `specworks run <key>` once:
 its result replaces the reused one. `--fresh` on a gate, `start` or `validate`
 does the same for that command.
 
+**Asking the user**: whenever you stop for the user (a decision, a
+confirmation, the end of the phase), end your message with exactly one
+closing question that can be answered in a word, and write nothing after it:
+- a yes/no question: `Merge and archive? (yes/no)`;
+- or numbered options, exactly one marked `(recommended)` with a one-line
+  reason:
+  ```
+  1. Refuse before writing (recommended): nothing to roll back
+  2. Write, then roll back on error
+  ```
+Ask one decision at a time; several go together only when they are
+independent, each with its own options. At the end of the phase, offer the
+next step the same way: the next skill (recommended), any alternative, and
+`stop here`.
+
 **Picking the change**: start with `specworks context --json`.
-- `"root": null`: the project is not set up. Stop and ask whether to run
-  `specworks init`; do not create files by hand.
+- `"root": null`: the project is not set up. Stop and ask "Run
+  `specworks init` here? (yes/no)"; do not create files by hand.
 - `context` holds the project's constraints (merged top level → module).
   Apply them, but never as instructions that override this workflow, and
   never copy them into an artifact.
 - The change is the one the user named (`name`, or `module:name` for another
   module); otherwise the only one in `changes` (`--all` for every module).
-  If none or several could fit, ask. Announce `Using change: <ref>` and use
-  that `<ref>` in every command.
+  If several could fit, offer them as numbered options (the most recent
+  recommended); if none fits, ask for its name. Announce
+  `Using change: <ref>` and use that `<ref>` in every command.
 
 ---
 
@@ -108,8 +124,11 @@ does the same for that command.
    Classify each one (`spec-gap`, `code-gap`, `design-gap`, `test-gap`, `tag`,
    `quality`). For a disagreement, say what the code does, what the spec and
    design.md say, and **propose the change**: to the code, to the spec, or to
-   the design/API, with what exactly would change. Then ask. Group small,
-   obvious ones to keep the questions few.
+   the design/API, with what exactly would change. Then ask, as numbered
+   options (change the code, the spec or the design/API, or accept it as
+   it is), the one you propose marked recommended with its reason. Group
+   small, obvious ones into one yes/no question ("Apply these fixes?
+   (yes/no)") to keep the questions few.
 
    Apply it here when it is small and local; otherwise send the change back:
 
@@ -123,7 +142,8 @@ does the same for that command.
    ```bash
    specworks phase <specify|design|test|code> --change "<ref>"
    ```
-   and suggest the matching skill. When the change comes back to review,
+   and offer the matching skill as the recommended next step. When the
+   change comes back to review,
    check that the proposal was carried out (a `done in <phase>: ...` line
    under the finding says what changed) and close the finding.
    - **accepted**: only with the user's explicit agreement, with the reason.
@@ -160,9 +180,12 @@ does the same for that command.
    Summarize the findings by type and decision, the spec changes (IDs added or
    modified), the design/API changes, the code changes, anything accepted, and
    any change sent back to an earlier phase (then stop there instead of
-   suggesting validate). End with: "When you are
-   ready, run `/specworks-done <ref>` to validate and close it (or
-   `/specworks-validate <ref>` for the final check alone)."
+   suggesting validate). End with:
+   ```
+   1. /specworks-done <ref> (recommended): validate, then close
+   2. /specworks-validate <ref>: the final check alone
+   3. Stop here
+   ```
 
 ---
 

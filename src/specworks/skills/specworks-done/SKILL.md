@@ -25,6 +25,8 @@ goes back to the phase that owns it.
 
 <!-- specworks:include running-cli -->
 
+<!-- specworks:include asking-the-user -->
+
 <!-- specworks:include picking-the-change -->
 
 ---
@@ -53,10 +55,11 @@ goes back to the phase that owns it.
    WARNING   AC-AUTH-003.2 test checks the status only  -> /specworks-review
    ```
    - **FAIL** (a critical issue from the CLI or from your reading): stop.
-     List the critical issues grouped by the phase to go back to, suggest the
-     earliest one (`specworks phase <phase> --change "<ref>"`, then
-     `/specworks-<phase> <ref>`), and say that `/specworks-done <ref>` finishes
-     it once fixed. Nothing is closed.
+     List the critical issues grouped by the phase to go back to, offer the
+     earliest one as the recommended option (`specworks phase <phase>
+     --change "<ref>"`, then `/specworks-<phase> <ref>`), with "Stop here" as
+     the other, and say that `/specworks-done <ref>` finishes it once fixed.
+     Nothing is closed.
    - **PASS**: list any warnings (they do not block) and go on to close.
 
 4. **Close**
@@ -77,10 +80,11 @@ goes back to the phase that owns it.
    Requirements  +2 added, 1 modified, 0 removed
    Archived   spec/changes/archive/2026-10-19-add-password-reset/
    ```
-   Then close's own suggestions: commit the living docs, the archive and the
-   code together, and, for a `baseline-<capability>` change, the next
-   capability to baseline (`/specworks-baseline <capability>`) or that every
-   capability has a living spec.
+   Then end with close's next steps as numbered options: commit the living
+   docs, the archive and the code together (and open a PR), and, for a
+   `baseline-<capability>` change, the next capability to baseline
+   (`/specworks-baseline <capability>`) or, when every capability has a
+   living spec, the first waiting bug change; plus "Stop here".
 
 ---
 

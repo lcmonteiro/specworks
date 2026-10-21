@@ -17,9 +17,12 @@ It is the second phase of `refine → specify → design → test → code → r
 
 **Phase boundary**: planning only. Do not write tests or code and do not edit
 files outside the change folder, even if the request says "build" or "fix".
-When the artifacts are done, stop and suggest `/specworks-design`.
+When the artifacts are done, stop and offer `/specworks-build` (or
+`/specworks-design` for one phase at a time).
 
 <!-- specworks:include running-cli -->
+
+<!-- specworks:include asking-the-user -->
 
 <!-- specworks:include picking-the-change -->
 
@@ -68,7 +71,8 @@ When the artifacts are done, stop and suggest `/specworks-design`.
    ```
 
    Ask the user about anything that would change scope, observable behaviour,
-   compatibility or acceptance criteria. Decide small details yourself and
+   compatibility or acceptance criteria, each question with its options and
+   the one you recommend. Decide small details yourself and
    record the assumption in the proposal.
 
 3. **Write `proposal.md`**
@@ -115,8 +119,9 @@ When the artifacts are done, stop and suggest `/specworks-design`.
    user-auth   REQ-AUTH-002 Lockout (MODIFIED)      AC-AUTH-002.1 Third failure
    ```
 
-   plus any assumption you made. Ask: "Are these the right requirements and
-   acceptance criteria? Design and tasks are built on them." **Stop and wait.**
+   plus any assumption you made. Say that design and tasks are built on
+   them, and ask: "Are these the right requirements and acceptance
+   criteria? (yes/no)". **Stop and wait.**
    Apply the user's corrections, re-run `specworks check`, and continue only
    when they confirm. Agreeing to earlier answers is not confirmation of this
    list.
@@ -173,9 +178,12 @@ When the artifacts are done, stop and suggest `/specworks-design`.
    Summarize: change and location; each artifact in one line (and design
    skipped, if so); the number of requirements and acceptance criteria per
    capability; assumptions made; review findings marked `done in specify`.
-   End with: "The plan is ready for review.
-   When you are ready, run `/specworks-design <ref>` to decide the API and
-   create it as stubs."
+   Say "The plan is ready for review." and end with:
+   ```
+   1. /specworks-build <ref> (recommended): design, test, code and review in one run
+   2. /specworks-design <ref>: one phase at a time, starting with the API as stubs
+   3. Stop here
+   ```
 
 ---
 
