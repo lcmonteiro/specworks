@@ -6,8 +6,9 @@ their questions, and write the answers to disk.
 - **The prompt is fixed**: start each phase with your subagent tool (Claude
   Code: `Agent`) and this prompt, with only `<phase>`, `<ref>` and the skills
   folder (the one holding this skill's folder, e.g. `.claude/skills`) filled
-  in. Never add a summary of the conversation, an answer or a decision: what
-  the phase needs from the user is on disk.
+  in (`<phase>` is the skill's name: `test` and `code` for the two halves of
+  implement). Never add a summary of the conversation, an answer or a
+  decision: what the phase needs from the user is on disk.
   ```
   Run the <phase> phase of the change <ref>: follow
   <skills folder>/specworks-<phase>/SKILL.md, reading only the project and
@@ -30,7 +31,7 @@ their questions, and write the answers to disk.
   |---|---|
   | design: the API | design.md `## Interfaces`: the subagent writes it with a line `Proposed: waiting for the user's agreement`; replace that line with `Agreed with the user` (and the user's changes) |
   | test, code: the test command | `spec.yml` `commands:` (`test: <command>`) |
-  | code: an unclear task, a test against the spec, new work | the Decision in design.md, or a new task in tasks.md |
+  | code: an unclear task, an existing test against the spec, new work | the Decision in design.md, or a new task in tasks.md |
   | review: each finding | the finding's `**Decision**:` line in review.md |
 
   Write only the answer, in the place the question is about. Never do the

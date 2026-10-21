@@ -1,6 +1,6 @@
 ---
 name: specworks-review
-description: Review phase of spec-driven development - compare a change's code with its specs in both directions, find drift (behaviour no requirement describes, requirements the code misses, tests that do not really check their criterion, an API or design the code proved wrong, wrong tags), propose for each one a change to the code, the spec or the design/API, apply it with the user or send the change back to the phase that owns it, and record every decision in review.md. Use after the code phase of a specworks change, or when the user says "review the change", "sync code and spec", "check for drift" or "specworks review".
+description: Review phase of spec-driven development - compare a change's code with its specs in both directions, find drift (behaviour no requirement describes, requirements the code misses, tests that do not really check their criterion, an API or design the code proved wrong, wrong tags), propose for each one a change to the code, the spec or the design/API, apply it with the user or send the change back to the phase that owns it, and record every decision in review.md. Use after the implement phase (test and code halves) of a specworks change, or when the user says "review the change", "sync code and spec", "check for drift" or "specworks review".
 ---
 
 Review phase: make the code, the specs and the design (API) say the same
@@ -10,20 +10,23 @@ change to the others: the **code**, the **spec** or the **design/API**.
 Small, local changes are applied here with the user; larger ones send the
 change back to the phase that owns them. Every decision goes in `review.md`.
 
-It is the sixth phase of `refine → specify → design → test → code → review → validate → close`.
+It is the fifth phase of `refine → specify → design → implement (test | code) → review → validate → close`.
+The two halves of implement wrote the tests and the code independently, from
+the same specs and design: review is where they meet for the first time.
 
 **Phase boundary**: this phase may change code, tests, the change's delta
 specs and design.md, but only to remove drift, and only in small, local
-steps. Larger changes go back to `/specworks-specify`, `/specworks-design`
-or `/specworks-code`. New features are out of scope: note them for a future
+steps. Larger changes go back to `/specworks-specify`, `/specworks-design`,
+`/specworks-test` or `/specworks-code`. New features are out of scope: note them for a future
 change. Every spec, design or API change and every accepted difference is
 agreed with the user. When the gate passes, stop and suggest
 `/specworks-validate`.
 
 **Inside `/specworks-build`**: do not apply fixes here. Record every finding
 that needs work as open, with the agreed proposal as `back to
-<specify|design|test|code>: ...`; the build starts the next cycle from the
-earliest of those phases (`specworks cycle --change "<ref>"`).
+<specify|design|implement|test|code>: ...`; the build runs the steps those
+findings need next (`specworks cycle --change "<ref>"`): only the code half,
+only the test half, both halves (`implement`), or design and then both.
 
 **Running the CLI**: use `specworks <cmd>`. If it is not on PATH, use
 `uv run specworks <cmd>` (inside the specworks repo) or
@@ -71,11 +74,25 @@ next step the same way: the next skill (recommended), any alternative, and
    ```bash
    specworks start review --change "<ref>"
    ```
-   It runs `gate code` and moves the change to review only if it passes.
-   Its test run costs nothing when the code has not changed since the code
-   phase's gate: that result is reused (`same code as the run at ...`). If it
-   fails (pending tasks, untagged requirements, a red suite), stop and suggest
-   `/specworks-code <ref>`; reviewing unfinished work finds noise.
+   It runs implement's gate, `gate test` then `gate code`, and moves the
+   change to review only if both pass. Its test run costs nothing when the
+   code has not changed since the code gate: that result is reused (`same
+   code as the run at ...`). If `gate test` fails (open `[test]` tasks,
+   criteria without tests), stop and suggest `/specworks-test <ref>`; if
+   `gate code` fails (open `[code]` tasks, untagged requirements), suggest
+   `/specworks-code <ref>`. Reviewing unfinished work finds noise.
+
+   Then run the suite: this is the first time the change's tests meet its
+   code.
+   ```bash
+   specworks run test --change "<ref>"
+   ```
+   Every failing test is a finding (step 4), never something to make green
+   quietly. Read the test, its criterion and the code, and say which one is
+   wrong: the **code** (`code-gap`: it does not do what the criterion says),
+   the **test** (`test-gap`: it checks something the criterion does not
+   say), or the **spec** (`spec-gap`: the criterion is ambiguous, and the
+   two halves read it differently).
 
 2. **Collect the drift candidates**
 
@@ -133,18 +150,21 @@ next step the same way: the next skill (recommended), any alternative, and
 
    | Change to | Here (small, local) | Back to (larger) |
    |---|---|---|
-   | **code** | fix the code and its tests, run `specworks run test --change "<ref>"` | `/specworks-code`: a requirement is far from done |
+   | **code** | fix the code, run `specworks run test --change "<ref>"` | `/specworks-code`: a requirement is far from done |
+   | **test** | fix the test so it checks its criterion, run the tests | `/specworks-test`: several tests, or a criterion with none |
    | **spec** | edit the delta spec (ADDED with the next free ID from `specworks spec show <cap> --json`, MODIFIED with the whole block), add its test (`@ac`), tag (`@req`) and task, run `specworks check --change "<ref>"` | `/specworks-specify`: several requirements, a new capability, or the proposal's scope changes |
-   | **design / API** | one interface, no other callers: update `## Interfaces` (or the Decision) in design.md, the code and its tests together, run the tests | `/specworks-design`: the API changes for other callers or several interfaces; test and code follow again |
+   | **design / API** | one interface, no other callers: update `## Interfaces` (or the Decision) in design.md, the code and its tests together, run the tests | `/specworks-design`: the API changes for other callers or several interfaces; both halves of implement follow again |
 
    To send it back: record the finding as open with the agreed proposal, then
    ```bash
-   specworks phase <specify|design|test|code> --change "<ref>"
+   specworks phase <specify|design|implement> --change "<ref>"
    ```
-   and offer the matching skill as the recommended next step. When the
-   change comes back to review,
-   check that the proposal was carried out (a `done in <phase>: ...` line
-   under the finding says what changed) and close the finding.
+   (`implement` for the test or the code half) and offer the matching skill
+   (`/specworks-specify`, `/specworks-design`, `/specworks-test` or
+   `/specworks-code`) as the recommended next step. When the change comes
+   back to review, check that the proposal was carried out (a `done in
+   <step>: ...` line under the finding says what changed) and close the
+   finding.
    - **accepted**: only with the user's explicit agreement, with the reason.
 
 5. **Write `review.md`**
@@ -166,20 +186,21 @@ next step the same way: the next skill (recommended), any alternative, and
    ```
 
    The gate checks: valid specs, `review.md` written with no open finding,
-   every open finding with a known type (or a `back to <phase>:`), every requirement with code and every criterion with a test, no unknown
+   every open finding with a known type (or a `back to <step>:`), every requirement with code and every criterion with a test, no unknown
    tags, removed requirements gone, every untagged changed file accounted for,
    and the test suite passing. Fix and re-run until it passes.
 
    Inside `/specworks-build`, run it with `--allow-open`: the open findings
-   are the hand-off to the next cycle, so they are reported as a warning;
-   every other check must still pass.
+   are the hand-off to the next cycle, so they are reported as a warning,
+   and so is a failing suite while a finding is open (the findings carry
+   it); every other check must still pass.
 
 7. **Report and stop**
 
    Summarize the findings by type and decision, the spec changes (IDs added or
    modified), the design/API changes, the code changes, anything accepted, and
-   any change sent back to an earlier phase (then stop there instead of
-   suggesting validate). End with:
+   any change sent back to an earlier phase or half (then stop there instead
+   of suggesting validate). End with:
    ```
    1. /specworks-done <ref> (recommended): validate, then close
    2. /specworks-validate <ref>: the final check alone

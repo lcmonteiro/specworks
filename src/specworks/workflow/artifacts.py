@@ -8,11 +8,13 @@ from importlib import resources
 
 import yaml
 
-from ..core.changes import Change
+from ..core.changes import HALVES, Change
 from ..core.config import ConfigError
 from ..core.errors import SpecworksError
+from ..core.files import read_text
 from ..core.workspace import Module, Workspace
 from ..specs.capabilities import delta_files, describe, resolve_delta, workspace_capabilities
+from ..specs.tasks import TASKS_FILE, parse_tasks
 
 
 @dataclass
@@ -78,12 +80,20 @@ def artifact_states(change: Change) -> list[dict]:
     return states
 
 
+# @req REQ-FLOW-001
 def half_progress(change: Change) -> dict[str, dict[str, int]] | None:
     """Each half's tasks done and in total (``{"test": {"done": 3, "total": 3}, "code": {...}}``) for a change in implement, else None.
 
-    Read from tasks.md only, without running any command. Implements REQ-FLOW-001.
+    Read from tasks.md only, without running any command.
     """
-    raise NotImplementedError
+    if change.phase != "implement":
+        return None
+    path = change.path / TASKS_FILE
+    tasks = parse_tasks(read_text(path))[0] if path.is_file() else []
+    return {
+        half: {"done": sum(t.done for t in tasks if t.half == half), "total": sum(t.half == half for t in tasks)}
+        for half in HALVES
+    }
 
 
 # @req REQ-FLOW-002

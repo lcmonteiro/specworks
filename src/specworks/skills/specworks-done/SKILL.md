@@ -11,7 +11,7 @@ its own skill says; this skill only chains them, so `/specworks-done <ref>`
 ends where `/specworks-validate <ref>` followed by `/specworks-close <ref>`
 ends. It adds no check of its own and skips none.
 
-It covers the last two phases of `refine → specify → design → test → code → review → validate → close`.
+It covers the last two phases of `refine → specify → design → implement (test | code) → review → validate → close`.
 
 **Phase skills**: `specworks-validate` and `specworks-close`, installed next
 to this skill (`../specworks-<phase>/SKILL.md`). Each phase runs in its own

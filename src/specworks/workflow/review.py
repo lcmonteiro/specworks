@@ -221,12 +221,12 @@ TYPE_PHASE = {
 FINDING_RE = re.compile(r"^\s*(?:[-*+]|\d+[.)])\s+\[(?P<mark>[ xX]?)\]\s+(?P<bold>\*\*)?(?P<id>R\d+)\b(?(bold)\*\*)(?P<text>.*)$")
 CHECKBOX_RE = re.compile(r"^\s*(?:[-*+]|\d+[.)])\s*\[[^\]]?\]")
 TYPE_RE = re.compile(r"\*\*([A-Za-z_-]+)\*\*")
-BACK_RE = re.compile(r"\bback to (?P<phase>specify|design|test|code)\s*:", re.IGNORECASE)
-DONE_RE = re.compile(r"\bdone in (?P<phase>specify|design|test|code)\s*:", re.IGNORECASE)
-# Workflow order of the phases a finding can need, and the phase after each one.
-FINDING_PHASES = ("specify", "design", "test", "code", "review")
-# The steps a finding can be routed to, in workflow order: implement is both halves (REQ-FLOW-010).
+BACK_RE = re.compile(r"\bback to (?P<phase>specify|design|implement|test|code)\s*:", re.IGNORECASE)
+DONE_RE = re.compile(r"\bdone in (?P<phase>specify|design|implement|test|code)\s*:", re.IGNORECASE)
+# The steps a finding can be routed to, in workflow order: implement is both halves, test and code one each.
 FINDING_STEPS = ("specify", "design", "implement", "test", "code", "review")
+# The step a finding needs once a step carried out its proposal (``done in <step>:``).
+NEXT_STEP = {"specify": "design", "design": "implement", "implement": "review", "test": "review", "code": "review"}
 ACCOUNTED_SECTION = "changed files without tags"
 
 
@@ -236,9 +236,9 @@ class Finding:
     done: bool
     type: str  # "" when the finding names none
     text: str  # the finding's line, after its ID
-    phase: str  # the phase that resolves it (after ``done_in``, the next one)
-    routed: bool = True  # False: neither a known type nor a "back to"/"done in" phase, so ``phase`` is only a guess
-    done_in: str = ""  # the phase that carried out its proposal (``done in <phase>:``), awaiting review
+    phase: str  # the step that resolves it, one of FINDING_STEPS (after ``done_in``, the next one)
+    routed: bool = True  # False: neither a known type nor a "back to"/"done in" step, so ``phase`` is only a guess
+    done_in: str = ""  # the step that carried out its proposal (``done in <step>:``), awaiting review
 
     def to_dict(self) -> dict:
         data = {"id": self.id, "type": self.type, "text": self.text, "phase": self.phase}
@@ -309,12 +309,12 @@ def parse_review(text: str) -> ReviewDoc:
             current.done_in, current.routed = carried.group("phase").lower(), True
     for finding in doc.findings:
         if finding.done_in:
-            finding.phase = FINDING_PHASES[FINDING_PHASES.index(finding.done_in) + 1]
+            finding.phase = NEXT_STEP[finding.done_in]
         if not finding.done and not finding.routed:
             # The next build cycle starts from each open finding's phase, so it is never guessed.
             doc.problems.append(
                 f"{finding.id}: type {finding.type or '(none)'!r} is not one of {', '.join(TYPE_PHASE)}; "
-                f"name one, or add a Decision 'back to <specify|design|test|code>: ...'"
+                f"name one, or add a Decision 'back to <specify|design|implement|test|code>: ...'"
             )
     doc.accounted = "\n".join(accounted)
     return doc

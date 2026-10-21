@@ -1,22 +1,25 @@
 ---
-description: Build a specified change end to end in cycles of design → test → code → review, running each phase's own skill in order; after each review with findings, ask whether to start a new cycle and start it from the earliest phase the findings need (code findings → code, review; test findings → test, code, review; design/API findings → design, test, code, review). Use when a specworks change has been specified and the user wants to build it in one go, or says "build the change", "run the build cycle", "design test code review" or "specworks build".
+description: Build a specified change end to end in cycles of design → implement → review, running each phase's own skill, with implement's test and code halves in parallel (the test half in its own git worktree); after each review with findings, ask whether to start a new cycle that runs only the steps the findings need (code findings → code half, review; test findings → test half, review; both, or back to implement → both halves, review; design/API findings → design, both halves, review). Use when a specworks change has been specified and the user wants to build it in one go, or says "build the change", "run the build cycle", "design test code review" or "specworks build".
 agent: agent
 ---
 
-Build: take a specified change through **design → test → code → review** in
-one run, then repeat the part of that cycle the review findings need until
-the review is clean (or the user stops). Each phase is done exactly as its
-own skill says; this skill only chains them and decides where a new cycle
-starts.
+Build: take a specified change through **design → implement → review** in
+one run, then repeat the steps the review findings need until the review is
+clean (or the user stops). Implement has two halves that run in parallel:
+the **test** half writes the failing tests, the **code** half writes the
+code, each from the specs and design only. Each phase and half is done
+exactly as its own skill says; this skill only chains them and decides what
+a new cycle runs.
 
-It covers phases three to six of `refine → specify → design → test → code → review → validate → close`.
+It covers phases three to five of `refine → specify → design → implement (test | code) → review → validate → close`.
 
-**Phase skills**: `specworks-design`, `specworks-test`, `specworks-code` and
-`specworks-review`, installed next to this skill (`../specworks-<phase>/SKILL.md`).
-Each phase runs in its own subagent (below), which follows that skill's
-steps, checks and guardrails. You do not do a phase's work yourself: you
-start the subagents, ask the user what they return, write the answers to
-disk, and decide where each cycle starts.
+**Phase skills**: `specworks-design`, `specworks-test` (the test half),
+`specworks-code` (the code half) and `specworks-review`, installed next to
+this skill (`../specworks-<phase>/SKILL.md`).
+Each runs in its own subagent (below), which follows that skill's steps,
+checks and guardrails. You do not do a phase's work yourself: you start the
+subagents, ask the user what they return, write the answers to disk, merge
+the test half's worktree, and decide what each cycle runs.
 
 **Boundary**: the build stops, and does not work around it, when a phase gate
 fails and cannot be fixed within that phase, when the specs turn out wrong
@@ -66,8 +69,9 @@ their questions, and write the answers to disk.
 - **The prompt is fixed**: start each phase with your subagent tool (Claude
   Code: `Agent`) and this prompt, with only `<phase>`, `<ref>` and the skills
   folder (the one holding this skill's folder, e.g. `.claude/skills`) filled
-  in. Never add a summary of the conversation, an answer or a decision: what
-  the phase needs from the user is on disk.
+  in (`<phase>` is the skill's name: `test` and `code` for the two halves of
+  implement). Never add a summary of the conversation, an answer or a
+  decision: what the phase needs from the user is on disk.
   ```
   Run the <phase> phase of the change <ref>: follow
   <skills folder>/specworks-<phase>/SKILL.md, reading only the project and
@@ -90,7 +94,7 @@ their questions, and write the answers to disk.
   |---|---|
   | design: the API | design.md `## Interfaces`: the subagent writes it with a line `Proposed: waiting for the user's agreement`; replace that line with `Agreed with the user` (and the user's changes) |
   | test, code: the test command | `spec.yml` `commands:` (`test: <command>`) |
-  | code: an unclear task, a test against the spec, new work | the Decision in design.md, or a new task in tasks.md |
+  | code: an unclear task, an existing test against the spec, new work | the Decision in design.md, or a new task in tasks.md |
   | review: each finding | the finding's `**Decision**:` line in review.md |
 
   Write only the answer, in the place the question is about. Never do the
@@ -122,29 +126,58 @@ of <skills folder>/specworks-build/SKILL.md.
 
    - If `gate specify` fails, stop and suggest `/specworks-specify <ref>`.
    - Start point:
-     - a previous review left open findings (`cycle` returns `startAt`):
-       resume with that cycle (step 4);
-     - the change is already in `design`, `test`, `code` or `review`: resume
-       at that phase;
+     - a previous review left open findings (`cycle` returns `startAt` and
+       the steps in `phases`): resume with that cycle (step 4);
+     - the change is already in `design` or `review`: resume at that phase;
+     - the change is in `implement`: run the halves whose tasks are still
+       open (`status` shows `halves`, e.g. `test 3/3, code 1/4`), then
+       review;
      - otherwise start at `design`.
-   - Say the plan, e.g. `Cycle 1: design → test → code → review`.
+   - Say the plan, e.g. `Cycle 1: design → implement (test | code) → review`.
 
-2. **Run the cycle's phases in order**
+2. **Run the cycle's steps in order**
 
-   For each phase of the cycle, announce `Cycle <n> · <phase>` and start its
-   subagent (above). The phase skill moves the change with `specworks start`,
-   does the work and runs its gate. On `Result: done`, report its line and
-   start the next phase; on `Result: question`, ask, write the answer to disk
-   and start a fresh subagent for the same phase; on `Result: blocked`, stop
-   and report where and why.
+   For each step of the cycle (`design`, then the halves, then `review`),
+   announce `Cycle <n> · <step>` and start its subagent (above), with
+   `<phase>` set to the step: `test` and `code` for the two halves. The skill
+   moves the change with `specworks start`, does the work and runs its gate.
+   On `Result: done`, report its line and go on; on `Result: question`, ask,
+   write the answer to disk and start a fresh subagent for the same step; on
+   `Result: blocked`, stop and report where and why.
 
-   From the second cycle on, each phase works on the **open findings in
+   **Implement: the two halves in parallel.** When the cycle has both
+   halves, start them together, after design's work is committed (the
+   worktree starts from HEAD, so it must hold design's stubs):
+   - the **test** half in a subagent with its own git worktree (Claude Code:
+     `Agent` with `isolation: "worktree"`); add to its prompt nothing but the
+     fixed text. When it is done, its changes are on the worktree's branch:
+     commit them there if the subagent did not;
+   - the **code** half in a subagent in the main checkout, at the same time.
+
+   Wait for both. Then merge the worktree's branch into the main checkout
+   (`git merge <branch>`). On a conflict in `tasks.md`, keep every tick: a
+   task is `- [x]` when either side ticked it. On a conflict in
+   `traceability.md`, take either side and regenerate it with `specworks
+   trace --change "<ref>" --write`. Any other conflict means a half worked
+   outside its own files: stop and report it. After the merge, run
+   `specworks gate implement --change "<ref>"`; its suite may fail (the
+   tests meet the code in review), every other check must pass.
+
+   A question from one half does not stop the other: let it finish, ask the
+   question, write the answer to disk and rerun only the half that asked.
+   With only one half in the cycle, run it alone in the main checkout.
+   **No worktree** (no subagent tool with isolation, or not a git
+   repository): run the test half first, then the code half, both in the
+   main checkout; the code half still does not read the test half's tests.
+
+   From the second cycle on, each step works on the **open findings in
    review.md** that belong to it (`specworks cycle --change "<ref>" --json`
-   lists each finding with its phase): carry out the agreed proposal in the
-   finding's Decision, plus whatever the later phases need to follow it (a
-   new API needs its tests and code). A finding marked `done in <phase>:` has
-   that phase's part done already (e.g. the spec change from specify): carry
-   out what it means for this phase. Do not redo untouched work.
+   lists each finding with its step in `phase`): carry out the agreed
+   proposal in the finding's Decision, plus whatever the later steps need to
+   follow it (a new API needs its tests and code). A finding routed to
+   `implement` belongs to both halves. A finding marked `done in <step>:`
+   has that step's part done already (e.g. the spec change from specify):
+   carry out what it means for this step. Do not redo untouched work.
 
    If a gate fails, the phase fixes it as its skill says. If it cannot be
    fixed there (the specs are wrong, the user must decide something outside
@@ -167,7 +200,8 @@ of <skills folder>/specworks-build/SKILL.md.
      ```
    - **You** ask the user about each finding, one at a time, and turn each
      answer into the finding's `**Decision**:` line in review.md: the
-     proposal as agreed (`back to <phase>: ...`), the user's other choice,
+     proposal as agreed (`back to <step>: ...`, where a step is specify,
+     design, implement, test or code), the user's other choice,
      or `accepted: <reason>` with the box ticked. Spec findings
      (`spec-gap`) get `back to specify: ...`.
    - **Then** a fresh review subagent reads the decided review.md, ticks
@@ -175,9 +209,11 @@ of <skills folder>/specworks-build/SKILL.md.
      what was done), finishes the file and gates it.
 
    The gate is `specworks gate review --change "<ref>" --allow-open`: open
-   findings do not fail it here (step 4 turns them into the next cycle), but
-   every other check (tests pass, untagged files accounted for, tags, a known
-   type or `back to <phase>:` on every open finding) must.
+   findings do not fail it here (step 4 turns them into the next cycle), nor
+   does a failing suite while a finding is open (the findings carry it), but
+   every other check (a test for every criterion, untagged files accounted
+   for, tags, a known type or `back to <step>:` on every open finding)
+   must.
 
 4. **After the review: ask about a new cycle**
 
@@ -194,28 +230,29 @@ of <skills folder>/specworks-build/SKILL.md.
      ```
      Specify marks each finding it carried out `done in specify:
      ...`, so `cycle` then starts at design and the build resumes there.
-   - **Otherwise** show the open findings and where each one is resolved,
+   - **Otherwise** show the open findings and the step each one needs,
      then ask:
 
      ```
-     Review found 3 open findings:
+     Review found 2 open findings:
        R1 code-gap    lockout counter not reset on success   -> code
-       R2 design-gap  reset() should return the token        -> design
        R3 test-gap    AC-AUTH-003.2 only checks the status   -> test
-     Start cycle 2 from design: design → test → code → review? (yes/no)
+     Start cycle 2: implement (test | code) → review? (yes/no)
      ```
 
-     - **Yes**: go back to step 2 with the next cycle number, starting at
-       `startAt`; that phase's subagent moves the change back with
-       `specworks start <startAt>`.
+     - **Yes**: go back to step 2 with the next cycle number and the steps
+       in `phases`; the first step's subagent moves the change back with
+       `specworks start <startAt>` (`design`, `implement` or `review`).
      - **No**: stop. The findings stay open in review.md; the user can run a
        single phase skill, or `/specworks-build <ref>` later to resume.
 
-   The cycle starts at the earliest phase any finding needs: code findings
-   (`code-gap`, `tag`, `quality`) → code, review; test findings → test, code,
-   review; design/API findings → design, test, code, review. A
-   `back to <phase>: ...` in a finding's Decision overrides its type, and a
-   `done in <phase>: ...` line moves it on to the phase after that one.
+   The cycle runs only the steps the findings need (`phases`): code findings
+   (`code-gap`, `tag`, `quality`) → code, review; test findings (`test-gap`)
+   → test, review; both kinds, or `back to implement:` → test and code in
+   parallel, review; design/API findings → design, test and code in
+   parallel, review. A `back to <step>: ...` in a finding's Decision
+   overrides its type, and a `done in <step>: ...` line moves it on to the
+   next step (design → implement; implement, test or code → review).
 
    After the third cycle, say how many cycles have run and what keeps coming
    back before asking again: repeated findings usually mean the spec or the
@@ -223,8 +260,9 @@ of <skills folder>/specworks-build/SKILL.md.
 
 5. **Report and stop**
 
-   Summarize per cycle: the phases run, the API agreed or changed, tests
-   added, the code written, and the findings (found, resolved, accepted).
+   Summarize per cycle: the steps run, the API agreed or changed, tests
+   added, the code written, the worktree merge (and any conflict resolved),
+   and the findings (found, resolved, accepted).
    Run `specworks trace --change "<ref>" --write`. Say "The build is
    complete." and end with:
    ```
@@ -245,8 +283,10 @@ of <skills folder>/specworks-build/SKILL.md.
   from the user, it reads from disk.
 - You write only the user's answers, in the place the question is about;
   never a phase's own work.
-- A new cycle only starts after the user says yes, and only from the phase the
-  open findings need.
+- A new cycle only starts after the user says yes, and runs only the steps
+  the open findings need.
+- The two halves stay independent: the code half never gets the test half's
+  tests, and a half never works on the other's tasks.
 - Spec problems are not fixed inside the build: hand over to
   `/specworks-specify`.
 - Do not weaken tests, skip gates or mark findings resolved to finish a cycle.

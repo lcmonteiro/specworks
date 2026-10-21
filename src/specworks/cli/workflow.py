@@ -21,9 +21,9 @@ from .output import ChangeOpt, FreshOpt, JsonOpt, change_dict, emit, fail, requi
 
 @app.command()
 def gate(
-    phase: str = typer.Argument(..., help=f"Phase to check: {', '.join(GATES)}."),
+    phase: str = typer.Argument(..., help=f"Gate to check: {', '.join(GATES)} (test and code are the halves of implement; implement runs both)."),
     change: str = ChangeOpt,
-    no_run: bool = typer.Option(False, "--no-run", help="design/code/review: do not run the project's commands (reported as a warning)."),
+    no_run: bool = typer.Option(False, "--no-run", help="design/code/implement/review: do not run the project's commands (reported as a warning)."),
     base: str | None = typer.Option(None, "--base", help="review: branch to diff against (default: origin's default branch)."),
     allow_open: bool = typer.Option(
         False, "--allow-open", help="review: open findings do not fail the gate (inside /specworks-build they start the next cycle)."
@@ -50,7 +50,7 @@ def _check_lines(checks: list[Check]) -> list[str]:
 
 @app.command()
 def start(
-    phase: str = typer.Argument(..., help=f"Phase to start: {', '.join(p for p in PHASES if p != 'done')}."),
+    phase: str = typer.Argument(..., help=f"Phase to start: {', '.join(p for p in PHASES if p != 'done')} (implement covers test and code)."),
     change: str = ChangeOpt,
     no_run: bool = typer.Option(False, "--no-run", help="Do not run the project's commands in the gates (reported as a warning)."),
     base: str | None = typer.Option(None, "--base", help="Branch the review and validate gates diff against (default: origin's default branch)."),
@@ -112,7 +112,7 @@ def cycle(
     change: str = ChangeOpt,
     as_json: bool = JsonOpt,
 ) -> None:
-    """After a review: where the next design → test → code → review cycle starts, from review.md's open findings."""
+    """After a review: the steps the next build cycle runs (design, test, code, review) and where it starts, from review.md's open findings."""
     ws, mod, ch = require_change(change, as_json)
     result = next_cycle(ch)
     data = {**change_dict(ws, mod, ch), **result}

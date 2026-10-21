@@ -7,7 +7,7 @@ import typer
 from ..core.changes import PHASES, ChangeError, ChangeNotFound, create_change, set_phase
 from ..specs.merge import archive_change
 from ..specs.tasks import read_tasks, set_done
-from ..workflow.artifacts import artifact_states, instructions
+from ..workflow.artifacts import artifact_states, half_progress, instructions
 from .app import app, task_app
 from .output import ChangeOpt, JsonOpt, change_dict, emit, require_change, resolve_archived, resolve_change, workspace
 
@@ -38,6 +38,9 @@ def status(change: str = ChangeOpt, as_json: bool = JsonOpt) -> None:
     states = artifact_states(ch)
     data = {**change_dict(ws, mod, ch), "phases": list(PHASES), "artifacts": states}
     head = f"{mod.qualify(ch.name)} (phase: {ch.phase})"
+    if (halves := half_progress(ch)) is not None:
+        data["halves"] = halves
+        head += ": " + ", ".join(f"{half} {n['done']}/{n['total']}" for half, n in halves.items())
     if data.get("archived"):
         head += f", abandoned: {ch.abandoned}" if ch.abandoned else ""
         head += f", archived at {ws.rel(ch.path)}"
@@ -64,7 +67,7 @@ def abandon(
 # @req REQ-CLI-006
 @app.command()
 def phase(
-    to: str = typer.Argument(..., help=f"One of: {', '.join(p for p in PHASES if p != 'done')} (done is set by `specworks close`)."),
+    to: str = typer.Argument(..., help=f"One of: {', '.join(p for p in PHASES if p != 'done')} (done is set by `specworks close`; test and code are the halves of implement)."),
     old_to: str | None = typer.Argument(None, hidden=True),  # the order before `phase <phase> --change <ref>`
     change: str | None = typer.Option(None, "--change", "-c", help="Change name or module:name."),
     as_json: bool = JsonOpt,

@@ -325,7 +325,7 @@ def test_skills_only_show_cli_calls_that_exist():
         ("task tick 1.1 --change x", "unknown command task 'tick'"),
         ("gate review --change x --allow-opened", "gate: unknown option --allow-opened"),
         ("instructions proposals --change x", "instructions: unknown value 'proposals'"),
-        ('phase "<ref>" implement', "phase: unknown value 'implement'"),
+        ('phase "<ref>" code', "phase: unknown value 'code'"),
     ],
 )
 def test_the_skill_call_check_catches_drift(call, problem):

@@ -49,11 +49,11 @@ def planned(project):
     return project
 
 
-def test_phase_order_has_interface_between_propose_and_test(planned):
+def test_phase_order_has_interface_between_propose_and_implement(planned):
     code, data = run_json("phase", "design", "--change", REF)
     assert code == 0 and data["phase"] == "design"
     code, data = run_json("status", "--change", REF)
-    assert data["phase"] == "design" and data["phases"].index("specify") < data["phases"].index("design") < data["phases"].index("test")
+    assert data["phase"] == "design" and data["phases"].index("specify") < data["phases"].index("design") < data["phases"].index("implement")
 
 
 # @ac AC-FLOW-006.1

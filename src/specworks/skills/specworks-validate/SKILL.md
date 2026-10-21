@@ -9,7 +9,7 @@ to close. The CLI checks what can be measured; you check what needs reading.
 The result is a clear PASS or FAIL, and every failure says which phase fixes
 it.
 
-It is the seventh phase of `refine → specify → design → test → code → review → validate → close`.
+It is the sixth phase of `refine → specify → design → implement (test | code) → review → validate → close`.
 
 **Phase boundary**: read-only. Do not edit code, tests, specs, tasks, design or
 review.md, and do not fix what you find, even when it is a one-line fix: report
@@ -84,7 +84,7 @@ go back to.
      specs into the living docs and archive the change` and `2. Stop here`.
    - **FAIL**: list the critical issues grouped by the phase to go back to, and
      offer the earliest one as the recommended option (e.g. `specworks phase
-     code --change "<ref>"`, then `/specworks-code <ref>`) and "Stop here".
+     implement --change "<ref>"`, then `/specworks-code <ref>`) and "Stop here".
      Warnings are listed but do not block.
 
 ---
