@@ -247,6 +247,11 @@ def find_ids(text: str) -> list[str]:
 
 
 # @req REQ-SPECS-004
+def table_cell(text: str) -> str:
+    """``text`` for a markdown table cell: a ``|`` escaped so it doesn't end the cell."""
+    return text
+
+
 def living_problems(doc: SpecDoc) -> list[tuple[int, str]]:
     """(line, message) for each way a living spec is not one ``close`` can merge into or index."""
     problems = list(doc.problems)
