@@ -148,6 +148,36 @@ def test_specify_marks_the_review_findings_it_carried_out():
     assert "done in specify:" in read_skill("specworks-build")
 
 
+@pytest.mark.parametrize("name", packaged_skills())
+def test_only_build_and_done_run_their_phases_in_subagents(name):
+    # A phase run by build or done sees the project and the artifacts, never the chat; a hand-run phase still talks to the user.
+    text = read_skill(name)
+    chains = name in ("specworks-build", "specworks-done")
+    assert ("**Phases in subagents**" in text) is chains
+    if chains:
+        assert all(f"Result: {kind} <" in text for kind in ("done", "question", "blocked"))
+        assert re.search(r"^allowed-tools: .*\bAgent\b", text, re.MULTILINE)
+
+
+def test_the_subagent_prompt_carries_only_the_phase_the_ref_and_the_skills_folder():
+    # Anything else in the prompt (a summary, an answer) is the channel past the artifacts that this rule closes.
+    prompt = re.search(r"```\n(Run the <phase> phase.*?)```", read_skill("specworks-build"), re.DOTALL).group(1)
+    assert set(re.findall(r"<([a-z ]+)>", prompt.split("Result:")[0])) == {"phase", "ref", "skills folder"}
+
+
+def test_build_review_proposes_every_finding_before_the_user_decides():
+    # The user's decisions reach the next review subagent only through review.md.
+    text = read_skill("specworks-build")
+    assert "**Proposal**:" in text and "**Decision**:" in text
+
+
+def test_done_closes_only_through_a_second_subagent_after_the_go_ahead():
+    # The go-ahead is which fixed prompt is sent, and capability registrations are written to the project first.
+    text = read_skill("specworks-done")
+    assert "the merge plan is approved; continue from step 4" in text
+    assert "specworks capability add" in text
+
+
 UVX = "uvx --from git+https://github.com/lcmonteiro/specworks specworks"
 
 
