@@ -148,7 +148,8 @@ text. A capability with no living spec SHALL take only ADDED requirements and
 be warned to have a Purpose; one not registered SHALL be warned to be
 registered, and SHALL be refused a prefix another capability uses. `check`
 SHALL warn about a MODIFIED block that leaves out a living criterion, one that
-another change MODIFIED after this one started, and a living spec it would
+another change MODIFIED after this one started (by the close time a History
+line holds, or by its day when it holds only a day), and a living spec it would
 refuse to merge into.
 
 #### Scenario: AC-SPECS-006.1 IDs that don't match the living spec
@@ -180,6 +181,12 @@ refuse to merge into.
 
 - **WHEN** the living spec of a delta's capability is broken
 - **THEN** `check` warns to fix it before closing
+
+#### Scenario: AC-SPECS-006.7 Closed earlier the same day
+
+- **GIVEN** a change that started at 23:00 MODIFIES a requirement, and a History line of that day, timed 22:41:07, says another change MODIFIED it
+- **WHEN** `check` runs
+- **THEN** it doesn't warn; with a line timed after 23:00, or one holding only that day, it warns
 
 ### Requirement: REQ-SPECS-007 Two active changes on one requirement
 
@@ -364,7 +371,7 @@ ADDED blocks at the end of `## Requirements`, MODIFIED blocks in place, REMOVED
 blocks deleted, everything else kept as written. A capability without a living
 spec SHALL get one with the delta's Purpose. requirements.md SHALL be rewritten
 as an index of the requirements and criteria plus its `## History`, one line
-added per close. A delta that doesn't apply, a broken living spec or an
+added per close with the close's local date and time. A delta that doesn't apply, a broken living spec or an
 unregistered capability SHALL stop the close. Every file SHALL be computed
 first, the archive folder checked, and the living docs restored if writing or
 archiving fails.
@@ -388,6 +395,11 @@ archiving fails.
 
 - **WHEN** the archive folder is taken, or archiving fails
 - **THEN** nothing is written, or the living docs are put back as they were
+
+#### Scenario: AC-SPECS-013.5 The close time in History
+
+- **WHEN** a change closes
+- **THEN** its History line holds the date and the time before the change's name (`- 2026-10-21 09:14:02 ...`), and the earlier lines are kept as they were
 
 ### Requirement: REQ-SPECS-014 Diagrams of a change
 

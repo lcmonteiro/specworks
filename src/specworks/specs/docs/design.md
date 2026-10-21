@@ -49,7 +49,10 @@ requirements.md keeps a `## History` line per close. A removed requirement
 leaves the living spec but stays in that History, so the next free ID counts
 it, and `check` refuses to ADD it again. The next ID also counts every active
 change's delta, so two changes planned at once don't pick the same number.
-(baseline-specs)
+Each History line holds the close's local date and time, so `check` can tell a
+close earlier the same day from one after a change started, when it warns that
+a MODIFIED block may be out of date; a line that holds only a day (written
+before this) is compared by day. (baseline-specs, same-day-modified-warning)
 
 ### A clash fails only the later change
 
