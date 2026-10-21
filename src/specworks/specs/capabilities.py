@@ -136,17 +136,26 @@ def history_ids(cap: CapabilityRef) -> set[str]:
     return {i for line in lines for i in find_ids(line) if cap.id_matches(i)}
 
 
-HISTORY_LINE_RE = re.compile(r"^- (?P<date>\d{4}-\d{2}-\d{2}) `(?P<change>[^`]+)`: (?P<summary>.*)$")
+HISTORY_LINE_RE = re.compile(r"^- (?P<date>\d{4}-\d{2}-\d{2})(?: (?P<time>\d{2}:\d{2}:\d{2}))? `(?P<change>[^`]+)`: (?P<summary>.*)$")
 
 
+# @req REQ-SPECS-006
 def modified_since(cap: CapabilityRef, since: str) -> dict[str, str]:
-    """IDs a close on or after the day of ``since`` (YYYY-MM-DD, a time may follow) MODIFIED, per requirements.md History -> ``<change> on <date>``."""
-    since = since[:10]
+    """IDs a close at or after ``since`` (YYYY-MM-DD, a time may follow) MODIFIED, per requirements.md History -> ``<change> on <date>``.
+
+    A History line and ``since`` are compared by date and time when both have a time, else by day.
+    """
+    since_day, _, since_time = since.replace(" ", "T").partition("T")
     living = cap.living_spec()
     found: dict[str, str] = {}
     for line in history_lines(living.parent / REQUIREMENTS_FILE if living else None):
         match = HISTORY_LINE_RE.match(line)
-        if not match or match.group("date") < since:
+        if not match:
+            continue
+        if match.group("time") and since_time:
+            if (match.group("date"), match.group("time")) < (since_day, since_time[:8]):
+                continue
+        elif match.group("date") < since_day:
             continue
         for part in match.group("summary").split(";"):
             kind, _, ids = part.strip().partition(" ")

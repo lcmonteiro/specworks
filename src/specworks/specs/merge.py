@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import shutil
 from dataclasses import dataclass, field
-from datetime import date
+from datetime import date, datetime
 from pathlib import Path
 
 from ..core.changes import Change
@@ -165,7 +165,7 @@ def requirements_index(cap: CapabilityRef, spec_text: str, history: list[str]) -
 # @req REQ-SPECS-013
 def plan_merge(ws: Workspace, change: Change, specs: ChangeSpecs, change_ref: str, today: str | None = None) -> list[CapabilityMerge]:
     """Compute every living spec and requirements index this change produces, without writing."""
-    today = today or date.today().isoformat()
+    today = today or datetime.now().isoformat(sep=" ", timespec="seconds")  # the time lets check order same-day closes
     unregistered = [d.cap.ref for d in specs.deltas if d.cap.capability is None]
     if unregistered:
         raise MergeError(
