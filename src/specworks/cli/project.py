@@ -147,9 +147,11 @@ def skills(tools: str = ToolsOpt) -> None:
 
 # @req REQ-CLI-009
 @app.command()
-def update(tools: str | None = typer.Option(
-    None, "--tools", help="AI tools to update: the installed ones by default, or auto, all, or a list such as claude,copilot."
-)) -> None:
+def update(
+    tools: str | None = typer.Option(
+        None, "--tools", help="AI tools to update: the installed ones by default, or auto, all, or a list such as claude,copilot."
+    ),
+) -> None:
     """Bring the project's agent skills up to this specworks (run after `uv tool upgrade specworks`)."""
     ws = workspace(False)
     selected = parse_tools(tools, ws.root) if tools else installed_tools(ws.root) or parse_tools("auto", ws.root)
