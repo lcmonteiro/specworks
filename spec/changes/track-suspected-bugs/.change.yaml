@@ -1,4 +1,4 @@
 name: track-suspected-bugs
 created: '2026-10-21T09:52:41'
-phase: review
+phase: validate
 skip_specs: true
