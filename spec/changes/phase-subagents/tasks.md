@@ -2,7 +2,7 @@
 
 ## 1. Shared contract
 
-- [ ] 1.1 Write `src/specworks/skills/_shared/phase-subagents.md`: the fixed prompt (ref and skills folder only), proposal-before-question, the `Result: done | question | blocked` line, where each answer is written before a restart, and the fallback with no subagent tool; verify by reading it
+- [x] 1.1 Write `src/specworks/skills/_shared/phase-subagents.md`: the fixed prompt (ref and skills folder only), proposal-before-question, the `Result: done | question | blocked` line, where each answer is written before a restart, and the fallback with no subagent tool; verify by reading it
 - [ ] 1.2 Add wording checks to `tests/test_skills.py`: both skills include the shared text, and it names the three `Result:` kinds; verify they fail before 2.1 and 3.1
 
 ## 2. Build
