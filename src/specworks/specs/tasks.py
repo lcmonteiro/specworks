@@ -26,13 +26,14 @@ class Task:
     text: str
     done: bool
     line: int
+    half: str = ""  # "test" or "code" from a leading [test] / [code] marker (which stays in text), else "" (REQ-SPECS-009)
 
     @property
     def ids(self) -> list[str]:
         return find_ids(self.text)
 
     def to_dict(self) -> dict:
-        return {"num": self.num, "text": self.text, "done": self.done, "line": self.line, "ids": self.ids}
+        return {"num": self.num, "text": self.text, "done": self.done, "line": self.line, "ids": self.ids, "half": self.half}
 
 
 # @req REQ-SPECS-009

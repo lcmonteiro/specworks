@@ -114,6 +114,14 @@ def tasks_done(ctx: GateContext) -> Check:
     return Check("every task is done (specworks task list --pending)", specs.tasks_found and not pending, pending)
 
 
+def half_tasks_done(half: str) -> CheckFn:
+    """A check that every task of ``half`` (``test`` or ``code``) is done, listing only that half's open tasks.
+
+    Implements REQ-FLOW-007, REQ-FLOW-008.
+    """
+    raise NotImplementedError
+
+
 # @req REQ-FLOW-005
 def specs_as_specified(ctx: GateContext) -> Check | None:
     """The delta specs are the ones `gate specify` passed with when `start` last left specify (not checked without one)."""
@@ -244,6 +252,22 @@ def command_check(ctx: GateContext, key: str, name: str, optional: bool = False)
 # @req REQ-FLOW-008
 def tests_pass(ctx: GateContext) -> Check:
     return command_check(ctx, "test", "the test suite passes (commands.test)")
+
+
+def code_tests_pass(ctx: GateContext) -> Check:
+    """The code gate's ``tests_pass``: a warning while the change has ``@ac`` tests of its own (they meet the code in review).
+
+    Implements REQ-FLOW-008.
+    """
+    raise NotImplementedError
+
+
+def review_tests_pass(ctx: GateContext) -> Check:
+    """The review gate's ``tests_pass``: a warning under ``--allow-open`` while review.md has an open finding.
+
+    Implements REQ-FLOW-011.
+    """
+    raise NotImplementedError
 
 
 def optional_command(key: str, name: str) -> CheckFn:

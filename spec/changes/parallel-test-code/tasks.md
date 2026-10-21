@@ -2,25 +2,25 @@
 
 ## 1. Phases and halves
 
-- [ ] 1.1 Add `implement` to `PHASES` (replacing test, code) and `HALVES` in `src/specworks/core/changes.py`, with stubs for reading a half as implement and refusing it in `set_phase` (REQ-PROJ-011); verify the suite still imports
+- [x] 1.1 Add `implement` to `PHASES` (replacing test, code) and `HALVES` in `src/specworks/core/changes.py`, with stubs for reading a half as implement and refusing it in `set_phase` (REQ-PROJ-011); verify the suite still imports
 - [ ] 1.2 [test] Write failing tests for AC-PROJ-011.1, AC-PROJ-011.2, AC-PROJ-011.3, AC-PROJ-011.4, AC-PROJ-011.5 tagged `@ac`; verify they fail for the right reason
 - [ ] 1.3 [code] Implement the phase list, reading `test`/`code` as implement and refusing them (REQ-PROJ-011) tagged `@req`; verify `specworks run test` for the 1.2 tests
 
 ## 2. Task halves
 
-- [ ] 2.1 Add `Task.half` (and `half` in `to_dict`) as a stub in `src/specworks/specs/tasks.py` (REQ-SPECS-009); verify the suite still imports
+- [x] 2.1 Add `Task.half` (and `half` in `to_dict`) as a stub in `src/specworks/specs/tasks.py` (REQ-SPECS-009); verify the suite still imports
 - [ ] 2.2 [test] Write failing tests for AC-SPECS-009.1, AC-SPECS-009.2, AC-SPECS-009.3, AC-SPECS-009.4, AC-SPECS-009.5, AC-SPECS-009.6, AC-SPECS-009.7 tagged `@ac`; verify they fail for the right reason
 - [ ] 2.3 [code] Read the `[test]`/`[code]` marker and warn in `check` when a half has no task (REQ-SPECS-009) tagged `@req`; verify the 2.2 tests
 
 ## 3. Status
 
-- [ ] 3.1 Add `half_progress(change)` as a stub in `src/specworks/workflow/artifacts.py` (REQ-FLOW-001); verify the suite still imports
+- [x] 3.1 Add `half_progress(change)` as a stub in `src/specworks/workflow/artifacts.py` (REQ-FLOW-001); verify the suite still imports
 - [ ] 3.2 [test] Write failing tests for AC-FLOW-001.1, AC-FLOW-001.2, AC-FLOW-001.3, AC-FLOW-001.4 tagged `@ac`; verify they fail for the right reason
 - [ ] 3.3 [code] Compute each half's tasks for a change in implement and show them in `status` (REQ-FLOW-001) tagged `@req`; verify the 3.2 tests
 
 ## 4. Gates
 
-- [ ] 4.1 Add `tasks_done(half)` and the `implement` gate as stubs in `src/specworks/workflow/checks.py` and `src/specworks/workflow/gate.py` (REQ-FLOW-007, REQ-FLOW-008, REQ-FLOW-011, REQ-FLOW-014); verify the suite still imports
+- [x] 4.1 Add `tasks_done(half)` and the `implement` gate as stubs in `src/specworks/workflow/checks.py` and `src/specworks/workflow/gate.py` (REQ-FLOW-007, REQ-FLOW-008, REQ-FLOW-011, REQ-FLOW-014); verify the suite still imports
 - [ ] 4.2 [test] Write failing tests for AC-FLOW-007.1, AC-FLOW-007.2, AC-FLOW-007.3, AC-FLOW-007.4 tagged `@ac`; verify they fail for the right reason
 - [ ] 4.3 [test] Write failing tests for AC-FLOW-008.1, AC-FLOW-008.2, AC-FLOW-008.3, AC-FLOW-008.4, AC-FLOW-008.5, AC-FLOW-008.6, AC-FLOW-008.7 tagged `@ac`; verify they fail for the right reason
 - [ ] 4.4 [test] Write failing tests for AC-FLOW-011.1, AC-FLOW-011.2, AC-FLOW-011.3, AC-FLOW-011.4, AC-FLOW-011.5, AC-FLOW-011.6, AC-FLOW-011.7, AC-FLOW-011.8 tagged `@ac`; verify they fail for the right reason
@@ -31,7 +31,7 @@
 
 ## 5. Review routing and cycles
 
-- [ ] 5.1 Replace `FINDING_PHASES` with `FINDING_STEPS` as a stub in `src/specworks/workflow/review.py` (REQ-FLOW-010, REQ-FLOW-012); verify the suite still imports
+- [x] 5.1 Replace `FINDING_PHASES` with `FINDING_STEPS` as a stub in `src/specworks/workflow/review.py` (REQ-FLOW-010, REQ-FLOW-012); verify the suite still imports
 - [ ] 5.2 [test] Write failing tests for AC-FLOW-010.1, AC-FLOW-010.2, AC-FLOW-010.3, AC-FLOW-010.4, AC-FLOW-010.5, AC-FLOW-010.6, AC-FLOW-010.7 tagged `@ac`; verify they fail for the right reason
 - [ ] 5.3 [test] Write failing tests for AC-FLOW-012.1, AC-FLOW-012.2, AC-FLOW-012.3, AC-FLOW-012.4, AC-FLOW-012.5, AC-FLOW-012.6 tagged `@ac`; verify they fail for the right reason
 - [ ] 5.4 [code] Route findings to steps, `back to implement:`, and done-in to the next step (REQ-FLOW-010) tagged `@req`; verify the 5.2 tests

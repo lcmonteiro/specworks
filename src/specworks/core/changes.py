@@ -19,6 +19,8 @@ ARCHIVED_RE = re.compile(r"^(?P<date>\d{4}-\d{2}-\d{2})-(?P<name>.+)$")  # <arch
 # Each phase is driven by the skill of the same name (specworks-<phase>); `close`
 # writes the living docs and archives the change, which then reads `done`.
 PHASES = ("refine", "specify", "design", "test", "code", "review", "validate", "close", "done")
+# The two halves of the implement phase: names of gates, review steps and task markers, not phases (REQ-PROJ-011).
+HALVES = ("test", "code")
 
 
 class ChangeError(SpecworksError):

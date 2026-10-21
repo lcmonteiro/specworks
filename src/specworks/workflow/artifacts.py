@@ -78,6 +78,14 @@ def artifact_states(change: Change) -> list[dict]:
     return states
 
 
+def half_progress(change: Change) -> dict[str, dict[str, int]] | None:
+    """Each half's tasks done and in total (``{"test": {"done": 3, "total": 3}, "code": {...}}``) for a change in implement, else None.
+
+    Read from tasks.md only, without running any command. Implements REQ-FLOW-001.
+    """
+    raise NotImplementedError
+
+
 # @req REQ-FLOW-002
 def instructions(ws: Workspace, module: Module, change: Change, artifact_id: str) -> dict:
     artifacts = load_artifacts()

@@ -225,6 +225,8 @@ BACK_RE = re.compile(r"\bback to (?P<phase>specify|design|test|code)\s*:", re.IG
 DONE_RE = re.compile(r"\bdone in (?P<phase>specify|design|test|code)\s*:", re.IGNORECASE)
 # Workflow order of the phases a finding can need, and the phase after each one.
 FINDING_PHASES = ("specify", "design", "test", "code", "review")
+# The steps a finding can be routed to, in workflow order: implement is both halves (REQ-FLOW-010).
+FINDING_STEPS = ("specify", "design", "implement", "test", "code", "review")
 ACCOUNTED_SECTION = "changed files without tags"
 
 
