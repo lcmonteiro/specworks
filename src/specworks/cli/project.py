@@ -145,6 +145,14 @@ def skills(tools: str = ToolsOpt) -> None:
     write_skills(workspace(False), tools)
 
 
+@app.command()
+def update(tools: str | None = typer.Option(
+    None, "--tools", help="AI tools to update: the installed ones by default, or auto, all, or a list such as claude,copilot."
+)) -> None:
+    """Bring the project's agent skills up to this specworks (run after `uv tool upgrade specworks`)."""
+    raise NotImplementedError
+
+
 # @req REQ-CLI-004
 @app.command()
 def context(as_json: bool = JsonOpt, all_modules: bool = AllOpt) -> None:

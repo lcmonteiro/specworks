@@ -15,6 +15,7 @@ import shutil
 from dataclasses import dataclass, field
 from importlib import resources
 from pathlib import Path
+from typing import Literal
 
 from ..core.errors import SpecworksError
 
@@ -183,3 +184,39 @@ def install_skills(root: Path, tools: list[Tool]) -> list[Path]:
                 prompt.write_text(render_prompt(text), encoding="utf-8")
                 written.append(prompt)
     return written
+
+
+@dataclass(frozen=True)
+class SkillFile:
+    """An installed skill or prompt file that differs from what this version installs."""
+
+    path: str  # relative to the workspace root, with /
+    reason: Literal["changed", "missing", "stale"]
+
+
+@dataclass(frozen=True)
+class SkillsState:
+    """How the installed skills compare with this version's: current, outdated (with the files) or none installed."""
+
+    state: Literal["current", "outdated", "none"]
+    files: list[SkillFile] = field(default_factory=list)
+
+
+def expected_skills(tools: list[Tool]) -> dict[str, str]:
+    """Every skill file (and Copilot prompt file) of ``tools`` this version installs: relative path -> text."""
+    raise NotImplementedError
+
+
+def installed_tools(root: Path) -> list[Tool]:
+    """The tools whose skills folder holds a specworks skill."""
+    raise NotImplementedError
+
+
+def skills_state(root: Path) -> SkillsState:
+    """Compare the installed skills of every tool that has them with what this version installs."""
+    raise NotImplementedError
+
+
+def update_skills(root: Path, tools: list[Tool]) -> tuple[list[Path], list[Path]]:
+    """Write the skill files of ``tools`` that differ or are missing and remove the stale ones; return (updated, removed)."""
+    raise NotImplementedError
