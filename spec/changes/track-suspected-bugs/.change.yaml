@@ -1,3 +1,4 @@
 name: track-suspected-bugs
 created: '2026-10-21T09:52:41'
-phase: refine
+phase: specify
+skip_specs: true
