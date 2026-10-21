@@ -1,9 +1,0 @@
-direction: right
-caller: Newsletter service
-store: LinkStore {
-  by_url: "url -> code"
-  by_code: "code -> url"
-}
-caller -> store: "shorten(url)"
-store.by_url -> store.by_code: "new code: store both"
-caller -> store: "resolve(code)"
