@@ -1,8 +1,14 @@
 """Review phase support: drift candidates (`specworks review`) and the review gate."""
 
+import json
+import re
+import sys
+
 import pytest
 
-from helpers import REF, git, run_json
+from helpers import REF, git, run_json, write_tests
+
+FAIL = f'"{sys.executable}" -c "import sys; print(\'2 failed\'); sys.exit(3)"'
 
 
 def findings(data):
@@ -124,6 +130,45 @@ def test_gate_review_allow_open_reports_open_findings_as_a_warning(repo):
     (repo / "src/auth/audit.py").write_text("def audit(): ...\n")  # everything else still blocks
     code, data = run_json("gate", "review", "--change", REF, "--base", "main", "--allow-open")
     assert code == 1
+
+
+def fail_the_suite(repo):
+    cfg = repo / "spec.yml"
+    cfg.write_text(re.sub(r"(?m)^  test:.*$", lambda _: f"  test: {json.dumps(FAIL)}", cfg.read_text(), count=1))
+
+
+TESTS = "the test suite passes (commands.test)"
+
+
+# @ac AC-FLOW-011.7
+def test_gate_review_allow_open_with_an_open_finding_only_warns_about_a_failing_suite(repo):
+    fail_the_suite(repo)
+    write_review(repo, "- [ ] R1 **code-gap** reset ignores case\n  - **Decision**: back to code: lower-case the email\n")
+    code, data = run_json("gate", "review", "--change", REF, "--base", "main", "--allow-open")
+    c = checks(data)
+    assert code == 0 and data["passed"] is True, data
+    assert not c["no open finding in review.md"]["ok"] and not c["no open finding in review.md"]["blocking"]
+    assert not c[TESTS]["ok"] and not c[TESTS]["blocking"] and "2 failed" in c[TESTS]["details"]
+    code, data = run_json("gate", "review", "--change", REF, "--base", "main")  # without --allow-open
+    assert code == 1 and checks(data)[TESTS]["blocking"] and not checks(data)[TESTS]["ok"]
+
+
+# @ac AC-FLOW-011.7
+def test_gate_review_allow_open_without_an_open_finding_blocks_on_a_failing_suite(repo):
+    fail_the_suite(repo)
+    write_review(repo, "- [x] R1 **code-gap** reset ignores case\n  - **Decision**: code fixed\n")
+    code, data = run_json("gate", "review", "--change", REF, "--base", "main", "--allow-open")
+    assert code == 1 and checks(data)[TESTS]["blocking"] and not checks(data)[TESTS]["ok"], data
+
+
+# @ac AC-FLOW-011.8
+@pytest.mark.parametrize("allow_open", [[], ["--allow-open"]])
+def test_gate_review_needs_a_test_for_every_criterion(repo, allow_open):
+    write_tests(repo, "AC-AUTH-003.1", "AC-AUTH-002.1")
+    write_review(repo, "- [ ] R1 **test-gap** AC-AUTH-003.2 has no test\n  - **Decision**: back to test: add it\n")
+    code, data = run_json("gate", "review", "--change", REF, "--base", "main", *allow_open)
+    missing = checks(data)["every acceptance criterion has a test (@ac tag)"]
+    assert code == 1 and missing["blocking"] and missing["details"] == ["AC-AUTH-003.2"], data
 
 
 # @ac AC-FLOW-011.3

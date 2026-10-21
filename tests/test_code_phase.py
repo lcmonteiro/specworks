@@ -29,8 +29,23 @@ def implement_everything(root):
     run_json("task", "done", "1.1", "1.2", "--change", REF)
 
 
+def implement_code_only(root):
+    """@req tags for every requirement and every task ticked, but no @ac test of the change."""
+    (root / "src/auth/reset.py").write_text("# @req REQ-AUTH-003\ndef reset(): ...\n")  # specworks: ignore-tags
+    (root / "src/auth/lockout.py").write_text("# @req REQ-AUTH-002\nLIMIT = 3\n")  # specworks: ignore-tags
+    run_json("task", "done", "1.1", "1.2", "--change", REF)
+
+
 def checks(data):
     return {c["name"]: c for c in data["checks"]}
+
+
+def task_checks(data):
+    """The gate's checks on open tasks (not `specworks check`)."""
+    return [c for c in data["checks"] if "task" in c["name"] and "done" in c["name"]]
+
+
+TESTS = "the test suite passes (commands.test)"
 
 
 # --- specworks run ----------------------------------------------------------
@@ -92,17 +107,37 @@ def test_implement_gate_lists_what_is_missing(project):
     assert code == 1
     c = checks(data)
     assert c["every requirement has code (@req tag)"]["details"] == ["REQ-AUTH-002"]
-    assert [d.split()[0] for d in c["every task is done (specworks task list --pending)"]["details"]] == ["1.1", "1.2"]
+    tasks = task_checks(data)  # 1.1 [test] and 1.2 [code] are open: only the [code] one is listed
+    assert len(tasks) == 1 and tasks[0]["blocking"] and [d.split()[0] for d in tasks[0]["details"]] == ["1.2"], tasks
 
 
 # @ac AC-FLOW-008.3
 def test_implement_gate_fails_when_tests_fail(project):
     set_test_command(project, FAIL)
-    implement_everything(project)
+    implement_code_only(project)  # no @ac test of the change: the failure is not its own tests being red
     code, data = run_json("gate", "code", "--change", REF)
     assert code == 1
     tests = checks(data)["the test suite passes (commands.test)"]
     assert tests["ok"] is False and "2 failed" in tests["details"]
+
+
+# @ac AC-FLOW-008.6
+def test_code_gate_does_not_need_a_test_for_every_criterion(project):
+    set_test_command(project, PASS)
+    implement_code_only(project)
+    code, data = run_json("gate", "code", "--change", REF)
+    assert code == 0 and data["passed"] is True, data
+    assert not any("acceptance criterion has a test" in c["name"] for c in data["checks"])
+
+
+# @ac AC-FLOW-008.7
+def test_code_gate_only_warns_when_the_change_s_own_tests_fail(project):
+    set_test_command(project, FAIL)
+    implement_everything(project)  # the change's @ac tests meet the code in review
+    code, data = run_json("gate", "code", "--change", REF)
+    tests = checks(data)[TESTS]
+    assert code == 0 and data["passed"] is True, data
+    assert tests["ok"] is False and tests["blocking"] is False and "2 failed" in tests["details"]
 
 
 # @ac AC-FLOW-008.4

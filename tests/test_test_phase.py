@@ -100,6 +100,7 @@ def test_test_gate_lists_criteria_without_tests(project):
 # @ac AC-FLOW-007.1
 def test_test_gate_passes_when_every_criterion_is_tested(project):
     write_tests(project, "AC-AUTH-003.1", "AC-AUTH-003.2", "AC-AUTH-002.1")
+    run_json("task", "done", "1.1", "--change", REF)  # the [test] task
     code, data = run_json("gate", "test", "--change", REF)
     assert code == 0 and data["passed"] is True
 
@@ -115,11 +116,29 @@ def test_test_gate_rejects_tags_to_unknown_ids(project):
 # @ac AC-FLOW-007.3
 def test_ac_tag_in_source_file_is_a_warning(project):
     write_tests(project, "AC-AUTH-003.1", "AC-AUTH-003.2", "AC-AUTH-002.1")
+    run_json("task", "done", "1.1", "--change", REF)
     (project / "src/auth/reset.py").write_text("# @ac AC-AUTH-003.1\n")  # specworks: ignore-tags
     code, data = run_json("gate", "test", "--change", REF)
     assert code == 0
     warn = [c for c in data["checks"] if not c["ok"]]
     assert len(warn) == 1 and warn[0]["blocking"] is False and "src/auth/reset.py:1" in warn[0]["details"][0]
+
+
+def task_checks(data):
+    """The gate's checks on open tasks (not `specworks check`)."""
+    return [c for c in data["checks"] if "task" in c["name"] and "done" in c["name"]]
+
+
+# @ac AC-FLOW-007.4
+def test_test_gate_needs_the_test_tasks_done_only(project):
+    write_tests(project, "AC-AUTH-003.1", "AC-AUTH-003.2", "AC-AUTH-002.1")
+    code, data = run_json("gate", "test", "--change", REF)  # 1.1 [test] and 1.2 [code] are open
+    tasks = task_checks(data)
+    assert code == 1 and len(tasks) == 1 and tasks[0]["blocking"] and not tasks[0]["ok"], data
+    assert [d.split()[0] for d in tasks[0]["details"]] == ["1.1"]
+    run_json("task", "done", "1.1", "--change", REF)
+    code, data = run_json("gate", "test", "--change", REF)  # 1.2 [code] is still open
+    assert code == 0 and all(c["ok"] for c in task_checks(data)), data
 
 
 # @ac AC-FLOW-003.1

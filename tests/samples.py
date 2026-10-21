@@ -73,10 +73,10 @@ TASKS = """\
 
 ## 1. Reset
 
-- [ ] 1.1 Write failing tests for AC-AUTH-003.1 and AC-AUTH-003.2; verify they fail
-- [ ] 1.2 Implement reset links (REQ-AUTH-003); verify 1.1 passes
+- [ ] 1.1 [test] Write failing tests for AC-AUTH-003.1 and AC-AUTH-003.2; verify they fail
+- [ ] 1.2 [code] Implement reset links (REQ-AUTH-003); verify 1.1 passes
 
 ## 2. Lockout
 
-- [x] 2.1 Lower the lockout threshold (REQ-AUTH-002); verify AC-AUTH-002.1 test passes
+- [x] 2.1 [code] Lower the lockout threshold (REQ-AUTH-002); verify AC-AUTH-002.1 test passes
 """
