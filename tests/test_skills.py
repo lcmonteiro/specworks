@@ -1,3 +1,4 @@
+import json
 import re
 import shlex
 from importlib import resources
@@ -9,7 +10,7 @@ from typer.testing import CliRunner
 from specworks.cli import app
 from specworks.core.changes import PHASES
 from specworks.core.config import COMMAND_KEYS
-from specworks.tools.skills import TOOLS, packaged_skills, read_skill, render_prompt, render_skill
+from specworks.tools.skills import TOOLS, packaged_skills, read_skill, render_prompt, render_skill, skills_state
 from specworks.workflow.artifacts import load_artifacts
 from specworks.workflow.gate import GATES
 
@@ -356,3 +357,113 @@ def test_one_line_frontmatter_is_copied_as_before(name):
     copilot = [line for line in lines if line.split(":", 1)[0] in ("name", "description")]
     assert render_skill(text, TOOLS["copilot"]) == "---\n" + "\n".join(copilot) + "\n---\n" + body
     assert render_skill(text, TOOLS["claude"]) == "---\n" + "\n".join(lines) + "\n---\n" + body
+
+
+def installed_files(root):
+    return {p: p.read_text(encoding="utf-8") for d in (".claude", ".github") for p in (root / d).rglob("*") if p.is_file()}
+
+
+def state_of(root):
+    st = skills_state(root)
+    return st.state, {(f.path, f.reason) for f in st.files}
+
+
+# @ac AC-INTEG-006.1
+def test_skills_just_installed_are_current(tmp_path, monkeypatch):
+    init(tmp_path, monkeypatch, "--tools", "all")
+    assert state_of(tmp_path) == ("current", set())
+
+
+# @ac AC-INTEG-006.2
+def test_an_edited_skill_is_outdated(tmp_path, monkeypatch):
+    init(tmp_path, monkeypatch, "--tools", "all")
+    (tmp_path / f".claude/skills/{SKILL}/SKILL.md").write_text("edited\n", encoding="utf-8")
+    assert state_of(tmp_path) == ("outdated", {(f".claude/skills/{SKILL}/SKILL.md", "changed")})
+
+
+# @ac AC-INTEG-006.3
+def test_a_deleted_skill_or_prompt_file_is_missing(tmp_path, monkeypatch):
+    init(tmp_path, monkeypatch, "--tools", "all")
+    (tmp_path / f".github/skills/{SKILL}/SKILL.md").unlink()
+    (tmp_path / f".github/prompts/{SKILL}.prompt.md").unlink()
+    assert state_of(tmp_path) == (
+        "outdated",
+        {(f".github/skills/{SKILL}/SKILL.md", "missing"), (f".github/prompts/{SKILL}.prompt.md", "missing")},
+    )
+
+
+# @ac AC-INTEG-006.4
+def test_a_skill_no_longer_shipped_is_stale_and_a_users_own_is_ignored(tmp_path, monkeypatch):
+    init(tmp_path, monkeypatch, "--tools", "claude")
+    for name in ("specworks-propose", "my-skill"):
+        (tmp_path / f".claude/skills/{name}").mkdir()
+        (tmp_path / f".claude/skills/{name}/SKILL.md").write_text("old\n")
+    assert state_of(tmp_path) == ("outdated", {(".claude/skills/specworks-propose", "stale")})
+
+
+# @ac AC-INTEG-006.5
+def test_no_skills_installed(tmp_path, monkeypatch):
+    init(tmp_path, monkeypatch, "--no-skills")
+    assert state_of(tmp_path) == ("none", set())
+
+
+# @ac AC-CLI-009.1
+def test_update_refreshes_outdated_skills(tmp_path, monkeypatch):
+    init(tmp_path, monkeypatch, "--tools", "claude")
+    edited, deleted = (f".claude/skills/{n}/SKILL.md" for n in (SKILL, "specworks-build"))
+    (tmp_path / edited).write_text("edited\n", encoding="utf-8")
+    (tmp_path / deleted).unlink()
+    (tmp_path / ".claude/skills/specworks-propose").mkdir()
+    result = runner.invoke(app, ["update"])
+    assert result.exit_code == 0, result.output
+    assert f"updated {edited}" in result.output and f"updated {deleted}" in result.output
+    assert "removed .claude/skills/specworks-propose" in result.output
+    assert state_of(tmp_path) == ("current", set())
+
+
+# @ac AC-CLI-009.2
+def test_update_on_current_skills_writes_nothing(tmp_path, monkeypatch):
+    init(tmp_path, monkeypatch, "--tools", "all")
+    before = {p: p.stat().st_mtime_ns for p in installed_files(tmp_path)}
+    result = runner.invoke(app, ["update"])
+    assert result.exit_code == 0, result.output
+    assert "skills up to date" in result.output and "updated" not in result.output
+    assert {p: p.stat().st_mtime_ns for p in installed_files(tmp_path)} == before
+
+
+# @ac AC-CLI-009.3
+def test_update_keeps_the_installed_tools(tmp_path, monkeypatch):
+    init(tmp_path, monkeypatch, "--tools", "claude")
+    (tmp_path / ".github").mkdir()
+    (tmp_path / ".github/copilot-instructions.md").write_text("# Copilot\n")
+    (tmp_path / f".claude/skills/{SKILL}/SKILL.md").write_text("edited\n", encoding="utf-8")
+    result = runner.invoke(app, ["update"])
+    assert result.exit_code == 0, result.output
+    assert f"updated .claude/skills/{SKILL}/SKILL.md" in result.output
+    assert not (tmp_path / ".github/skills").exists() and not (tmp_path / ".github/prompts").exists()
+
+
+# @ac AC-CLI-009.4
+def test_update_from_a_module_updates_the_workspace_root(tmp_path, monkeypatch):
+    init(tmp_path, monkeypatch, "--tools", "claude")
+    result = runner.invoke(app, ["init", "service", "--no-skills"])
+    assert result.exit_code == 0, result.output
+    (tmp_path / f".claude/skills/{SKILL}/SKILL.md").write_text("edited\n", encoding="utf-8")
+    monkeypatch.chdir(tmp_path / "service")
+    result = runner.invoke(app, ["update"])
+    assert result.exit_code == 0, result.output
+    assert f"updated .claude/skills/{SKILL}/SKILL.md" in result.output
+    assert not (tmp_path / "service/.claude").exists()
+    assert state_of(tmp_path) == ("current", set())
+
+
+# @ac AC-CLI-004.5
+def test_context_shows_the_skills_state(tmp_path, monkeypatch):
+    init(tmp_path, monkeypatch, "--tools", "claude")
+    data = json.loads(runner.invoke(app, ["context", "--json"]).output)
+    assert data["skills"] == {"state": "current", "files": []}
+    assert "run specworks update" not in runner.invoke(app, ["context"]).output
+    (tmp_path / f".claude/skills/{SKILL}/SKILL.md").write_text("edited\n", encoding="utf-8")
+    data = json.loads(runner.invoke(app, ["context", "--json"]).output)
+    assert data["skills"] == {"state": "outdated", "files": [{"path": f".claude/skills/{SKILL}/SKILL.md", "reason": "changed"}]}
+    assert "skills out of date: run specworks update" in runner.invoke(app, ["context"]).output

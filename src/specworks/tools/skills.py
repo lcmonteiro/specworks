@@ -149,21 +149,14 @@ def _stale(name: str, shipped: set[str]) -> bool:
 # @req REQ-INTEG-005
 def remove_stale_skills(root: Path, tools: list[Tool]) -> list[Path]:
     """Delete the specworks skills (and Copilot prompt files) of ``tools`` that are no longer shipped; return what was deleted."""
-    shipped, removed = set(packaged_skills()), []
-    for tool in tools:
-        skills = root / tool.skills_dir
-        for folder in sorted(skills.iterdir()) if skills.is_dir() else []:
-            if folder.is_dir() and _stale(folder.name, shipped):
-                if folder.is_symlink():
-                    folder.unlink()  # only the link: its target is not ours to delete
-                else:
-                    shutil.rmtree(folder)
-                removed.append(folder)
-        prompts = root / tool.prompts_dir if tool.prompts_dir else None
-        for prompt in sorted(prompts.glob("*.prompt.md")) if prompts and prompts.is_dir() else []:
-            if _stale(prompt.name.removesuffix(".prompt.md"), shipped):
-                prompt.unlink()
-                removed.append(prompt)
+    removed = []
+    for rel in _stale_files(root, tools):
+        path = root / rel
+        if path.is_dir() and not path.is_symlink():
+            shutil.rmtree(path)
+        else:
+            path.unlink()  # a prompt file, or only the link: its target is not ours to delete
+        removed.append(path)
     return removed
 
 
@@ -171,18 +164,11 @@ def remove_stale_skills(root: Path, tools: list[Tool]) -> list[Path]:
 def install_skills(root: Path, tools: list[Tool]) -> list[Path]:
     """Write every packaged skill (and Copilot prompt files) for ``tools``; return written files."""
     written = []
-    for tool in tools:
-        for name in packaged_skills():
-            text = read_skill(name)
-            dest = root / tool.skills_dir / name / "SKILL.md"
-            dest.parent.mkdir(parents=True, exist_ok=True)
-            dest.write_text(render_skill(text, tool), encoding="utf-8")
-            written.append(dest)
-            if tool.prompts_dir:
-                prompt = root / tool.prompts_dir / f"{name}.prompt.md"
-                prompt.parent.mkdir(parents=True, exist_ok=True)
-                prompt.write_text(render_prompt(text), encoding="utf-8")
-                written.append(prompt)
+    for rel, text in expected_skills(tools).items():
+        dest = root / rel
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_text(text, encoding="utf-8")
+        written.append(dest)
     return written
 
 
@@ -202,21 +188,77 @@ class SkillsState:
     files: list[SkillFile] = field(default_factory=list)
 
 
+# @req REQ-INTEG-005, REQ-INTEG-006
 def expected_skills(tools: list[Tool]) -> dict[str, str]:
     """Every skill file (and Copilot prompt file) of ``tools`` this version installs: relative path -> text."""
-    raise NotImplementedError
+    files = {}
+    for tool in tools:
+        for name in packaged_skills():
+            text = read_skill(name)
+            files[f"{tool.skills_dir}/{name}/SKILL.md"] = render_skill(text, tool)
+            if tool.prompts_dir:
+                files[f"{tool.prompts_dir}/{name}.prompt.md"] = render_prompt(text)
+    return files
 
 
+def _ours(name: str) -> bool:
+    return name.startswith("specworks-") or name in RETIRED_NAMES
+
+
+# @req REQ-INTEG-006
 def installed_tools(root: Path) -> list[Tool]:
     """The tools whose skills folder holds a specworks skill."""
-    raise NotImplementedError
+    def has_skills(tool: Tool) -> bool:
+        folder = root / tool.skills_dir
+        return folder.is_dir() and any(p.is_dir() and _ours(p.name) for p in folder.iterdir())
+
+    return [tool for tool in TOOLS.values() if has_skills(tool)]
 
 
+# @req REQ-INTEG-005, REQ-INTEG-006
+def _stale_files(root: Path, tools: list[Tool]) -> list[str]:
+    """Relative paths of the specworks skill folders and prompt files of ``tools`` this version no longer ships."""
+    shipped, stale = set(packaged_skills()), []
+    for tool in tools:
+        skills = root / tool.skills_dir
+        for folder in sorted(skills.iterdir()) if skills.is_dir() else []:
+            if folder.is_dir() and _stale(folder.name, shipped):
+                stale.append(f"{tool.skills_dir}/{folder.name}")
+        prompts = root / tool.prompts_dir if tool.prompts_dir else None
+        for prompt in sorted(prompts.glob("*.prompt.md")) if prompts and prompts.is_dir() else []:
+            if _stale(prompt.name.removesuffix(".prompt.md"), shipped):
+                stale.append(f"{tool.prompts_dir}/{prompt.name}")
+    return stale
+
+
+def _differs(path: Path, text: str) -> Literal["changed", "missing"] | None:
+    """``missing`` or ``changed`` when the file at ``path`` is not ``text``; None when it is."""
+    if not path.is_file():
+        return "missing"
+    return None if path.read_text(encoding="utf-8") == text else "changed"
+
+
+# @req REQ-INTEG-006
 def skills_state(root: Path) -> SkillsState:
     """Compare the installed skills of every tool that has them with what this version installs."""
-    raise NotImplementedError
+    tools = installed_tools(root)
+    if not tools:
+        return SkillsState("none")
+    files = [SkillFile(rel, reason) for rel, text in expected_skills(tools).items() if (reason := _differs(root / rel, text))]
+    files += [SkillFile(rel, "stale") for rel in _stale_files(root, tools)]
+    files.sort(key=lambda f: f.path)
+    return SkillsState("outdated" if files else "current", files)
 
 
+# @req REQ-CLI-009
 def update_skills(root: Path, tools: list[Tool]) -> tuple[list[Path], list[Path]]:
     """Write the skill files of ``tools`` that differ or are missing and remove the stale ones; return (updated, removed)."""
-    raise NotImplementedError
+    removed = remove_stale_skills(root, tools)
+    updated = []
+    for rel, text in expected_skills(tools).items():
+        dest = root / rel
+        if _differs(dest, text):
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            dest.write_text(text, encoding="utf-8")
+            updated.append(dest)
+    return updated, removed
