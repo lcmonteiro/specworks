@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1304 380" width="1304" height="380" role="img" aria-labelledby="title desc">
 <title id="title">specworks workflow</title>
-<desc id="desc">refine (optional), specify, then the build cycle design, test, code, review, then validate and close. Solid arrows move forward when a phase's gate passes. Dashed lanes go back: to specify when the spec turns out wrong, or to the phase that fixes a problem (review findings, a failed validate or close).</desc>
+<desc id="desc">refine (optional), specify, then the build cycle design, implement (the test and code halves, in parallel), review, then validate and close. Solid arrows move forward when a phase's gate passes. Dashed lanes go back: to specify when the spec turns out wrong, or to design or implement, which fix a problem (review findings, a failed validate or close).</desc>
 <style>
   svg { --bg: #ffffff; --ink: #1f2328; --muted: #59636e; --line: #59636e; --back: #9a6700;
         --box: #ffffff; --plan: #ddf4ff; --plan-ink: #0969da; --build: #fbefff; --build-ink: #8250df;
@@ -34,33 +34,29 @@
 <text class="note" x="904" y="66" text-anchor="end">/specworks-build</text>
 <rect class="finish" x="956" y="40" width="268" height="272" rx="14"/>
 <text class="caption" x="974" y="66" style="fill: var(--finish-ink)">FINISH</text>
+<text class="note" x="1206" y="66" text-anchor="end">/specworks-done</text>
 <!-- Back to specify: the spec turns out wrong -->
-<path class="back" d="M468.0,162 V112"/>
-<path class="back" d="M596.0,162 V112"/>
-<path class="back" d="M724.0,162 V112"/>
-<path class="back" d="M852.0,162 V112"/>
-<path class="back" d="M1026.0,162 V112"/>
-<path class="back" d="M1026.0,112 H294.0 V150"/>
+<path class="back" d="M468,162 V112"/>
+<path class="back" d="M660,162 V112"/>
+<path class="back" d="M852,162 V112"/>
+<path class="back" d="M1026,162 V112 H294 V150"/>
 <path class="back-head" d="M294.0,162.0 L287.0,150.8 L301.0,150.8 Z"/>
+<circle class="back-head" cx="468" cy="162" r="4"/>
+<circle class="back-head" cx="660" cy="162" r="4"/>
+<circle class="back-head" cx="852" cy="162" r="4"/>
+<circle class="back-head" cx="1026" cy="162" r="4"/>
 <text class="back-label" x="532" y="102" text-anchor="middle">spec turns out wrong: back to specify</text>
 <!-- Back to the phase that fixes it: review findings, a failed validate or close -->
-<path class="back" d="M447.2,270 V234"/>
-<path class="back-head" d="M447.2,222.0 L440.2,233.2 L454.2,233.2 Z"/>
-<path class="back" d="M575.2,270 V234"/>
-<path class="back-head" d="M575.2,222.0 L568.2,233.2 L582.2,233.2 Z"/>
-<path class="back" d="M703.2,270 V234"/>
-<path class="back-head" d="M703.2,222.0 L696.2,233.2 L710.2,233.2 Z"/>
-<path class="back" d="M831.2,270 V234"/>
-<path class="back-head" d="M831.2,222.0 L824.2,233.2 L838.2,233.2 Z"/>
-<path class="back" d="M1005.2,270 V234"/>
-<path class="back-head" d="M1005.2,222.0 L998.2,233.2 L1012.2,233.2 Z"/>
-<path class="back" d="M616.8,222 V270"/>
-<path class="back" d="M744.8,222 V270"/>
-<path class="back" d="M872.8,222 V270"/>
-<path class="back" d="M1046.8,222 V270"/>
-<path class="back" d="M1174.8,222 V270"/>
-<path class="back" d="M1174.8,270 H447.2"/>
-<text class="back-label" x="447" y="294">back to the phase that fixes it (review findings, failed validate)</text>
+<path class="back" d="M852,222 V270"/>
+<path class="back" d="M1026,222 V270"/>
+<path class="back" d="M1154,222 V270 H468 V234"/>
+<path class="back-head" d="M468.0,222.0 L461.0,233.2 L475.0,233.2 Z"/>
+<path class="back" d="M660,270 V234"/>
+<path class="back-head" d="M660.0,222.0 L653.0,233.2 L667.0,233.2 Z"/>
+<circle class="back-head" cx="852" cy="222" r="4"/>
+<circle class="back-head" cx="1026" cy="222" r="4"/>
+<circle class="back-head" cx="1154" cy="222" r="4"/>
+<text class="back-label" x="468" y="294">back to design or implement (review findings, failed validate or close)</text>
 <!-- Forward: the phase's gate passes -->
 <path class="fwd" d="M218.0,192.0 H230.0"/>
 <path class="head" d="M242.0,192.0 L230.8,185.0 L230.8,199.0 Z"/>
@@ -68,8 +64,6 @@
 <path class="head" d="M416.0,192.0 L404.8,185.0 L404.8,199.0 Z"/>
 <path class="fwd" d="M520.0,192.0 H532.0"/>
 <path class="head" d="M544.0,192.0 L532.8,185.0 L532.8,199.0 Z"/>
-<path class="fwd" d="M648.0,192.0 H660.0"/>
-<path class="head" d="M672.0,192.0 L660.8,185.0 L660.8,199.0 Z"/>
 <path class="fwd" d="M776.0,192.0 H788.0"/>
 <path class="head" d="M800.0,192.0 L788.8,185.0 L788.8,199.0 Z"/>
 <path class="fwd" d="M904.0,192.0 H962.0"/>
@@ -100,12 +94,9 @@
 <rect x="416" y="162" width="104" height="60" rx="10" fill="var(--box)" stroke="var(--build-ink)" stroke-width="2"/>
 <text class="name" x="468" y="188" text-anchor="middle">design</text>
 <text class="sub" x="468" y="207" text-anchor="middle">API stubs</text>
-<rect x="544" y="162" width="104" height="60" rx="10" fill="var(--box)" stroke="var(--build-ink)" stroke-width="2"/>
-<text class="name" x="596" y="188" text-anchor="middle">test</text>
-<text class="sub" x="596" y="207" text-anchor="middle">failing tests</text>
-<rect x="672" y="162" width="104" height="60" rx="10" fill="var(--box)" stroke="var(--build-ink)" stroke-width="2"/>
-<text class="name" x="724" y="188" text-anchor="middle">code</text>
-<text class="sub" x="724" y="207" text-anchor="middle">tests green</text>
+<rect x="544" y="162" width="232" height="60" rx="10" fill="var(--box)" stroke="var(--build-ink)" stroke-width="2"/>
+<text class="name" x="660" y="188" text-anchor="middle">implement</text>
+<text class="sub" x="660" y="207" text-anchor="middle">test | code, in parallel</text>
 <rect x="800" y="162" width="104" height="60" rx="10" fill="var(--box)" stroke="var(--build-ink)" stroke-width="2"/>
 <text class="name" x="852" y="188" text-anchor="middle">review</text>
 <text class="sub" x="852" y="207" text-anchor="middle">review.md</text>
@@ -119,8 +110,9 @@
 <path class="fwd" d="M96,352 H136"/>
 <path class="head" d="M142.0,352.0 L130.8,345.0 L130.8,359.0 Z"/>
 <text class="label" x="152" y="357">the phase's gate passes (specworks start / gate)</text>
+<circle class="back-head" cx="516" cy="352" r="4"/>
 <path class="back" d="M516,352 H556"/>
 <path class="back-head" d="M562.0,352.0 L550.8,345.0 L550.8,359.0 Z"/>
-<text class="label" x="572" y="357">goes back to an earlier phase</text>
-<text class="label" x="816" y="357"><tspan style="fill: var(--build-ink); font-weight: 700">↻</tspan>  the build cycle repeats until the review is clean</text>
+<text class="label" x="572" y="357">goes back (the dot is where it starts)</text>
+<text class="label" x="880" y="357"><tspan style="fill: var(--build-ink); font-weight: 700">↻</tspan>  the build cycle repeats until the review is clean</text>
 </svg>
