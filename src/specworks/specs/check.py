@@ -30,13 +30,11 @@ class Issue:
 
     @classmethod
     def error(cls, file: str, line: int, message: str) -> Issue:
-        """An error issue: ``Issue("error", file, line, message)``."""
-        raise NotImplementedError
+        return cls("error", file, line, message)
 
     @classmethod
     def warning(cls, file: str, line: int, message: str) -> Issue:
-        """A warning issue: ``Issue("warning", file, line, message)``."""
-        raise NotImplementedError
+        return cls("warning", file, line, message)
 
     def to_dict(self) -> dict:
         return {"level": self.level, "file": self.file, "line": self.line, "message": self.message}
@@ -107,7 +105,7 @@ def collect(ws: Workspace, change: Change) -> ChangeSpecs:
         try:
             cap = resolve_delta(ws, change, path)
         except ConfigError as exc:
-            result.issues.append(Issue("error", ws.rel(path), 0, str(exc)))
+            result.issues.append(Issue.error(ws.rel(path), 0, str(exc)))
             continue
         doc = parse_spec(read_text(path))
         result.deltas.append(Delta(cap=cap, path=path, doc=doc, living=read_spec(cap.living_spec())))
@@ -115,7 +113,7 @@ def collect(ws: Workspace, change: Change) -> ChangeSpecs:
     if tasks_file.is_file():
         result.tasks_found = True
         result.tasks, problems = parse_tasks(read_text(tasks_file))
-        result.issues += [Issue("error", ws.rel(tasks_file), line, msg) for line, msg in problems]
+        result.issues += [Issue.error(ws.rel(tasks_file), line, msg) for line, msg in problems]
     return result
 
 
@@ -123,12 +121,12 @@ def collect(ws: Workspace, change: Change) -> ChangeSpecs:
 def _check_proposal(ws: Workspace, change: Change, issues: list[Issue]) -> None:
     path = change.path / PROPOSAL_FILE
     if not path.is_file():
-        issues.append(Issue("error", ws.rel(path), 0, f"{PROPOSAL_FILE} is missing"))
+        issues.append(Issue.error(ws.rel(path), 0, f"{PROPOSAL_FILE} is missing"))
         return
     headings = {title.strip().lower() for title in h2_titles(read_text(path))}
     for section in PROPOSAL_SECTIONS:
         if section.lower() not in headings:
-            issues.append(Issue("error", ws.rel(path), 0, f"missing section '## {section}'"))
+            issues.append(Issue.error(ws.rel(path), 0, f"missing section '## {section}'"))
 
 
 def _active_others(ws: Workspace, change: Change) -> list[tuple[str, Change]]:
@@ -180,126 +178,166 @@ def _removal_fields(description: str) -> set[str]:
     return found
 
 
-# @req REQ-SPECS-005, REQ-SPECS-006, REQ-SPECS-007
-def _check_delta(ws: Workspace, change: Change, delta: Delta, seen: dict[str, str], issues: list[Issue]) -> None:
-    cap, doc, file = delta.cap, delta.doc, ws.rel(delta.path)
-
-    def err(line: int, message: str) -> None:
-        issues.append(Issue("error", file, line, message))
-
-    def warn(line: int, message: str) -> None:
-        issues.append(Issue("warning", file, line, message))
-
+# @req REQ-SPECS-005
+def _check_delta_format(doc: SpecDoc, file: str, issues: list[Issue]) -> None:
     for line, message in doc.problems:
-        err(line, message)
+        issues.append(Issue.error(file, line, message))
     if not any(r.section in DELTA_SECTIONS for r in doc.requirements):
-        err(0, "no requirements; add '## ADDED Requirements' (or MODIFIED / REMOVED) with '### Requirement:' blocks")
+        issues.append(Issue.error(file, 0, "no requirements; add '## ADDED Requirements' (or MODIFIED / REMOVED) with '### Requirement:' blocks"))
     if any(r.section == LIVING_SECTION for r in doc.requirements):
-        err(0, "a delta spec uses '## ADDED/MODIFIED/REMOVED Requirements', not '## Requirements'")
+        issues.append(Issue.error(file, 0, "a delta spec uses '## ADDED/MODIFIED/REMOVED Requirements', not '## Requirements'"))
 
+
+# @req REQ-SPECS-006
+def _check_registration(ws: Workspace, delta: Delta, file: str, issues: list[Issue]) -> None:
+    cap, doc = delta.cap, delta.doc
     if delta.living is not None and (living_path := cap.living_spec()) is not None:
         for line, message in living_problems(delta.living):
-            issues.append(Issue("warning", ws.rel(living_path), line, f"living spec of {cap.ref}: {message}; fix it before closing"))
+            issues.append(Issue.warning(ws.rel(living_path), line, f"living spec of {cap.ref}: {message}; fix it before closing"))
 
-    living_ids = set(delta.living.by_id()) if delta.living else set()
     if delta.living is None:
         for req in doc.requirements:
             if req.section in ("MODIFIED", "REMOVED"):
-                err(req.line, f"{cap.ref} has no living spec yet, so it can only have ADDED requirements")
+                issues.append(Issue.error(file, req.line, f"{cap.ref} has no living spec yet, so it can only have ADDED requirements"))
         if not doc.purpose:
-            issues.append(Issue("warning", file, 0, f"new capability {cap.ref}: add '## Purpose' (one or two sentences)"))
+            issues.append(Issue.warning(file, 0, f"new capability {cap.ref}: add '## Purpose' (one or two sentences)"))
     if cap.is_new:
         module = f" --module {cap.module.name}" if cap.module.name else ""
-        warn(0, f"new capability {cap.ref} is not registered; register it before closing: "
-                f"specworks capability add {cap.name} --path <code path>{module}")
+        issues.append(Issue.warning(file, 0, f"new capability {cap.ref} is not registered; register it before closing: "
+                                             f"specworks capability add {cap.name} --path <code path>{module}"))
 
     if cap.is_new and (owner := ws.prefixes().get(cap.prefix)):
-        err(
+        issues.append(Issue.error(
+            file,
             0,
             f"new capability {cap.ref} would use the ID prefix {cap.prefix}, already used by {owner}; "
             f"register it with its own prefix first (specworks capability add {cap.name} --path <code path> --prefix <PREFIX>)",
-        )
+        ))
 
-    others = _other_changes(ws, change, cap)
-    taken = others["ADDED"]
+
+# @req REQ-SPECS-005
+def _check_header(delta: Delta, req: Requirement, file: str, seen: dict[str, str], issues: list[Issue]) -> str | None:
+    """The requirement's ID once its header is sound, None when it has no ID (nothing else can be checked)."""
+    cap = delta.cap
+    if req.id is None:
+        issues.append(Issue.error(file, req.line, f"requirement header must be '### Requirement: REQ-{cap.prefix}-NNN <title>'"))
+        return None
+    if not cap.id_matches(req.id):
+        issues.append(Issue.error(file, req.line, f"{req.id}: requirements of {cap.ref} use the prefix REQ-{cap.prefix}-"))
+    if req.id in seen:
+        issues.append(Issue.error(file, req.line, f"{req.id} is used twice ({seen[req.id]})"))
+    seen[req.id] = f"{file}:{req.line}"
+    if not req.title:
+        issues.append(Issue.error(file, req.line, f"{req.id} has no title"))
+    return req.id
+
+
+# @req REQ-SPECS-007
+def _check_conflict(req: Requirement, rid: str, others: dict[str, dict[str, Claim]], file: str, issues: list[Issue]) -> None:
+    if req.section == "ADDED":
+        if claim := others["ADDED"].get(rid):
+            if claim.earlier:
+                issues.append(Issue.error(file, req.line, f"{rid} is also added by change {claim.change}, which started first; take the next free ID"))
+            else:
+                issues.append(Issue.warning(file, req.line, f"{rid} is also added by change {claim.change}, which started later and has to take another ID"))
+        return
     # Each MODIFIED/REMOVED block replaces the whole living block at close, so two changes
     # editing one requirement would lose the first one's edit: one has to close first.
     # Only the change that started later gets the error, so two changes never block each other.
     edited = {**others["REMOVED"], **others["MODIFIED"]}
+    if claim := edited.get(rid):
+        if claim.earlier:
+            issues.append(Issue.error(
+                file,
+                req.line,
+                f"{rid} is also MODIFIED or REMOVED by change {claim.change}, which started first; close it first, "
+                "then copy the requirement again from the living spec here",
+            ))
+        else:
+            issues.append(Issue.warning(
+                file,
+                req.line,
+                f"{rid} is also MODIFIED or REMOVED by change {claim.change}, which started later; it waits until this change closes",
+            ))
+
+
+# @req REQ-SPECS-006
+def _check_against_living(
+    delta: Delta, req: Requirement, rid: str, living_ids: set[str], retired: set[str], file: str, issues: list[Issue], others: dict[str, dict[str, Claim]]
+) -> None:
+    cap = delta.cap
+    if req.section == "ADDED":
+        if rid in living_ids:
+            issues.append(Issue.error(file, req.line, f"{rid} already exists in {cap.ref}; use MODIFIED to change it, or take the next free ID"))
+        if rid in retired:
+            issues.append(Issue.error(file, req.line, f"{rid} was removed from {cap.ref} (requirements.md History); IDs are never reused, take the next free ID"))
+    elif delta.living is not None and rid not in living_ids:
+        issues.append(Issue.error(file, req.line, f"{rid} is not in the living spec of {cap.ref}, so it cannot be {req.section}"))
+        return
+    _check_conflict(req, rid, others, file, issues)
+
+
+# @req REQ-SPECS-006
+def _check_modified(delta: Delta, req: Requirement, rid: str, closed_since: dict[str, str], file: str, issues: list[Issue]) -> None:
+    if rid in closed_since:
+        issues.append(Issue.warning(file, req.line, f"{rid} was MODIFIED by {closed_since[rid]}, after this change started; "
+                                                    "make sure this block is copied from the current living spec, or closing undoes those edits"))
+    if dropped := [str(sc.id) for sc in delta.dropped_criteria(req)]:
+        issues.append(Issue.warning(file, req.line, f"{rid}: this MODIFIED block drops {', '.join(dropped)}; copy the whole block "
+                                                    "from the living spec, or drop a criterion only on purpose (with its tests)"))
+
+
+# @req REQ-SPECS-005
+def _check_removal(req: Requirement, rid: str, file: str, issues: list[Issue]) -> None:
+    if missing := [f for f in REMOVAL_FIELDS if f.lower() not in _removal_fields(req.description)]:
+        issues.append(Issue.error(file, req.line, f"{rid}: a REMOVED requirement needs **Reason** and **Migration** lines, each with its text "
+                                                  f"(missing: {', '.join(missing)}); e.g. '**Reason**: replaced by SSO'"))
+
+
+# @req REQ-SPECS-005
+def _check_body(req: Requirement, rid: str, file: str, seen: dict[str, str], issues: list[Issue]) -> None:
+    if not NORMATIVE_RE.search(req.description):
+        issues.append(Issue.error(file, req.line, f"{rid}: state the requirement with SHALL or MUST"))
+    if len(req.description) > MAX_DESCRIPTION:
+        issues.append(Issue.warning(file, req.line, f"{rid}: description is long; keep one behaviour per requirement"))
+    if not req.scenarios:
+        issues.append(Issue.error(file, req.line, f"{rid} needs at least one '#### Scenario: AC-{rid[4:]}.1 <title>' (acceptance criterion)"))
+    for sc in req.scenarios:
+        if sc.id is None:
+            issues.append(Issue.error(file, sc.line, f"scenario header must be '#### Scenario: AC-{rid[4:]}.<n> <title>'"))
+            continue
+        if ac_parent(sc.id) != rid:
+            issues.append(Issue.error(file, sc.line, f"{sc.id} is under {rid}; number it AC-{rid[4:]}.<n>"))
+        if sc.id in seen:
+            issues.append(Issue.error(file, sc.line, f"{sc.id} is used twice ({seen[sc.id]})"))
+        seen[sc.id] = f"{file}:{sc.line}"
+        if "WHEN" not in sc.text or "THEN" not in sc.text:
+            issues.append(Issue.error(file, sc.line, f"{sc.id}: write the scenario as '- **WHEN** ...' / '- **THEN** ...'"))
+
+
+# @req REQ-SPECS-005, REQ-SPECS-006, REQ-SPECS-007
+def _check_delta(ws: Workspace, change: Change, delta: Delta, seen: dict[str, str], issues: list[Issue]) -> None:
+    cap, doc, file = delta.cap, delta.doc, ws.rel(delta.path)
+    _check_delta_format(doc, file, issues)
+    _check_registration(ws, delta, file, issues)
+
+    living_ids = set(delta.living.by_id()) if delta.living else set()
+    others = _other_changes(ws, change, cap)
     retired = retired_ids(cap)
     # A change that closed after this one started may have edited a block this one copied before.
     closed_since = modified_since(cap, change.created) if change.created else {}
     for req in doc.requirements:
         if req.section not in DELTA_SECTIONS:
             continue
-        if req.id is None:
-            err(req.line, f"requirement header must be '### Requirement: REQ-{cap.prefix}-NNN <title>'")
+        if (rid := _check_header(delta, req, file, seen, issues)) is None:
             continue
-        if not cap.id_matches(req.id):
-            err(req.line, f"{req.id}: requirements of {cap.ref} use the prefix REQ-{cap.prefix}-")
-        if req.id in seen:
-            err(req.line, f"{req.id} is used twice ({seen[req.id]})")
-        seen[req.id] = f"{file}:{req.line}"
-        if not req.title:
-            err(req.line, f"{req.id} has no title")
-
-        if req.section == "ADDED":
-            if req.id in living_ids:
-                err(req.line, f"{req.id} already exists in {cap.ref}; use MODIFIED to change it, or take the next free ID")
-            if req.id in retired:
-                err(req.line, f"{req.id} was removed from {cap.ref} (requirements.md History); IDs are never reused, take the next free ID")
-            if claim := taken.get(req.id):
-                if claim.earlier:
-                    err(req.line, f"{req.id} is also added by change {claim.change}, which started first; take the next free ID")
-                else:
-                    warn(req.line, f"{req.id} is also added by change {claim.change}, which started later and has to take another ID")
-        elif delta.living is not None and req.id not in living_ids:
-            err(req.line, f"{req.id} is not in the living spec of {cap.ref}, so it cannot be {req.section}")
-        elif claim := edited.get(req.id):
-            if claim.earlier:
-                err(
-                    req.line,
-                    f"{req.id} is also MODIFIED or REMOVED by change {claim.change}, which started first; close it first, "
-                    "then copy the requirement again from the living spec here",
-                )
-            else:
-                warn(
-                    req.line,
-                    f"{req.id} is also MODIFIED or REMOVED by change {claim.change}, which started later; "
-                    "it waits until this change closes",
-                )
-        if req.section == "MODIFIED" and req.id in closed_since:
-            warn(req.line, f"{req.id} was MODIFIED by {closed_since[req.id]}, after this change started; "
-                           "make sure this block is copied from the current living spec, or closing undoes those edits")
-        if req.section == "MODIFIED" and (dropped := [str(sc.id) for sc in delta.dropped_criteria(req)]):
-            warn(req.line, f"{req.id}: this MODIFIED block drops {', '.join(dropped)}; copy the whole block "
-                           "from the living spec, or drop a criterion only on purpose (with its tests)")
-
+        _check_against_living(delta, req, rid, living_ids, retired, file, issues, others)
+        if req.section == "MODIFIED":
+            _check_modified(delta, req, rid, closed_since, file, issues)
         if req.section == "REMOVED":
-            if missing := [f for f in REMOVAL_FIELDS if f.lower() not in _removal_fields(req.description)]:
-                err(req.line, f"{req.id}: a REMOVED requirement needs **Reason** and **Migration** lines, each with its text "
-                              f"(missing: {', '.join(missing)}); e.g. '**Reason**: replaced by SSO'")
+            _check_removal(req, rid, file, issues)
             continue
-
-        if not NORMATIVE_RE.search(req.description):
-            err(req.line, f"{req.id}: state the requirement with SHALL or MUST")
-        if len(req.description) > MAX_DESCRIPTION:
-            issues.append(
-                Issue("warning", file, req.line, f"{req.id}: description is long; keep one behaviour per requirement")
-            )
-        if not req.scenarios:
-            err(req.line, f"{req.id} needs at least one '#### Scenario: AC-{req.id[4:]}.1 <title>' (acceptance criterion)")
-        for sc in req.scenarios:
-            if sc.id is None:
-                err(sc.line, f"scenario header must be '#### Scenario: AC-{req.id[4:]}.<n> <title>'")
-                continue
-            if ac_parent(sc.id) != req.id:
-                err(sc.line, f"{sc.id} is under {req.id}; number it AC-{req.id[4:]}.<n>")
-            if sc.id in seen:
-                err(sc.line, f"{sc.id} is used twice ({seen[sc.id]})")
-            seen[sc.id] = f"{file}:{sc.line}"
-            if "WHEN" not in sc.text or "THEN" not in sc.text:
-                err(sc.line, f"{sc.id}: write the scenario as '- **WHEN** ...' / '- **THEN** ...'")
+        _check_body(req, rid, file, seen, issues)
 
 
 # @req REQ-SPECS-009
@@ -307,41 +345,41 @@ def _check_tasks(ws: Workspace, change: Change, specs: ChangeSpecs, issues: list
     file = ws.rel(change.path / TASKS_FILE)
     if not specs.tasks_found:
         if specs.deltas:
-            issues.append(Issue("warning", file, 0, "tasks.md is not written yet"))
+            issues.append(Issue.warning(file, 0, "tasks.md is not written yet"))
         return
     if not specs.tasks:
-        issues.append(Issue("error", file, 0, "no tasks; use '- [ ] 1.1 description' checkboxes"))
+        issues.append(Issue.error(file, 0, "no tasks; use '- [ ] 1.1 description' checkboxes"))
         return
 
     numbers: dict[str, int] = {}
     for task in specs.tasks:
         if task.num in numbers:
-            issues.append(Issue("error", file, task.line, f"task {task.num} is numbered twice (line {numbers[task.num]})"))
+            issues.append(Issue.error(file, task.line, f"task {task.num} is numbered twice (line {numbers[task.num]})"))
         numbers[task.num] = task.line
 
     known = specs.known_ids()
     for task in specs.tasks:
         for ref in task.ids:
             if ref not in known:
-                issues.append(Issue("error", file, task.line, f"task {task.num} refers to {ref}, which is not in this change's specs"))
+                issues.append(Issue.error(file, task.line, f"task {task.num} refers to {ref}, which is not in this change's specs"))
 
     mentioned = {ref for task in specs.tasks for ref in task.ids}
     for delta, req in specs.requirements("ADDED", "MODIFIED"):
         for sc in req.scenarios:
             if sc.id and sc.id not in mentioned and req.id not in mentioned:
                 issues.append(
-                    Issue("error", file, 0, f"{sc.id} ({delta.cap.ref}) is not covered by any task; mention {sc.id} or {req.id} in a task")
+                    Issue.error(file, 0, f"{sc.id} ({delta.cap.ref}) is not covered by any task; mention {sc.id} or {req.id} in a task")
                 )
     for _, req in specs.requirements("REMOVED"):
         if req.id and req.id not in mentioned:
-            issues.append(Issue("warning", file, 0, f"{req.id} is REMOVED but no task removes its code and tests"))
+            issues.append(Issue.warning(file, 0, f"{req.id} is REMOVED but no task removes its code and tests"))
 
     changed = specs.requirements("ADDED", "MODIFIED")
     halves = {task.half for task in specs.tasks}
     if any(req.scenarios for _, req in changed) and "test" not in halves:
-        issues.append(Issue("warning", file, 0, "no [test] task: mark the tasks that write the failing tests with '[test]' (e.g. '- [ ] 1.2 [test] ...')"))
+        issues.append(Issue.warning(file, 0, "no [test] task: mark the tasks that write the failing tests with '[test]' (e.g. '- [ ] 1.2 [test] ...')"))
     if changed and "code" not in halves:
-        issues.append(Issue("warning", file, 0, "no [code] task: mark the tasks that write the code with '[code]' (e.g. '- [ ] 1.3 [code] ...')"))
+        issues.append(Issue.warning(file, 0, "no [code] task: mark the tasks that write the code with '[code]' (e.g. '- [ ] 1.3 [code] ...')"))
 
 
 # @req REQ-SPECS-014
@@ -351,17 +389,17 @@ def _check_diagrams(ws: Workspace, change: Change, issues: list[Issue]) -> None:
     images = referenced_images(read_text(design)) if design.is_file() else []
     for ref in images:
         if not (change.path / ref).is_file():
-            issues.append(Issue("error", ws.rel(design), 0, f"image {ref} does not exist"))
+            issues.append(Issue.error(ws.rel(design), 0, f"image {ref} does not exist"))
     for diagram in diagrams_in(change.path):
         rel = diagram.svg.relative_to(change.path).as_posix()
         status = state(diagram, settings)
         if status != "ok":
             what = "has no SVG" if status == "missing" else "has an outdated SVG"
             issues.append(
-                Issue("warning", ws.rel(diagram.source), 0, f"{what}; run `specworks diagrams --change <ref>`")
+                Issue.warning(ws.rel(diagram.source), 0, f"{what}; run `specworks diagrams --change <ref>`")
             )
         if rel not in images:
-            issues.append(Issue("warning", ws.rel(diagram.source), 0, f"not shown in design.md; add ![caption]({rel})"))
+            issues.append(Issue.warning(ws.rel(diagram.source), 0, f"not shown in design.md; add ![caption]({rel})"))
 
 
 # @req REQ-SPECS-008
@@ -370,18 +408,17 @@ def check_change(ws: Workspace, change: Change) -> tuple[ChangeSpecs, list[Issue
     issues = list(specs.issues)
     _check_proposal(ws, change, issues)
     if twin := archived_as(ws.owner(change.path).config, change.name):
-        issues.append(Issue("warning", ws.rel(change.path), 0, (
+        issues.append(Issue.warning(ws.rel(change.path), 0, (
             f"an archived change has the same name ({ws.rel(twin.path)}); if this change was closed or abandoned, "
             "this folder is a leftover (e.g. a close not committed before switching branches): delete it"
         )))
 
     if change.skip_specs and specs.deltas:
-        issues.append(Issue("error", ws.rel(change.path), 0, "skip_specs is set but the change has delta specs"))
+        issues.append(Issue.error(ws.rel(change.path), 0, "skip_specs is set but the change has delta specs"))
     specs_dir = ws.rel(change.path / SPECS_DIR)
     if not change.skip_specs and not specs.deltas and not any(i.file.startswith(specs_dir) for i in issues):
         issues.append(
-            Issue(
-                "error",
+            Issue.error(
                 specs_dir,
                 0,
                 "no delta specs; write specs/[<module>/]<capability>/spec.md, or run "
