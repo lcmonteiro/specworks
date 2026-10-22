@@ -1,6 +1,6 @@
 name: git-workflow
 created: '2026-10-22T20:19:19'
-phase: review
+phase: close
 specified:
   REQ-CLI-003: 69634fb0127e
   REQ-CLI-006: c7ace877938c
