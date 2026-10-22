@@ -82,6 +82,16 @@ every task done. `check` warns when a change with criteria has no `[test]`
 task, or one with requirements has no `[code]` task, so a task list written
 without markers is noticed. (parallel-test-code)
 
+### Issues are built by constructors, checks are split by concern
+
+`Issue.level` is `Literal["error", "warning"]`, and `Issue.error(file, line,
+message)` and `Issue.warning(...)` build issues, so call sites never repeat the
+level string. `_check_delta` is one private function per concern (delta format,
+living spec and registration, conflicts with other active changes, the
+per-requirement rules, requirement body), called in the original order so issue
+order is unchanged. Alternative: a `DeltaChecker` class, rejected as more
+structure than the shared state needs. (refactor-check-delta)
+
 ### Close is all or nothing
 
 Close computes every living spec and index first, checks the archive folder,
@@ -97,7 +107,8 @@ was. (baseline-specs)
   `resolve_delta`, `next_id(ws, cap)`, `describe(ws, cap)`, `retired_ids`,
   `modified_since`.
 - `src/specworks/specs/check.py`: `check_change(ws, change) -> (ChangeSpecs, [Issue])`,
-  `collect`, `other_deltas`.
+  `collect`, `other_deltas`, `Issue` (`level`: `"error"` or `"warning"`;
+  `Issue.error(file, line, message)`, `Issue.warning(file, line, message)`).
 - `src/specworks/specs/tasks.py`: `parse_tasks(text)`, `read_tasks`,
   `set_done(change_path, nums, done)`, `Task` (`half`: `"test"`, `"code"` or
   `""`; in `to_dict()` too).
