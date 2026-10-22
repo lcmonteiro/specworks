@@ -6,7 +6,7 @@ import pyd2
 import pytest
 from typer.testing import CliRunner
 
-from helpers import fake_executable
+from helpers import fake_executable, init_repo
 from specworks.cli import app
 from specworks.tools import diagrams as diagrams_module
 
@@ -40,8 +40,9 @@ def fake_d2(tmp_path_factory, monkeypatch):
 @pytest.fixture
 def change(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
+    init_repo(tmp_path)
     assert runner.invoke(app, ["init", "--dir", "spec", "--no-skills"]).exit_code == 0
-    run_json("new", CHANGE)
+    run_json("new", CHANGE, "--no-branch")
     path = tmp_path / "spec/changes" / CHANGE
     (path / "diagrams").mkdir()
     (path / "diagrams/reset-flow.d2").write_text(FLOW)

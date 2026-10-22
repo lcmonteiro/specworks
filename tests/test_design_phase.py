@@ -184,7 +184,7 @@ def test_no_interfaces_heading_means_no_section(planned):
 # @ac AC-FLOW-006.6
 def test_a_module_change_needs_its_interface_files_in_the_module(planned):
     assert run_json("module", "add", "services/billing")[0] == 0
-    run_json("new", "add-invoices", "--module", "billing")
+    run_json("new", "add-invoices", "--module", "billing", "--no-branch")
     design = planned / "services/billing/spec/changes/add-invoices/design.md"
     (planned / "src/invoices.py").write_text("def invoice(): ...\n")  # the top level's, not billing's
 

@@ -152,16 +152,16 @@ def test_walkthrough(tmp_path, monkeypatch):
     (tmp_path / ".gitignore").write_text("__pycache__/\n.pytest_cache/\n", encoding="utf-8")
 
     # Set up: config, test command, the capability, a baseline commit.
+    git("init", "-q", "-b", "main")
     sw("init", "--dir", "spec", "--no-skills")
     cfg = tmp_path / "spec.yml"
     # pytest's own pythonpath option, not a PYTHONPATH=src prefix, which Windows' shell cannot run.
     test_command = f'"{sys.executable}" -m pytest -q -p no:cacheprovider --rootdir . -o pythonpath=src tests'
     cfg.write_text(re.sub(r"(?m)^  test:$", lambda _: f"  test: {json.dumps(test_command)}", cfg.read_text(encoding="utf-8"), count=1), encoding="utf-8")
     sw("capability", "add", "slugify", "--path", "src/textkit", "--prefix", "SLUG")
-    git("init", "-q", "-b", "main")
     git("add", "-A")
     git("commit", "-qm", "baseline")
-    sw("new", REF)
+    sw("new", REF, "--no-branch")
 
     # specify: proposal, delta spec with IDs from the CLI, tasks.
     assert "next: REQ-SLUG-001" in sw("spec", "show", "slugify")

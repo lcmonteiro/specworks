@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from helpers import REF, git, run_json
+from helpers import REF, git, remove_repo, run_json
 
 TESTS = "the test suite passes (commands.test)"
 
@@ -89,6 +89,7 @@ def test_specworks_run_always_runs(counted):
 
 # @ac AC-PROJ-014.4
 def test_without_git_every_run_is_real(project, tmp_path_factory):
+    remove_repo(project)
     counter = tmp_path_factory.mktemp("runs") / "count"
     counter.write_text("")
     command = f'"{sys.executable}" -c "open(r\'{counter}\', \'a\').write(\'x\')"'

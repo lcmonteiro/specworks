@@ -3,6 +3,7 @@ import json
 import pytest
 from typer.testing import CliRunner
 
+from helpers import init_repo
 from specworks.cli import app
 from specworks.core.workspace import load_workspace
 from specworks.specs.trace import scan_tags
@@ -25,6 +26,7 @@ def run_json(*args):
 def workspace(tmp_path, monkeypatch):
     """Top-level project with module billing (services/billing) and nested module billing/tax."""
     monkeypatch.chdir(tmp_path)
+    init_repo(tmp_path)
     run("init", "--dir", "spec")
     (tmp_path / "spec.yml").write_text(
         (tmp_path / "spec.yml").read_text().replace("context: |\n", "context: |\n  Company-wide: Python 3.12\n")
@@ -90,30 +92,30 @@ def test_context_inside_module_inherits_and_sees_whole_workspace(workspace, monk
 def test_new_goes_to_nearest_module(workspace, monkeypatch):
     (workspace / "services/billing/src").mkdir()
     monkeypatch.chdir(workspace / "services/billing/src")
-    code, data = run_json("new", "add-refunds")
+    code, data = run_json("new", "add-refunds", "--no-branch")
     assert data["path"] == "services/billing/spec/changes/add-refunds"
     assert data["ref"] == "billing:add-refunds"
 
 
 # @ac AC-CLI-006.1
 def test_new_with_module_option(workspace):
-    code, data = run_json("new", "add-vat", "--module", "billing/tax")
+    code, data = run_json("new", "add-vat", "--module", "billing/tax", "--no-branch")
     assert data["path"] == "services/billing/tax/spec/changes/add-vat"
-    code, data = run_json("new", "x", "--module", "nope")
+    code, data = run_json("new", "x", "--module", "nope", "--no-branch")
     assert code == 1 and "unknown module" in data["error"]
 
 
 # @ac AC-CLI-002.1
 def test_bare_change_name_resolves_across_modules(workspace):
-    run_json("new", "add-vat", "--module", "billing/tax")
+    run_json("new", "add-vat", "--module", "billing/tax", "--no-branch")
     code, data = run_json("status", "--change", "add-vat")
     assert code == 0 and data["ref"] == "billing/tax:add-vat"
 
 
 # @ac AC-CLI-002.2
 def test_ambiguous_change_name_needs_module_prefix(workspace, monkeypatch):
-    run_json("new", "cleanup", "--module", "billing")
-    run_json("new", "cleanup", "--module", "billing/tax")
+    run_json("new", "cleanup", "--module", "billing", "--no-branch")
+    run_json("new", "cleanup", "--module", "billing/tax", "--no-branch")
     code, data = run_json("status", "--change", "cleanup")
     assert code == 1 and "billing:cleanup" in data["error"] and "billing/tax:cleanup" in data["error"]
     code, data = run_json("status", "--change", "billing/tax:cleanup")
@@ -122,16 +124,16 @@ def test_ambiguous_change_name_needs_module_prefix(workspace, monkeypatch):
 
 # @ac AC-CLI-002.3
 def test_current_module_wins_for_bare_name(workspace, monkeypatch):
-    run_json("new", "cleanup")
-    run_json("new", "cleanup", "--module", "billing")
+    run_json("new", "cleanup", "--no-branch")
+    run_json("new", "cleanup", "--module", "billing", "--no-branch")
     code, data = run_json("status", "--change", "cleanup")
     assert data["module"] == "(top)"
 
 
 # @ac AC-CLI-004.2
 def test_list_all_includes_every_module(workspace):
-    run_json("new", "top-change")
-    run_json("new", "bill-change", "--module", "billing")
+    run_json("new", "top-change", "--no-branch")
+    run_json("new", "bill-change", "--module", "billing", "--no-branch")
     code, data = run_json("list")
     assert [c["ref"] for c in data["changes"]] == ["top-change"]
     code, data = run_json("list", "--all")
@@ -140,7 +142,7 @@ def test_list_all_includes_every_module(workspace):
 
 # @ac AC-FLOW-002.2
 def test_instructions_in_module_use_inherited_context(workspace):
-    run_json("new", "add-refunds", "--module", "billing")
+    run_json("new", "add-refunds", "--module", "billing", "--no-branch")
     code, data = run_json("instructions", "refinement", "--change", "billing:add-refunds")
     assert data["outputPath"] == "services/billing/spec/changes/add-refunds/refinement.md"
     assert "Company-wide" in data["context"] and "Billing" in data["context"]
@@ -215,7 +217,7 @@ def test_modules_use_the_top_level_folder_name(tmp_path, monkeypatch, folder):
 
 def test_nested_module_uses_the_top_level_folder_name(workspace):
     assert (workspace / "services/billing/tax/spec/changes").is_dir()
-    code, data = run_json("new", "add-vat", "--module", "billing/tax")
+    code, data = run_json("new", "add-vat", "--module", "billing/tax", "--no-branch")
     assert data["path"] == "services/billing/tax/spec/changes/add-vat"
 
 
@@ -294,7 +296,7 @@ def test_derived_prefixes_may_not_collide_across_modules(workspace):
 
 
 def test_a_new_capability_of_a_module_is_registered_with_module(workspace):
-    run("new", "add-refunds")
+    run("new", "add-refunds", "--no-branch")
     delta = workspace / "spec/changes/add-refunds/specs/billing/refunds/spec.md"
     delta.parent.mkdir(parents=True)
     delta.write_text("## Purpose\nRefunds.\n\n## ADDED Requirements\n\n### Requirement: REQ-BILLING-REFUNDS-001 Refund\nThe system SHALL refund.\n\n"

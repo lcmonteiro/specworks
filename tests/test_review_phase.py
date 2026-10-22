@@ -6,7 +6,7 @@ import sys
 
 import pytest
 
-from helpers import REF, git, run_json, write_tests
+from helpers import REF, git, remove_repo, run_json, write_tests
 
 FAIL = f'"{sys.executable}" -c "import sys; print(\'2 failed\'); sys.exit(3)"'
 
@@ -51,6 +51,7 @@ def test_review_finds_spec_side_gaps(repo):
 
 # @ac AC-FLOW-009.4
 def test_review_without_git_checks_only_the_spec_side(project):
+    remove_repo(project)
     code, data = run_json("review", "--change", REF)
     assert code == 0 and data["changedFiles"] is None and "changed files unknown" in data["note"]
 

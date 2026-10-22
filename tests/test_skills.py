@@ -7,6 +7,7 @@ import pytest
 import typer.main
 from typer.testing import CliRunner
 
+from helpers import init_repo
 from specworks.cli import app
 from specworks.core.changes import PHASES
 from specworks.core.config import COMMAND_KEYS
@@ -20,6 +21,7 @@ SKILL = "specworks-refine"
 
 def init(tmp_path, monkeypatch, *args):
     monkeypatch.chdir(tmp_path)
+    init_repo(tmp_path)
     result = runner.invoke(app, ["init", *args])
     assert result.exit_code == 0, result.output
     return result.output
@@ -186,15 +188,59 @@ def test_done_closes_only_through_a_second_subagent_after_the_go_ahead():
 
 
 UVX = "uvx --from git+https://github.com/lcmonteiro/specworks specworks"
+COMMITTING = ["specworks-refine", "specworks-specify", "specworks-design", "specworks-test", "specworks-code", "specworks-review", "specworks-close"]
+
+
+def allowed_commands(name):
+    allowed = re.search(r"^allowed-tools: (.*)$", read_skill(name), re.MULTILINE).group(1)
+    return re.findall(r"Bash\(([^)]*):\*\)", allowed)
 
 
 @pytest.mark.parametrize("name", packaged_skills())
 def test_skills_pre_approve_only_specworks_and_read_only_git(name):
-    # A bare `Bash(uvx:*)` would let the skill run any package without asking.
-    allowed = re.search(r"^allowed-tools: (.*)$", read_skill(name), re.MULTILINE).group(1)
-    commands = re.findall(r"Bash\(([^)]*):\*\)", allowed)
-    assert set(commands) <= {"specworks", "uv run specworks", UVX, "git diff", "git log", "git status"}, commands
+    # A bare `Bash(uvx:*)` would let the skill run any package without asking; `git push` is never pre-approved.
+    commands = allowed_commands(name)
+    assert set(commands) <= {"specworks", "uv run specworks", UVX, "git diff", "git log", "git status", "git add", "git commit"}, commands
+    assert "git push" not in commands
     assert UVX in commands and f"`{UVX} <cmd>`" in read_skill(name)  # the rule matches the command the skill documents
+
+
+@pytest.mark.parametrize("name", COMMITTING)
+def test_the_skills_that_commit_may_stage_and_commit(name):
+    assert {"git add", "git commit"} <= set(allowed_commands(name))
+
+
+@pytest.mark.parametrize("name", COMMITTING)
+def test_each_phase_skill_commits_its_work_after_the_gate(name):
+    text = read_skill(name)
+    assert "**Committing**" in text and "specworks:include" not in text
+    assert "stub, written in the code half" not in text  # the shared text is filled in
+
+
+def test_validate_is_read_only_and_does_not_commit():
+    text = read_skill("specworks-validate")
+    assert "**Committing**" not in text and not {"git add", "git commit"} & set(allowed_commands("specworks-validate"))
+
+
+@pytest.mark.parametrize("name", packaged_skills())
+def test_no_skill_stages_everything(name):
+    # Staging explicit paths keeps unrelated dirty files out of the phase's commit.
+    text = " ".join(read_skill(name).split())
+    for found in re.finditer(r"git add -A", text):
+        assert text[: found.start()].rstrip(" `").endswith("never"), text[found.start() - 40 : found.end() + 40]
+    assert "git add -A &&" not in text and "git add ." not in text
+
+
+@pytest.mark.parametrize("name", ["specworks-close", "specworks-done"])
+def test_close_and_done_ask_before_pushing(name):
+    text = " ".join(read_skill(name).split())
+    assert "**Pushing**" in text and "Push <branch>? (yes/no)" in text and "git push -u origin <branch>" in text
+    assert "stub, written in the code half" not in text
+
+
+def test_baseline_no_longer_asks_for_a_new_branch():
+    # `new` makes the branch.
+    assert "preferably on a new branch" not in " ".join(read_skill("specworks-baseline").split())
 
 
 # refine, adopt and baseline create the change they work on (adopt none) instead of picking one.
