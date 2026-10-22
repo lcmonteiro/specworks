@@ -72,9 +72,9 @@ def test_a_top_level_change_gets_a_branch_of_its_own_name(repo):
 # @ac AC-PROJ-018.2
 def test_a_module_change_gets_a_branch_with_a_slash_for_the_colon(repo):
     assert branch_name("billing:add-login") == "billing/add-login"
-    assert branch_name("services/billing:add-login") == "services/billing/add-login"
-    create_branch(repo, plan_branch(repo, branch_name("services/billing:add-login")))
-    assert current(repo) == "services/billing/add-login"
+    assert branch_name("billing/tax:add-login") == "billing/tax/add-login"
+    create_branch(repo, plan_branch(repo, branch_name("billing/tax:add-login")))
+    assert current(repo) == "billing/tax/add-login"
 
 
 # @ac AC-PROJ-018.3

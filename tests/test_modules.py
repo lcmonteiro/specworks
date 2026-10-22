@@ -205,6 +205,7 @@ def test_invalid_module_entries_rejected(workspace, modules):
 @pytest.mark.parametrize("folder", ["spec", "docs", "context", "specworks"])
 def test_modules_use_the_top_level_folder_name(tmp_path, monkeypatch, folder):
     monkeypatch.chdir(tmp_path)
+    init_repo(tmp_path)
     run("init", "--dir", folder)
     run("module", "add", "services/billing")
     run("init", "libs/auth")
@@ -422,6 +423,7 @@ def test_a_module_outside_the_workspace_is_refused(workspace, tmp_path_factory, 
     outside = tmp_path_factory.mktemp("outside")
     if with_config:
         monkeypatch.chdir(outside)
+        init_repo(outside)
         run("init", "--dir", "spec", "--no-link", "--no-skills")
         monkeypatch.chdir(workspace)
     link_module(workspace, "ext", outside)

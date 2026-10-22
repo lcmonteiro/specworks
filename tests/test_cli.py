@@ -91,14 +91,6 @@ def test_init_outside_a_git_repository_is_refused_and_writes_nothing(tmp_path, m
     assert list(tmp_path.iterdir()) == []  # no config, no folder, no skills, no repository
 
 
-# @ac AC-CLI-003.7
-def test_init_outside_a_git_repository_is_refused_as_json(tmp_path, monkeypatch):
-    monkeypatch.chdir(tmp_path)
-    code, data = run_json("init", "--no-skills")
-    assert code == 1 and "git init" in data["error"]
-    assert list(tmp_path.iterdir()) == []
-
-
 # @ac AC-PROJ-010.3
 def test_new_rejects_duplicates(project):
     run_json("new", "add-login", "--no-branch")
@@ -117,11 +109,18 @@ def test_new_leaves_the_changes_branch_checked_out(committed):
 
 
 # @ac AC-CLI-006.6
-def test_a_module_change_branch_has_the_module_path(committed):
+def test_a_module_change_branch_has_the_module_path(committed, monkeypatch):
     assert runner.invoke(app, ["module", "add", "services/billing"]).exit_code == 0
+    monkeypatch.chdir(committed / "services/billing")
+    assert runner.invoke(app, ["module", "add", "tax"]).exit_code == 0
+    monkeypatch.chdir(committed)
     code, data = run_json("new", "add-invoices", "--module", "billing")
-    assert code == 0 and data["branch"] == "services/billing/add-invoices"
-    assert current_branch(committed) == "services/billing/add-invoices"
+    assert code == 0 and data["branch"] == "billing/add-invoices"
+    assert current_branch(committed) == "billing/add-invoices"
+    git(committed, "checkout", "-q", "main")
+    code, data = run_json("new", "add-vat", "--module", "billing/tax")
+    assert code == 0 and data["branch"] == "billing/tax/add-vat"
+    assert current_branch(committed) == "billing/tax/add-vat"
 
 
 # @ac AC-CLI-006.7

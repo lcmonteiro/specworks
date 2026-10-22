@@ -269,6 +269,7 @@ def test_diagrams_refuses_a_folder_that_does_not_exist(change, fake_d2):
 # @ac AC-PROJ-009.3
 def test_init_sets_the_diagram_theme(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
+    init_repo(tmp_path)
     assert runner.invoke(app, ["init", "--no-skills", "--diagram-theme", "Cool Classics"]).exit_code == 0
     assert "  theme: cool-classics\n" in (tmp_path / "specworks.yml").read_text()
     code, data = run_json("diagrams", "--themes")
@@ -278,6 +279,7 @@ def test_init_sets_the_diagram_theme(tmp_path, monkeypatch):
 # @ac AC-PROJ-009.3
 def test_init_rejects_unknown_diagram_theme(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
+    init_repo(tmp_path)
     result = runner.invoke(app, ["init", "--no-skills", "--diagram-theme", "rainbow"])
     assert result.exit_code == 1 and "unknown theme" in result.output
     assert not list(tmp_path.glob("*.yml"))
