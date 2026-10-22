@@ -167,14 +167,14 @@ prints none and `origin` is a `github.com` or `gitlab.com` URL, build the link:
 `<repo URL>/-/merge_requests/new?merge_request[source_branch]=<branch>` for
 GitLab; otherwise only report the push. On no, say the branch stays local.
 
-   Once the push question is answered, end with the next steps as numbered
-   options, for example:
-   ```
-   1. /specworks-baseline <next capability> (recommended): after a baseline, when one is left
-   2. Stop here
-   ```
-   (after the last baseline: `/specworks-refine <fix-ref>` for the first
-   waiting bug change instead of option 1).
+Once the push question is answered, end with the next steps as numbered
+options, for example:
+```
+1. /specworks-baseline <next capability> (recommended): after a baseline, when one is left
+2. Stop here
+```
+(after the last baseline: `/specworks-refine <fix-ref>` for the first
+waiting bug change instead of option 1).
 
 ---
 
