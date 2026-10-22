@@ -17,9 +17,10 @@ from .output import ChangeOpt, JsonOpt, change_dict, emit, require_change, resol
 def new(
     name: str,
     module: str | None = typer.Option(None, "--module", "-m", help="Create it in this module instead of the current one."),
+    no_branch: bool = typer.Option(False, "--no-branch", help="Stay on the current branch instead of creating the change's branch."),
     as_json: bool = JsonOpt,
 ) -> None:
-    """Create a new change folder (phase: refine) in the current module."""
+    """Create a new change folder (phase: refine) in the current module, on its own branch."""
     ws = workspace(as_json)
     target = ws.module(module) if module is not None else ws.current
     change = create_change(target.config, name)

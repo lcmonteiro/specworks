@@ -47,6 +47,8 @@ Git is a precondition of the project, not of the branch: `new --no-branch` outsi
 
 ## Interfaces
 
+Agreed with the user
+
 - `src/specworks/core/git.py`:
   - `class GitMissing(GitError)`: git cannot be run (REQ-PROJ-017).
   - `require_repo(path: Path) -> None`: raises `GitMissing` or `GitError` ("not inside a git repository: run `git init` first") (REQ-PROJ-017).

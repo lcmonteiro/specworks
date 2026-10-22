@@ -2,14 +2,14 @@
 
 ## 1. The git repository and a change's branch
 
-- [ ] 1.1 Add `GitMissing`, `Branch`, `require_repo`, `branch_name`, `plan_branch` and `create_branch` to `src/specworks/core/git.py` as stubs (REQ-PROJ-017, REQ-PROJ-018, REQ-PROJ-019); verify `uv run mypy` and the existing tests pass
+- [x] 1.1 Add `GitMissing`, `Branch`, `require_repo`, `branch_name`, `plan_branch` and `create_branch` to `src/specworks/core/git.py` as stubs (REQ-PROJ-017, REQ-PROJ-018, REQ-PROJ-019); verify `uv run mypy` and the existing tests pass
 - [ ] 1.2 [test] Write failing tests in `tests/test_git.py` for AC-PROJ-017.1, AC-PROJ-017.2, AC-PROJ-017.3, AC-PROJ-018.1, AC-PROJ-018.2, AC-PROJ-018.3, AC-PROJ-019.1, AC-PROJ-019.2, AC-PROJ-019.3 and AC-PROJ-019.4, each tagged `@ac`; verify they fail for the right reason
 - [ ] 1.3 [code] Implement `GitMissing` and `require_repo` (REQ-PROJ-017) tagged `@req`; verify `uv run pytest tests/test_git.py`
 - [ ] 1.4 [code] Implement `branch_name`, `plan_branch` and `create_branch` (REQ-PROJ-018, REQ-PROJ-019) tagged `@req`; verify `uv run pytest tests/test_git.py`
 
 ## 2. `init` and `new`
 
-- [ ] 2.1 Add the `--no-branch` option to `new` in `src/specworks/cli/changes.py` as a stub (REQ-CLI-006); verify `uv run mypy` and the existing tests pass
+- [x] 2.1 Add the `--no-branch` option to `new` in `src/specworks/cli/changes.py` as a stub (REQ-CLI-006); verify `uv run mypy` and the existing tests pass
 - [ ] 2.2 [test] Write failing tests for AC-CLI-003.7, AC-CLI-006.6, AC-CLI-006.7, AC-CLI-006.8 and AC-CLI-006.9 in `tests/test_cli.py`, tagged `@ac`, and add the repo to AC-CLI-003.1's test; verify they fail for the right reason
 - [ ] 2.3 [code] Make `init` refuse a folder outside a git repository before writing anything (REQ-CLI-003, AC-CLI-003.7) tagged `@req`; verify the `init` tests
 - [ ] 2.4 [code] Make `new` plan the branch, create the change, switch to the branch, and report `branch` and `startedFrom` (REQ-CLI-006, AC-CLI-006.6 to AC-CLI-006.9) tagged `@req`; verify the `new` tests
