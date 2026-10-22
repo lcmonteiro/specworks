@@ -1,7 +1,7 @@
 ---
 name: specworks-specify
 description: Specify phase of spec-driven development - turn a request (or a refinement) into a proposal, delta specs with requirement IDs and acceptance criteria, a design and a task list, validated and traced. Use in a specworks project when the user wants to plan a change before building it, write requirements or acceptance criteria, or says "specify", "spec this", "write the proposal" or "specworks specify".
-allowed-tools: Bash(specworks:*), Bash(uv run specworks:*), Bash(uvx --from git+https://github.com/lcmonteiro/specworks specworks:*), Read, Grep, Glob, Write, Edit
+allowed-tools: Bash(specworks:*), Bash(uv run specworks:*), Bash(uvx --from git+https://github.com/lcmonteiro/specworks specworks:*), Bash(git add:*), Bash(git commit:*), Read, Grep, Glob, Write, Edit
 ---
 
 Specify phase: decide WHAT will change and HOW it will be checked, before any
@@ -198,6 +198,18 @@ next step the same way: the next skill (recommended), any alternative, and
    Fix every validation error (warnings: fix or explain). `trace` writes
    `traceability.md`; at this phase the test and code columns are empty.
    `gate specify` must pass: it is what `/specworks-design` checks first.
+
+**Committing**: once this phase's gate has passed (a phase with no gate: once its
+artifact is written), and before the closing question, commit its work:
+- stage explicit paths only: the change folder and the files this phase wrote
+  or changed; never `git add -A`, and never a whole-folder add;
+- name any unrelated dirty or untracked file in the report and leave it out of
+  the commit;
+- the message follows the project's commit convention when one exists (a commit
+  skill, `CLAUDE.md`, `.github/copilot-instructions.md`, the project `context`),
+  otherwise `<ref>: <phase>`, with the ref and the phase in the body or a
+  trailer when the convention allows;
+- never push: only `/specworks-close` and `/specworks-done` offer that.
 
 9. **Show the result and stop**
 

@@ -1,7 +1,7 @@
 ---
 name: specworks-close
 description: Close phase of spec-driven development - fold a verified change into the project's living documentation next to the code (spec, requirements index, design, architecture, diagrams), register new capabilities, and archive the change. Use when a specworks change has passed validate and the user wants to finish it, or says "close the change", "archive the change", "merge the specs" or "specworks close".
-allowed-tools: Bash(specworks:*), Bash(uv run specworks:*), Bash(uvx --from git+https://github.com/lcmonteiro/specworks specworks:*), Read, Grep, Glob, Write, Edit
+allowed-tools: Bash(specworks:*), Bash(uv run specworks:*), Bash(uvx --from git+https://github.com/lcmonteiro/specworks specworks:*), Bash(git add:*), Bash(git commit:*), Read, Grep, Glob, Write, Edit
 ---
 
 Close phase: turn what the change decided into the project's lasting truth.
@@ -104,14 +104,14 @@ here; if something is wrong, go back to the phase that owns it.
    for this change), sets the phase to `done` and moves the change to
    `<dir>/changes/archive/<date>-<name>/`.
 
+<!-- specworks:include committing -->
+
 6. **Report and stop**
 
    Summarize: living docs written per capability (spec, requirements, design,
    architecture, diagrams), requirements added / modified / removed,
-   capabilities registered, and the archive path. Suggest committing the
-   living docs, the archive and the code together, e.g.
-   `git add -A && git commit -m "<change>: close"`, and opening the PR if the
-   project uses them.
+   capabilities registered, and the archive path. The living docs, the archive
+   and the code are already committed together (above).
 
    When the change was a baseline (`baseline-<capability>`), name what is
    next: the next capability with 0 requirements in `specworks spec list`
@@ -119,14 +119,16 @@ here; if something is wrong, go back to the phase that owns it.
    capability now has a living spec and new work starts with
    `/specworks-refine` (the waiting `fix-*` changes of suspected bugs first).
 
-   End with the next steps as numbered options, for example:
+<!-- specworks:include pushing -->
+
+   Once the push question is answered, end with the next steps as numbered
+   options, for example:
    ```
-   1. Commit and open a PR (recommended): the living docs, the archive and the code go together
-   2. /specworks-baseline <next capability>: after a baseline, when one is left
-   3. Stop here
+   1. /specworks-baseline <next capability> (recommended): after a baseline, when one is left
+   2. Stop here
    ```
    (after the last baseline: `/specworks-refine <fix-ref>` for the first
-   waiting bug change instead of option 2).
+   waiting bug change instead of option 1).
 
 ---
 
