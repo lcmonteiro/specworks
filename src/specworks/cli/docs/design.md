@@ -50,6 +50,17 @@ runs validate first and takes `--no-run` only with `--dry-run`, and `init`
 rejects a bad `--tools` or a module's `--dir` before writing anything.
 (baseline-cli)
 
+### Git is a precondition; `new` branches
+
+`init` calls `require_repo` after parsing its options and before writing
+anything, so a folder outside a repository is left untouched. `new` checks
+everything that can refuse (repo, detached HEAD, existing branch) before
+creating the change folder, then creates the folder and switches to the branch:
+a refusal leaves neither. `--no-branch` skips the branch but still needs the
+repo. `new` finds the base branch with `detect_base` and passes it to core, and
+reports `branch` and `startedFrom` (`--json`, both `null` without a branch).
+Commits and pushes stay in the skills, not in the CLI. (git-workflow)
+
 ### Modules are linked where the folder lives
 
 `module add <path>` and `init <path>` both link the folder in the config of the
@@ -76,6 +87,8 @@ a second config format exists. (upgrade-project)
   point).
 - `src/specworks/cli/output.py`: `emit`, `fail`, `workspace`,
   `resolve_change`, `resolve_archived`, `require_change`.
+- `new <name> [--module M] [--no-branch] [--json]`: `--json` adds `branch` and
+  `startedFrom`.
 - The commands as `specworks --help` lists them: `version`, `init`, `skills`,
   `update`, `context`, `list`, `module add|list`, `capability add`, `new`, `status`,
   `abandon`, `phase`, `skip-specs`, `instructions`, `task list|done|undo`,

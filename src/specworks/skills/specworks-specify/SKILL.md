@@ -1,7 +1,7 @@
 ---
 name: specworks-specify
 description: Specify phase of spec-driven development - turn a request (or a refinement) into a proposal, delta specs with requirement IDs and acceptance criteria, a design and a task list, validated and traced. Use in a specworks project when the user wants to plan a change before building it, write requirements or acceptance criteria, or says "specify", "spec this", "write the proposal" or "specworks specify".
-allowed-tools: Bash(specworks:*), Bash(uv run specworks:*), Bash(uvx --from git+https://github.com/lcmonteiro/specworks specworks:*), Read, Grep, Glob, Write, Edit
+allowed-tools: Bash(specworks:*), Bash(uv run specworks:*), Bash(uvx --from git+https://github.com/lcmonteiro/specworks specworks:*), Bash(git add:*), Bash(git commit:*), Read, Grep, Glob, Write, Edit
 ---
 
 Specify phase: decide WHAT will change and HOW it will be checked, before any
@@ -168,6 +168,8 @@ When the artifacts are done, stop and offer `/specworks-build` (or
    Fix every validation error (warnings: fix or explain). `trace` writes
    `traceability.md`; at this phase the test and code columns are empty.
    `gate specify` must pass: it is what `/specworks-design` checks first.
+
+<!-- specworks:include committing -->
 
 9. **Show the result and stop**
 

@@ -1,7 +1,7 @@
 ---
 name: specworks-review
 description: Review phase of spec-driven development - compare a change's code with its specs in both directions, find drift (behaviour no requirement describes, requirements the code misses, tests that do not really check their criterion, an API or design the code proved wrong, wrong tags), propose for each one a change to the code, the spec or the design/API, apply it with the user or send the change back to the phase that owns it, and record every decision in review.md. Use after the implement phase (test and code halves) of a specworks change, or when the user says "review the change", "sync code and spec", "check for drift" or "specworks review".
-allowed-tools: Bash(specworks:*), Bash(uv run specworks:*), Bash(uvx --from git+https://github.com/lcmonteiro/specworks specworks:*), Bash(git diff:*), Bash(git log:*), Bash(git status:*), Read, Grep, Glob, Write, Edit
+allowed-tools: Bash(specworks:*), Bash(uv run specworks:*), Bash(uvx --from git+https://github.com/lcmonteiro/specworks specworks:*), Bash(git diff:*), Bash(git log:*), Bash(git status:*), Bash(git add:*), Bash(git commit:*), Read, Grep, Glob, Write, Edit
 ---
 
 Review phase: make the code, the specs and the design (API) say the same
@@ -195,6 +195,18 @@ next step the same way: the next skill (recommended), any alternative, and
    are the hand-off to the next cycle, so they are reported as a warning,
    and so is a failing suite while a finding is open (the findings carry
    it); every other check must still pass.
+
+**Committing**: once this phase's gate has passed (a phase with no gate: once its
+artifact is written), and before the closing question, commit its work:
+- stage explicit paths only: the change folder and the files this phase wrote
+  or changed; never `git add -A`, and never a whole-folder add;
+- name any unrelated dirty or untracked file in the report and leave it out of
+  the commit;
+- the message follows the project's commit convention when one exists (a commit
+  skill, `CLAUDE.md`, `.github/copilot-instructions.md`, the project `context`),
+  otherwise `<ref>: <phase>`, with the ref and the phase in the body or a
+  trailer when the convention allows;
+- never push: only `/specworks-close` and `/specworks-done` offer that.
 
 7. **Report and stop**
 

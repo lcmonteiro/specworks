@@ -92,8 +92,7 @@ with only a `refinement.md` (step 4).
    ```
    Never narrow `commands.test` to hide the failures.
 
-   Otherwise, preferably on a new branch (review compares the branch with
-   its base):
+   Otherwise:
    ```bash
    specworks new "baseline-<capability>" --json
    specworks phase specify --change "baseline-<capability>"

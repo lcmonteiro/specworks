@@ -1,6 +1,6 @@
 """The specs a change was agreed with: later edits are warned about, and MODIFIED behaviour needs changed tests."""
 
-from helpers import REF, git, run_json
+from helpers import REF, git, remove_repo, run_json
 
 AGREED = "the specs are the ones agreed when specify passed"
 MODIFIED_TESTS = "the tests of each MODIFIED requirement changed with it"
@@ -112,5 +112,6 @@ def test_a_modified_title_alone_needs_no_new_test(repo):
 
 # @ac AC-FLOW-011.4
 def test_without_git_the_tests_of_a_modified_requirement_are_not_checked(project):
+    remove_repo(project)
     code, data = run_json("gate", "review", "--change", REF, "--no-run", "--allow-open")
     assert check(data, MODIFIED_TESTS) is None

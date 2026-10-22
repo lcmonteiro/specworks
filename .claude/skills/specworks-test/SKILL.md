@@ -1,7 +1,7 @@
 ---
 name: specworks-test
 description: Test half of the implement phase of spec-driven development - turn a change's acceptance criteria into failing tests (tagged @ac) written against the API agreed in the design phase, independently of the code half. Use when a specworks change has its interfaces and the user wants to write its acceptance tests first, or says "write the acceptance tests" or "specworks test".
-allowed-tools: Bash(specworks:*), Bash(uv run specworks:*), Bash(uvx --from git+https://github.com/lcmonteiro/specworks specworks:*), Read, Grep, Glob, Write, Edit
+allowed-tools: Bash(specworks:*), Bash(uv run specworks:*), Bash(uvx --from git+https://github.com/lcmonteiro/specworks specworks:*), Bash(git add:*), Bash(git commit:*), Read, Grep, Glob, Write, Edit
 ---
 
 Test half of implement: write the tests that prove each acceptance
@@ -174,6 +174,18 @@ next step the same way: the next skill (recommended), any alternative, and
    for every criterion, no tag to an unknown ID. Open `[code]` tasks do not
    affect it. Fix every failing blocking check (an untested criterion, a tag
    with a wrong ID) and re-run. Warnings: fix them or explain them.
+
+**Committing**: once this phase's gate has passed (a phase with no gate: once its
+artifact is written), and before the closing question, commit its work:
+- stage explicit paths only: the change folder and the files this phase wrote
+  or changed; never `git add -A`, and never a whole-folder add;
+- name any unrelated dirty or untracked file in the report and leave it out of
+  the commit;
+- the message follows the project's commit convention when one exists (a commit
+  skill, `CLAUDE.md`, `.github/copilot-instructions.md`, the project `context`),
+  otherwise `<ref>: <phase>`, with the ref and the phase in the body or a
+  trailer when the convention allows;
+- never push: only `/specworks-close` and `/specworks-done` offer that.
 
 7. **Report and stop**
 

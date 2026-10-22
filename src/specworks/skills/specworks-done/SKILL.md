@@ -107,11 +107,12 @@ goes back to the phase that owns it.
    Requirements  +2 added, 1 modified, 0 removed
    Archived   spec/changes/archive/2026-10-19-add-password-reset/
    ```
-   Then end with close's next steps as numbered options: commit the living
-   docs, the archive and the code together (and open a PR), and, for a
-   `baseline-<capability>` change, the next capability to baseline
-   (`/specworks-baseline <capability>`) or, when every capability has a
-   living spec, the first waiting bug change; plus "Stop here".
+<!-- specworks:include pushing -->
+
+   Once the push question is answered, end with close's next steps as numbered
+   options: for a `baseline-<capability>` change, the next capability to
+   baseline (`/specworks-baseline <capability>`) or, when every capability has
+   a living spec, the first waiting bug change; plus "Stop here".
 
 ---
 

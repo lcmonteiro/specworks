@@ -11,6 +11,7 @@ from .. import __version__
 from ..core.changes import archived_as, list_archived
 from ..core.config import DEFAULT_DIR, Config, ConfigError, config_name, find_config, load_config
 from ..core.config_file import add_capability_entry, add_module_entry, write_default_config
+from ..core.git import require_repo
 from ..core.validators import validate_relative
 from ..core.workspace import Module, Workspace, capability_prefix, load_module_config, load_workspace, require_workspace
 from ..specs.capabilities import capability_ref, describe
@@ -104,6 +105,7 @@ def init(
     """Create <dir>.yml and <dir>/changes/, link to a parent project, and install the agent skills."""
     root = path.resolve()
     parse_tools(tools, root)  # reject a bad --tools before writing anything
+    require_repo(root)
     parent = None if no_link else load_workspace(root.parent)
     if parent is not None:
         # A module shares the workspace's folder (and config file) name.

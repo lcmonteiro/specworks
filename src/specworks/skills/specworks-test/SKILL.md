@@ -1,7 +1,7 @@
 ---
 name: specworks-test
 description: Test half of the implement phase of spec-driven development - turn a change's acceptance criteria into failing tests (tagged @ac) written against the API agreed in the design phase, independently of the code half. Use when a specworks change has its interfaces and the user wants to write its acceptance tests first, or says "write the acceptance tests" or "specworks test".
-allowed-tools: Bash(specworks:*), Bash(uv run specworks:*), Bash(uvx --from git+https://github.com/lcmonteiro/specworks specworks:*), Read, Grep, Glob, Write, Edit
+allowed-tools: Bash(specworks:*), Bash(uv run specworks:*), Bash(uvx --from git+https://github.com/lcmonteiro/specworks specworks:*), Bash(git add:*), Bash(git commit:*), Read, Grep, Glob, Write, Edit
 ---
 
 Test half of implement: write the tests that prove each acceptance
@@ -144,6 +144,8 @@ other half's. When the test gate passes, stop and suggest `/specworks-code`
    for every criterion, no tag to an unknown ID. Open `[code]` tasks do not
    affect it. Fix every failing blocking check (an untested criterion, a tag
    with a wrong ID) and re-run. Warnings: fix them or explain them.
+
+<!-- specworks:include committing -->
 
 7. **Report and stop**
 

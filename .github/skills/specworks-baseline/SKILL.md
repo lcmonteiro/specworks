@@ -111,8 +111,7 @@ next step the same way: the next skill (recommended), any alternative, and
    ```
    Never narrow `commands.test` to hide the failures.
 
-   Otherwise, preferably on a new branch (review compares the branch with
-   its base):
+   Otherwise:
    ```bash
    specworks new "baseline-<capability>" --json
    specworks phase specify --change "baseline-<capability>"

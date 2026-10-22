@@ -4,6 +4,7 @@ import re
 import pytest
 from typer.testing import CliRunner
 
+from helpers import init_repo
 from samples import DELTA, LIVING, PROPOSAL, TASKS
 from specworks.cli import app
 from specworks.specs.specfile import ac_parent, find_ids, id_prefix, living_problems, parse_spec
@@ -24,6 +25,7 @@ def run_json(*args):
 @pytest.fixture
 def project(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
+    init_repo(tmp_path)
     assert runner.invoke(app, ["init", "--dir", "spec", "--no-skills"]).exit_code == 0
     cfg = tmp_path / "spec.yml"
     cfg.write_text(
@@ -33,7 +35,7 @@ def project(tmp_path, monkeypatch):
     )
     (tmp_path / "src/auth/docs").mkdir(parents=True)
     (tmp_path / "src/auth/docs/spec.md").write_text(LIVING)
-    run_json("new", "add-password-reset")
+    run_json("new", "add-password-reset", "--no-branch")
     return tmp_path
 
 
@@ -397,7 +399,7 @@ def warnings(data):
 
 # @ac AC-SPECS-007.1
 def test_id_clash_is_an_error_only_in_the_change_that_started_later(change, project):
-    run_json("new", "other-change")
+    run_json("new", "other-change", "--no-branch")
     other = project / "spec/changes/other-change/specs/user-auth"
     other.mkdir(parents=True)
     (other / "spec.md").write_text(DELTA)
@@ -412,7 +414,7 @@ def test_id_clash_is_an_error_only_in_the_change_that_started_later(change, proj
 
 # @ac AC-SPECS-007.1
 def test_changes_started_on_the_same_day_without_a_time_are_ordered_by_name(change, project):
-    run_json("new", "other-change")
+    run_json("new", "other-change", "--no-branch")
     other = project / "spec/changes/other-change/specs/user-auth"
     other.mkdir(parents=True)
     (other / "spec.md").write_text(DELTA)
@@ -424,7 +426,7 @@ def test_changes_started_on_the_same_day_without_a_time_are_ordered_by_name(chan
 
 # @ac AC-PROJ-010.1
 def test_a_new_change_records_when_it_started(project):
-    run_json("new", "other-change")
+    run_json("new", "other-change", "--no-branch")
     meta = (project / "spec/changes/other-change/.change.yaml").read_text()
     assert re.search(r"(?m)^created: '\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d'$", meta), meta
 
@@ -440,7 +442,7 @@ def test_a_new_change_records_when_it_started(project):
 )
 # @ac AC-SPECS-007.2
 def test_two_changes_editing_one_requirement_do_not_block_each_other(change, project, other_delta):
-    run_json("new", "other-change")
+    run_json("new", "other-change", "--no-branch")
     other = project / "spec/changes/other-change/specs/user-auth"
     other.mkdir(parents=True)
     (other / "spec.md").write_text(other_delta)
@@ -688,7 +690,7 @@ def test_a_tag_with_a_prefix_no_capability_uses_is_unknown(change, project):
 # @ac AC-SPECS-012.4
 def test_tags_of_another_active_change_are_not_unknown(change, project):
     # other-change adds REQ-AUTH-004 to the same capability and a new, not yet registered one.
-    run_json("new", "other-change")
+    run_json("new", "other-change", "--no-branch")
     other = project / "spec/changes/other-change/specs"
     (other / "user-auth").mkdir(parents=True)
     (other / "user-auth/spec.md").write_text(DELTA.replace("REQ-AUTH-003", "REQ-AUTH-004").replace("AC-AUTH-003", "AC-AUTH-004"))
@@ -705,7 +707,7 @@ def test_tags_of_another_active_change_are_not_unknown(change, project):
 
 # @ac AC-SPECS-012.4
 def test_a_broken_delta_of_another_change_does_not_break_this_ones_trace(change, project):
-    run_json("new", "other-change")
+    run_json("new", "other-change", "--no-branch")
     bad = project / "spec/changes/other-change/specs/nope/thing"
     bad.mkdir(parents=True)
     (bad / "spec.md").write_text("## ADDED Requirements\n")
@@ -759,7 +761,7 @@ def test_source_globs_limit_the_other_files_but_not_tests(change, project):
 
 # @ac AC-FLOW-001.3, AC-CLI-006.5
 def test_skip_specs_change(project):
-    run_json("new", "tidy-up")
+    run_json("new", "tidy-up", "--no-branch")
     code, data = run_json("skip-specs", "--change", "tidy-up")
     assert code == 0 and data["skipSpecs"] is True
     (project / "spec/changes/tidy-up/proposal.md").write_text("# P\n\n## Why\n\n## What Changes\n\n## Capabilities\n")

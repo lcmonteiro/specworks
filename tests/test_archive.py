@@ -62,9 +62,9 @@ def test_other_commands_say_the_change_is_archived(project):
 # @ac AC-PROJ-010.4
 def test_new_refuses_an_archived_name_and_the_archive_folder(project):
     abandon()
-    code, data = run_json("new", REF)
+    code, data = run_json("new", REF, "--no-branch")
     assert code == 1 and f"was archived at {ARCHIVED}" in data["error"]
-    code, data = run_json("new", "archive")
+    code, data = run_json("new", "archive", "--no-branch")
     assert code == 1 and "'archive' is reserved" in data["error"]
 
 

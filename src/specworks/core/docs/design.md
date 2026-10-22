@@ -86,6 +86,21 @@ is needed. `set_phase` refuses a half with an error naming `implement`.
 Aliases that move the change to implement were rejected: two names for one
 phase. (parallel-test-code)
 
+### A project needs git, and a change gets its own branch
+
+`require_repo(path)` fails unless the folder is inside a git repository, running
+git from the nearest existing parent because `init` may be given a folder that
+does not exist yet. `GitMissing(GitError)` marks "git cannot be run", so
+every existing `except GitError` keeps working. A change's branch is its ref
+with `:` replaced by `/` (`billing/tax/add-login` for a nested module). Creating
+it is planned first and done second: `plan_branch` has no side effects and
+refuses an existing branch or a detached HEAD; `create_branch` is the only
+writer, using `git checkout -b` (no minimum git version, carries uncommitted
+changes, works before the first commit). The base branch is passed in rather
+than found in core, because `detect_base` lives in the workflow layer; a base of
+`origin/main` counts as `main`. Rolling back a created branch on error was
+rejected: more states to undo. (git-workflow)
+
 ### Expected failures are `SpecworksError`s
 
 Bad configs, unknown changes, unreadable files and git failures all raise a
@@ -110,7 +125,9 @@ where to configure one. (baseline-project, run-unknown-key)
   `load_change`, `list_changes`, `list_archived`, `archived_as`, `set_phase`.
 - `src/specworks/core/runner.py`: `run_command`, `cached_run`, `RunResult`.
 - `src/specworks/core/files.py`: `read_text(path, keep_newlines=False)`.
-- `src/specworks/core/git.py`: `git`, `git_text`.
+- `src/specworks/core/git.py`: `git`, `git_text`, `GitError`, `GitMissing`,
+  `require_repo(path)`, `branch_name(ref)`, `Branch` (`name`, `started_from`),
+  `plan_branch(cwd, name, base=None)`, `create_branch(cwd, branch)`.
 
 ## Constraints
 

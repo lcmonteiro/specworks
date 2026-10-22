@@ -3,6 +3,7 @@
 import json
 import os
 import re
+import shutil
 import stat
 import subprocess
 import sys
@@ -25,14 +26,34 @@ def run_json(*args):
         pytest.fail(result.output)
 
 
+def git(root, *args):
+    subprocess.run(["git", *args], cwd=root, check=True, capture_output=True)
+
+
+def init_repo(root):
+    """An empty git repository on `main`: a project must be inside one."""
+    git(root, "init", "-q", "-b", "main")
+
+
+def remove_repo(root):
+    """Take the folder out of its repository, for the tests of behaviour without git."""
+
+    def writable(func, path, _excinfo):
+        os.chmod(path, stat.S_IWRITE)  # git's object files are read-only on Windows
+        func(path)
+
+    shutil.rmtree(root / ".git", onerror=writable)
+
+
 def make_planned_project(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
+    init_repo(tmp_path)
     assert runner.invoke(app, ["init", "--dir", "spec", "--no-skills"]).exit_code == 0
     cfg = tmp_path / "spec.yml"
     cfg.write_text(cfg.read_text().replace("capabilities: {}", "capabilities:\n  user-auth:\n    path: src/auth\n    prefix: AUTH"))
     (tmp_path / "src/auth/docs").mkdir(parents=True)
     (tmp_path / "src/auth/docs/spec.md").write_text(LIVING)
-    run_json("new", REF)
+    run_json("new", REF, "--no-branch")  # stay on main
     change = tmp_path / "spec/changes" / REF
     (change / "proposal.md").write_text(PROPOSAL)
     (change / "specs/user-auth").mkdir(parents=True)
@@ -50,10 +71,6 @@ def write_tests(root, *acs):
 PASS = f'"{sys.executable}" -c "print(\'ok\')"'
 
 
-def git(root, *args):
-    subprocess.run(["git", *args], cwd=root, check=True, capture_output=True)
-
-
 def make_repo(project, monkeypatch):
     """The planned project as a git repo: baseline on main, the change's work on a feature branch."""
     for key, value in {"GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t", "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@t"}.items():
@@ -61,7 +78,6 @@ def make_repo(project, monkeypatch):
     cfg = project / "spec.yml"
     cfg.write_text(re.sub(r"(?m)^  test:.*$", lambda _: f"  test: {json.dumps(PASS)}", cfg.read_text(), count=1))
     (project / "src/auth/session.py").write_text("def session(): ...\n")
-    git(project, "init", "-q", "-b", "main")
     git(project, "add", "-A")
     git(project, "commit", "-q", "-m", "baseline")
     git(project, "checkout", "-q", "-b", "feature")

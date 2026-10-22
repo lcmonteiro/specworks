@@ -1,7 +1,7 @@
 ---
 name: specworks-code
 description: Code half of the implement phase of spec-driven development - work through a change's [code] tasks, replacing the API stubs with real code from the specs and design (independently of the test half), tagging code with @req and ticking tasks as they are done. Use when a specworks change has its agreed API and the user wants to implement it, or says "implement the change", "write the code" or "specworks code".
-allowed-tools: Bash(specworks:*), Bash(uv run specworks:*), Bash(uvx --from git+https://github.com/lcmonteiro/specworks specworks:*), Read, Grep, Glob, Write, Edit
+allowed-tools: Bash(specworks:*), Bash(uv run specworks:*), Bash(uvx --from git+https://github.com/lcmonteiro/specworks specworks:*), Bash(git add:*), Bash(git commit:*), Read, Grep, Glob, Write, Edit
 ---
 
 Code half of implement: write the code the `[code]` tasks describe, from
@@ -130,6 +130,8 @@ change's tests. When the code gate passes, stop and suggest
    criteria without tests do not affect it. While the change has `@ac` tests
    of its own, a failing suite is a warning: those tests meet the code in
    review. Fix every failing blocking check and re-run.
+
+<!-- specworks:include committing -->
 
 6. **Report and stop**
 

@@ -177,11 +177,19 @@ their questions, and write the answers to disk.
    Requirements  +2 added, 1 modified, 0 removed
    Archived   spec/changes/archive/2026-10-19-add-password-reset/
    ```
-   Then end with close's next steps as numbered options: commit the living
-   docs, the archive and the code together (and open a PR), and, for a
-   `baseline-<capability>` change, the next capability to baseline
-   (`/specworks-baseline <capability>`) or, when every capability has a
-   living spec, the first waiting bug change; plus "Stop here".
+**Pushing**: after the commit, offer to push the change's branch (the checked-out
+one, from `git status`): ask `Push <branch>? (yes/no)`. On yes, run
+`git push -u origin <branch>` (never pre-approved: the user is asked either
+way) and relay the "create a pull request" link the remote prints. When it
+prints none and `origin` is a `github.com` or `gitlab.com` URL, build the link:
+`<repo URL>/pull/new/<branch>` for GitHub,
+`<repo URL>/-/merge_requests/new?merge_request[source_branch]=<branch>` for
+GitLab; otherwise only report the push. On no, say the branch stays local.
+
+   Once the push question is answered, end with close's next steps as numbered
+   options: for a `baseline-<capability>` change, the next capability to
+   baseline (`/specworks-baseline <capability>`) or, when every capability has
+   a living spec, the first waiting bug change; plus "Stop here".
 
 ---
 

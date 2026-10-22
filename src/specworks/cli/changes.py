@@ -5,9 +5,11 @@ from __future__ import annotations
 import typer
 
 from ..core.changes import PHASES, ChangeError, ChangeNotFound, create_change, set_phase
+from ..core.git import GitError, branch_name, create_branch, plan_branch, require_repo
 from ..specs.merge import archive_change
 from ..specs.tasks import read_tasks, set_done
 from ..workflow.artifacts import artifact_states, half_progress, instructions
+from ..workflow.review import detect_base
 from .app import app, task_app
 from .output import ChangeOpt, JsonOpt, change_dict, emit, require_change, resolve_archived, resolve_change, workspace
 
@@ -17,13 +19,30 @@ from .output import ChangeOpt, JsonOpt, change_dict, emit, require_change, resol
 def new(
     name: str,
     module: str | None = typer.Option(None, "--module", "-m", help="Create it in this module instead of the current one."),
+    no_branch: bool = typer.Option(False, "--no-branch", help="Stay on the current branch instead of creating the change's branch."),
     as_json: bool = JsonOpt,
 ) -> None:
-    """Create a new change folder (phase: refine) in the current module."""
+    """Create a new change folder (phase: refine) in the current module, on its own branch."""
     ws = workspace(as_json)
     target = ws.module(module) if module is not None else ws.current
+    require_repo(target.root)
+    plan = None
+    if not no_branch:
+        try:
+            base = detect_base(target.root)
+        except GitError:
+            base = None
+        plan = plan_branch(target.root, branch_name(target.qualify(name)), base)
     change = create_change(target.config, name)
-    emit(change_dict(ws, target, change), as_json, f"created {ws.rel(change.path)}")
+    if plan is not None:
+        create_branch(target.root, plan)
+    data = {**change_dict(ws, target, change), "branch": plan.name if plan else None, "startedFrom": plan.started_from if plan else None}
+    lines = [f"created {ws.rel(change.path)}"]
+    if plan is not None:
+        lines.append(f"branch  {plan.name}")
+        if plan.started_from is not None:
+            lines.append(f"started from {plan.started_from}, not the base branch")
+    emit(data, as_json, "\n".join(lines))
 
 
 # @req REQ-CLI-002

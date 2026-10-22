@@ -4,7 +4,9 @@ import re
 import pytest
 from typer.testing import CliRunner
 
+from helpers import git, init_repo, remove_repo
 from specworks.cli import app, main
+from specworks.core.git import git_text
 
 runner = CliRunner()
 
@@ -12,9 +14,28 @@ runner = CliRunner()
 @pytest.fixture
 def project(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
+    init_repo(tmp_path)
     result = runner.invoke(app, ["init"])
     assert result.exit_code == 0, result.output
     return tmp_path
+
+
+@pytest.fixture
+def committed(project, monkeypatch):
+    """The project with everything committed on main, so a branch starts from a real commit."""
+    for key, value in {"GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t", "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@t"}.items():
+        monkeypatch.setenv(key, value)
+    git(project, "add", "-A")
+    git(project, "commit", "-q", "-m", "baseline")
+    return project
+
+
+def current_branch(root):
+    return git_text(root, "branch", "--show-current").strip()
+
+
+def branch_names(root):
+    return git_text(root, "branch", "--format=%(refname:short)").split()
 
 
 def run_json(*args):
@@ -40,13 +61,14 @@ def test_init_creates_config_changes_and_skills(project):
 # @ac AC-CLI-001.3
 def test_init_prints_paths_relative_to_the_project_root(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
+    init_repo(tmp_path)
     result = runner.invoke(app, ["init", "--dir", "spec", "--no-skills"])
     assert result.exit_code == 0 and result.output == "created spec.yml\nready   spec/changes/\n"
 
 
 # @ac AC-PROJ-010.1
 def test_new_change_starts_in_refine_phase(project):
-    code, data = run_json("new", "add-login")
+    code, data = run_json("new", "add-login", "--no-branch")
     assert code == 0
     assert data["phase"] == "refine"
     code, data = run_json("list")
@@ -56,21 +78,107 @@ def test_new_change_starts_in_refine_phase(project):
 # @ac AC-PROJ-010.2
 @pytest.mark.parametrize("name", ["Add_Login", "add login", "x--y", "archive-"])
 def test_new_rejects_non_kebab_names(project, name):
-    code, data = run_json("new", name)
+    code, data = run_json("new", name, "--no-branch")
     assert code == 1
     assert "kebab-case" in data["error"]
 
 
+# @ac AC-CLI-003.7
+def test_init_outside_a_git_repository_is_refused_and_writes_nothing(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    result = runner.invoke(app, ["init"])
+    assert result.exit_code == 1 and "git init" in result.output
+    assert list(tmp_path.iterdir()) == []  # no config, no folder, no skills, no repository
+
+
 # @ac AC-PROJ-010.3
 def test_new_rejects_duplicates(project):
-    run_json("new", "add-login")
-    code, data = run_json("new", "add-login")
+    run_json("new", "add-login", "--no-branch")
+    code, data = run_json("new", "add-login", "--no-branch")
     assert code == 1 and "already exists" in data["error"]
+
+
+# @ac AC-CLI-006.6
+def test_new_leaves_the_changes_branch_checked_out(committed):
+    result = runner.invoke(app, ["new", "add-login"])
+    assert result.exit_code == 0 and "add-login" in result.output
+    assert current_branch(committed) == "add-login"
+    git(committed, "checkout", "-q", "main")
+    code, data = run_json("new", "add-refunds")
+    assert code == 0 and data["branch"] == "add-refunds" and current_branch(committed) == "add-refunds"
+
+
+# @ac AC-CLI-006.6
+def test_a_module_change_branch_has_the_module_path(committed, monkeypatch):
+    assert runner.invoke(app, ["module", "add", "services/billing"]).exit_code == 0
+    monkeypatch.chdir(committed / "services/billing")
+    assert runner.invoke(app, ["module", "add", "tax"]).exit_code == 0
+    monkeypatch.chdir(committed)
+    code, data = run_json("new", "add-invoices", "--module", "billing")
+    assert code == 0 and data["branch"] == "billing/add-invoices"
+    assert current_branch(committed) == "billing/add-invoices"
+    git(committed, "checkout", "-q", "main")
+    code, data = run_json("new", "add-vat", "--module", "billing/tax")
+    assert code == 0 and data["branch"] == "billing/tax/add-vat"
+    assert current_branch(committed) == "billing/tax/add-vat"
+
+
+# @ac AC-CLI-006.7
+def test_new_no_branch_stays_on_the_current_branch(committed):
+    git(committed, "checkout", "-q", "-b", "feature")
+    before = branch_names(committed)
+    code, data = run_json("new", "add-login", "--no-branch")
+    assert code == 0 and data["branch"] is None
+    assert current_branch(committed) == "feature" and branch_names(committed) == before
+
+
+# @ac AC-CLI-006.8
+@pytest.mark.parametrize("extra", [[], ["--no-branch"]])
+def test_new_outside_a_git_repository_creates_nothing(project, extra):
+    remove_repo(project)
+    code, data = run_json("new", "add-login", *extra)
+    assert code == 1 and "git init" in data["error"]
+    assert not (project / "specworks/changes/add-login").exists()
+    assert not (project / ".git").exists()
+
+
+# @ac AC-CLI-006.8
+def test_new_with_an_existing_branch_creates_nothing(committed):
+    git(committed, "branch", "add-login")
+    before = branch_names(committed)
+    code, data = run_json("new", "add-login")
+    assert code == 1 and "add-login" in data["error"]
+    assert not (committed / "specworks/changes/add-login").exists()
+    assert current_branch(committed) == "main" and branch_names(committed) == before
+
+
+# @ac AC-CLI-006.8
+def test_new_with_a_detached_head_creates_nothing(committed):
+    git(committed, "checkout", "-q", "--detach")
+    before = branch_names(committed)
+    code, data = run_json("new", "add-login")
+    assert code == 1 and "detached" in data["error"]
+    assert not (committed / "specworks/changes/add-login").exists()
+    assert branch_names(committed) == before and "add-login" not in branch_names(committed)
+
+
+# @ac AC-CLI-006.9
+def test_new_names_the_branch_it_started_from_unless_it_is_the_base(committed):
+    result = runner.invoke(app, ["new", "add-refunds"])
+    assert result.exit_code == 0 and "started from" not in result.output
+    code, data = run_json("new", "add-vat")  # now on add-refunds
+    assert code == 0 and data["startedFrom"] == "add-refunds"
+    git(committed, "checkout", "-q", "main")
+    code, data = run_json("new", "add-tax")
+    assert code == 0 and data["startedFrom"] is None
+    git(committed, "checkout", "-q", "add-refunds")
+    result = runner.invoke(app, ["new", "add-login"])
+    assert result.exit_code == 0 and "started from add-refunds" in result.output
 
 
 # @ac AC-FLOW-002.1
 def test_instructions_for_refinement(project):
-    run_json("new", "add-login")
+    run_json("new", "add-login", "--no-branch")
     code, data = run_json("instructions", "refinement", "--change", "add-login")
     assert code == 0
     assert data["outputPath"] == "specworks/changes/add-login/refinement.md"
@@ -80,14 +188,14 @@ def test_instructions_for_refinement(project):
 
 # @ac AC-FLOW-002.4
 def test_instructions_for_an_unknown_artifact_are_refused(project):
-    run_json("new", "add-login")
+    run_json("new", "add-login", "--no-branch")
     code, data = run_json("instructions", "plan", "--change", "add-login")
     assert code == 1 and "unknown artifact 'plan'" in data["error"]
     assert "refinement, proposal, specs, design, tasks, traceability, review" in data["error"]
 
 # @ac AC-FLOW-001.2
 def test_status_marks_refinement_done_once_written(project):
-    run_json("new", "add-login")
+    run_json("new", "add-login", "--no-branch")
     (project / "specworks/changes/add-login/refinement.md").write_text("# Refinement\n")
     code, data = run_json("status", "--change", "add-login")
     states = {a["id"]: a["status"] for a in data["artifacts"]}
@@ -108,7 +216,7 @@ def test_context_lists_capabilities_with_docs_path(project):
 
 # @ac AC-CLI-006.2
 def test_phase_moves_and_validates(project):
-    run_json("new", "add-login")
+    run_json("new", "add-login", "--no-branch")
     code, data = run_json("phase", "specify", "--change", "add-login")
     assert code == 0 and data["phase"] == "specify"
     code, data = run_json("phase", "shipping", "--change", "add-login")
@@ -124,14 +232,14 @@ def test_phase_moves_and_validates(project):
     ],
 )
 def test_phase_takes_the_change_like_start_and_gate(project, args, hint):
-    run_json("new", "add-login")
+    run_json("new", "add-login", "--no-branch")
     code, data = run_json("phase", *args)
     assert code == 1 and hint in data["error"]
 
 
 # @ac AC-PROJ-011.2
 def test_only_close_makes_a_change_done(project):
-    run_json("new", "add-login")
+    run_json("new", "add-login", "--no-branch")
     code, data = run_json("phase", "done", "--change", "add-login")
     assert code == 1 and "only through `specworks close`" in data["error"]
     code, data = run_json("list")
@@ -142,11 +250,12 @@ def test_only_close_makes_a_change_done(project):
 @pytest.mark.parametrize("folder", ["spec", "docs", "context", "specworks"])
 def test_init_with_custom_dir_names_config_after_folder(tmp_path, monkeypatch, folder):
     monkeypatch.chdir(tmp_path)
+    init_repo(tmp_path)
     assert runner.invoke(app, ["init", "--dir", folder]).exit_code == 0
     assert (tmp_path / f"{folder}.yml").read_text().startswith("specworks: 1\n")
     assert sorted(p.name for p in tmp_path.glob("*.yml")) == [f"{folder}.yml"]
     assert (tmp_path / folder / "changes/archive").is_dir()
-    code, data = run_json("new", "add-login")
+    code, data = run_json("new", "add-login", "--no-branch")
     assert data["path"] == f"{folder}/changes/add-login"
     code, data = run_json("context")
     assert data["dir"] == folder and data["changesDir"] == f"{folder}/changes"
@@ -155,7 +264,7 @@ def test_init_with_custom_dir_names_config_after_folder(tmp_path, monkeypatch, f
 # @ac AC-PROJ-001.1
 def test_renaming_config_renames_folder(project):
     (project / "specworks.yml").rename(project / "context.yml")
-    code, data = run_json("new", "add-login")
+    code, data = run_json("new", "add-login", "--no-branch")
     assert data["path"] == "context/changes/add-login"
 
 
@@ -218,6 +327,7 @@ def test_nested_docs_dir_is_allowed(project):
 @pytest.mark.parametrize("folder", ["/abs", "../outside", ".", "", "docs/spec", ".hidden"])
 def test_init_rejects_bad_dir(tmp_path, monkeypatch, folder):
     monkeypatch.chdir(tmp_path)
+    init_repo(tmp_path)
     result = runner.invoke(app, ["init", "--dir", folder])
     assert result.exit_code == 1
     assert list(tmp_path.glob("*.yml")) == []
@@ -225,7 +335,7 @@ def test_init_rejects_bad_dir(tmp_path, monkeypatch, folder):
 
 # @ac AC-PROJ-011.1
 def test_phases_follow_the_workflow(project):
-    run_json("new", "add-login")
+    run_json("new", "add-login", "--no-branch")
     code, data = run_json("status", "--change", "add-login")
     assert data["phases"] == ["refine", "specify", "design", "implement", "review", "validate", "close", "done"]
     for phase in ("implement", "specify", "close"):  # moving back is allowed; done is close's alone
@@ -236,7 +346,7 @@ def test_phases_follow_the_workflow(project):
 # @ac AC-PROJ-011.4
 @pytest.mark.parametrize("saved", ["test", "code"])
 def test_a_change_saved_in_test_or_code_is_in_implement(project, saved):
-    run_json("new", "add-login")
+    run_json("new", "add-login", "--no-branch")
     meta = project / "specworks/changes/add-login/.change.yaml"
     meta.write_text(re.sub(r"(?m)^phase: .*$", f"phase: {saved}", meta.read_text(encoding="utf-8")), encoding="utf-8")
     code, data = run_json("status", "--change", "add-login")
@@ -248,7 +358,7 @@ def test_a_change_saved_in_test_or_code_is_in_implement(project, saved):
 # @ac AC-PROJ-011.5
 @pytest.mark.parametrize("half", ["test", "code"])
 def test_test_and_code_are_not_phases(project, half):
-    run_json("new", "add-login")
+    run_json("new", "add-login", "--no-branch")
     run_json("phase", "design", "--change", "add-login")
     code, data = run_json("phase", half, "--change", "add-login")
     assert code == 1 and "implement" in data.get("error", ""), data
@@ -274,7 +384,7 @@ def test_skills_are_installed_with_specworks_prefix(project):
     ids=["list", "bad-yaml", "unknown-phase"],
 )
 def test_a_broken_change_file_is_an_error_not_a_crash(project, monkeypatch, capsys, meta, message):
-    run_json("new", "add-login")
+    run_json("new", "add-login", "--no-branch")
     (project / "specworks/changes/add-login/.change.yaml").write_text(meta)
     # Naming the change reports the broken file, not "not found".
     code, data = run_json("status", "--change", "add-login")
@@ -301,7 +411,7 @@ def test_null_description_is_empty(project):
 
 # @ac AC-CLI-002.6
 def test_archived_changes_are_not_addressable(project):
-    runner.invoke(app, ["new", "old"])
+    runner.invoke(app, ["new", "old", "--no-branch"])
     archived = project / "specworks/changes/archive/2026-01-01-old"
     (project / "specworks/changes/old").rename(archived)
     code, data = run_json("phase", "code", "--change", "archive/2026-01-01-old")
@@ -362,6 +472,7 @@ def test_a_broken_unrelated_outer_config_does_not_break_an_inner_project(tmp_pat
     inner = tmp_path / "inner"
     inner.mkdir()
     monkeypatch.chdir(inner)
+    init_repo(tmp_path)
     assert runner.invoke(app, ["init", "--no-link", "--no-skills"]).exit_code == 0
     code, data = run_json("list")
     assert code == 0 and data["changes"] == []
@@ -384,7 +495,7 @@ def test_diagram_theme_on_an_existing_project_says_it_is_not_applied(project):
 
 
 def test_task_numbered_twice_is_not_ticked(project):
-    run_json("new", "dup")
+    run_json("new", "dup", "--no-branch")
     tasks = project / "specworks/changes/dup/tasks.md"
     tasks.write_text("- [ ] 1.1 first\n- [ ] 1.1 second\n")
     code, data = run_json("task", "done", "1.1", "--change", "dup")
@@ -393,7 +504,7 @@ def test_task_numbered_twice_is_not_ticked(project):
 
 
 def test_ticking_a_task_keeps_each_line_ending(project):
-    run_json("new", "crlf")
+    run_json("new", "crlf", "--no-branch")
     tasks = project / "specworks/changes/crlf/tasks.md"
     tasks.write_bytes(b"# Tasks\r\n\r\n- [ ] 1.1 first\r\n- [ ] 1.2 second\n")
     code, data = run_json("task", "done", "1.1", "--change", "crlf")

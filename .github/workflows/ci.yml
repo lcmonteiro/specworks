@@ -95,6 +95,7 @@ jobs:
           sw() { uv tool run --isolated --from "$wheel" specworks "$@"; }
           project="$(mktemp -d)"
           cd "$project"
+          git init -q -b main
           sw init --dir spec --tools all
           sw new add-example
           sw instructions refinement --change add-example --json > /dev/null

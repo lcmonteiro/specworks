@@ -67,7 +67,7 @@ def test_run_in_the_module_of_the_change(project):
     web_cfg = project / "web/spec.yml"
     pwd = f'"{sys.executable}" -c "import os; print(os.path.basename(os.getcwd()))"'
     web_cfg.write_text(web_cfg.read_text().replace("commands:\n  test:\n", f"commands:\n  test: {json.dumps(pwd)}\n"))
-    run_json("new", "web-change", "--module", "web")
+    run_json("new", "web-change", "--module", "web", "--no-branch")
     code, data = run_json("run", "test", "--change", "web:web-change")
     assert code == 0 and data["cwd"] == "web" and data["tail"] == ["web"]
 
