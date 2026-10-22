@@ -16,6 +16,7 @@ Base: `origin/main`
 - [ ] R4 **spec-gap** AC-PROJ-018.2 gives `services/billing` as the name of a nested module and `services/billing/add-login` as its branch, but a module's name is `<parent>/<child>` (`billing/tax`), and `services/billing` is its folder; the requirement text (`<parent>/<child>/<name>`) and the code are right, the example is not (`spec/changes/git-workflow/specs/project/spec.md`, AC-PROJ-018.2; `tests/test_git.py` tags AC-PROJ-018.2)
   - **Proposal**: back to specify: MODIFIED REQ-PROJ-018: AC-PROJ-018.2 says "nested module `billing/tax`" and `billing/tax/add-login`; `tests/test_git.py`'s AC-PROJ-018.2 test follows
   - **Decision**: back to specify: MODIFIED REQ-PROJ-018: AC-PROJ-018.2 says nested module `billing/tax` and `billing/tax/add-login`; the AC-PROJ-018.2 test in `tests/test_git.py` follows
+  - done in specify: AC-PROJ-018.2 of REQ-PROJ-018 now names the nested module `billing/tax` and its branch `billing/tax/add-login` (no ID added or modified: the requirement is still ADDED in this change)
 
 ## Changed files without tags
 

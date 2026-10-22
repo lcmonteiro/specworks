@@ -39,8 +39,8 @@ branch of that name that already exists, naming it.
 
 #### Scenario: AC-PROJ-018.2 A change of a module
 
-- **WHEN** the branch of change `add-login` of module `billing` (or of nested module `services/billing`) is created
-- **THEN** the branch is `billing/add-login` (or `services/billing/add-login`)
+- **WHEN** the branch of change `add-login` of module `billing` (or of nested module `billing/tax`) is created
+- **THEN** the branch is `billing/add-login` (or `billing/tax/add-login`)
 
 #### Scenario: AC-PROJ-018.3 The branch already exists
 
