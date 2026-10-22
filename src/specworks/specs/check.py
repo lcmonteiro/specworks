@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Literal
 
 from ..core.changes import Change, archived_as, list_changes
 from ..core.config import ConfigError
@@ -22,10 +23,20 @@ MAX_DESCRIPTION = 1000
 
 @dataclass
 class Issue:
-    level: str  # "error" or "warning"
+    level: Literal["error", "warning"]
     file: str
     line: int
     message: str
+
+    @classmethod
+    def error(cls, file: str, line: int, message: str) -> Issue:
+        """An error issue: ``Issue("error", file, line, message)``."""
+        raise NotImplementedError
+
+    @classmethod
+    def warning(cls, file: str, line: int, message: str) -> Issue:
+        """A warning issue: ``Issue("warning", file, line, message)``."""
+        raise NotImplementedError
 
     def to_dict(self) -> dict:
         return {"level": self.level, "file": self.file, "line": self.line, "message": self.message}
