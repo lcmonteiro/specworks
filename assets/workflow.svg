@@ -34,6 +34,7 @@
 <text class="note" x="904" y="66" text-anchor="end">/specworks-build</text>
 <rect class="finish" x="956" y="40" width="268" height="272" rx="14"/>
 <text class="caption" x="974" y="66" style="fill: var(--finish-ink)">FINISH</text>
+<text class="note" x="1206" y="66" text-anchor="end">/specworks-done</text>
 <!-- Back to specify: the spec turns out wrong -->
 <path class="back" d="M468,162 V112"/>
 <path class="back" d="M660,162 V112"/>
