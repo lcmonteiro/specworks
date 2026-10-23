@@ -174,6 +174,26 @@ def test_a_restarted_phase_uses_the_answer_on_disk_instead_of_asking_again():
     assert "Proposed: waiting for the user's agreement" in text and "Agreed with the user" in text
 
 
+def test_design_writes_the_proposed_line_and_stubs_only_once_agreed():
+    # The build coordinator swaps the line for `Agreed with the user`; a design skill that never writes it leaves the contract one-sided.
+    text = " ".join(read_skill("specworks-design").split())
+    assert "Proposed: waiting for the user's agreement" in text and "Agreed with the user" in text
+
+
+def test_the_test_half_fast_forwards_its_worktree_to_the_main_checkout():
+    # A worktree can start from an older commit, without design's stubs; the test skill checks, the build skill no longer assumes.
+    test = " ".join(read_skill("specworks-test").split())
+    assert "git worktree list" in test and "git merge --ff-only" in test
+    assert "the worktree starts from HEAD" not in " ".join(read_skill("specworks-build").split())
+
+
+def test_build_gates_the_review_itself_when_every_finding_is_accepted():
+    # With nothing left to tick or change, a fresh review subagent is a run spent on nothing.
+    text = " ".join(read_skill("specworks-build").split())
+    assert 'runs `specworks gate review --change "<ref>" --allow-open` itself' in text
+    assert "decided `accepted`" in text
+
+
 def test_build_review_proposes_every_finding_before_the_user_decides():
     # The user's decisions reach the next review subagent only through review.md.
     text = read_skill("specworks-build")
