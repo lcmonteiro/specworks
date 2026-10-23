@@ -6,8 +6,10 @@ Base: `origin/main`
 
 - [ ] R1 **test-gap** 12 tests in `tests/test_diagrams.py` fail: the fixture's change folder is one level deeper (`spec/changes/active/<name>`), but the tests still take the project root as `change.parents[2]` (now `spec/`, not the root); REQ-PROJ-001, REQ-PROJ-020 (`tests/test_diagrams.py:78`, `:176`, `:192`, `:254`)
   - **Proposal**: back to test: use `change.parents[3]` at the four places (or compute the root once in the `change` fixture) and run `uv run pytest`
+  - **Decision**: back to test: use `change.parents[3]` at the four places (or compute the root once in the `change` fixture) and run `uv run pytest`
 - [ ] R2 **design-gap** `Config.archive_dir` is a new public property (`src/specworks/core/config.py`), used by `list_archived` for its error path, but design.md `## Interfaces` says "None" and lists only `changes_dir`, `changes_path` and `archive_path`
   - **Proposal**: back to design: list `Config.archive_dir -> str` (`<dir>/changes/archive`) under `## Interfaces`; the code and its callers already match
+  - **Decision**: back to design: list `Config.archive_dir -> str` (`<dir>/changes/archive`) under `## Interfaces`; the code and its callers already match
 
 ## Changed files without tags
 
