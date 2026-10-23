@@ -63,13 +63,28 @@ and blocking-suite checks unchanged. (parallel-test-code)
 
 The code half is written without reading the change's tests, so the code gate
 no longer needs an `@ac` test per criterion, and a failing suite only warns
-once the change has `@ac` tests of its own (review runs them). For a change
+once the change has tests of its own (review runs them). For a change
 that only modifies requirements, those include the tests that existed before
 it: they encode the old behaviour and are expected to fail until the test half
 updates them, and the gate can't tell them from unrelated tests, so it
 accepts that; the review gate runs the whole suite and blocks on it, except as
 a warning under `--allow-open` while review.md has an open finding.
 (parallel-test-code)
+
+### A change's own tests include its changed test files
+
+The design and code gates share one rule, `own_tests(ctx)`: the change has
+tests of its own when it has `@ac` tests tagged with its criteria, or test
+files changed since it started (kind `test` in `ctx.report.changed`, deleted
+ones excluded). It returns the reason, which the warning names. Without the
+second half, a change with no criteria of its own (skip-specs) got stuck in
+implement when its halves disagreed. The changed files come from the same
+diff `specworks review` computes, so the gates and review agree on what
+changed; a second, lighter `git diff` in the gates was rejected. Without git
+none are known and the suite blocks. The rule is read only for a red suite,
+so a green one costs no diff. Test edits unrelated to the change also relax
+the two gates; that is accepted, since the review gate still blocks on the
+whole suite. (fix-no-own-tests-gate)
 
 ### Specs are fingerprinted when they are agreed
 
@@ -115,7 +130,9 @@ earliest finding was replaced: a code finding no longer re-runs the tests.
   implement, else None; `status` shows it as `test 3/3, code 1/4`).
 - `src/specworks/workflow/checks.py`: `Check`, `GateContext`, `passed(checks)`,
   `run_checks(ctx, checks)`, and the check functions (including
-  `half_tasks_done(half)`, `code_tests_pass`, `review_tests_pass`).
+  `half_tasks_done(half)`, `code_tests_pass`, `review_tests_pass`), and
+  `own_tests(ctx) -> str | None` (why the change has tests of its own, or
+  None; used by `code_tests_pass` and the design gate's `existing_tests_pass`).
 - `src/specworks/workflow/gate.py`: `GATE_CHECKS`, `GATES` (with `test`,
   `code` and `implement`), `run_gate(ctx, phase)`, `gates_to_start(current, phase)`,
   `start_phase(ctx, phase)`.
