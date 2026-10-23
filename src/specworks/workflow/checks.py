@@ -264,6 +264,14 @@ def has_own_ac_tests(ctx: GateContext) -> bool:
     return any(t.kind == "ac" and t.is_test and t.id in ids for t in ctx.analysis.tags)
 
 
+def own_tests(ctx: GateContext) -> str | None:
+    """Why the change has tests of its own (its ``@ac`` tests, or test files changed since it started), or ``None``.
+
+    Implements REQ-FLOW-006, REQ-FLOW-008.
+    """
+    raise NotImplementedError
+
+
 def not_blocking(ctx: GateContext, tests: Check, why: str, at: int = 1) -> Check:
     """A failing run of the suite (not a missing command) as a warning, saying why at ``at`` in the details (after the command line)."""
     if ctx.run_tests and ctx.has_command("test") and not tests.ok:

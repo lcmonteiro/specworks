@@ -40,7 +40,7 @@ half of the rule.
 
 ## Interfaces
 
-Proposed: waiting for the user's agreement
+Agreed with the user
 
 - `src/specworks/workflow/checks.py`: `own_tests(ctx: GateContext) -> str |
   None` (new: why the change has tests of its own, or None) (REQ-FLOW-006,
