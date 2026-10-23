@@ -48,6 +48,7 @@ def workspace(tmp_path, monkeypatch):
 def test_module_add_links_parent_and_creates_module(workspace):
     assert "  billing: services/billing\n" in (workspace / "spec.yml").read_text()
     assert "  tax: tax\n" in (workspace / "services/billing/spec.yml").read_text()
+    assert (workspace / "services/billing/spec/changes/active").is_dir()
     assert (workspace / "services/billing/spec/changes/archive").is_dir()
     assert (workspace / "services/billing/spec.yml").read_text().startswith("specworks: 1\n")
     assert not (workspace / "services/billing/specworks.yml").exists()
@@ -93,14 +94,14 @@ def test_new_goes_to_nearest_module(workspace, monkeypatch):
     (workspace / "services/billing/src").mkdir()
     monkeypatch.chdir(workspace / "services/billing/src")
     code, data = run_json("new", "add-refunds", "--no-branch")
-    assert data["path"] == "services/billing/spec/changes/add-refunds"
+    assert data["path"] == "services/billing/spec/changes/active/add-refunds"
     assert data["ref"] == "billing:add-refunds"
 
 
 # @ac AC-CLI-006.1
 def test_new_with_module_option(workspace):
     code, data = run_json("new", "add-vat", "--module", "billing/tax", "--no-branch")
-    assert data["path"] == "services/billing/tax/spec/changes/add-vat"
+    assert data["path"] == "services/billing/tax/spec/changes/active/add-vat"
     code, data = run_json("new", "x", "--module", "nope", "--no-branch")
     assert code == 1 and "unknown module" in data["error"]
 
@@ -144,7 +145,7 @@ def test_list_all_includes_every_module(workspace):
 def test_instructions_in_module_use_inherited_context(workspace):
     run_json("new", "add-refunds", "--module", "billing", "--no-branch")
     code, data = run_json("instructions", "refinement", "--change", "billing:add-refunds")
-    assert data["outputPath"] == "services/billing/spec/changes/add-refunds/refinement.md"
+    assert data["outputPath"] == "services/billing/spec/changes/active/add-refunds/refinement.md"
     assert "Company-wide" in data["context"] and "Billing" in data["context"]
 
 
@@ -160,7 +161,7 @@ def test_init_in_subfolder_links_to_parent(workspace):
 # @ac AC-CLI-001.3
 def test_init_prints_paths_relative_to_the_workspace_root(workspace):
     output = run("init", "libs/auth", "--name", "auth", "--no-skills")
-    assert "created libs/auth/spec.yml\nready   libs/auth/spec/changes/\nlinked  as module 'auth'" in output
+    assert "created libs/auth/spec.yml\nready   libs/auth/spec/changes/active/\nlinked  as module 'auth'" in output
     assert str(workspace) not in output
 
 
@@ -211,15 +212,16 @@ def test_modules_use_the_top_level_folder_name(tmp_path, monkeypatch, folder):
     run("init", "libs/auth")
     for module in ("services/billing", "libs/auth"):
         assert (tmp_path / module / f"{folder}.yml").is_file()
+        assert (tmp_path / module / folder / "changes/active").is_dir()
         assert (tmp_path / module / folder / "changes/archive").is_dir()
     code, data = run_json("module", "list")
     assert [m["dir"] for m in data["modules"]] == [folder, f"services/billing/{folder}", f"libs/auth/{folder}"]
 
 
 def test_nested_module_uses_the_top_level_folder_name(workspace):
-    assert (workspace / "services/billing/tax/spec/changes").is_dir()
+    assert (workspace / "services/billing/tax/spec/changes/active").is_dir()
     code, data = run_json("new", "add-vat", "--module", "billing/tax", "--no-branch")
-    assert data["path"] == "services/billing/tax/spec/changes/add-vat"
+    assert data["path"] == "services/billing/tax/spec/changes/active/add-vat"
 
 
 # @ac AC-PROJ-006.3
@@ -243,7 +245,7 @@ def test_init_module_with_different_dir_is_rejected(workspace):
 def test_init_no_link_may_use_another_dir(workspace):
     run("init", "tools/other", "--dir", "docs", "--no-link", "--no-skills")
     assert (workspace / "tools/other/docs.yml").is_file()
-    assert (workspace / "tools/other/docs/changes").is_dir()
+    assert (workspace / "tools/other/docs/changes/active").is_dir()
 
 
 # @ac AC-CLI-005.2
@@ -298,7 +300,7 @@ def test_derived_prefixes_may_not_collide_across_modules(workspace):
 
 def test_a_new_capability_of_a_module_is_registered_with_module(workspace):
     run("new", "add-refunds", "--no-branch")
-    delta = workspace / "spec/changes/add-refunds/specs/billing/refunds/spec.md"
+    delta = workspace / "spec/changes/active/add-refunds/specs/billing/refunds/spec.md"
     delta.parent.mkdir(parents=True)
     delta.write_text("## Purpose\nRefunds.\n\n## ADDED Requirements\n\n### Requirement: REQ-BILLING-REFUNDS-001 Refund\nThe system SHALL refund.\n\n"
                      "#### Scenario: AC-BILLING-REFUNDS-001.1 Refunded\n- **WHEN** x\n- **THEN** y\n")

@@ -17,7 +17,7 @@ from specworks.specs.merge import MergeError, apply_delta, close_change, plan_me
 from specworks.specs.specfile import parse_spec
 
 runner = CliRunner()
-CHANGE_DIR = f"spec/changes/{REF}"
+CHANGE_DIR = f"spec/changes/active/{REF}"
 
 
 @pytest.fixture
@@ -336,7 +336,7 @@ def test_a_failed_archive_puts_the_living_docs_back(ready, monkeypatch):
 def test_a_removed_id_is_never_handed_out_again(project):
     shutil.rmtree(project / CHANGE_DIR)  # its delta takes REQ-AUTH-003; only the living spec counts here
     run_json("new", "drop-lockout", "--no-branch")
-    delta = project / "spec/changes/drop-lockout/specs/user-auth"
+    delta = project / "spec/changes/active/drop-lockout/specs/user-auth"
     delta.mkdir(parents=True)
     (delta / "spec.md").write_text("## REMOVED Requirements\n\n### Requirement: REQ-AUTH-002 Lockout\n**Reason**: x\n**Migration**: y\n")
     ws = load_workspace(project)

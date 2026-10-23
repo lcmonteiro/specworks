@@ -26,7 +26,7 @@ def set_commands(root, **commands):
 
 
 def write_design(root, body):
-    (root / "spec/changes" / REF / "design.md").write_text(INTERFACES.format(body=body))
+    (root / "spec/changes/active" / REF / "design.md").write_text(INTERFACES.format(body=body))
 
 
 def change(root):
@@ -119,7 +119,7 @@ def test_build_and_typecheck_run_when_configured(planned):
 # @ac AC-FLOW-003.1
 def test_invalid_specs_fail_the_gate(planned):
     write_design(planned, "None.")
-    delta = planned / "spec/changes" / REF / "specs/user-auth/spec.md"
+    delta = planned / "spec/changes/active" / REF / "specs/user-auth/spec.md"
     delta.write_text(delta.read_text().replace("SHALL", "should"))
     code, checks = gate()
     assert code == 1 and not checks["specs and tasks are valid (specworks check)"]["ok"]
@@ -167,7 +167,7 @@ def test_red_suite_is_only_a_warning_once_the_change_has_tests(planned):
     ],
 )
 def test_interfaces_section_is_found_by_its_heading(planned, design, files):
-    (planned / "spec/changes" / REF / "design.md").write_text(f"# Design\n\n{design}")
+    (planned / "spec/changes/active" / REF / "design.md").write_text(f"# Design\n\n{design}")
     (planned / "src/auth/reset.py").write_text("def reset(): raise NotImplementedError\n")
     code, checks = gate()
     assert checks[SECTION]["ok"] is True
@@ -176,7 +176,7 @@ def test_interfaces_section_is_found_by_its_heading(planned, design, files):
 
 # @ac AC-FLOW-006.1
 def test_no_interfaces_heading_means_no_section(planned):
-    (planned / "spec/changes" / REF / "design.md").write_text("# Design\n\n## Interfaced systems\n\n- `src/auth/reset.py`\n")
+    (planned / "spec/changes/active" / REF / "design.md").write_text("# Design\n\n## Interfaced systems\n\n- `src/auth/reset.py`\n")
     code, checks = gate()
     assert checks[SECTION]["ok"] is False
 
@@ -185,7 +185,7 @@ def test_no_interfaces_heading_means_no_section(planned):
 def test_a_module_change_needs_its_interface_files_in_the_module(planned):
     assert run_json("module", "add", "services/billing")[0] == 0
     run_json("new", "add-invoices", "--module", "billing", "--no-branch")
-    design = planned / "services/billing/spec/changes/add-invoices/design.md"
+    design = planned / "services/billing/spec/changes/active/add-invoices/design.md"
     (planned / "src/invoices.py").write_text("def invoice(): ...\n")  # the top level's, not billing's
 
     def files_check(body):

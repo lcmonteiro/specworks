@@ -1,6 +1,6 @@
 name: active-changes-dir
 created: '2026-10-23T13:46:35'
-phase: design
+phase: implement
 specified:
   REQ-CLI-003: a2f9006b3957
   REQ-PROJ-020: 726c8bb0384e

@@ -46,7 +46,7 @@ def test_same_tree_reuses_the_run(counted):
 def test_code_changes_rerun_but_workflow_files_do_not(counted):
     repo, counter = counted
     gate_tests()
-    (repo / "spec/changes" / REF / "review.md").write_text("# Review\n")  # workflow folder: not part of the tree
+    (repo / "spec/changes/active" / REF / "review.md").write_text("# Review\n")  # workflow folder: not part of the tree
     gate_tests()
     assert runs(counter) == 1
     (repo / "src/auth/reset.py").write_text("# @req REQ-AUTH-003\ndef reset(): return 1\n")  # tracked file changed  # specworks: ignore-tags
@@ -145,7 +145,7 @@ def test_specworks_run_replaces_the_reused_result(repo):
 
 def test_close_runs_the_commands_but_its_dry_run_reuses(counted):
     repo, counter = counted
-    (repo / "spec/changes" / REF / "review.md").write_text("# Review\n\n## Findings\n\nNone.\n")
+    (repo / "spec/changes/active" / REF / "review.md").write_text("# Review\n\n## Findings\n\nNone.\n")
     run_json("phase", "review", "--change", REF)
     gate_tests()
     code, data = run_json("close", "--change", REF, "--base", "main", "--dry-run")
@@ -170,7 +170,7 @@ def test_fresh_runs_the_commands_again(counted, command):
 def test_fresh_runs_each_command_once_for_all_the_gates_of_a_start(counted):
     repo, counter = counted
     gate_tests()
-    (repo / "spec/changes" / REF / "design.md").write_text("# Design\n\n## Interfaces\n\nNone\n")
+    (repo / "spec/changes/active" / REF / "design.md").write_text("# Design\n\n## Interfaces\n\nNone\n")
     run_json("phase", "design", "--change", REF)
     code, data = run_json("start", "review", "--change", REF, "--fresh")  # gates design, test and code
     assert code == 0, data

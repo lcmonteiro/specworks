@@ -84,7 +84,7 @@ def checks(data):
 
 
 def write_review(repo, body):
-    (repo / "spec/changes" / REF / "review.md").write_text(f"# Review: {REF}\n\n## Findings\n\n{body}\n")
+    (repo / "spec/changes/active" / REF / "review.md").write_text(f"# Review: {REF}\n\n## Findings\n\n{body}\n")
 
 
 # @ac AC-FLOW-011.1
@@ -211,7 +211,7 @@ def test_gate_review_passes_when_clean(repo):
 # @ac AC-FLOW-002.1
 def test_review_artifact_has_instructions(repo):
     code, data = run_json("instructions", "review", "--change", REF)
-    assert data["outputPath"] == f"spec/changes/{REF}/review.md"
+    assert data["outputPath"] == f"spec/changes/active/{REF}/review.md"
     assert "## Changed files without tags" in data["template"] and "spec-gap" in data["instruction"]
 
 

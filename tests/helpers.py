@@ -54,7 +54,7 @@ def make_planned_project(tmp_path, monkeypatch):
     (tmp_path / "src/auth/docs").mkdir(parents=True)
     (tmp_path / "src/auth/docs/spec.md").write_text(LIVING)
     run_json("new", REF, "--no-branch")  # stay on main
-    change = tmp_path / "spec/changes" / REF
+    change = tmp_path / "spec/changes/active" / REF
     (change / "proposal.md").write_text(PROPOSAL)
     (change / "specs/user-auth").mkdir(parents=True)
     (change / "specs/user-auth/spec.md").write_text(DELTA)

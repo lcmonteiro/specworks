@@ -43,7 +43,7 @@ def change(tmp_path, monkeypatch):
     init_repo(tmp_path)
     assert runner.invoke(app, ["init", "--dir", "spec", "--no-skills"]).exit_code == 0
     run_json("new", CHANGE, "--no-branch")
-    path = tmp_path / "spec/changes" / CHANGE
+    path = tmp_path / "spec/changes/active" / CHANGE
     (path / "diagrams").mkdir()
     (path / "diagrams/reset-flow.d2").write_text(FLOW)
     (path / "design.md").write_text("# Design\n\n![Reset flow (REQ-AUTH-003)](diagrams/reset-flow.svg)\n")
