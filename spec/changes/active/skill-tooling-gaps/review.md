@@ -22,7 +22,7 @@ None: `specworks review` lists no file under untracedSource or untracedTests. Th
 
 ## Summary
 
-Cycle 2: R1 and R2 were carried out and are closed. R2's move reworded the shared `Pick the change (above)` line of the test skill, which fails the existing shared-rule check: R3 (code) is open, proposed back to code to restore the shared wording. Lint and typecheck pass; the suite has one failure, R3.
+Cycle 2: R1 and R2 were carried out and are closed. R2's move reworded the shared `Pick the change (above)` line of the test skill, which fails the existing shared-rule check: R3 (code) is open, decided with the user `back to code` (reword the bullet to `Pick the change (above) and start implement:` and refresh the installed copies); the next cycle runs code, then review. Lint and typecheck pass; the suite has one failure, R3 (`test_skills_pick_the_change_by_one_shared_rule[specworks-test]`).
 
 Cycle 1:
 
