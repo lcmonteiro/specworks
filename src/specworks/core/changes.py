@@ -15,6 +15,7 @@ from .validators import validate_kebab
 
 META_FILE = ".change.yaml"
 ARCHIVE_DIR = "archive"
+ACTIVE_DIR = "active"
 ARCHIVED_RE = re.compile(r"^(?P<date>\d{4}-\d{2}-\d{2})-(?P<name>.+)$")  # <archive>/<date>-<name>/
 # Each phase is driven by the skill of the same name (specworks-<phase>); `close`
 # writes the living docs and archives the change, which then reads `done`.
@@ -64,8 +65,8 @@ class Change:
 # @req REQ-PROJ-010
 def create_change(cfg: Config, name: str) -> Change:
     validate_kebab(name, "change name", "add-user-auth")
-    if name == ARCHIVE_DIR:
-        raise ChangeError(f"'{ARCHIVE_DIR}' is reserved for finished changes; pick another name")
+    if name in (ARCHIVE_DIR, ACTIVE_DIR):
+        raise ChangeError(f"'{name}' is reserved for the changes folders; pick another name")
     if archived := archived_as(cfg, name):
         raise ChangeError(
             f"change '{name}' was archived at {archived.path.relative_to(cfg.root).as_posix()}; "
@@ -104,21 +105,23 @@ def _read_change(path: Path, name: str, where: str) -> Change:
     )
 
 
+# @req REQ-PROJ-020
 def load_change(cfg: Config, name: str) -> Change:
-    validate_kebab(name, "change name", "add-user-auth")  # also keeps refs out of archive/ and other folders
+    validate_kebab(name, "change name", "add-user-auth")
     path = cfg.changes_path / name
-    if name == ARCHIVE_DIR or not (path / META_FILE).is_file():
+    if not (path / META_FILE).is_file():
         raise ChangeNotFound(f"change '{name}' not found in {cfg.changes_dir}")
     return _read_change(path, name, f"{cfg.changes_dir}/{name}/{META_FILE}")
 
 
+# @req REQ-PROJ-020
 def list_changes(cfg: Config) -> list[Change]:
     if not cfg.changes_path.is_dir():
         return []
     return [
         load_change(cfg, entry.name)
         for entry in sorted(cfg.changes_path.iterdir())
-        if entry.is_dir() and entry.name != ARCHIVE_DIR and (entry / META_FILE).is_file()
+        if entry.is_dir() and (entry / META_FILE).is_file()
     ]
 
 
@@ -132,7 +135,7 @@ def list_archived(cfg: Config) -> list[Change]:
         if not (entry.is_dir() and (match := ARCHIVED_RE.match(entry.name)) and (entry / META_FILE).is_file()):
             continue
         try:
-            found.append(_read_change(entry, match.group("name"), f"{cfg.changes_dir}/{ARCHIVE_DIR}/{entry.name}/{META_FILE}"))
+            found.append(_read_change(entry, match.group("name"), f"{cfg.archive_dir}/{entry.name}/{META_FILE}"))
         except ChangeError:
             continue
     return found

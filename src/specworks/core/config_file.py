@@ -14,7 +14,7 @@ from .validators import validate_capability_name, validate_dir, validate_module_
 DEFAULT_CONFIG = """\
 specworks: 1
 # specworks configuration. The file name sets the workflow folder:
-# spec.yml -> spec/changes/ (in-flight changes) and spec/changes/archive/.
+# spec.yml -> spec/changes/active/ (in-flight changes) and spec/changes/archive/.
 # Modules (sub-projects) use the same file and folder name as the top level.
 #
 # context: free text the agent reads before every phase (stack, conventions,
