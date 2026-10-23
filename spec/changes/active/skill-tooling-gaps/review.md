@@ -14,6 +14,7 @@ Base: `origin/main`
   - Done in cycle 2 (code): the worktree bullet is now the first bullet of step 1, before `specworks start implement`, in the skill and its three installed copies; its rewording of the next bullet is R3
 - [ ] R3 **code-gap** The suite fails: R2's move reworded the next bullet of the test skill's step 1 from `Pick the change (above), then:` to `Then pick the change (above) and start implement:`; the existing shared-rule check `test_skills_pick_the_change_by_one_shared_rule[specworks-test]` asserts `Pick the change (above)` (capital P), which every other phase skill keeps (`src/specworks/skills/specworks-test/SKILL.md:47`; `tests/test_skills.py:271`)
   - **Proposal**: back to code: reword the bullet to `Pick the change (above) and start implement:` (dropping "Then"; the bullet order already puts it after the worktree step), refresh the installed copies with `specworks skills`; the shared-rule check stays as it is
+  - **Decision**: back to code: reword the bullet to `Pick the change (above) and start implement:` and refresh the installed copies; the shared-rule check stays as it is (agreed with the user)
 
 ## Changed files without tags
 
