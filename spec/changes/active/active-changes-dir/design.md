@@ -33,7 +33,13 @@ Every path to a change goes through `Config.changes_path` and `Config.archive_pa
 
 ## Interfaces
 
-None. `Config.changes_dir`, `Config.changes_path` and `Config.archive_path` keep their signatures; only the folder they name changes.
+Agreed with the user.
+
+- `src/specworks/core/config.py`: `Config.changes_dir -> str` (extended: now `<dir>/changes/active`) and `Config.changes_path -> Path` (extended: follows it) (REQ-PROJ-001, REQ-PROJ-010, REQ-PROJ-020)
+- `src/specworks/core/config.py`: `Config.archive_dir -> str` (new: `<dir>/changes/archive`), the relative path used in messages such as `list_archived`'s error (REQ-PROJ-020)
+- `src/specworks/core/config.py`: `Config.archive_path -> Path` (extended: built from `archive_dir`, a sibling of the active folder) (REQ-PROJ-020)
+
+Signatures of the existing properties are unchanged; only the folder they name changes.
 
 ## Risks / Trade-offs
 
