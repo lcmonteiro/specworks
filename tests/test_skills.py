@@ -190,7 +190,7 @@ def test_the_test_half_fast_forwards_its_worktree_to_the_main_checkout():
 def test_build_gates_the_review_itself_when_every_finding_is_accepted():
     # With nothing left to tick or change, a fresh review subagent is a run spent on nothing.
     text = " ".join(read_skill("specworks-build").split())
-    assert 'runs `specworks gate review --change "<ref>" --allow-open` itself' in text
+    assert 'run `specworks gate review --change "<ref>" --allow-open` yourself' in text
     assert "decided `accepted`" in text
 
 
