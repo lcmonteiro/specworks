@@ -3,13 +3,27 @@
 import shutil
 from datetime import date
 
+import pytest
 from typer.testing import CliRunner
 
 from helpers import REF, run_json
 from specworks.cli import app
+from specworks.specs import merge
 
 runner = CliRunner()
-ARCHIVED = f"spec/changes/archive/{date.today().isoformat()}-{REF}"
+TODAY = date(2026, 6, 1)
+ARCHIVED = f"spec/changes/archive/{TODAY.isoformat()}-{REF}"
+
+
+@pytest.fixture(autouse=True)
+def fixed_today(monkeypatch):
+    # Keeps ARCHIVED right when a run crosses midnight.
+    class FixedDate(date):
+        @classmethod
+        def today(cls):
+            return TODAY
+
+    monkeypatch.setattr(merge, "date", FixedDate)
 
 
 def abandon(reason="replaced by add-sso"):
@@ -42,8 +56,8 @@ def test_abandon_needs_a_reason(project):
 def test_list_archived_and_status_read_archived_changes(project):
     abandon()
     result = runner.invoke(app, ["list", "--archived"])
-    assert f"{REF:<32} {date.today().isoformat()}  abandoned in refine: replaced by add-sso" in result.output
-    for ref in (REF, f"{date.today().isoformat()}-{REF}"):
+    assert f"{REF:<32} {TODAY.isoformat()}  abandoned in refine: replaced by add-sso" in result.output
+    for ref in (REF, f"{TODAY.isoformat()}-{REF}"):
         code, data = run_json("status", "--change", ref)
         assert code == 0 and data["archived"] is True and data["path"] == ARCHIVED
     result = runner.invoke(app, ["status", "--change", REF])
@@ -100,7 +114,7 @@ def test_unreadable_or_misnamed_archive_folders_are_left_out(project):
 
 # @ac AC-PROJ-012.2
 def test_archived_changes_are_listed_oldest_first(project):
-    abandon()  # archived today
+    abandon()  # archived on TODAY
     older = project / "spec/changes/archive/2026-01-02-zz-older"  # its name sorts after REF, its date before
     older.mkdir()
     (older / ".change.yaml").write_text("name: zz-older\ncreated: '2026-01-01T10:00:00'\nphase: done\n")
