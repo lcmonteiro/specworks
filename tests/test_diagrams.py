@@ -43,7 +43,7 @@ def change(tmp_path, monkeypatch):
     init_repo(tmp_path)
     assert runner.invoke(app, ["init", "--dir", "spec", "--no-skills"]).exit_code == 0
     run_json("new", CHANGE, "--no-branch")
-    path = tmp_path / "spec/changes" / CHANGE
+    path = tmp_path / "spec/changes/active" / CHANGE
     (path / "diagrams").mkdir()
     (path / "diagrams/reset-flow.d2").write_text(FLOW)
     (path / "design.md").write_text("# Design\n\n![Reset flow (REQ-AUTH-003)](diagrams/reset-flow.svg)\n")
@@ -75,7 +75,7 @@ def test_editing_the_source_makes_the_svg_stale(change, fake_d2):
 # @ac AC-INTEG-002.2
 def test_changing_the_theme_makes_the_svg_stale(change, fake_d2):
     run_json("diagrams", "--change", CHANGE)
-    cfg = change.parents[2] / "spec.yml"
+    cfg = change.parents[3] / "spec.yml"
     cfg.write_text(cfg.read_text().replace("sketch: false", "sketch: true"))
     code, data = run_json("diagrams", "--change", CHANGE, "--check")
     assert data["diagrams"][0]["status"] == "stale"
@@ -173,7 +173,7 @@ def test_validate_reports_diagram_problems(change, fake_d2):
     [("diagrams:\n  layout: circo\n", "elk or dagre"), ("diagrams:\n  colour: red\n", "unknown keys"), ("diagrams: dark\n", "mapping")],
 )
 def test_invalid_diagram_settings(change, block, message):
-    cfg = change.parents[2] / "spec.yml"
+    cfg = change.parents[3] / "spec.yml"
     text = cfg.read_text()
     cfg.write_text(text[: text.index("diagrams:")] + block)
     code, data = run_json("context")
@@ -189,7 +189,7 @@ def test_real_d2_render(change):
 
 
 def set_diagrams(change, block):
-    cfg = change.parents[2] / "spec.yml"
+    cfg = change.parents[3] / "spec.yml"
     text = cfg.read_text()
     cfg.write_text(text[: text.index("\ndiagrams:\n") + 1] + block)
 
@@ -251,7 +251,7 @@ def test_diagrams_refuses_a_folder_outside_the_workspace(change, tmp_path_factor
 
 # @ac AC-CLI-008.6
 def test_diagrams_dir_is_relative_to_the_workspace_root(change, monkeypatch):
-    root = change.parents[2]
+    root = change.parents[3]
     (root / "src/auth/docs/diagrams").mkdir(parents=True)
     (root / "src/auth/docs/diagrams/flow.d2").write_text(FLOW)
     assert runner.invoke(app, ["module", "add", "web"]).exit_code == 0

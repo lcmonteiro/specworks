@@ -43,7 +43,7 @@ def test_task_list(project):
 
 # @ac AC-SPECS-009.5
 def test_task_done_and_undo_only_touch_the_checkbox(project):
-    path = project / "spec/changes" / REF / "tasks.md"
+    path = project / "spec/changes/active" / REF / "tasks.md"
     before = path.read_text()
     code, data = run_json("task", "done", "1.1", "1.2", "--change", REF)
     assert code == 0 and data["done"] == 3
@@ -55,7 +55,7 @@ def test_task_done_and_undo_only_touch_the_checkbox(project):
 
 # @ac AC-SPECS-009.5
 def test_task_done_rejects_unknown_numbers(project):
-    path = project / "spec/changes" / REF / "tasks.md"
+    path = project / "spec/changes/active" / REF / "tasks.md"
     before = path.read_text()
     code, data = run_json("task", "done", "1.1", "9.9", "--change", REF)
     assert code == 1 and "unknown task 9.9" in data["error"]
@@ -63,7 +63,7 @@ def test_task_done_rejects_unknown_numbers(project):
 
 
 def test_task_list_without_tasks_file(project):
-    (project / "spec/changes" / REF / "tasks.md").unlink()
+    (project / "spec/changes/active" / REF / "tasks.md").unlink()
     code, data = run_json("task", "list", "--change", REF)
     assert code == 1 and "not written yet" in data["error"]
 
@@ -83,7 +83,7 @@ def test_propose_gate_passes_for_a_complete_plan(project):
 
 # @ac AC-FLOW-004.2
 def test_propose_gate_fails_without_tasks(project):
-    (project / "spec/changes" / REF / "tasks.md").unlink()
+    (project / "spec/changes/active" / REF / "tasks.md").unlink()
     code, data = run_json("gate", "specify", "--change", REF)
     assert code == 1 and checks(data)["tasks.md is written"]["ok"] is False
 
@@ -144,7 +144,7 @@ def test_test_gate_needs_the_test_tasks_done_only(project):
 # @ac AC-FLOW-003.1
 def test_test_gate_also_requires_valid_specs(project):
     write_tests(project, "AC-AUTH-003.1", "AC-AUTH-003.2", "AC-AUTH-002.1")
-    (project / "spec/changes" / REF / "proposal.md").unlink()
+    (project / "spec/changes/active" / REF / "proposal.md").unlink()
     code, data = run_json("gate", "test", "--change", REF)
     assert code == 1 and checks(data)["specs and tasks are valid (specworks check)"]["ok"] is False
 
@@ -157,7 +157,7 @@ def test_unknown_gate(project):
 
 # @ac AC-FLOW-004.3
 def test_propose_gate_reports_a_criterion_without_a_task_once(project):
-    tasks = project / "spec/changes" / REF / "tasks.md"
+    tasks = project / "spec/changes/active" / REF / "tasks.md"
     tasks.write_text("\n".join(line for line in tasks.read_text().splitlines() if "AUTH-003" not in line) + "\n")
     code, data = run_json("gate", "specify", "--change", REF)
     details = [d for c in data["checks"] for d in c["details"] if "AC-AUTH-003.1" in d]

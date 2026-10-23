@@ -3,7 +3,7 @@
 specworks is a spec-driven development CLI (Python 3.11+, typer, managed with
 uv), plus the agent skills it installs. This repo is developed with specworks
 itself. `spec.yml` holds the project context, commands and capabilities, and
-`spec/changes/` holds the work in flight.
+`spec/changes/active/` holds the work in flight.
 
 ## Commands
 

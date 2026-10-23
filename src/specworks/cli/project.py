@@ -44,8 +44,13 @@ def ensure_module_config(root: Path, name: str, workspace_dir: str) -> tuple[Con
         root.mkdir(parents=True, exist_ok=True)
         write_default_config(root, workspace_dir)
     cfg = existing or load_config(root, workspace_dir)
-    cfg.archive_path.mkdir(parents=True, exist_ok=True)
+    make_change_dirs(cfg)
     return cfg, existing is None
+
+
+def make_change_dirs(cfg: Config) -> None:
+    cfg.changes_path.mkdir(parents=True, exist_ok=True)
+    cfg.archive_path.mkdir(parents=True, exist_ok=True)
 
 
 def link_to_parent(root: Path, name: str | None) -> str | None:
@@ -102,7 +107,7 @@ def init(
     tools: str = ToolsOpt,
     no_skills: bool = typer.Option(False, "--no-skills", help="Do not install agent skills."),
 ) -> None:
-    """Create <dir>.yml and <dir>/changes/, link to a parent project, and install the agent skills."""
+    """Create <dir>.yml and <dir>/changes/active/ and archive/, link to a parent project, and install the agent skills."""
     root = path.resolve()
     parse_tools(tools, root)  # reject a bad --tools before writing anything
     require_repo(root)
@@ -126,7 +131,7 @@ def init(
         elif dir is not None and existing.stem != dir:
             typer.echo(f"note    {existing.name} already exists; rename it (and its {existing.stem}/ folder) to change the name")
         cfg, created = load_config(root), existing is None
-        cfg.archive_path.mkdir(parents=True, exist_ok=True)
+        make_change_dirs(cfg)
     linked = link_to_parent(root, name) if parent is not None else None
     ws = require_workspace(root)
     # Paths relative to the workspace root, like every other command's output.

@@ -101,6 +101,18 @@ than found in core, because `detect_base` lives in the workflow layer; a base of
 `origin/main` counts as `main`. Rolling back a created branch on error was
 rejected: more states to undo. (git-workflow)
 
+### Active and archived changes live in sibling folders
+
+`Config.changes_dir` and `changes_path` name `<dir>/changes/active`, and
+`archive_dir` and `archive_path` name its sibling `<dir>/changes/archive`, both
+built from the `changes` folder. Every caller goes through these properties, so
+the CLI's `changesDir` and the error messages follow. `list_changes` no longer
+skips `archive`, and a folder with a `.change.yaml` directly under
+`<dir>/changes/` is not a change; there is no migration. `create_change` still
+refuses `archive` and `active`, so a change name never looks like a folder
+name. A new `active_path` beside `changes_path` was rejected: callers could keep
+using the old one. (active-changes-dir)
+
 ### Expected failures are `SpecworksError`s
 
 Bad configs, unknown changes, unreadable files and git failures all raise a
@@ -112,7 +124,8 @@ where to configure one. (baseline-project, run-unknown-key)
 ## Interfaces
 
 - `src/specworks/core/config.py`: `find_root(start) -> Path | None`,
-  `load_config(root, dir=None) -> Config`, `Config`, `Capability`,
+  `load_config(root, dir=None) -> Config`, `Config` (`changes_dir`,
+  `changes_path`, `archive_dir`, `archive_path`), `Capability`,
   `DiagramSettings`.
 - `src/specworks/core/workspace.py`: `load_workspace(start=None) -> Workspace | None`,
   `require_workspace(start) -> Workspace`, `Workspace` (`modules`,

@@ -41,7 +41,7 @@ def project(tmp_path, monkeypatch):
 
 @pytest.fixture
 def change(project):
-    path = project / "spec/changes/add-password-reset"
+    path = project / "spec/changes/active/add-password-reset"
     (path / "proposal.md").write_text(PROPOSAL)
     (path / "specs/user-auth").mkdir(parents=True)
     (path / "specs/user-auth/spec.md").write_text(DELTA)
@@ -107,7 +107,7 @@ def test_change_for_a_capability_with_an_all_digit_prefix_segment(project):
     run_json("capability", "add", "oauth-2", "--path", "src/oauth")
     code, data = run_json("spec", "show", "oauth-2")
     assert data["prefix"] == "OAUTH-2" and data["nextId"] == "REQ-OAUTH-2-001"
-    path = project / "spec/changes/add-password-reset"
+    path = project / "spec/changes/active/add-password-reset"
     (path / "proposal.md").write_text(PROPOSAL)
     (path / "specs/oauth-2").mkdir(parents=True)
     (path / "specs/oauth-2/spec.md").write_text(
@@ -389,7 +389,7 @@ def test_delta_under_unknown_module(change):
 
 
 def started(project, name, created):
-    meta = project / "spec/changes" / name / ".change.yaml"
+    meta = project / "spec/changes/active" / name / ".change.yaml"
     meta.write_text(re.sub(r"(?m)^created: .*$", f"created: '{created}'", meta.read_text()))
 
 
@@ -400,7 +400,7 @@ def warnings(data):
 # @ac AC-SPECS-007.1
 def test_id_clash_is_an_error_only_in_the_change_that_started_later(change, project):
     run_json("new", "other-change", "--no-branch")
-    other = project / "spec/changes/other-change/specs/user-auth"
+    other = project / "spec/changes/active/other-change/specs/user-auth"
     other.mkdir(parents=True)
     (other / "spec.md").write_text(DELTA)
     started(project, "add-password-reset", "2026-10-17T09:00:00")
@@ -415,7 +415,7 @@ def test_id_clash_is_an_error_only_in_the_change_that_started_later(change, proj
 # @ac AC-SPECS-007.1
 def test_changes_started_on_the_same_day_without_a_time_are_ordered_by_name(change, project):
     run_json("new", "other-change", "--no-branch")
-    other = project / "spec/changes/other-change/specs/user-auth"
+    other = project / "spec/changes/active/other-change/specs/user-auth"
     other.mkdir(parents=True)
     (other / "spec.md").write_text(DELTA)
     started(project, "add-password-reset", "2026-10-17")
@@ -427,7 +427,7 @@ def test_changes_started_on_the_same_day_without_a_time_are_ordered_by_name(chan
 # @ac AC-PROJ-010.1
 def test_a_new_change_records_when_it_started(project):
     run_json("new", "other-change", "--no-branch")
-    meta = (project / "spec/changes/other-change/.change.yaml").read_text()
+    meta = (project / "spec/changes/active/other-change/.change.yaml").read_text()
     assert re.search(r"(?m)^created: '\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d'$", meta), meta
 
 
@@ -443,7 +443,7 @@ def test_a_new_change_records_when_it_started(project):
 # @ac AC-SPECS-007.2
 def test_two_changes_editing_one_requirement_do_not_block_each_other(change, project, other_delta):
     run_json("new", "other-change", "--no-branch")
-    other = project / "spec/changes/other-change/specs/user-auth"
+    other = project / "spec/changes/active/other-change/specs/user-auth"
     other.mkdir(parents=True)
     (other / "spec.md").write_text(other_delta)
     started(project, "add-password-reset", "2026-10-17T09:00:00")
@@ -509,7 +509,7 @@ def test_a_valid_living_spec_has_no_problems():
 
 # @ac AC-SPECS-008.3
 def test_skip_specs(project):
-    path = project / "spec/changes/add-password-reset"
+    path = project / "spec/changes/active/add-password-reset"
     (path / "proposal.md").write_text(PROPOSAL)
     (path / ".change.yaml").write_text((path / ".change.yaml").read_text() + "skip_specs: true\n")
     code, data = run_json("check", "--change", "add-password-reset")
@@ -691,7 +691,7 @@ def test_a_tag_with_a_prefix_no_capability_uses_is_unknown(change, project):
 def test_tags_of_another_active_change_are_not_unknown(change, project):
     # other-change adds REQ-AUTH-004 to the same capability and a new, not yet registered one.
     run_json("new", "other-change", "--no-branch")
-    other = project / "spec/changes/other-change/specs"
+    other = project / "spec/changes/active/other-change/specs"
     (other / "user-auth").mkdir(parents=True)
     (other / "user-auth/spec.md").write_text(DELTA.replace("REQ-AUTH-003", "REQ-AUTH-004").replace("AC-AUTH-003", "AC-AUTH-004"))
     (other / "audit-log").mkdir()
@@ -708,7 +708,7 @@ def test_tags_of_another_active_change_are_not_unknown(change, project):
 # @ac AC-SPECS-012.4
 def test_a_broken_delta_of_another_change_does_not_break_this_ones_trace(change, project):
     run_json("new", "other-change", "--no-branch")
-    bad = project / "spec/changes/other-change/specs/nope/thing"
+    bad = project / "spec/changes/active/other-change/specs/nope/thing"
     bad.mkdir(parents=True)
     (bad / "spec.md").write_text("## ADDED Requirements\n")
     code, data = run_json("trace", "--change", "add-password-reset")
@@ -764,7 +764,7 @@ def test_skip_specs_change(project):
     run_json("new", "tidy-up", "--no-branch")
     code, data = run_json("skip-specs", "--change", "tidy-up")
     assert code == 0 and data["skipSpecs"] is True
-    (project / "spec/changes/tidy-up/proposal.md").write_text("# P\n\n## Why\n\n## What Changes\n\n## Capabilities\n")
+    (project / "spec/changes/active/tidy-up/proposal.md").write_text("# P\n\n## Why\n\n## What Changes\n\n## Capabilities\n")
     code, data = run_json("status", "--change", "tidy-up")
     states = {a["id"]: a["status"] for a in data["artifacts"]}
     assert states["specs"] == "skipped" and states["tasks"] == "ready"

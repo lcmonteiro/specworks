@@ -158,17 +158,23 @@ class Config:
     def config_path(self) -> Path:
         return self.root / config_name(self.dir)
 
+    # @req REQ-PROJ-020
     @property
     def changes_dir(self) -> str:
-        return f"{self.dir}/changes"
+        return f"{self.dir}/changes/active"
 
     @property
     def changes_path(self) -> Path:
         return self.root / self.changes_dir
 
+    # @req REQ-PROJ-020
+    @property
+    def archive_dir(self) -> str:
+        return f"{self.dir}/changes/archive"
+
     @property
     def archive_path(self) -> Path:
-        return self.changes_path / "archive"
+        return self.root / self.archive_dir
 
 
 def config_name(dir: str) -> str:

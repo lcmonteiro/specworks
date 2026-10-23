@@ -4,7 +4,7 @@ from helpers import REF, git, remove_repo, run_json
 
 AGREED = "the specs are the ones agreed when specify passed"
 MODIFIED_TESTS = "the tests of each MODIFIED requirement changed with it"
-DELTA_FILE = f"spec/changes/{REF}/specs/user-auth/spec.md"
+DELTA_FILE = f"spec/changes/active/{REF}/specs/user-auth/spec.md"
 
 
 def check(data, name):
@@ -13,7 +13,7 @@ def check(data, name):
 
 
 def start_design(project):
-    (project / f"spec/changes/{REF}/design.md").write_text("# Design\n\n## Interfaces\n\nNone\n")
+    (project / f"spec/changes/active/{REF}/design.md").write_text("# Design\n\n## Interfaces\n\nNone\n")
     run_json("phase", "specify", "--change", REF)
     code, data = run_json("start", "design", "--change", REF, "--no-run")
     assert code == 0, data
@@ -27,7 +27,7 @@ def edit(project, old, new):
 # @ac AC-FLOW-005.1
 def test_start_records_the_specs_and_the_gates_warn_when_they_change(project):
     start_design(project)
-    meta = (project / f"spec/changes/{REF}/.change.yaml").read_text()
+    meta = (project / f"spec/changes/active/{REF}/.change.yaml").read_text()
     assert "specified:" in meta and "REQ-AUTH-003:" in meta and "REQ-AUTH-002:" in meta
     code, data = run_json("gate", "design", "--change", REF, "--no-run")
     assert check(data, AGREED)["ok"]

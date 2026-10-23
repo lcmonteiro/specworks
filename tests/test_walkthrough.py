@@ -17,7 +17,7 @@ from specworks.cli import app
 
 runner = CliRunner()
 REF = "add-slugify"
-C = f"spec/changes/{REF}"
+C = f"spec/changes/active/{REF}"
 
 PROPOSAL = """\
 # Proposal: add-slugify

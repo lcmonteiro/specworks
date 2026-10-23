@@ -55,7 +55,7 @@ project's skills differ from the ones the CLI installs.
 
 ```bash
 cd your-project
-specworks init --dir spec   # writes spec.yml, spec/changes/ and the agent skills
+specworks init --dir spec   # writes spec.yml, spec/changes/active/, spec/changes/archive/ and the agent skills
 ```
 
 Then, in your agent:
