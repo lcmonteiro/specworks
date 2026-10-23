@@ -264,6 +264,19 @@ def has_own_ac_tests(ctx: GateContext) -> bool:
     return any(t.kind == "ac" and t.is_test and t.id in ids for t in ctx.analysis.tags)
 
 
+# @req REQ-FLOW-006, REQ-FLOW-008
+def own_tests(ctx: GateContext) -> str | None:
+    """Why the change has tests of its own (its ``@ac`` tests, or test files changed since it started), or ``None``.
+
+    The changed files are the ones ``specworks review`` reports; without git they are unknown, so none count.
+    """
+    if has_own_ac_tests(ctx):
+        return "this change has @ac tests of its own"
+    if any(f.kind == "test" for f in ctx.report.changed or []):
+        return "this change has changed test files"
+    return None
+
+
 def not_blocking(ctx: GateContext, tests: Check, why: str, at: int = 1) -> Check:
     """A failing run of the suite (not a missing command) as a warning, saying why at ``at`` in the details (after the command line)."""
     if ctx.run_tests and ctx.has_command("test") and not tests.ok:
@@ -274,11 +287,11 @@ def not_blocking(ctx: GateContext, tests: Check, why: str, at: int = 1) -> Check
 
 # @req REQ-FLOW-008
 def code_tests_pass(ctx: GateContext) -> Check:
-    """The code gate's ``tests_pass``: a warning while the change has ``@ac`` tests of its own (they meet the code in review)."""
+    """The code gate's ``tests_pass``: a warning while the change has tests of its own (they meet the code in review)."""
     tests = tests_pass(ctx)
-    if not has_own_ac_tests(ctx):
+    if tests.ok or not (why := own_tests(ctx)):  # the changed files are only computed for a red suite
         return tests
-    return not_blocking(ctx, tests, "this change has @ac tests of its own, which meet the code in review")
+    return not_blocking(ctx, tests, f"{why}, which meet the code in review")
 
 
 # @req REQ-FLOW-011

@@ -116,11 +116,11 @@ def stubs_build(key: str) -> CheckFn:
 # @req REQ-FLOW-006
 def existing_tests_pass(ctx: GateContext) -> Check:
     tests = c.command_check(ctx, "test", "the existing tests still pass with the stubs (commands.test)")
-    if not c.has_own_ac_tests(ctx):
+    if tests.ok or not (why := c.own_tests(ctx)):  # the changed files are only computed for a red suite
         return tests
     # The test half has started (or a later cycle reopened the API): this change's
     # own tests are red until the code half makes them pass.
-    return c.not_blocking(ctx, tests, "this change already has @ac tests, which fail until the code half", at=0)
+    return c.not_blocking(ctx, tests, f"{why}, which fail until the code half", at=0)
 
 
 # @req REQ-FLOW-004, REQ-FLOW-006, REQ-FLOW-007, REQ-FLOW-008, REQ-FLOW-011, REQ-FLOW-014

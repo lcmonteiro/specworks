@@ -163,7 +163,9 @@ named in its code spans existing inside the change's module folder, written
 relative to that folder or to the workspace root. `None` SHALL pass without files, and prose
 naming no file SHALL be a warning. It SHALL run the build and typecheck commands
 when they are configured. The existing test suite must pass, except once the
-change already has `@ac` tests, when a red suite is only a warning.
+change has tests of its own, when a red suite is only a warning. A change's
+own tests SHALL be its `@ac` tests, or the test files changed since the change
+started (committed, uncommitted or untracked); without git none are changed.
 
 #### Scenario: AC-FLOW-006.1 The Interfaces section
 
@@ -182,7 +184,7 @@ change already has `@ac` tests, when a red suite is only a warning.
 
 #### Scenario: AC-FLOW-006.4 The existing tests
 
-- **WHEN** the test suite fails and the change has no `@ac` tests of its own
+- **WHEN** the test suite fails and the change has no tests of its own (no `@ac` tests and no changed test files)
 - **THEN** the gate fails; once the change has `@ac` tests, the failure is a warning saying so
 
 #### Scenario: AC-FLOW-006.5 Build and typecheck
@@ -195,6 +197,12 @@ change already has `@ac` tests, when a red suite is only a warning.
 - **GIVEN** a change in module `billing` (at `services/billing`) whose Interfaces name `src/invoices.py`, and a `src/invoices.py` that exists only at the workspace root
 - **WHEN** the design gate runs
 - **THEN** it fails listing `src/invoices.py`; it passes once the file exists in the module, named either `src/invoices.py` or `services/billing/src/invoices.py`
+
+#### Scenario: AC-FLOW-006.7 Changed test files without tags
+
+- **GIVEN** a change with no `@ac` tests of its own, in a git repository where a test file changed since the change started
+- **WHEN** the test suite fails
+- **THEN** the gate passes with a warning saying the change has changed test files; without git, or with no changed test file, it fails
 
 ### Requirement: REQ-FLOW-007 Gate test
 
@@ -229,7 +237,8 @@ The code gate SHALL check the code half of implement: it SHALL require every
 `[code]` task done, `@req` code for every requirement, no unknown tags, no
 tags left to removed requirements or to criteria a MODIFIED block drops, and
 a configured test command whose run passes. It SHALL NOT require an `@ac`
-test for every criterion. While the change has `@ac` tests of its own, a
+test for every criterion. While the change has tests of its own (its `@ac`
+tests, or test files changed since it started, as in the design gate), a
 failing run SHALL be a warning instead of blocking: those tests meet the code
 in review.
 
@@ -245,7 +254,7 @@ in review.
 
 #### Scenario: AC-FLOW-008.3 Failing tests
 
-- **GIVEN** a change with no `@ac` tests of its own
+- **GIVEN** a change with no tests of its own (no `@ac` tests and no changed test files)
 - **WHEN** the test command fails (even with output that is not text)
 - **THEN** the gate fails with the command's output
 
@@ -269,6 +278,12 @@ in review.
 - **GIVEN** a change with `@ac` tests of its own
 - **WHEN** the test command fails
 - **THEN** the gate passes with a warning showing the command's output
+
+#### Scenario: AC-FLOW-008.8 A skip-specs change whose halves disagree
+
+- **GIVEN** a change marked skip-specs, in a git repository where a test file changed since the change started
+- **WHEN** the test command fails
+- **THEN** the gate passes with a warning saying the change has changed test files, so `start review` can move the change on
 
 ### Requirement: REQ-FLOW-009 Drift report
 
