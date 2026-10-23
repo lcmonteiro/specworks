@@ -72,7 +72,11 @@ it looks easy. When the gate passes, stop and suggest `/specworks-test`
    anything that would change what tests assert (names of errors, return
    shapes, sync vs async, who owns validation), each as numbered options
    with the one you recommend, then close with "Create this API as stubs?
-   (yes/no)".
+   (yes/no)". Before you stop for that answer, write the proposed list under
+   `## Interfaces` (step 4) with a line
+   `Proposed: waiting for the user's agreement` below the heading, so the
+   proposal is on disk; the user (or the build's coordinator) replaces that
+   line with `Agreed with the user` once they agree.
 
 4. **Record the agreed API in design.md**
 
@@ -95,6 +99,12 @@ it looks easy. When the gate passes, stop and suggest `/specworks-test`
    write `None` with one line saying why.
 
 5. **Create the stubs**
+
+   Only once the API is agreed: `## Interfaces` reads `Agreed with the user`
+   instead of `Proposed: waiting for the user's agreement`, or the user
+   agreed in this conversation (then write the `Agreed with the user` line
+   yourself). While the line still reads `Proposed: ...`, stop and ask
+   "Create this API as stubs? (yes/no)" again.
 
    For each interface, in the project's language and style:
    - real names, parameters, return and error types, and doc comments that
