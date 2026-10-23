@@ -19,7 +19,7 @@ nearest folder that holds a config.
 
 - **GIVEN** a project whose config is `<dir>.yml`, or was renamed to another name
 - **WHEN** a change is created
-- **THEN** it goes to `<dir>/changes/<name>`, `<dir>` being the config file's name without `.yml`
+- **THEN** it goes to `<dir>/changes/active/<name>`, `<dir>` being the config file's name without `.yml`
 
 #### Scenario: AC-PROJ-001.2 A YAML file without the marker is not a config
 
@@ -278,10 +278,10 @@ digits, `-` or `_`, and setting the diagram theme when one is given.
 
 ### Requirement: REQ-PROJ-010 Creating a change
 
-The system SHALL create a change as a folder under `<dir>/changes/` named after
-it, starting in the `refine` phase and recording when it started. The name must
-be kebab-case, must not be `archive`, must not be in use, and must not be the
-name of an archived change.
+The system SHALL create a change as a folder under `<dir>/changes/active/` named
+after it, starting in the `refine` phase and recording when it started. The name
+must be kebab-case, must not be `archive` or `active`, must not be in use, and
+must not be the name of an archived change.
 
 #### Scenario: AC-PROJ-010.1 A new change
 
@@ -300,8 +300,8 @@ name of an archived change.
 
 #### Scenario: AC-PROJ-010.4 Reserved and archived names
 
-- **WHEN** the name is `archive`, or names an archived change
-- **THEN** it is refused, saying `archive` is reserved or where the change was archived
+- **WHEN** the name is `archive` or `active`, or names an archived change
+- **THEN** it is refused, saying the name is reserved or where the change was archived
 
 ### Requirement: REQ-PROJ-011 Change phases
 
@@ -555,3 +555,28 @@ SHALL still get the branch.
 - **GIVEN** a repository with no commit
 - **WHEN** the change's branch is created
 - **THEN** the branch exists and is checked out
+
+### Requirement: REQ-PROJ-020 Where changes live
+
+The system SHALL keep changes in flight in `<dir>/changes/active/` and
+archived ones in `<dir>/changes/archive/`. A folder with change metadata that
+sits directly under `<dir>/changes/` SHALL NOT be a change: it is not listed
+and cannot be named.
+
+#### Scenario: AC-PROJ-020.1 Active changes are listed from active
+
+- **GIVEN** a change created in the project
+- **WHEN** the active changes are listed
+- **THEN** the change is found, and its folder is `<dir>/changes/active/<name>`
+
+#### Scenario: AC-PROJ-020.2 A loose folder is not a change
+
+- **GIVEN** a folder `<dir>/changes/<name>` holding a `.change.yaml`, outside `active/` and `archive/`
+- **WHEN** the active changes are listed, or the change is named
+- **THEN** it is not listed, and naming it fails saying the change is not found
+
+#### Scenario: AC-PROJ-020.3 Archived changes stay in archive
+
+- **GIVEN** a change in `<dir>/changes/active/`
+- **WHEN** it is closed or abandoned
+- **THEN** it is in `<dir>/changes/archive/<date>-<name>` and no longer under `active/`

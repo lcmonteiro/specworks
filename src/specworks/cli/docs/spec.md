@@ -71,7 +71,8 @@ by archive folder. A path into the archive is not a change name.
 
 ### Requirement: REQ-CLI-003 init
 
-`specworks init` SHALL create the config and `<dir>/changes/archive/`, and
+`specworks init` SHALL create the config, `<dir>/changes/active/` and
+`<dir>/changes/archive/`, and
 install the agent skills unless `--no-skills` is given. Inside a specworks
 project, it SHALL link the new project as a module (named by its full path)
 using the workspace's config name, unless `--no-link` is given, and SHALL refuse
@@ -85,7 +86,7 @@ new top-level config; elsewhere it SHALL print a note saying it wasn't applied.
 
 - **GIVEN** the folder is empty and inside a git repository
 - **WHEN** `init` runs there
-- **THEN** it creates the config, `<dir>/changes/archive/` and the skills
+- **THEN** it creates the config, `<dir>/changes/active/`, `<dir>/changes/archive/` and the skills
 
 #### Scenario: AC-CLI-003.2 Inside a project
 

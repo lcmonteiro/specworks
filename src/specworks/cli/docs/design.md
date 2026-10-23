@@ -70,6 +70,11 @@ leave that module listed past it, which loading refuses. Refusing was chosen
 over moving the inner module's link, which would edit a config the user didn't
 name. (module-add-nested)
 
+### `init` creates the active and archive folders
+
+`init` makes `<dir>/changes/active/` and `<dir>/changes/archive/` with the
+config, so the two states of a change exist from the start. (active-changes-dir)
+
 ### Upgrading is uv, then `update`
 
 `uv tool upgrade specworks` upgrades the CLI. `specworks update` then brings
