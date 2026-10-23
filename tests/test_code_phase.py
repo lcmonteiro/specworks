@@ -7,7 +7,7 @@ import sys
 import pytest
 from typer.testing import CliRunner
 
-from helpers import REF, run_json, write_tests
+from helpers import REF, on_a_branch, run_json, write_tests
 from specworks.cli import app
 
 runner = CliRunner()
@@ -121,6 +121,34 @@ def test_implement_gate_fails_when_tests_fail(project):
     assert tests["ok"] is False and "2 failed" in tests["details"]
 
 
+# @ac AC-FLOW-008.3
+def test_code_gate_fails_when_only_source_files_changed(project, monkeypatch):
+    set_test_command(project, FAIL)
+    on_a_branch(project, monkeypatch)
+    implement_code_only(project)  # changed source files, but no @ac test and no changed test file
+    code, data = run_json("gate", "code", "--change", REF)
+    tests = checks(data)[TESTS]
+    assert code == 1 and tests["ok"] is False and tests["blocking"] is True and "2 failed" in tests["details"]
+
+
+# @ac AC-FLOW-008.8
+def test_a_skip_specs_change_with_changed_test_files_only_warns(project, monkeypatch):
+    run_json("new", "tidy-up", "--no-branch")
+    run_json("skip-specs", "--change", "tidy-up")
+    tidy_up = project / "spec/changes/active/tidy-up"
+    (tidy_up / "proposal.md").write_text("# P\n\n## Why\n\nTidy.\n\n## What Changes\n\nTidy.\n\n## Capabilities\n\nNone.\n")
+    (tidy_up / "tasks.md").write_text("# Tasks\n\n## 1. Tidy\n\n- [x] 1.1 [test] Test the session\n- [x] 1.2 [code] Tidy the session\n")
+    set_test_command(project, FAIL)
+    on_a_branch(project, monkeypatch)
+    (project / "tests").mkdir()
+    (project / "tests/test_session.py").write_text("def test_session():\n    assert False\n")  # the test half's work, without a tag
+    code, data = run_json("gate", "code", "--change", "tidy-up")
+    tests = checks(data)[TESTS]
+    assert code == 0 and data["passed"] is True, [c["name"] for c in data["checks"] if c["blocking"] and not c["ok"]]
+    assert tests["ok"] is False and tests["blocking"] is False and "2 failed" in tests["details"]
+    assert any("changed test files" in d for d in tests["details"])
+
+
 # @ac AC-FLOW-008.6
 def test_code_gate_does_not_need_a_test_for_every_criterion(project):
     set_test_command(project, PASS)
@@ -138,6 +166,7 @@ def test_code_gate_only_warns_when_the_change_s_own_tests_fail(project):
     tests = checks(data)[TESTS]
     assert code == 0 and data["passed"] is True, data
     assert tests["ok"] is False and tests["blocking"] is False and "2 failed" in tests["details"]
+    assert any("@ac tests" in d for d in tests["details"])
 
 
 # @ac AC-FLOW-008.4

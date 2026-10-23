@@ -45,6 +45,15 @@ def remove_repo(root):
     shutil.rmtree(root / ".git", onerror=writable)
 
 
+def on_a_branch(root, monkeypatch):
+    """Commit everything on `main` as the baseline and go on on a feature branch: files changed from here on are the change's."""
+    for key, value in {"GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t", "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@t"}.items():
+        monkeypatch.setenv(key, value)
+    git(root, "add", "-A")
+    git(root, "commit", "-q", "-m", "baseline")
+    git(root, "checkout", "-q", "-b", "feature")
+
+
 def make_planned_project(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     init_repo(tmp_path)

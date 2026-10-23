@@ -6,7 +6,7 @@ import sys
 
 import pytest
 
-from helpers import REF, run_json
+from helpers import REF, on_a_branch, remove_repo, run_json
 from specworks.core.changes import load_change
 from specworks.core.config import load_config
 from specworks.workflow.gate import interface_files, interfaces_section
@@ -152,7 +152,25 @@ def test_red_suite_is_only_a_warning_once_the_change_has_tests(planned):
     (planned / "tests/test_reset.py").write_text("# @ac AC-AUTH-003.1\ndef test_request(): assert False\n")  # specworks: ignore-tags
     code, checks = gate()
     assert code == 0 and checks[TESTS]["ok"] is False and checks[TESTS]["blocking"] is False
-    assert "already has @ac tests" in checks[TESTS]["details"][0]
+    assert "@ac tests" in checks[TESTS]["details"][0]
+
+
+# @ac AC-FLOW-006.7
+def test_changed_test_files_without_tags_make_a_red_suite_a_warning(planned, monkeypatch):
+    # A skip-specs change, or a test half that has not tagged its tests yet: no @ac tests, but changed test files.
+    write_design(planned, "None.")
+    set_commands(planned, test=FAIL)
+    on_a_branch(planned, monkeypatch)
+    code, checks = gate()
+    assert code == 1 and checks[TESTS]["blocking"] is True  # git, but no test file changed since the change started
+    (planned / "tests").mkdir()
+    (planned / "tests/test_session.py").write_text("def test_session():\n    assert False\n")  # untracked, without a tag
+    code, checks = gate()
+    assert code == 0 and checks[TESTS]["ok"] is False and checks[TESTS]["blocking"] is False
+    assert "changed test files" in checks[TESTS]["details"][0]
+    remove_repo(planned)  # without git, no test file counts as changed
+    code, checks = gate()
+    assert code == 1 and checks[TESTS]["blocking"] is True
 
 
 # @ac AC-FLOW-006.1
