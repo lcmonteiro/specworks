@@ -40,11 +40,18 @@ half of the rule.
 
 ## Interfaces
 
+Proposed: waiting for the user's agreement
+
 - `src/specworks/workflow/checks.py`: `own_tests(ctx: GateContext) -> str |
   None` (new: why the change has tests of its own, or None) (REQ-FLOW-006,
   REQ-FLOW-008); `code_tests_pass` uses it (REQ-FLOW-008)
 - `src/specworks/workflow/gate.py`: `existing_tests_pass` uses it
   (REQ-FLOW-006)
+
+Nothing breaks: `has_own_ac_tests` keeps its signature and callers, and no
+CLI command, option or JSON shape changes. The gates' warning text names the
+reason `own_tests` returns, so tests can assert `@ac tests` or `changed test
+files` in it.
 
 ## Risks / Trade-offs
 
