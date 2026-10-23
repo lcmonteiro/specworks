@@ -1,6 +1,6 @@
 # Review: docs-active-path
 
-Base: `active-changes-dir`
+Base: `origin/main`
 
 ## Findings
 
@@ -14,8 +14,14 @@ interfaces to compare.
 
 ## Changed files without tags
 
-None: the changed files are `CLAUDE.md` and `README.md`, which carry no tags in
-a `skip-specs` change.
+The branch is stacked on `active-changes-dir`, whose pull request is not merged
+yet, so the diff against `origin/main` also holds that change's test edits:
+
+- `tests/helpers.py`: path-only update (`spec/changes/active/<ref>`) made by `active-changes-dir`; this change does not touch it
+- `tests/test_walkthrough.py`: path-only update of the `C` constant made by `active-changes-dir`; this change does not touch it
+
+This change's own files, `CLAUDE.md` and `README.md`, carry no tags in a
+`skip-specs` change.
 
 ## Summary
 
