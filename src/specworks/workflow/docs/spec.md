@@ -483,10 +483,12 @@ or no open finding, has no next cycle.
 
 `specworks validate` SHALL run grouped checks (completeness, correctness,
 coherence), each naming the phase skill that fixes a failure, and give a PASS
-verdict when no blocking check fails. It SHALL run the test command (lint and
-typecheck when configured) and check that diagram SVGs are up to date. It SHALL
-write nothing. Not having gone through review is a warning. `gate validate`
-SHALL apply the same checks.
+verdict when no blocking check fails. Open tasks SHALL be checked by kind,
+each kind naming its own phase skill: `[test]` tasks the test skill, `[code]`
+tasks the code skill, and tasks with neither marker the design skill. It SHALL
+run the test command (lint and typecheck when configured) and check that
+diagram SVGs are up to date. It SHALL write nothing. Not having gone through
+review is a warning. `gate validate` SHALL apply the same checks.
 
 #### Scenario: AC-FLOW-013.1 A finished change
 
@@ -522,6 +524,11 @@ SHALL apply the same checks.
 
 - **WHEN** `gate validate` runs
 - **THEN** it passes and fails as validate does
+
+#### Scenario: AC-FLOW-013.8 Open tasks by kind
+
+- **WHEN** a `[test]` task, a `[code]` task and a task with no marker are open
+- **THEN** each kind fails its own completeness check listing only its open tasks, naming `/specworks-test`, `/specworks-code` and `/specworks-design`; `goBackTo` lists all three
 
 ### Requirement: REQ-FLOW-014 Starting a phase
 
