@@ -62,7 +62,7 @@ def test_verify_names_the_phase_to_go_back_to(repo):
     code, data = run_json("validate", "--change", REF, "--base", "main")
     assert code == 1 and data["verdict"] == "FAIL"
     checks = by_name(data)
-    assert checks["every task is done (specworks task list --pending)"]["fix"] == "/specworks-code"
+    assert checks["every [code] task is done (specworks task list --pending)"]["fix"] == "/specworks-code"
     assert checks["every requirement has code (@req tag)"]["details"] == ["REQ-AUTH-002"]
     assert checks["review.md is written"]["details"] == ["write review.md (specworks instructions review)"]
     assert checks["review.md is written"]["fix"] == "/specworks-review"
@@ -116,6 +116,26 @@ def test_gate_verify_matches_verify(repo):
     (repo / "spec/changes/active" / REF / "review.md").write_text("- [ ] R1 open\n")
     code, data = run_json("gate", "validate", "--change", REF, "--base", "main")
     assert code == 1
+
+
+# @ac AC-FLOW-013.8
+def test_open_tasks_fail_the_check_of_their_kind(repo):
+    run_json("task", "undo", "1.1", "1.2", "--change", REF)
+    with (repo / "spec/changes/active" / REF / "tasks.md").open("a", encoding="utf-8") as tasks:
+        tasks.write("- [ ] 2.2 Add the reset link stub (REQ-AUTH-003)\n")
+    exit_code, data = run_json("validate", "--change", REF, "--base", "main")
+    assert exit_code == 1 and data["verdict"] == "FAIL"
+    checks = by_name(data)
+    test = checks["every [test] task is done (specworks task list --pending)"]
+    code = checks["every [code] task is done (specworks task list --pending)"]
+    unmarked = checks["every task with no [test] or [code] marker is done (specworks task list --pending)"]
+    assert test["ok"] is False and test["details"] == ["1.1 [test] Write failing tests for AC-AUTH-003.1 and AC-AUTH-003.2; verify they fail"]
+    assert code["ok"] is False and code["details"] == ["1.2 [code] Implement reset links (REQ-AUTH-003); verify 1.1 passes"]
+    assert unmarked["ok"] is False and unmarked["details"] == ["2.2 Add the reset link stub (REQ-AUTH-003)"]
+    assert (test["fix"], code["fix"], unmarked["fix"]) == ("/specworks-test", "/specworks-code", "/specworks-design")
+    assert all(c["group"] == "completeness" for c in (test, code, unmarked))
+    assert {"/specworks-test", "/specworks-code", "/specworks-design"} <= set(data["goBackTo"])
+    assert "every task is done (specworks task list --pending)" not in checks
 
 
 # @ac AC-FLOW-014.5
