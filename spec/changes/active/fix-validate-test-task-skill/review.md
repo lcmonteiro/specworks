@@ -6,7 +6,7 @@ Base: `origin/main`
 
 - [ ] R1 **test-gap** The AC-FLOW-014.5 test still expects validate's removed `every task is done (specworks task list --pending)  -> /specworks-code` line, so it fails now that REQ-FLOW-013 (as modified) reports the open `[code]` task under `every [code] task is done (specworks task list --pending)  -> /specworks-code`; AC-FLOW-014.5 itself (start close names the phase of each failed check) still holds (`tests/test_validate_phase.py:148`)
   - **Proposal**: back to test: in `test_start_close_names_the_phase_that_fixes_each_failed_check`, expect `[FAIL] every [code] task is done (specworks task list --pending)  -> /specworks-code`; no code change. Recorded here as agreed with the user in design (design.md, "An existing AC-FLOW-014.5 test names the old task check").
-  - **Decision**: waiting for the user
+  - **Decision**: back to test: expect `[FAIL] every [code] task is done (specworks task list --pending)  -> /specworks-code` in the AC-FLOW-014.5 test; no code change (agreed with the user)
 
 ## Changed files without tags
 
