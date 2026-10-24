@@ -44,7 +44,7 @@ other half's. When the test gate passes, stop and suggest `/specworks-code`
      with `git merge --ff-only <commit>`. If that is not a fast-forward,
      stop: in a build, return `Result: blocked` (the worktree cannot hold
      design's stubs; back to `/specworks-build`).
-   - Then pick the change (above) and start implement:
+   - Pick the change (above) and start implement:
      ```bash
      specworks start implement --change "<ref>"
      ```
