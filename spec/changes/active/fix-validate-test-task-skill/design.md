@@ -45,7 +45,7 @@ REQ-FLOW-013.
 
 ### An existing AC-FLOW-014.5 test names the old task check
 
-Agreed with the user: add task 1.5 [test]
+Agreed with the user: leave the AC-FLOW-014.5 test failing for now and let review record it as a finding; task 1.4 is done once every other test passes.
 
 Found in the code half (task 1.4). `tests/test_validate_phase.py`
 `test_start_close_names_the_phase_that_fixes_each_failed_check`
