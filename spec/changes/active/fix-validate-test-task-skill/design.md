@@ -45,7 +45,7 @@ REQ-FLOW-013.
 
 ### An existing AC-FLOW-014.5 test names the old task check
 
-Proposed: waiting for the user's agreement
+Agreed with the user: add task 1.5 [test]
 
 Found in the code half (task 1.4). `tests/test_validate_phase.py`
 `test_start_close_names_the_phase_that_fixes_each_failed_check`
