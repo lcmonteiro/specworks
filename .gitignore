@@ -7,4 +7,6 @@ __pycache__/
 .coverage
 dist/
 .vscode/
+# git worktrees of the build's test half
+.claude/worktrees/
 # D2 binary placed by the build hook for editable installs

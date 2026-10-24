@@ -37,7 +37,14 @@ other half's. When the test gate passes, stop and suggest `/specworks-code`
 
 1. **Pick the change and start implement once the interfaces are ready**
 
-   - Pick the change (above), then:
+   - In a git worktree (`git rev-parse --git-dir` differs from
+     `git rev-parse --git-common-dir`), first bring it up to the main
+     checkout, whose HEAD holds design's committed stubs: the main checkout
+     is the first entry of `git worktree list`; fast-forward to its HEAD
+     with `git merge --ff-only <commit>`. If that is not a fast-forward,
+     stop: in a build, return `Result: blocked` (the worktree cannot hold
+     design's stubs; back to `/specworks-build`).
+   - Pick the change (above) and start implement:
      ```bash
      specworks start implement --change "<ref>"
      ```

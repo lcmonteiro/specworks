@@ -147,8 +147,9 @@ of <skills folder>/specworks-build/SKILL.md.
    `Result: blocked`, stop and report where and why.
 
    **Implement: the two halves in parallel.** When the cycle has both
-   halves, start them together (design's work is already committed by its own skill, and
-   the worktree starts from HEAD, so it holds design's stubs):
+   halves, start them together (design's work is already committed by its own skill; the
+   worktree may start from an older commit, so the test skill first
+   fast-forwards it to the main checkout's HEAD, which holds design's stubs):
    - the **test** half in a subagent with its own git worktree (Claude Code:
      `Agent` with `isolation: "worktree"`); add to its prompt nothing but the
      fixed text. When it is done, its changes are on the worktree's branch:
@@ -207,7 +208,10 @@ of <skills folder>/specworks-build/SKILL.md.
      (`spec-gap`) get `back to specify: ...`.
    - **Then** a fresh review subagent reads the decided review.md, ticks
      the findings from an earlier cycle that are now done (`- [x]`, with
-     what was done), finishes the file and gates it.
+     what was done), finishes the file and gates it. When every finding is
+     decided `accepted` and no finding from an earlier cycle needs ticking,
+     nothing is left for it to do: skip that run and run
+     `specworks gate review --change "<ref>" --allow-open` yourself.
 
    The gate is `specworks gate review --change "<ref>" --allow-open`: open
    findings do not fail it here (step 4 turns them into the next cycle), nor
