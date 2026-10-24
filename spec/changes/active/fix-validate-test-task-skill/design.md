@@ -45,7 +45,7 @@ REQ-FLOW-013.
 
 ## Interfaces
 
-Proposed: waiting for the user's agreement
+Agreed with the user
 
 - `src/specworks/workflow/checks.py`: `unmarked_tasks_done(ctx: GateContext) -> Check` (new), a check named
   `every task with no [test] or [code] marker is done (specworks task list --pending)`
