@@ -126,6 +126,15 @@ def half_tasks_done(half: str) -> CheckFn:
     return check
 
 
+def unmarked_tasks_done(ctx: GateContext) -> Check:
+    """A check named ``every task with no [test] or [code] marker is done (specworks task list --pending)``.
+
+    It fails when tasks.md is not found or a task with neither marker is open, listing ``"<num> <text>"`` for
+    each open one. Implements REQ-FLOW-013.
+    """
+    raise NotImplementedError
+
+
 # @req REQ-FLOW-005
 def specs_as_specified(ctx: GateContext) -> Check | None:
     """The delta specs are the ones `gate specify` passed with when `start` last left specify (not checked without one)."""
