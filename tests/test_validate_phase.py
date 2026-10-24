@@ -145,5 +145,5 @@ def test_start_close_names_the_phase_that_fixes_each_failed_check(repo):
     run_json("task", "undo", "1.2", "--change", REF)
     result = runner.invoke(app, ["start", "close", "--change", REF, "--base", "main"])
     assert result.exit_code == 1
-    assert "[FAIL] every task is done (specworks task list --pending)  -> /specworks-code" in result.output
+    assert "[FAIL] every [code] task is done (specworks task list --pending)  -> /specworks-code" in result.output
     assert "-> /specworks" not in next(line for line in result.output.splitlines() if line.startswith("[ok  ]"))
