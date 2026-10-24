@@ -1,5 +1,5 @@
 name: fix-validate-test-task-skill
 created: '2026-10-24T13:01:57'
-phase: implement
+phase: review
 specified:
   REQ-FLOW-013: 016ac1ad83bf
