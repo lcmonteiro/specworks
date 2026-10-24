@@ -12,15 +12,18 @@ Base: `origin/main`
   - **Proposal**: back to code: move the worktree bullet to the top of step 1, before `specworks start implement` ("In a git worktree ..., first fast-forward it ...; then pick the change and start implement"), wording otherwise unchanged; refresh the installed copies with `specworks skills`
   - **Decision**: back to code: move the worktree bullet to the top of step 1 of the test skill, before `specworks start implement`, wording otherwise unchanged; refresh the installed copies (agreed with the user)
   - Done in cycle 2 (code): the worktree bullet is now the first bullet of step 1, before `specworks start implement`, in the skill and its three installed copies; its rewording of the next bullet is R3
-- [ ] R3 **code-gap** The suite fails: R2's move reworded the next bullet of the test skill's step 1 from `Pick the change (above), then:` to `Then pick the change (above) and start implement:`; the existing shared-rule check `test_skills_pick_the_change_by_one_shared_rule[specworks-test]` asserts `Pick the change (above)` (capital P), which every other phase skill keeps (`src/specworks/skills/specworks-test/SKILL.md:47`; `tests/test_skills.py:271`)
+- [x] R3 **code-gap** The suite fails: R2's move reworded the next bullet of the test skill's step 1 from `Pick the change (above), then:` to `Then pick the change (above) and start implement:`; the existing shared-rule check `test_skills_pick_the_change_by_one_shared_rule[specworks-test]` asserts `Pick the change (above)` (capital P), which every other phase skill keeps (`src/specworks/skills/specworks-test/SKILL.md:47`; `tests/test_skills.py:271`)
   - **Proposal**: back to code: reword the bullet to `Pick the change (above) and start implement:` (dropping "Then"; the bullet order already puts it after the worktree step), refresh the installed copies with `specworks skills`; the shared-rule check stays as it is
   - **Decision**: back to code: reword the bullet to `Pick the change (above) and start implement:` and refresh the installed copies; the shared-rule check stays as it is (agreed with the user)
+  - Done in cycle 3 (code): step 1's second bullet of the test skill now reads `Pick the change (above) and start implement:`, in the skill and its three installed copies; the shared-rule check passes unchanged
 
 ## Changed files without tags
 
 None: `specworks review` lists no file under untracedSource or untracedTests. The changed skill files, their installed copies and `.gitignore` are not scanned for tags, and the change is `skip-specs` (no requirement or criterion to tag).
 
 ## Summary
+
+Cycle 3: R3 was carried out in code and is closed; no new finding. The full suite passes (608 tests), and lint and typecheck pass. The installed copies of the test skill match the source (only the shared includes are expanded). No finding is open.
 
 Cycle 2: R1 and R2 were carried out and are closed. R2's move reworded the shared `Pick the change (above)` line of the test skill, which fails the existing shared-rule check: R3 (code) is open, decided with the user `back to code` (reword the bullet to `Pick the change (above) and start implement:` and refresh the installed copies); the next cycle runs code, then review. Lint and typecheck pass; the suite has one failure, R3 (`test_skills_pick_the_change_by_one_shared_rule[specworks-test]`).
 
