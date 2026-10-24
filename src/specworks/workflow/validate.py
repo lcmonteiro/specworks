@@ -18,7 +18,7 @@ from .checks import Check, CheckFn, GateContext
 COMPLETENESS, CORRECTNESS, COHERENCE = "completeness", "correctness", "coherence"
 GROUPS = (COMPLETENESS, CORRECTNESS, COHERENCE)
 REVIEWED_PHASES = ("review", "validate", "close")
-SPECIFY, TEST, CODE, REVIEW = "/specworks-specify", "/specworks-test", "/specworks-code", "/specworks-review"
+SPECIFY, DESIGN, TEST, CODE, REVIEW = "/specworks-specify", "/specworks-design", "/specworks-test", "/specworks-code", "/specworks-review"
 
 
 def planning_artifacts(ctx: GateContext) -> Check:
@@ -45,7 +45,10 @@ def went_through_review(ctx: GateContext) -> Check:
 VALIDATE: list[tuple[str, str, CheckFn]] = [
     # Completeness: everything the plan asked for exists and is done.
     (COMPLETENESS, SPECIFY, planning_artifacts),
-    (COMPLETENESS, CODE, c.tasks_done),
+    # Open tasks by kind, each sent to the half (or design) that owns it.  @req REQ-FLOW-013
+    (COMPLETENESS, TEST, c.half_tasks_done("test")),
+    (COMPLETENESS, CODE, c.half_tasks_done("code")),
+    (COMPLETENESS, DESIGN, c.unmarked_tasks_done),
     (COMPLETENESS, CODE, c.reqs_have_code),
     (COMPLETENESS, TEST, c.acs_have_tests),
     (COMPLETENESS, REVIEW, c.review_written),

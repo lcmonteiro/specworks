@@ -107,13 +107,6 @@ def tasks_written(ctx: GateContext) -> Check:
     return Check(f"{TASKS_FILE} is written", found, [] if found else [f"write {TASKS_FILE} (specworks instructions tasks)"])
 
 
-# @req REQ-FLOW-008
-def tasks_done(ctx: GateContext) -> Check:
-    specs = ctx.analysis.specs
-    pending = [f"{t.num} {t.text}" for t in specs.tasks if not t.done]
-    return Check("every task is done (specworks task list --pending)", specs.tasks_found and not pending, pending)
-
-
 # @req REQ-FLOW-007, REQ-FLOW-008
 def half_tasks_done(half: str) -> CheckFn:
     """A check that every task of ``half`` (``test`` or ``code``) is done, listing only that half's open tasks."""
@@ -126,13 +119,12 @@ def half_tasks_done(half: str) -> CheckFn:
     return check
 
 
+# @req REQ-FLOW-013
 def unmarked_tasks_done(ctx: GateContext) -> Check:
-    """A check named ``every task with no [test] or [code] marker is done (specworks task list --pending)``.
-
-    It fails when tasks.md is not found or a task with neither marker is open, listing ``"<num> <text>"`` for
-    each open one. Implements REQ-FLOW-013.
-    """
-    raise NotImplementedError
+    """Every task with neither a ``[test]`` nor a ``[code]`` marker (design's stub tasks) is done, listing the open ones."""
+    specs = ctx.analysis.specs
+    pending = [f"{t.num} {t.text}" for t in specs.tasks if not t.half and not t.done]
+    return Check("every task with no [test] or [code] marker is done (specworks task list --pending)", specs.tasks_found and not pending, pending)
 
 
 # @req REQ-FLOW-005

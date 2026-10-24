@@ -43,6 +43,26 @@ REVIEW`). `tasks_done` is dropped once nothing uses it (task 1.4). Every
 check keeps one skill, so `fix` and `goBackTo` keep their shapes. Serves:
 REQ-FLOW-013.
 
+### An existing AC-FLOW-014.5 test names the old task check
+
+Proposed: waiting for the user's agreement
+
+Found in the code half (task 1.4). `tests/test_validate_phase.py`
+`test_start_close_names_the_phase_that_fixes_each_failed_check`
+(`@ac AC-FLOW-014.5`, not a criterion of this change) undoes the sample's
+task `1.2 [code]` and asserts
+`[FAIL] every task is done (specworks task list --pending)  -> /specworks-code`.
+REQ-FLOW-013 as modified removes that check, so with task 1.4's code the
+output is `[FAIL] every [code] task is done (specworks task list --pending)  -> /specworks-code`
+and the test fails; AC-FLOW-014.5 itself (start close names the phase of
+each failed check) still holds. No task covers it, and the code half may not
+change a test.
+Proposal: add a task `1.5 [test] Update the AC-FLOW-014.5 test in
+tests/test_validate_phase.py to expect "every [code] task is done (specworks
+task list --pending)  -> /specworks-code" (AC-FLOW-014.5); verify it passes
+with 1.4`. Alternative: leave the test failing and let review record it.
+Task 1.4 stays open until `specworks run test` passes.
+
 ## Interfaces
 
 Agreed with the user
