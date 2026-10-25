@@ -2,7 +2,7 @@
 
 ## 1. The fixed layout
 
-- [ ] 1.1 Add the API as stubs: `WORKFLOW_DIR`, `CONFIG_FILE` and `find_old_config` in `src/specworks/core/config.py`; `load_config` without `dir` (REQ-PROJ-001, REQ-PROJ-021); verify `gate design` passes
+- [x] 1.1 Add the API as stubs: `WORKFLOW_DIR`, `CONFIG_FILE` and `find_old_config` in `src/specworks/core/config.py`; `load_config` without `dir` (REQ-PROJ-001, REQ-PROJ-021); verify `gate design` passes
 - [ ] 1.2 [test] Move the sample projects in `tests/helpers.py` and `tests/samples.py` to `.specworks/config.yml` + `.specworks/changes/`, and update the tests that name `spec.yml`, `spec/changes` or `<dir>` paths (REQ-PROJ-001, REQ-PROJ-020); delete the tests of the dropped AC-PROJ-001.3, AC-PROJ-006.3, AC-PROJ-009.2 and AC-CLI-003.4; verify the suite runs
 - [ ] 1.3 [test] Tests for AC-PROJ-001.1, .2, .4, .5, .6 (finding `.specworks/config.yml`) and AC-PROJ-020.1-.3, AC-PROJ-010.1-.4 on the new paths (REQ-PROJ-001, REQ-PROJ-010, REQ-PROJ-020); verify the new ones fail before 1.6
 - [ ] 1.4 [test] Tests for AC-PROJ-002.4 (the `dir` key message), AC-PROJ-006.1, .2, .4-.9 on the new layout, AC-PROJ-009.1 and .3 (REQ-PROJ-002, REQ-PROJ-006, REQ-PROJ-009); verify the changed ones fail before 1.6

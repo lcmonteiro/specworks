@@ -70,11 +70,11 @@ Agreed with the user
   removed (REQ-PROJ-001, REQ-PROJ-009)
 - `src/specworks/core/config.py`: `Config.dir: str = WORKFLOW_DIR` (extended:
   always `.specworks`); `Config.config_path -> Path` is
-  `root/.specworks/config.yml`; `changes_dir`, `archive_dir` unchanged in
+  root/.specworks/config.yml; `changes_dir`, `archive_dir` unchanged in
   shape, now `.specworks/changes/active` and `.specworks/changes/archive`
   (REQ-PROJ-001, REQ-PROJ-010, REQ-PROJ-020)
 - `src/specworks/core/config.py`: `find_config(directory: Path) -> Path | None`
-  (extended): `directory/.specworks/config.yml` when it holds the marker, else
+  (extended): directory/.specworks/config.yml when it holds the marker, else
   None; no longer raises the "several specworks configs" `ConfigError`
   (REQ-PROJ-001)
 - `src/specworks/core/config.py`: `find_old_config(start: Path | None = None) -> Path | None`
@@ -85,12 +85,12 @@ Agreed with the user
   `<path>: specworks keeps its config in .specworks/config.yml; move <name> to .specworks/config.yml and <stem>/ to .specworks/`,
   prefixed `module '<module>': ` for a module (REQ-PROJ-021)
 - `src/specworks/core/config.py`: `find_root(start: Path | None = None) -> Path | None`
-  (extended): when no folder holds `.specworks/config.yml` but
+  (extended): when no folder holds .specworks/config.yml but
   `find_old_config` finds one, raises `old_layout_error(path)`; None only
   when neither exists (REQ-PROJ-001, REQ-PROJ-021)
 - `src/specworks/core/config.py`: `load_config(root: Path) -> Config`
   (**BREAKING**, internal callers only: `dir` argument removed); reads
-  `root/.specworks/config.yml`; raises `ConfigError` when it is missing or
+  root/.specworks/config.yml; raises `ConfigError` when it is missing or
   has no marker; the `dir:` key error says
   `'dir' is no longer a setting; the workflow folder is always .specworks/. Remove it.`
   (REQ-PROJ-001, REQ-PROJ-002)
@@ -98,19 +98,19 @@ Agreed with the user
   (REQ-PROJ-009)
 - `src/specworks/core/config_file.py`: `write_default_config(root: Path, diagram_theme: str | None = None) -> Path`
   (**BREAKING**, internal: `dir` argument removed); writes
-  `root/.specworks/config.yml`, creating `.specworks/` (REQ-PROJ-009)
+  root/.specworks/config.yml, creating `.specworks/` (REQ-PROJ-009)
 - `src/specworks/core/workspace.py`: `load_module_config(root: Path, name: str) -> Config | None`
   (**BREAKING**, internal: `workspace_dir` argument and the file-name
   "rename" error removed); raises `old_layout_error(path, name)` when the
-  folder has an old-style config and no `.specworks/config.yml`
+  folder has an old-style config and no .specworks/config.yml
   (REQ-PROJ-006, REQ-PROJ-021)
 - `src/specworks/cli/project.py`: `ensure_module_config(root: Path, name: str) -> tuple[Config, bool]`
   (internal: `workspace_dir` removed) (REQ-CLI-003)
 - `src/specworks/cli/project.py`: `specworks init [PATH] [--name] [--diagram-theme] [--no-link] [--tools] [--no-skills]`
   (**BREAKING**: `--dir` removed, so `init --dir spec` fails as an unknown
-  option); help text names `.specworks/config.yml` (REQ-CLI-003)
+  option); help text names .specworks/config.yml (REQ-CLI-003)
 - `src/specworks/cli/output.py`: `workspace(as_json)`: the "no project"
-  message names `.specworks/config.yml` (`"root": null`, exit 1 unchanged)
+  message names .specworks/config.yml (`"root": null`, exit 1 unchanged)
   (REQ-PROJ-001)
 
 Tests reach all of this through the CLI and `tests/helpers.py` /

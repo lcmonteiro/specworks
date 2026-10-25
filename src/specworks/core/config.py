@@ -25,6 +25,8 @@ CONFIG_EXT = ".yml"
 CONFIG_VERSION = 1
 MARKER_RE = re.compile(r"^specworks:[ \t]*\d+[ \t]*(#.*)?$", re.MULTILINE)
 DEFAULT_DIR = "specworks"
+WORKFLOW_DIR = ".specworks"  # the fixed workflow folder of every project and module
+CONFIG_FILE = "config.yml"  # the config's name inside WORKFLOW_DIR
 DEFAULT_DOCS_DIR = "docs"
 MAX_CONTEXT_BYTES = 50 * 1024
 CONFIG_KEYS = ("specworks", "context", "docs_dir", "capabilities", "modules", "test_globs", "source_globs", "commands", "diagrams")
@@ -199,6 +201,24 @@ def find_config(directory: Path) -> Path | None:
         names = ", ".join(p.name for p in found)
         raise ConfigError(f"{directory} has several specworks configs ({names}); keep only one")
     return found[0] if found else None
+
+
+def find_old_config(start: Path | None = None) -> Path | None:
+    """The nearest old-style config (a ``*.yml`` with the marker directly in a folder) in ``start`` or its parents.
+
+    Implements REQ-PROJ-021.
+    """
+    raise NotImplementedError
+
+
+def old_layout_error(path: Path, module: str | None = None) -> ConfigError:
+    """The error for an old-style config at ``path``, naming the move to ``.specworks/``.
+
+    The message is ``<path>: specworks keeps its config in .specworks/config.yml; move <name> to
+    .specworks/config.yml and <stem>/ to .specworks/``, prefixed ``module '<module>': `` for a module.
+    Implements REQ-PROJ-021.
+    """
+    raise NotImplementedError
 
 
 # @req REQ-PROJ-001
