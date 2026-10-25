@@ -199,7 +199,9 @@ an old-style config (a `*.yml` holding a `specworks: <n>` line), the system
 SHALL fail with an error naming that file and the move to make
 (`<dir>.yml` to `.specworks/config.yml`, `<dir>/` to `.specworks/`). A module
 listed by its parent whose folder has an old-style config and no
-`.specworks/config.yml` SHALL fail the same way. The system SHALL move nothing.
+`.specworks/config.yml` SHALL fail the same way, and so SHALL `init` in a folder
+that holds an old-style config and no `.specworks/config.yml`. The system SHALL
+move nothing.
 
 #### Scenario: AC-PROJ-021.1 An old project
 
@@ -218,3 +220,9 @@ listed by its parent whose folder has an old-style config and no
 - **GIVEN** a folder holding both `.specworks/config.yml` and an old `spec.yml`
 - **WHEN** the project is looked up
 - **THEN** `.specworks/config.yml` is used and the old file is ignored
+
+#### Scenario: AC-PROJ-021.4 An old project is not re-initialised
+
+- **GIVEN** a folder holding `spec.yml` with `specworks: 1` and no `.specworks/config.yml`
+- **WHEN** `init` runs there, with or without `--no-link`
+- **THEN** it fails with the old-layout error naming `spec.yml` and the move, and writes nothing (no `.specworks/`, no skills, no link)

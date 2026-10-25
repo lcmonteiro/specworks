@@ -20,7 +20,8 @@ break.
   config (a `*.yml` with the `specworks:` line), the CLI fails with an error
   naming the move (`move spec.yml to .specworks/config.yml and spec/ to
   .specworks/`). A module listed by its parent that still has the old layout
-  fails the same way. Nothing is moved automatically.
+  fails the same way, and so does `init` in a folder that still has the old
+  layout. Nothing is moved automatically.
 - **BREAKING** `specworks init` loses `--dir`; it always writes
   `.specworks/config.yml`. The rule that a module uses the workspace's config
   file name, and its "rename" error, go away, and so do the checks on a
@@ -43,7 +44,9 @@ break.
   key message), REQ-PROJ-006 (modules: no shared file name), REQ-PROJ-009
   (default config), REQ-PROJ-010 and REQ-PROJ-020 (where changes live), and
   a new REQ-PROJ-021 (the old layout).
-- `cli`: REQ-CLI-003 (init without `--dir`).
+- `cli`: REQ-CLI-003 (init without `--dir`), REQ-CLI-005 (`module add`
+  creates the module's `.specworks/config.yml`; an old-style config is refused
+  with the old-layout error).
 
 ## Impact
 
