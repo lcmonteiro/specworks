@@ -41,9 +41,9 @@ def fake_d2(tmp_path_factory, monkeypatch):
 def change(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     init_repo(tmp_path)
-    assert runner.invoke(app, ["init", "--dir", "spec", "--no-skills"]).exit_code == 0
+    assert runner.invoke(app, ["init", "--no-skills"]).exit_code == 0
     run_json("new", CHANGE, "--no-branch")
-    path = tmp_path / "spec/changes/active" / CHANGE
+    path = tmp_path / ".specworks/changes/active" / CHANGE
     (path / "diagrams").mkdir()
     (path / "diagrams/reset-flow.d2").write_text(FLOW)
     (path / "design.md").write_text("# Design\n\n![Reset flow (REQ-AUTH-003)](diagrams/reset-flow.svg)\n")
@@ -75,7 +75,7 @@ def test_editing_the_source_makes_the_svg_stale(change, fake_d2):
 # @ac AC-INTEG-002.2
 def test_changing_the_theme_makes_the_svg_stale(change, fake_d2):
     run_json("diagrams", "--change", CHANGE)
-    cfg = change.parents[3] / "spec.yml"
+    cfg = change.parents[3] / ".specworks/config.yml"
     cfg.write_text(cfg.read_text().replace("sketch: false", "sketch: true"))
     code, data = run_json("diagrams", "--change", CHANGE, "--check")
     assert data["diagrams"][0]["status"] == "stale"
@@ -173,7 +173,7 @@ def test_validate_reports_diagram_problems(change, fake_d2):
     [("diagrams:\n  layout: circo\n", "elk or dagre"), ("diagrams:\n  colour: red\n", "unknown keys"), ("diagrams: dark\n", "mapping")],
 )
 def test_invalid_diagram_settings(change, block, message):
-    cfg = change.parents[3] / "spec.yml"
+    cfg = change.parents[3] / ".specworks/config.yml"
     text = cfg.read_text()
     cfg.write_text(text[: text.index("diagrams:")] + block)
     code, data = run_json("context")
@@ -189,7 +189,7 @@ def test_real_d2_render(change):
 
 
 def set_diagrams(change, block):
-    cfg = change.parents[3] / "spec.yml"
+    cfg = change.parents[3] / ".specworks/config.yml"
     text = cfg.read_text()
     cfg.write_text(text[: text.index("\ndiagrams:\n") + 1] + block)
 
@@ -271,7 +271,7 @@ def test_init_sets_the_diagram_theme(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     init_repo(tmp_path)
     assert runner.invoke(app, ["init", "--no-skills", "--diagram-theme", "Cool Classics"]).exit_code == 0
-    assert "  theme: cool-classics\n" in (tmp_path / "specworks.yml").read_text()
+    assert "  theme: cool-classics\n" in (tmp_path / ".specworks/config.yml").read_text()
     code, data = run_json("diagrams", "--themes")
     assert data["theme"] == "cool-classics"
 
@@ -282,7 +282,7 @@ def test_init_rejects_unknown_diagram_theme(tmp_path, monkeypatch):
     init_repo(tmp_path)
     result = runner.invoke(app, ["init", "--no-skills", "--diagram-theme", "rainbow"])
     assert result.exit_code == 1 and "unknown theme" in result.output
-    assert not list(tmp_path.glob("*.yml"))
+    assert not list(tmp_path.glob("*.yml")) and not (tmp_path / ".specworks/config.yml").exists()
 
 
 # @ac AC-INTEG-003.4

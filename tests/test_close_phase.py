@@ -17,7 +17,7 @@ from specworks.specs.merge import MergeError, apply_delta, close_change, plan_me
 from specworks.specs.specfile import parse_spec
 
 runner = CliRunner()
-CHANGE_DIR = f"spec/changes/active/{REF}"
+CHANGE_DIR = f".specworks/changes/active/{REF}"
 
 
 @pytest.fixture
@@ -71,7 +71,7 @@ def test_close_merges_indexes_and_archives(ready):
     code, data = run_json("close", "--change", REF, "--base", "main")
     assert code == 0, data
     today = date.today().isoformat()
-    assert data["archivedTo"] == f"spec/changes/archive/{today}-{REF}"
+    assert data["archivedTo"] == f".specworks/changes/archive/{today}-{REF}"
 
     living = parse_spec((ready / "src/auth/docs/spec.md").read_text())
     assert [(r.id, r.title) for r in living.requirements] == [
@@ -158,7 +158,7 @@ def test_new_capability_must_be_registered_first(ready):
 
     code, data = run_json("capability", "add", "audit-log", "--path", "src/audit", "--description", "Security audit trail")
     assert code == 0 and data["ref"] == "audit-log" and data["new"] is False and data["prefix"] == "AUDIT-LOG"
-    assert "  audit-log:\n    path: src/audit\n    description: \"Security audit trail\"\n" in (ready / "spec.yml").read_text()
+    assert "  audit-log:\n    path: src/audit\n    description: \"Security audit trail\"\n" in (ready / ".specworks/config.yml").read_text()
 
     code, data = run_json("close", "--change", REF, "--base", "main")
     assert code == 0, data
@@ -181,7 +181,7 @@ def test_capability_add_validates(ready):
 def test_capability_add_never_drops_existing_capabilities(project):
     # A flow mapping is not a block the text edit can extend; appending a second
     # `capabilities:` would make YAML keep only the new entry.
-    cfg = project / "spec.yml"
+    cfg = project / ".specworks/config.yml"
     text = cfg.read_text()
     start = text.index("capabilities:\n  user-auth:")
     end = text.index("\n\n", start)
@@ -200,7 +200,7 @@ def test_capability_add_in_a_module(ready, monkeypatch):
     code, data = run_json("capability", "add", "invoices", "--path", "src/invoices", "--module", "billing", "--prefix", "INV")
     assert code == 0 and data["ref"] == "billing:invoices" and data["codePath"] == "services/billing/src/invoices"
     assert data["prefix"] == "INV" and data["nextId"] == "REQ-INV-001"
-    assert "invoices:" in (ready / "services/billing/spec.yml").read_text()
+    assert "invoices:" in (ready / "services/billing/.specworks/config.yml").read_text()
 
 
 DELTA_MODIFY_MISSING = "## MODIFIED Requirements\n\n### Requirement: REQ-AUTH-009 Ghost\nThe system SHALL x.\n"
@@ -303,7 +303,7 @@ def test_diagrams_in_a_docs_folder(ready, monkeypatch):
 # @ac AC-SPECS-013.4
 def test_a_taken_archive_folder_fails_before_anything_is_written(ready):
     # e.g. a change with the same name was already closed today
-    (ready / f"spec/changes/archive/{date.today().isoformat()}-{REF}").mkdir(parents=True)
+    (ready / f".specworks/changes/archive/{date.today().isoformat()}-{REF}").mkdir(parents=True)
     before = snapshot(ready)
     for extra in (["--dry-run"], []):
         code, data = run_json("close", "--change", REF, "--base", "main", *extra)
@@ -336,7 +336,7 @@ def test_a_failed_archive_puts_the_living_docs_back(ready, monkeypatch):
 def test_a_removed_id_is_never_handed_out_again(project):
     shutil.rmtree(project / CHANGE_DIR)  # its delta takes REQ-AUTH-003; only the living spec counts here
     run_json("new", "drop-lockout", "--no-branch")
-    delta = project / "spec/changes/active/drop-lockout/specs/user-auth"
+    delta = project / ".specworks/changes/active/drop-lockout/specs/user-auth"
     delta.mkdir(parents=True)
     (delta / "spec.md").write_text("## REMOVED Requirements\n\n### Requirement: REQ-AUTH-002 Lockout\n**Reason**: x\n**Migration**: y\n")
     ws = load_workspace(project)
@@ -349,7 +349,7 @@ def test_a_removed_id_is_never_handed_out_again(project):
 
 # @ac AC-CLI-005.4
 def test_capability_add_rejects_a_prefix_already_in_use(ready):
-    cfg = ready / "spec.yml"
+    cfg = ready / ".specworks/config.yml"
     before = cfg.read_text()
     code, data = run_json("capability", "add", "login", "--path", "src/login", "--prefix", "AUTH")
     assert code == 1 and "AUTH is already used by user-auth" in data["error"]

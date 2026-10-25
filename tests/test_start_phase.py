@@ -47,7 +47,7 @@ def test_start_moves_the_change_when_the_gates_pass(project):
 # @ac AC-FLOW-014.3
 def test_a_failing_gate_leaves_the_phase_unchanged(project):
     start("specify")
-    delta = project / "spec/changes/active" / REF / "specs/user-auth/spec.md"
+    delta = project / ".specworks/changes/active" / REF / "specs/user-auth/spec.md"
     delta.write_text(delta.read_text().replace("SHALL", "should"))
     code, data = start("design")
     assert code == 1 and data["started"] is False and data["gates"][-1]["passed"] is False
@@ -64,7 +64,7 @@ def test_skipping_ahead_stops_at_the_first_failing_gate(project):
 
 # @ac AC-FLOW-014.1, AC-FLOW-014.3
 def test_going_back_for_rework_needs_only_the_gate_before(repo):
-    (repo / "spec/changes/active" / REF / "design.md").write_text("# Design\n\n## Interfaces\n\nNone.\n")
+    (repo / ".specworks/changes/active" / REF / "design.md").write_text("# Design\n\n## Interfaces\n\nNone.\n")
     run_json("phase", "review", "--change", REF)
     code, data = start("implement", "--no-run")
     assert code == 0 and [g["gate"] for g in data["gates"]] == ["design"] and phase_now() == "implement", data

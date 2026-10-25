@@ -17,7 +17,7 @@ from specworks.cli import app
 
 runner = CliRunner()
 REF = "add-slugify"
-C = f"spec/changes/active/{REF}"
+C = f".specworks/changes/active/{REF}"
 
 PROPOSAL = """\
 # Proposal: add-slugify
@@ -153,8 +153,8 @@ def test_walkthrough(tmp_path, monkeypatch):
 
     # Set up: config, test command, the capability, a baseline commit.
     git("init", "-q", "-b", "main")
-    sw("init", "--dir", "spec", "--no-skills")
-    cfg = tmp_path / "spec.yml"
+    sw("init", "--no-skills")
+    cfg = tmp_path / ".specworks/config.yml"
     # pytest's own pythonpath option, not a PYTHONPATH=src prefix, which Windows' shell cannot run.
     test_command = f'"{sys.executable}" -m pytest -q -p no:cacheprovider --rootdir . -o pythonpath=src tests'
     cfg.write_text(re.sub(r"(?m)^  test:$", lambda _: f"  test: {json.dumps(test_command)}", cfg.read_text(encoding="utf-8"), count=1), encoding="utf-8")
@@ -203,7 +203,7 @@ def test_walkthrough(tmp_path, monkeypatch):
     assert "PASS" in sw("validate", "--change", REF, "--base", "main")
     assert "(new): ADDED REQ-SLUG-001" in sw("close", "--change", REF, "--base", "main", "--dry-run")
     closed = sw("close", "--change", REF, "--base", "main")
-    assert f"archived -> spec/changes/archive/{date.today().isoformat()}-{REF}" in closed
+    assert f"archived -> .specworks/changes/archive/{date.today().isoformat()}-{REF}" in closed
     living = (tmp_path / "src/textkit/docs/spec.md").read_text(encoding="utf-8")
     assert "### Requirement: REQ-SLUG-001 Slugify a title" in living and "## Purpose\n\nTurn titles into URL slugs." in living
     assert "| REQ-SLUG-001 | Slugify a title | AC-SLUG-001.1, AC-SLUG-001.2 |" in (tmp_path / "src/textkit/docs/requirements.md").read_text(encoding="utf-8")
