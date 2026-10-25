@@ -1,12 +1,13 @@
 name: move-config-into-spec-folder
 created: '2026-10-25T08:45:12'
-phase: specify
+phase: design
 specified:
   REQ-CLI-003: ecf00cc8066f
+  REQ-CLI-005: 73b8e7f9799c
   REQ-PROJ-001: 058e963e8e3c
   REQ-PROJ-002: 053ffc650414
   REQ-PROJ-006: 82eef03a621e
   REQ-PROJ-009: 04590e8b45eb
   REQ-PROJ-010: b13db0acc37d
   REQ-PROJ-020: a35c003657b7
-  REQ-PROJ-021: a01ec4ffc104
+  REQ-PROJ-021: c33ddfede800

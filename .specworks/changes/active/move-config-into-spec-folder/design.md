@@ -111,10 +111,17 @@ Agreed with the user
   folder has an old-style config and no .specworks/config.yml
   (REQ-PROJ-006, REQ-PROJ-021)
 - `src/specworks/cli/project.py`: `ensure_module_config(root: Path, name: str) -> tuple[Config, bool]`
-  (internal: `workspace_dir` removed) (REQ-CLI-003)
+  (internal: `workspace_dir` removed); raises `old_layout_error(path, name)`
+  through `load_module_config` before writing, so `module add` refuses an
+  old-style folder (REQ-CLI-003, REQ-CLI-005)
 - `src/specworks/cli/project.py`: `specworks init [PATH] [--name] [--diagram-theme] [--no-link] [--tools] [--no-skills]`
   (**BREAKING**: `--dir` removed, so `init --dir spec` fails as an unknown
-  option); help text names .specworks/config.yml (REQ-CLI-003)
+  option); help text names .specworks/config.yml (REQ-CLI-003). With no
+  parent project (or `--no-link`), a folder with an old-style config
+  (`old_config_in(root)`) and no .specworks/config.yml fails with
+  `old_layout_error(path)` (exit 1, `error: ...`) before anything is written:
+  no `.specworks/`, no skills, no link (review R1, REQ-PROJ-021). No new
+  function: `old_config_in` and `old_layout_error` already exist
 - `src/specworks/cli/output.py`: `workspace(as_json)`: the "no project"
   message names .specworks/config.yml (`"root": null`, exit 1 unchanged)
   (REQ-PROJ-001)
