@@ -9,7 +9,7 @@ import typer
 
 from .. import __version__
 from ..core.changes import archived_as, list_archived
-from ..core.config import Config, ConfigError, find_config, load_config
+from ..core.config import Config, ConfigError, find_config, load_config, old_config_in, old_layout_error
 from ..core.config_file import add_capability_entry, add_module_entry, write_default_config
 from ..core.git import require_repo
 from ..core.validators import validate_relative
@@ -114,6 +114,8 @@ def init(
         cfg, created = ensure_module_config(root, name or default_module_name(root))
     else:
         existing = find_config(root)
+        if existing is None and (old := old_config_in(root)) is not None:  # never a second, empty project beside an old one  @req REQ-PROJ-021
+            raise old_layout_error(old)
         if existing is None:
             write_default_config(root, diagram_theme)
         cfg, created = load_config(root), existing is None
