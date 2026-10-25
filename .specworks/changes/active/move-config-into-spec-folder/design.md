@@ -47,6 +47,12 @@ directory and its parents; the nearest one makes the lookup fail with a
 the module. A folder with both layouts uses the new one. Serves:
 REQ-PROJ-021.
 
+`init` with no parent project checks the target folder itself for an
+old-style config before writing anything and fails with the same error, so
+it never creates a second, empty `.specworks/` beside an old project (review
+R1, AC-PROJ-021.4). `module add` already fails through `load_module_config`.
+No new API.
+
 ### init
 
 `--dir` is removed; `init` writes `.specworks/config.yml` from the template,
