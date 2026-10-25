@@ -63,7 +63,7 @@ half changes only tests, which build their sample projects through
 
 ## Interfaces
 
-Proposed: waiting for the user's agreement
+Agreed with the user
 
 - `src/specworks/core/config.py`: `WORKFLOW_DIR = ".specworks"`,
   `CONFIG_FILE = "config.yml"` (new); `DEFAULT_DIR` and `config_name(dir)`
@@ -116,7 +116,7 @@ Proposed: waiting for the user's agreement
 Tests reach all of this through the CLI and `tests/helpers.py` /
 `tests/samples.py`; no test imports these functions directly today.
 
-Decision to confirm: the old-layout error is raised by `find_root`, so every
+Agreed with the user: the old-layout error is raised by `find_root`, so every
 lookup (every command, and `init`'s look for a parent project) fails with it,
 instead of only the CLI's "no project" path.
 
