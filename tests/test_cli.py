@@ -363,7 +363,8 @@ def test_init_has_no_dir_option(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     init_repo(tmp_path)
     result = runner.invoke(app, ["init", "--dir", "spec", "--no-skills"])
-    assert result.exit_code == 2 and "No such option: --dir" in result.output
+    plain = re.sub(r"\x1b\[[0-9;]*m", "", result.output)  # CI's terminal colours split `--dir`
+    assert result.exit_code == 2 and "No such option: --dir" in plain
     assert sorted(p.name for p in tmp_path.iterdir()) == [".git"]  # no config, no folder, no skills
 
 
