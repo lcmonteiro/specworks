@@ -93,7 +93,7 @@ their questions, and write the answers to disk.
   | Question | Where the answer goes |
   |---|---|
   | design: the API | design.md `## Interfaces`: the subagent writes it with a line `Proposed: waiting for the user's agreement`; replace that line with `Agreed with the user` (and the user's changes) |
-  | test, code: the test command | `spec.yml` `commands:` (`test: <command>`) |
+  | test, code: the test command | `.specworks/config.yml` `commands:` (`test: <command>`) |
   | code: an unclear task, an existing test against the spec, new work | the Decision in design.md, or a new task in tasks.md |
   | review: each finding | the finding's `**Decision**:` line in review.md |
 

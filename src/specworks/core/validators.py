@@ -7,7 +7,6 @@ from pathlib import PurePosixPath
 
 from .errors import ConfigError
 
-DIR_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]*$")
 KEBAB_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")  # module, capability and change names
 PREFIX_RE = re.compile(r"^[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)*$")
 
@@ -21,16 +20,6 @@ def validate_relative(value: object, what: str) -> str:
     if path.is_absolute() or ".." in path.parts or str(path) == ".":
         raise ConfigError(f"{what} must be a relative folder inside the project, got '{value}'")
     return str(path)
-
-
-# @req REQ-PROJ-009
-def validate_dir(value: object) -> str:
-    """The workflow folder is a single folder name; it also names the config file (<dir>.yml)."""
-    if not isinstance(value, str) or not DIR_RE.match(value.strip()):
-        raise ConfigError(
-            f"folder name must be a single name of letters, digits, '-' or '_' (e.g. spec, docs, context), got '{value}'"
-        )
-    return value.strip()
 
 
 # @req REQ-PROJ-004, REQ-PROJ-010

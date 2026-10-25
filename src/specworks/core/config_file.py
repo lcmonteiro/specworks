@@ -7,15 +7,15 @@ import json
 import re
 from pathlib import Path
 
-from .config import Config, ConfigError, config_name, load_config, theme_id, theme_name
+from .config import CONFIG_FILE, WORKFLOW_DIR, Config, ConfigError, load_config, theme_id, theme_name
 from .files import read_text
-from .validators import validate_capability_name, validate_dir, validate_module_name, validate_prefix, validate_relative
+from .validators import validate_capability_name, validate_module_name, validate_prefix, validate_relative
 
 DEFAULT_CONFIG = """\
 specworks: 1
-# specworks configuration. The file name sets the workflow folder:
-# spec.yml -> spec/changes/active/ (in-flight changes) and spec/changes/archive/.
-# Modules (sub-projects) use the same file and folder name as the top level.
+# specworks configuration. It always lives in .specworks/config.yml, and
+# .specworks/ is the workflow folder: .specworks/changes/active/ (in-flight
+# changes) and .specworks/changes/archive/. Every module has the same layout.
 #
 # context: free text the agent reads before every phase (stack, conventions,
 # constraints). Keep it short; it is guidance, not documentation.
@@ -36,7 +36,7 @@ docs_dir: docs
 #     prefix: AUTH          # optional: REQ-AUTH-001 instead of REQ-USER-AUTH-001
 capabilities: {}
 
-# Modules: sub-projects with their own config (same file name as this one),
+# Modules: sub-projects with their own config (their own .specworks/config.yml),
 # like git submodules. Each one is a complete project (own context,
 # capabilities and changes) linked to this one. Add them with `specworks module add <path>`.
 # modules:
@@ -44,7 +44,7 @@ capabilities: {}
 modules: {}
 
 # Globs used by `specworks trace` to find tests and source files, relative to
-# this file's folder; they apply to this project's files, not to its modules'.
+# the project folder (the one holding .specworks/); they apply to this project's files, not to its modules'.
 # Empty means "scan everything that is not in the workflow folder", except
 # documentation (.md, .rst, .txt, ...): a tag quoted in a doc is not code or a test.
 # In a glob * and ? stay within one folder and ** spans any number of folders,
@@ -75,12 +75,13 @@ diagrams:
 
 
 # @req REQ-PROJ-009
-def write_default_config(root: Path, dir: str, diagram_theme: str | None = None) -> Path:
-    path = root / config_name(validate_dir(dir))
+def write_default_config(root: Path, diagram_theme: str | None = None) -> Path:
+    path = root / WORKFLOW_DIR / CONFIG_FILE
     text = DEFAULT_CONFIG
     if diagram_theme is not None:
         theme = theme_name(theme_id(diagram_theme, "--diagram-theme"))
         text = text.replace("  theme: neutral-default\n", f"  theme: {theme}\n", 1)
+    path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(text, encoding="utf-8")
     return path
 

@@ -5,9 +5,8 @@ Like git submodules, the parent lists each module explicitly in its config
 own config. Commands act on the *current* module, the one
 nearest to the working directory, but see the whole tree:
 
-- the workflow folder name is set by the top level's config file name
-  (``spec.yml`` -> ``spec/``) and shared by every module: each module has a
-  ``spec.yml`` and a ``spec/`` folder too;
+- every module, like the top level, keeps its config in
+  ``.specworks/config.yml`` and its changes in ``.specworks/changes/``;
 - context is inherited: top-level context first, then each module down to the
   current one;
 - capabilities and changes of other modules are addressed as ``module:name``,
@@ -22,7 +21,7 @@ from pathlib import Path
 
 import yaml
 
-from .config import CONFIG_EXT, Capability, Config, ConfigError, config_name, find_config, find_root, is_config_file, load_config
+from .config import Capability, Config, ConfigError, find_config, find_root, load_config, old_config_in, old_layout_error
 from .errors import SpecworksError
 
 SEP = ":"
@@ -161,33 +160,26 @@ def _links_to(parent: Config, child_root: Path) -> str | None:
 
 
 def _may_link(directory: Path, child_root: Path) -> bool:
-    """Whether the (invalid) configs in ``directory`` may list ``child_root`` as a module; True when unreadable."""
-    for path in directory.glob(f"*{CONFIG_EXT}"):
-        if not is_config_file(path):
-            continue
-        try:
-            raw = yaml.safe_load(path.read_text(encoding="utf-8"))
-        except (OSError, UnicodeDecodeError, yaml.YAMLError):
-            return True
-        modules = raw.get("modules") if isinstance(raw, dict) else None
-        if isinstance(modules, dict) and any(isinstance(p, str) and (directory / p).resolve() == child_root for p in modules.values()):
-            return True
-    return False
+    """Whether the (invalid) config of ``directory`` may list ``child_root`` as a module; True when unreadable."""
+    path = find_config(directory)
+    if path is None:
+        return False
+    try:
+        raw = yaml.safe_load(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, yaml.YAMLError):
+        return True
+    modules = raw.get("modules") if isinstance(raw, dict) else None
+    return isinstance(modules, dict) and any(isinstance(p, str) and (directory / p).resolve() == child_root for p in modules.values())
 
 
-# @req REQ-PROJ-006
-def load_module_config(root: Path, name: str, workspace_dir: str) -> Config | None:
-    """Config of a module, which must use the workspace's file name (<dir>.yml); None if it has none."""
-    found = find_config(root)
-    if found is None:
-        return None
-    if found.name != config_name(workspace_dir):
-        raise ConfigError(
-            f"module '{name}' uses {found.name} ({found.stem}/), but the workspace uses "
-            f"{config_name(workspace_dir)} ({workspace_dir}/); rename {found} to {config_name(workspace_dir)} "
-            f"and its {found.stem}/ folder to {workspace_dir}/"
-        )
-    return load_config(root, workspace_dir)
+# @req REQ-PROJ-006, REQ-PROJ-021
+def load_module_config(root: Path, name: str) -> Config | None:
+    """Config of a module (its .specworks/config.yml); None if it has none, an error if it has the old layout."""
+    if find_config(root) is not None:
+        return load_config(root)
+    if (old := old_config_in(root)) is not None:
+        raise old_layout_error(old, name)
+    return None
 
 
 # @req REQ-PROJ-006
@@ -210,7 +202,7 @@ def _load_tree(config: Config, name: str, parent: Module | None, missing: list[M
                 f"module '{full_name}' ({child_path}) leads outside the workspace, to {child_root}; "
                 "a module's folder must be inside the top level's"
             )
-        child_config = load_module_config(child_root, full_name, config.dir)
+        child_config = load_module_config(child_root, full_name)
         if child_config is None:
             missing.append(MissingModule(name=full_name, path=child_root))
             continue

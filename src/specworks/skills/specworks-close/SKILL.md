@@ -102,7 +102,7 @@ here; if something is wrong, go back to the phase that owns it.
    place by ID, REMOVED deleted, everything else kept), regenerates
    `requirements.md` (index of requirements and criteria, plus a History line
    for this change), sets the phase to `done` and moves the change to
-   `<dir>/changes/archive/<date>-<name>/`.
+   `.specworks/changes/archive/<date>-<name>/`.
 
 <!-- specworks:include committing -->
 

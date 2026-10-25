@@ -4,7 +4,7 @@ Gates and validate run the same commands again and again on the same code (each
 skill checks the previous phase's gate, then its own). ``cached_run`` reuses the
 result of a run on an identical working tree: same command and folder, same
 ``HEAD``, same uncommitted and untracked files. The workflow folders
-(``<dir>/``: specs, tasks, review.md) are left out, since writing them does not
+(``.specworks/``: specs, tasks, review.md) are left out, since writing them does not
 change what the commands see. Every real run is recorded, ``specworks run``'s too,
 so the latest run on a tree is the one reused: after fixing something the
 fingerprint cannot see (a git-ignored file, a service), ``specworks run`` updates

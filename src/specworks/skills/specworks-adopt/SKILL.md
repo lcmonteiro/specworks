@@ -47,15 +47,17 @@ through `init`, the agent skills).
    specworks context --json
    ```
 
-   - `"root": null`: not set up yet. Look for an existing workflow-like
-     folder (`spec/`, `docs/`, `openspec/`) and ask the user for the folder
-     name (`--dir`); it also names the config file and cannot change
-     without renaming both. Offer it as options: `specworks` (the default,
-     recommended unless the project already uses that name), and any
-     free name the project suggests (`spec`, `docs/specs`). Then:
+   - `"root": null`: not set up yet. Run:
      ```bash
-     specworks init --dir <dir>
+     specworks init
      ```
+     It writes `.specworks/config.yml` and `.specworks/changes/`, always
+     under that name.
+   - An error naming an old-style config (`spec.yml` with `spec/`): the
+     project predates the fixed layout. Show the move the error names
+     (`<dir>.yml` to `.specworks/config.yml`, `<dir>/changes/` to
+     `.specworks/changes/`) for the user to make, and ask "Moved? (yes/no)";
+     on yes, run `specworks context --json` again.
    - Already set up: say so, and continue with whatever is still missing
      (empty `commands`, empty `context`, no capabilities). Never overwrite
      what the user wrote.
@@ -77,8 +79,8 @@ through `init`, the agent skills).
    Propose `test`, and `lint` / `typecheck` / `build` when the project has
    them, in a short table with where each one came from, and ask "Use these
    commands? (yes/no)" (on no, apply the user's edits). Once confirmed, write
-   them under `commands:` in the config (`<dir>.yml` in the module's folder,
-   `dir` in `specworks context --json`), then run each one:
+   them under `commands:` in the config (`.specworks/config.yml` in the
+   module's folder), then run each one:
    ```bash
    specworks run test
    specworks run lint
