@@ -19,14 +19,14 @@ INTERFACES = (
 
 
 def set_commands(root, **commands):
-    cfg = root / "spec.yml"
+    cfg = root / ".specworks/config.yml"
     text = cfg.read_text()
     block = "".join(f"  {key}: {json.dumps(value)}\n" for key, value in commands.items())
     cfg.write_text(re.sub(r"(?m)^commands:\n(  .*\n)*", lambda _: "commands:\n" + block, text, count=1))
 
 
 def write_design(root, body):
-    (root / "spec/changes/active" / REF / "design.md").write_text(INTERFACES.format(body=body))
+    (root / ".specworks/changes/active" / REF / "design.md").write_text(INTERFACES.format(body=body))
 
 
 def change(root):
@@ -119,7 +119,7 @@ def test_build_and_typecheck_run_when_configured(planned):
 # @ac AC-FLOW-003.1
 def test_invalid_specs_fail_the_gate(planned):
     write_design(planned, "None.")
-    delta = planned / "spec/changes/active" / REF / "specs/user-auth/spec.md"
+    delta = planned / ".specworks/changes/active" / REF / "specs/user-auth/spec.md"
     delta.write_text(delta.read_text().replace("SHALL", "should"))
     code, checks = gate()
     assert code == 1 and not checks["specs and tasks are valid (specworks check)"]["ok"]
@@ -185,7 +185,7 @@ def test_changed_test_files_without_tags_make_a_red_suite_a_warning(planned, mon
     ],
 )
 def test_interfaces_section_is_found_by_its_heading(planned, design, files):
-    (planned / "spec/changes/active" / REF / "design.md").write_text(f"# Design\n\n{design}")
+    (planned / ".specworks/changes/active" / REF / "design.md").write_text(f"# Design\n\n{design}")
     (planned / "src/auth/reset.py").write_text("def reset(): raise NotImplementedError\n")
     code, checks = gate()
     assert checks[SECTION]["ok"] is True
@@ -194,7 +194,7 @@ def test_interfaces_section_is_found_by_its_heading(planned, design, files):
 
 # @ac AC-FLOW-006.1
 def test_no_interfaces_heading_means_no_section(planned):
-    (planned / "spec/changes/active" / REF / "design.md").write_text("# Design\n\n## Interfaced systems\n\n- `src/auth/reset.py`\n")
+    (planned / ".specworks/changes/active" / REF / "design.md").write_text("# Design\n\n## Interfaced systems\n\n- `src/auth/reset.py`\n")
     code, checks = gate()
     assert checks[SECTION]["ok"] is False
 
@@ -203,7 +203,7 @@ def test_no_interfaces_heading_means_no_section(planned):
 def test_a_module_change_needs_its_interface_files_in_the_module(planned):
     assert run_json("module", "add", "services/billing")[0] == 0
     run_json("new", "add-invoices", "--module", "billing", "--no-branch")
-    design = planned / "services/billing/spec/changes/active/add-invoices/design.md"
+    design = planned / "services/billing/.specworks/changes/active/add-invoices/design.md"
     (planned / "src/invoices.py").write_text("def invoice(): ...\n")  # the top level's, not billing's
 
     def files_check(body):

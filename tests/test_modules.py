@@ -1,4 +1,5 @@
 import json
+import shutil
 
 import pytest
 from typer.testing import CliRunner
@@ -27,14 +28,14 @@ def workspace(tmp_path, monkeypatch):
     """Top-level project with module billing (services/billing) and nested module billing/tax."""
     monkeypatch.chdir(tmp_path)
     init_repo(tmp_path)
-    run("init", "--dir", "spec")
-    (tmp_path / "spec.yml").write_text(
-        (tmp_path / "spec.yml").read_text().replace("context: |\n", "context: |\n  Company-wide: Python 3.12\n")
+    run("init")
+    (tmp_path / ".specworks/config.yml").write_text(
+        (tmp_path / ".specworks/config.yml").read_text().replace("context: |\n", "context: |\n  Company-wide: Python 3.12\n")
     )
     run("module", "add", "services/billing")
     billing = tmp_path / "services/billing"
-    (billing / "spec.yml").write_text(
-        (billing / "spec.yml").read_text()
+    (billing / ".specworks/config.yml").write_text(
+        (billing / ".specworks/config.yml").read_text()
         .replace("context: |\n", "context: |\n  Billing: money is Decimal\n")
         .replace("capabilities: {}", "capabilities:\n  invoices:\n    path: src/invoices")
     )
@@ -46,17 +47,17 @@ def workspace(tmp_path, monkeypatch):
 
 # @ac AC-CLI-005.1
 def test_module_add_links_parent_and_creates_module(workspace):
-    assert "  billing: services/billing\n" in (workspace / "spec.yml").read_text()
-    assert "  tax: tax\n" in (workspace / "services/billing/spec.yml").read_text()
-    assert (workspace / "services/billing/spec/changes/active").is_dir()
-    assert (workspace / "services/billing/spec/changes/archive").is_dir()
-    assert (workspace / "services/billing/spec.yml").read_text().startswith("specworks: 1\n")
-    assert not (workspace / "services/billing/specworks.yml").exists()
+    assert "  billing: services/billing\n" in (workspace / ".specworks/config.yml").read_text()
+    assert "  tax: tax\n" in (workspace / "services/billing/.specworks/config.yml").read_text()
+    assert (workspace / "services/billing/.specworks/changes/active").is_dir()
+    assert (workspace / "services/billing/.specworks/changes/archive").is_dir()
+    assert (workspace / "services/billing/.specworks/config.yml").read_text().startswith("specworks: 1\n")
+    assert not list((workspace / "services/billing").glob("*.yml"))  # nothing at the module's root
 
 
 # @ac AC-PROJ-008.1
 def test_module_add_keeps_comments(workspace):
-    assert "# Modules: sub-projects" in (workspace / "spec.yml").read_text()
+    assert "# Modules: sub-projects" in (workspace / ".specworks/config.yml").read_text()
 
 
 # @ac AC-CLI-004.4
@@ -94,14 +95,14 @@ def test_new_goes_to_nearest_module(workspace, monkeypatch):
     (workspace / "services/billing/src").mkdir()
     monkeypatch.chdir(workspace / "services/billing/src")
     code, data = run_json("new", "add-refunds", "--no-branch")
-    assert data["path"] == "services/billing/spec/changes/active/add-refunds"
+    assert data["path"] == "services/billing/.specworks/changes/active/add-refunds"
     assert data["ref"] == "billing:add-refunds"
 
 
 # @ac AC-CLI-006.1
 def test_new_with_module_option(workspace):
     code, data = run_json("new", "add-vat", "--module", "billing/tax", "--no-branch")
-    assert data["path"] == "services/billing/tax/spec/changes/active/add-vat"
+    assert data["path"] == "services/billing/tax/.specworks/changes/active/add-vat"
     code, data = run_json("new", "x", "--module", "nope", "--no-branch")
     assert code == 1 and "unknown module" in data["error"]
 
@@ -145,14 +146,14 @@ def test_list_all_includes_every_module(workspace):
 def test_instructions_in_module_use_inherited_context(workspace):
     run_json("new", "add-refunds", "--module", "billing", "--no-branch")
     code, data = run_json("instructions", "refinement", "--change", "billing:add-refunds")
-    assert data["outputPath"] == "services/billing/spec/changes/active/add-refunds/refinement.md"
+    assert data["outputPath"] == "services/billing/.specworks/changes/active/add-refunds/refinement.md"
     assert "Company-wide" in data["context"] and "Billing" in data["context"]
 
 
 # @ac AC-INTEG-005.5, AC-CLI-003.2
 def test_init_in_subfolder_links_to_parent(workspace):
     run("init", "libs/auth", "--name", "auth")
-    assert "  auth: libs/auth\n" in (workspace / "spec.yml").read_text()
+    assert "  auth: libs/auth\n" in (workspace / ".specworks/config.yml").read_text()
     assert not (workspace / "libs/auth/.claude").exists()  # skills stay at the workspace root
     code, data = run_json("module", "list")
     assert "auth" in [m["name"] for m in data["modules"]]
@@ -161,14 +162,14 @@ def test_init_in_subfolder_links_to_parent(workspace):
 # @ac AC-CLI-001.3
 def test_init_prints_paths_relative_to_the_workspace_root(workspace):
     output = run("init", "libs/auth", "--name", "auth", "--no-skills")
-    assert "created libs/auth/spec.yml\nready   libs/auth/spec/changes/active/\nlinked  as module 'auth'" in output
+    assert "created libs/auth/.specworks/config.yml\nready   libs/auth/.specworks/changes/active/\nlinked  as module 'auth'" in output
     assert str(workspace) not in output
 
 
 # @ac AC-CLI-003.3
 def test_init_no_link_keeps_project_independent(workspace, monkeypatch):
     run("init", "tools/other", "--no-link", "--no-skills")
-    assert "tools/other" not in (workspace / "spec.yml").read_text()
+    assert "tools/other" not in (workspace / ".specworks/config.yml").read_text()
     monkeypatch.chdir(workspace / "tools/other")
     code, data = run_json("context")
     assert data["root"] == str(workspace / "tools/other")
@@ -177,8 +178,8 @@ def test_init_no_link_keeps_project_independent(workspace, monkeypatch):
 
 # @ac AC-PROJ-006.2
 def test_missing_module_is_reported_not_fatal(workspace):
-    (workspace / "spec.yml").write_text(
-        (workspace / "spec.yml").read_text().replace("\nmodules:\n", "\nmodules:\n  ghost: vendor/ghost\n")
+    (workspace / ".specworks/config.yml").write_text(
+        (workspace / ".specworks/config.yml").read_text().replace("\nmodules:\n", "\nmodules:\n  ghost: vendor/ghost\n")
     )
     code, data = run_json("context")
     assert code == 0
@@ -196,72 +197,47 @@ def test_duplicate_module_rejected(workspace):
 # @ac AC-PROJ-003.1
 @pytest.mark.parametrize("modules", ["  bad: ../x\n", "  Bad_Name: x\n"])
 def test_invalid_module_entries_rejected(workspace, modules):
-    (workspace / "spec.yml").write_text(
-        (workspace / "spec.yml").read_text().replace("\nmodules:\n", "\nmodules:\n" + modules)
+    (workspace / ".specworks/config.yml").write_text(
+        (workspace / ".specworks/config.yml").read_text().replace("\nmodules:\n", "\nmodules:\n" + modules)
     )
     code, data = run_json("context")
     assert code == 1
 
 
-@pytest.mark.parametrize("folder", ["spec", "docs", "context", "specworks"])
-def test_modules_use_the_top_level_folder_name(tmp_path, monkeypatch, folder):
+def test_every_module_uses_the_fixed_workflow_folder(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     init_repo(tmp_path)
-    run("init", "--dir", folder)
+    run("init")
     run("module", "add", "services/billing")
     run("init", "libs/auth")
     for module in ("services/billing", "libs/auth"):
-        assert (tmp_path / module / f"{folder}.yml").is_file()
-        assert (tmp_path / module / folder / "changes/active").is_dir()
-        assert (tmp_path / module / folder / "changes/archive").is_dir()
+        assert (tmp_path / module / ".specworks/config.yml").is_file()
+        assert (tmp_path / module / ".specworks/changes/active").is_dir()
+        assert (tmp_path / module / ".specworks/changes/archive").is_dir()
     code, data = run_json("module", "list")
-    assert [m["dir"] for m in data["modules"]] == [folder, f"services/billing/{folder}", f"libs/auth/{folder}"]
+    assert [m["dir"] for m in data["modules"]] == [".specworks", "services/billing/.specworks", "libs/auth/.specworks"]
 
 
 def test_nested_module_uses_the_top_level_folder_name(workspace):
-    assert (workspace / "services/billing/tax/spec/changes/active").is_dir()
+    assert (workspace / "services/billing/tax/.specworks/changes/active").is_dir()
     code, data = run_json("new", "add-vat", "--module", "billing/tax", "--no-branch")
-    assert data["path"] == "services/billing/tax/spec/changes/active/add-vat"
-
-
-# @ac AC-PROJ-006.3
-def test_module_with_different_config_name_is_an_error(workspace):
-    billing = workspace / "services/billing"
-    (billing / "spec.yml").rename(billing / "docs.yml")
-    code, data = run_json("context")
-    assert code == 1
-    assert "module 'billing' uses docs.yml" in data["error"] and "workspace uses spec.yml" in data["error"]
-
-
-# @ac AC-CLI-003.4
-def test_init_module_with_different_dir_is_rejected(workspace):
-    result = runner.invoke(app, ["init", "libs/auth", "--dir", "docs"])
-    assert result.exit_code == 1
-    assert not (workspace / "libs/auth").exists()
-    assert "auth: libs/auth" not in (workspace / "spec.yml").read_text()
-
-
-# @ac AC-CLI-003.3
-def test_init_no_link_may_use_another_dir(workspace):
-    run("init", "tools/other", "--dir", "docs", "--no-link", "--no-skills")
-    assert (workspace / "tools/other/docs.yml").is_file()
-    assert (workspace / "tools/other/docs/changes/active").is_dir()
+    assert data["path"] == "services/billing/tax/.specworks/changes/active/add-vat"
 
 
 # @ac AC-CLI-005.2
-def test_module_add_rejects_existing_config_with_other_dir(workspace):
+def test_module_add_rejects_a_folder_with_an_old_style_config(workspace):
     other = workspace / "libs/legacy"
     other.mkdir(parents=True)
     (other / "docs.yml").write_text("specworks: 1\n")
     code, data = run_json("module", "add", "libs/legacy")
-    assert code == 1 and "uses docs.yml" in data["error"]
-    assert not (other / "spec.yml").exists()
-    assert "legacy: libs/legacy" not in (workspace / "spec.yml").read_text()
+    assert code == 1 and "docs.yml" in data["error"]
+    assert not (other / ".specworks").exists()
+    assert "legacy: libs/legacy" not in (workspace / ".specworks/config.yml").read_text()
 
 
 def test_test_globs_are_relative_to_their_module_and_apply_only_to_it(workspace):
     billing = workspace / "services/billing"
-    cfg = billing / "spec.yml"
+    cfg = billing / ".specworks/config.yml"
     cfg.write_text(cfg.read_text().replace("test_globs: []", 'test_globs: ["qa/*.py"]'))
     (billing / "qa").mkdir()
     (billing / "qa/check_invoices.py").write_text("# @ac AC-BILLING-INVOICES-001.1\n")  # specworks: ignore-tags
@@ -292,7 +268,7 @@ def test_init_in_a_nested_module_reports_its_full_name(workspace, monkeypatch):
 # @ac AC-PROJ-005.1
 def test_derived_prefixes_may_not_collide_across_modules(workspace):
     # billing:invoices derives BILLING-INVOICES; so would a top-level billing-invoices.
-    cfg = workspace / "spec.yml"
+    cfg = workspace / ".specworks/config.yml"
     cfg.write_text(cfg.read_text().replace("capabilities: {}", "capabilities:\n  billing-invoices:\n    path: src/bi"))
     code, data = run_json("list")
     assert code == 1 and "both use the ID prefix BILLING-INVOICES" in data["error"]
@@ -300,7 +276,7 @@ def test_derived_prefixes_may_not_collide_across_modules(workspace):
 
 def test_a_new_capability_of_a_module_is_registered_with_module(workspace):
     run("new", "add-refunds", "--no-branch")
-    delta = workspace / "spec/changes/active/add-refunds/specs/billing/refunds/spec.md"
+    delta = workspace / ".specworks/changes/active/add-refunds/specs/billing/refunds/spec.md"
     delta.parent.mkdir(parents=True)
     delta.write_text("## Purpose\nRefunds.\n\n## ADDED Requirements\n\n### Requirement: REQ-BILLING-REFUNDS-001 Refund\nThe system SHALL refund.\n\n"
                      "#### Scenario: AC-BILLING-REFUNDS-001.1 Refunded\n- **WHEN** x\n- **THEN** y\n")
@@ -310,7 +286,7 @@ def test_a_new_capability_of_a_module_is_registered_with_module(workspace):
 
 # @ac AC-PROJ-007.2
 def test_a_module_inherits_the_commands_it_does_not_set(workspace):
-    top, billing = workspace / "spec.yml", workspace / "services/billing/spec.yml"
+    top, billing = workspace / ".specworks/config.yml", workspace / "services/billing/.specworks/config.yml"
     top.write_text(top.read_text().replace("commands:\n  test:\n  lint:\n", "commands:\n  test: top-test\n  lint: top-lint\n"))
     billing.write_text(billing.read_text().replace("commands:\n  test:\n", "commands:\n  test: billing-test\n"))
     ws = load_workspace(workspace)
@@ -325,7 +301,7 @@ def test_module_add_refuses_a_folder_outside_the_project(workspace, tmp_path_fac
     for path in (str(outside), "."):
         code, data = run_json("module", "add", path)
         assert code == 1 and "must be a folder inside" in data["error"], path
-    assert "elsewhere" not in (workspace / "spec.yml").read_text()
+    assert "elsewhere" not in (workspace / ".specworks/config.yml").read_text()
 
 
 def set_capabilities(cfg, block):
@@ -334,21 +310,21 @@ def set_capabilities(cfg, block):
 
 # @ac AC-PROJ-016.1
 def test_two_capabilities_on_one_path_are_refused(workspace):
-    set_capabilities(workspace / "spec.yml", "  auth:\n    path: src/auth\n  login:\n    path: src/auth/\n")
+    set_capabilities(workspace / ".specworks/config.yml", "  auth:\n    path: src/auth\n  login:\n    path: src/auth/\n")
     code, data = run_json("context")
     assert code == 1 and "auth" in data["error"] and "login" in data["error"] and "src/auth/docs" in data["error"]
 
 
 # @ac AC-PROJ-016.2
 def test_capabilities_of_two_modules_on_one_folder_are_refused(workspace):
-    set_capabilities(workspace / "spec.yml", "  top-invoices:\n    path: services/billing/src/invoices\n")
+    set_capabilities(workspace / ".specworks/config.yml", "  top-invoices:\n    path: services/billing/src/invoices\n")
     code, data = run_json("context")
     assert code == 1 and "top-invoices" in data["error"] and "billing:invoices" in data["error"]
 
 
 # @ac AC-PROJ-016.3
 def test_nested_capability_paths_load(workspace):
-    set_capabilities(workspace / "spec.yml", "  auth:\n    path: src/auth\n  admin:\n    path: src/auth/admin\n")
+    set_capabilities(workspace / ".specworks/config.yml", "  auth:\n    path: src/auth\n  admin:\n    path: src/auth/admin\n")
     code, data = run_json("context")
     docs = {c["name"]: c["docsPath"] for c in data["capabilities"]}
     assert code == 0 and docs["auth"] == "src/auth/docs" and docs["admin"] == "src/auth/admin/docs"
@@ -357,13 +333,13 @@ def test_nested_capability_paths_load(workspace):
 # @ac AC-PROJ-016.4
 def test_capability_add_refuses_a_taken_path(workspace):
     run_json("capability", "add", "auth", "--path", "src/auth")
-    before = (workspace / "spec.yml").read_text()
+    before = (workspace / ".specworks/config.yml").read_text()
     code, data = run_json("capability", "add", "login", "--path", "src/auth")
     assert code == 1 and "auth" in data["error"] and "src/auth/docs" in data["error"]
-    assert (workspace / "spec.yml").read_text() == before
+    assert (workspace / ".specworks/config.yml").read_text() == before
     code, data = run_json("capability", "add", "login", "--path", "src\\auth\\")  # stored as src/auth
     assert code == 1 and "already used by auth" in data["error"]
-    assert (workspace / "spec.yml").read_text() == before
+    assert (workspace / ".specworks/config.yml").read_text() == before
 
 
 def link_module(workspace, name, target):
@@ -372,7 +348,7 @@ def link_module(workspace, name, target):
         (workspace / name).symlink_to(target, target_is_directory=True)
     except OSError:  # Windows without the symlink privilege
         pytest.skip("cannot create symlinks here")
-    cfg = workspace / "spec.yml"
+    cfg = workspace / ".specworks/config.yml"
     cfg.write_text(cfg.read_text().replace("\nmodules:\n", f"\nmodules:\n  {name}: {name}\n", 1))
 
 
@@ -392,8 +368,8 @@ def test_a_folder_linked_as_a_module_twice_is_refused(workspace):
 
 # @ac AC-PROJ-006.8
 def test_a_module_listed_past_the_module_that_contains_it_is_refused(workspace):
-    run("init", "services/billing/sub", "--dir", "spec", "--no-link", "--no-skills")
-    cfg = workspace / "spec.yml"
+    run("init", "services/billing/sub", "--no-link", "--no-skills")
+    cfg = workspace / ".specworks/config.yml"
     cfg.write_text(cfg.read_text().replace("\nmodules:\n", "\nmodules:\n  sub: services/billing/sub\n", 1))
     code, data = run_json("context")
     assert code == 1 and "module 'sub'" in data["error"] and "module 'billing'" in data["error"]
@@ -401,21 +377,21 @@ def test_a_module_listed_past_the_module_that_contains_it_is_refused(workspace):
 
 # @ac AC-CLI-005.6
 def test_module_add_links_to_the_module_that_contains_the_folder(workspace):
-    top_before = (workspace / "spec.yml").read_text()
+    top_before = (workspace / ".specworks/config.yml").read_text()
     code, data = run_json("module", "add", "services/billing/sub")
     assert code == 0 and data["name"] == "billing/sub"
-    assert "  sub: sub\n" in (workspace / "services/billing/spec.yml").read_text()
-    assert (workspace / "spec.yml").read_text() == top_before
+    assert "  sub: sub\n" in (workspace / "services/billing/.specworks/config.yml").read_text()
+    assert (workspace / ".specworks/config.yml").read_text() == top_before
     assert "billing/sub" in run("module", "list")
 
 
 # @ac AC-CLI-005.7
 def test_module_add_refuses_a_folder_around_a_module(workspace):
-    configs = {p: p.read_text() for p in workspace.rglob("spec.yml")}
+    configs = {p: p.read_text() for p in workspace.rglob(".specworks/config.yml")}
     code, data = run_json("module", "add", "services")
     assert code == 1 and "module 'billing'" in data["error"]
-    assert {p: p.read_text() for p in workspace.rglob("spec.yml")} == configs
-    assert not (workspace / "services/spec").exists()
+    assert {p: p.read_text() for p in workspace.rglob(".specworks/config.yml")} == configs
+    assert not (workspace / "services/.specworks").exists()
     assert load_workspace(workspace) is not None
 
 
@@ -426,7 +402,7 @@ def test_a_module_outside_the_workspace_is_refused(workspace, tmp_path_factory, 
     if with_config:
         monkeypatch.chdir(outside)
         init_repo(outside)
-        run("init", "--dir", "spec", "--no-link", "--no-skills")
+        run("init", "--no-link", "--no-skills")
         monkeypatch.chdir(workspace)
     link_module(workspace, "ext", outside)
     code, data = run_json("context")
@@ -435,9 +411,23 @@ def test_a_module_outside_the_workspace_is_refused(workspace, tmp_path_factory, 
 
 # @ac AC-CLI-003.6
 def test_init_refuses_a_folder_around_a_module(workspace):
-    configs = {p: p.read_text() for p in workspace.rglob("spec.yml")}
+    configs = {p: p.read_text() for p in workspace.rglob(".specworks/config.yml")}
     result = runner.invoke(app, ["init", "services", "--no-skills"])
     assert result.exit_code == 1 and "module 'billing'" in result.output
-    assert {p: p.read_text() for p in workspace.rglob("spec.yml")} == configs
-    assert not (workspace / "services/spec").exists()
+    assert {p: p.read_text() for p in workspace.rglob(".specworks/config.yml")} == configs
+    assert not (workspace / "services/.specworks").exists()
     assert load_workspace(workspace) is not None
+
+
+# @ac AC-PROJ-021.2
+def test_an_old_module_names_the_module_and_the_move(workspace):
+    billing = workspace / "services/billing"
+    shutil.rmtree(billing / ".specworks")
+    (billing / "spec.yml").write_text("specworks: 1\n")
+    (billing / "spec/changes/active").mkdir(parents=True)
+    code, data = run_json("context")
+    assert code == 1
+    error = data["error"]
+    assert "module 'billing'" in error and "spec.yml" in error
+    assert "move spec.yml to .specworks/config.yml and spec/ to .specworks/" in error
+    assert (billing / "spec.yml").is_file() and not (billing / ".specworks").exists()  # nothing moved
