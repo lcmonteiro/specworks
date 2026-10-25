@@ -71,22 +71,21 @@ by archive folder. A path into the archive is not a change name.
 
 ### Requirement: REQ-CLI-003 init
 
-`specworks init` SHALL create the config, `<dir>/changes/active/` and
-`<dir>/changes/archive/`, and
+`specworks init` SHALL create `.specworks/config.yml`,
+`.specworks/changes/active/` and `.specworks/changes/archive/`, and
 install the agent skills unless `--no-skills` is given. Inside a specworks
 project, it SHALL link the new project as a module (named by its full path)
-using the workspace's config name, unless `--no-link` is given, and SHALL refuse
-another `--dir`, or a folder that holds a module of the workspace (naming it),
-before writing anything. It SHALL refuse a folder that is not inside a git
-repository, saying to run `git init`, before writing anything.
-`--diagram-theme` SHALL apply only to a
-new top-level config; elsewhere it SHALL print a note saying it wasn't applied.
+unless `--no-link` is given, and SHALL refuse a folder that holds a module of
+the workspace (naming it) before writing anything. It SHALL refuse a folder
+that is not inside a git repository, saying to run `git init`, before writing
+anything. `--diagram-theme` SHALL apply only to a new top-level config;
+elsewhere it SHALL print a note saying it wasn't applied.
 
 #### Scenario: AC-CLI-003.1 A new project
 
 - **GIVEN** the folder is empty and inside a git repository
 - **WHEN** `init` runs there
-- **THEN** it creates the config, `<dir>/changes/active/`, `<dir>/changes/archive/` and the skills
+- **THEN** it creates `.specworks/config.yml`, `.specworks/changes/active/`, `.specworks/changes/archive/` and the skills
 
 #### Scenario: AC-CLI-003.2 Inside a project
 
@@ -96,12 +95,7 @@ new top-level config; elsewhere it SHALL print a note saying it wasn't applied.
 #### Scenario: AC-CLI-003.3 An independent project
 
 - **WHEN** `init --no-link` runs inside a project
-- **THEN** the folder isn't linked, may use another `--dir`, and is a top level of its own
-
-#### Scenario: AC-CLI-003.4 Another --dir for a module
-
-- **WHEN** `init <path> --dir docs` runs inside a workspace that uses `spec`
-- **THEN** it fails and writes nothing (no folder, no link)
+- **THEN** the folder isn't linked and is a top level of its own
 
 #### Scenario: AC-CLI-003.5 A theme that cannot apply
 
@@ -119,6 +113,11 @@ new top-level config; elsewhere it SHALL print a note saying it wasn't applied.
 - **GIVEN** a folder that is in no git repository
 - **WHEN** `init` runs there
 - **THEN** it fails saying to run `git init`, and writes nothing (no config, no folder, no skills)
+
+#### Scenario: AC-CLI-003.8 No --dir option
+
+- **WHEN** `init --dir spec` runs
+- **THEN** it fails as an unknown option and writes nothing
 
 ### Requirement: REQ-CLI-004 Overview commands
 
@@ -161,7 +160,7 @@ marked.
 ### Requirement: REQ-CLI-005 Registering modules and capabilities
 
 `module add <path>` SHALL refuse a folder that is not inside the current
-project, create the module's config with the workspace's name when it has none,
+project, create the module's `.specworks/config.yml` when it has none,
 and link it in the config of the innermost module that contains the folder,
 printing the folder's full module name. It SHALL refuse a folder that holds a
 module of the workspace, naming that module, before writing anything. `capability add` SHALL refuse an ID prefix, given or derived,
@@ -171,12 +170,12 @@ module `--module` names.
 #### Scenario: AC-CLI-005.1 Adding a module
 
 - **WHEN** `module add services/billing` runs
-- **THEN** the parent lists it and the module has its config and changes folder
+- **THEN** the parent lists it and the module has its `.specworks/config.yml` and changes folder
 
-#### Scenario: AC-CLI-005.2 A folder with another config
+#### Scenario: AC-CLI-005.2 A folder with an old-style config
 
-- **WHEN** the folder already has a config under another name
-- **THEN** it is refused and nothing is written
+- **WHEN** the folder holds an old-style config (a `*.yml` with the `specworks:` line) and no `.specworks/config.yml`
+- **THEN** it is refused with the old-layout error naming that file, and nothing is written
 
 #### Scenario: AC-CLI-005.3 A folder outside the project
 
