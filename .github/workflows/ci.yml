@@ -96,11 +96,11 @@ jobs:
           project="$(mktemp -d)"
           cd "$project"
           git init -q -b main
-          sw init --dir spec --tools all
+          sw init --tools all
           sw new add-example
           sw instructions refinement --change add-example --json > /dev/null
           sw instructions tasks --change add-example --json > /dev/null
-          test -f spec.yml
+          test -f .specworks/config.yml
           # Every packaged skill, for both tools (the list comes from the source tree).
           for skill in $(cd "$GITHUB_WORKSPACE/src/specworks/skills" && ls -d specworks-*); do
             for f in ".claude/skills/$skill/SKILL.md" ".github/skills/$skill/SKILL.md" ".github/prompts/$skill.prompt.md"; do
@@ -109,8 +109,8 @@ jobs:
           done
           grep -q 'Running the CLI' .claude/skills/specworks-refine/SKILL.md
           if grep -rq 'specworks:include' .claude .github; then echo 'unfilled include in an installed skill'; exit 1; fi
-          mkdir -p spec/changes/active/add-example/diagrams
-          printf 'shape: sequence_diagram\nuser -> api: "POST /reset {email}"\n' > spec/changes/active/add-example/diagrams/flow.d2
+          mkdir -p .specworks/changes/active/add-example/diagrams
+          printf 'shape: sequence_diagram\nuser -> api: "POST /reset {email}"\n' > .specworks/changes/active/add-example/diagrams/flow.d2
           sw diagrams --themes | grep -q '(pyd2)'
           sw diagrams --change add-example
-          grep -q 'specworks:d2 sha256=' spec/changes/active/add-example/diagrams/flow.svg
+          grep -q 'specworks:d2 sha256=' .specworks/changes/active/add-example/diagrams/flow.svg

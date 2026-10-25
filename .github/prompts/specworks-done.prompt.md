@@ -91,7 +91,7 @@ their questions, and write the answers to disk.
   | Question | Where the answer goes |
   |---|---|
   | design: the API | design.md `## Interfaces`: the subagent writes it with a line `Proposed: waiting for the user's agreement`; replace that line with `Agreed with the user` (and the user's changes) |
-  | test, code: the test command | `spec.yml` `commands:` (`test: <command>`) |
+  | test, code: the test command | `.specworks/config.yml` `commands:` (`test: <command>`) |
   | code: an unclear task, an existing test against the spec, new work | the Decision in design.md, or a new task in tasks.md |
   | review: each finding | the finding's `**Decision**:` line in review.md |
 
@@ -175,7 +175,7 @@ their questions, and write the answers to disk.
    Validate   PASS (2 warnings)
    Living docs  src/auth/docs/: spec.md, requirements.md, design.md
    Requirements  +2 added, 1 modified, 0 removed
-   Archived   spec/changes/archive/2026-10-19-add-password-reset/
+   Archived   .specworks/changes/archive/2026-10-19-add-password-reset/
    ```
 
 **Pushing**: after the commit, offer to push the change's branch (the checked-out

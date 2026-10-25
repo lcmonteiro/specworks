@@ -1,10 +1,10 @@
 """Project configuration: locating the project root and reading its config file.
 
-A project is a folder holding ``<dir>.yml`` next to the workflow folder
-``<dir>/`` (e.g. ``spec.yml`` + ``spec/``). The file name defines the folder
-name. A ``specworks: <n>`` line, not indented and anywhere in the file (``init``
-writes it first), marks the file as a specworks config, so an unrelated
-``docs.yml`` is never mistaken for one.
+A project is a folder holding ``.specworks/config.yml``; ``.specworks/`` is its
+workflow folder. A ``specworks: <n>`` line, not indented and anywhere in the file
+(``init`` writes it first), marks the file as a specworks config. The old layout
+(``<dir>.yml`` next to ``<dir>/``) is not read: finding one fails with the move
+to make.
 """
 
 from __future__ import annotations
@@ -19,12 +19,13 @@ import yaml
 from pyd2 import LAYOUTS, THEMES
 
 from .errors import ConfigError
-from .validators import check_keys, validate_capability_name, validate_dir, validate_module_name, validate_prefix, validate_relative
+from .validators import check_keys, validate_capability_name, validate_module_name, validate_prefix, validate_relative
 
 CONFIG_EXT = ".yml"
 CONFIG_VERSION = 1
 MARKER_RE = re.compile(r"^specworks:[ \t]*\d+[ \t]*(#.*)?$", re.MULTILINE)
-DEFAULT_DIR = "specworks"
+WORKFLOW_DIR = ".specworks"  # the fixed workflow folder of every project and module
+CONFIG_FILE = "config.yml"  # the config's name inside WORKFLOW_DIR
 DEFAULT_DOCS_DIR = "docs"
 MAX_CONTEXT_BYTES = 50 * 1024
 CONFIG_KEYS = ("specworks", "context", "docs_dir", "capabilities", "modules", "test_globs", "source_globs", "commands", "diagrams")
@@ -145,7 +146,7 @@ def load_diagram_settings(raw: object) -> DiagramSettings:
 class Config:
     root: Path
     context: str = ""
-    dir: str = DEFAULT_DIR  # taken from the config file name: spec.yml -> spec
+    dir: str = WORKFLOW_DIR  # always .specworks
     docs_dir: str = DEFAULT_DOCS_DIR
     capabilities: dict[str, Capability] = field(default_factory=dict)
     modules: dict[str, str] = field(default_factory=dict)
@@ -156,7 +157,7 @@ class Config:
 
     @property
     def config_path(self) -> Path:
-        return self.root / config_name(self.dir)
+        return self.root / WORKFLOW_DIR / CONFIG_FILE
 
     # @req REQ-PROJ-020
     @property
@@ -177,10 +178,6 @@ class Config:
         return self.root / self.archive_dir
 
 
-def config_name(dir: str) -> str:
-    return f"{dir}{CONFIG_EXT}"
-
-
 # @req REQ-PROJ-001
 def is_config_file(path: Path) -> bool:
     try:
@@ -191,38 +188,57 @@ def is_config_file(path: Path) -> bool:
 
 # @req REQ-PROJ-001
 def find_config(directory: Path) -> Path | None:
-    """The specworks config in ``directory`` (any ``*.yml`` with the marker), if there is one."""
+    """The specworks config of ``directory`` (``.specworks/config.yml`` with the marker), if there is one."""
+    path = directory / WORKFLOW_DIR / CONFIG_FILE
+    return path if is_config_file(path) else None
+
+
+# @req REQ-PROJ-021
+def old_config_in(directory: Path) -> Path | None:
+    """An old-style config directly in ``directory`` (a ``*.yml`` with the marker), if there is one."""
     if not directory.is_dir():
         return None
-    found = [p for p in sorted(directory.glob(f"*{CONFIG_EXT}")) if is_config_file(p)]
-    if len(found) > 1:
-        names = ", ".join(p.name for p in found)
-        raise ConfigError(f"{directory} has several specworks configs ({names}); keep only one")
-    return found[0] if found else None
+    return next((p for p in sorted(directory.glob(f"*{CONFIG_EXT}")) if is_config_file(p)), None)
 
 
-# @req REQ-PROJ-001
+# @req REQ-PROJ-021
+def find_old_config(start: Path | None = None) -> Path | None:
+    """The nearest old-style config (a ``*.yml`` with the marker directly in a folder) in ``start`` or its parents."""
+    current = (start or Path.cwd()).resolve()
+    return next((found for directory in (current, *current.parents) if (found := old_config_in(directory)) is not None), None)
+
+
+# @req REQ-PROJ-021
+def old_layout_error(path: Path, module: str | None = None) -> ConfigError:
+    """The error for an old-style config at ``path``, naming the move to ``.specworks/`` (nothing is moved)."""
+    prefix = f"module '{module}': " if module is not None else ""
+    return ConfigError(
+        f"{prefix}{path}: specworks keeps its config in {WORKFLOW_DIR}/{CONFIG_FILE}; "
+        f"move {path.name} to {WORKFLOW_DIR}/{CONFIG_FILE} and {path.stem}/ to {WORKFLOW_DIR}/"
+    )
+
+
+# @req REQ-PROJ-001, REQ-PROJ-021
 def find_root(start: Path | None = None) -> Path | None:
-    """Walk up from ``start`` until a directory holding a specworks config is found."""
+    """Walk up from ``start`` until a directory holding ``.specworks/config.yml`` is found.
+
+    When there is none, an old-style config in ``start`` or a parent fails the lookup with the move to make.
+    """
     current = (start or Path.cwd()).resolve()
     for directory in (current, *current.parents):
         if find_config(directory) is not None:
             return directory
+    if (old := find_old_config(current)) is not None:
+        raise old_layout_error(old)
     return None
 
 
-# @req REQ-PROJ-002, REQ-PROJ-003, REQ-PROJ-004
-def load_config(root: Path, dir: str | None = None) -> Config:
-    """Load ``root/<dir>.yml``, or the only specworks config in ``root`` when ``dir`` is None."""
-    if dir is not None:
-        path = root / config_name(validate_dir(dir))
-        if not is_config_file(path):
-            raise ConfigError(f"{path} is not a specworks config (missing or no 'specworks: {CONFIG_VERSION}' line)")
-    else:
-        found = find_config(root)
-        if found is None:
-            raise ConfigError(f"no specworks config (<dir>{CONFIG_EXT}) in {root}")
-        path = found
+# @req REQ-PROJ-001, REQ-PROJ-002, REQ-PROJ-003, REQ-PROJ-004
+def load_config(root: Path) -> Config:
+    """Load ``root/.specworks/config.yml``."""
+    path = root / WORKFLOW_DIR / CONFIG_FILE
+    if not is_config_file(path):
+        raise ConfigError(f"{path} is not a specworks config (missing or no 'specworks: {CONFIG_VERSION}' line)")
     try:
         raw = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
     except (OSError, UnicodeDecodeError, yaml.YAMLError) as exc:
@@ -233,7 +249,7 @@ def load_config(root: Path, dir: str | None = None) -> Config:
         raise ConfigError(f"{path}: unsupported config version specworks: {raw.get('specworks')!r} (expected {CONFIG_VERSION})")
     if "dir" in raw:
         raise ConfigError(
-            f"{path}: 'dir' is no longer a setting; the file name sets the folder ({path.name} -> {path.stem}/). Remove it."
+            f"{path}: 'dir' is no longer a setting; the workflow folder is always {WORKFLOW_DIR}/. Remove it."
         )
     check_keys(raw, CONFIG_KEYS, str(path))
 
@@ -273,7 +289,6 @@ def load_config(root: Path, dir: str | None = None) -> Config:
     return Config(
         root=root,
         context=context,
-        dir=validate_dir(path.stem),
         # Joined to each capability's path, so it must stay inside it.
         docs_dir=validate_relative(raw.get("docs_dir", DEFAULT_DOCS_DIR), "'docs_dir'"),
         capabilities=capabilities,

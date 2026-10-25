@@ -16,7 +16,7 @@ FAIL = f'"{sys.executable}" -c "import sys; print(\'2 failed\'); sys.exit(3)"'
 
 
 def set_test_command(root, command):
-    cfg = root / "spec.yml"
+    cfg = root / ".specworks/config.yml"
     text = cfg.read_text()
     cfg.write_text(re.sub(r"(?m)^  test:.*$", lambda _: f"  test: {json.dumps(command)}", text, count=1))
 
@@ -64,7 +64,7 @@ def test_run_passes_the_exit_code_through(project):
 # @ac AC-PROJ-013.2
 def test_run_in_the_module_of_the_change(project):
     runner.invoke(app, ["module", "add", "web"])
-    web_cfg = project / "web/spec.yml"
+    web_cfg = project / "web/.specworks/config.yml"
     pwd = f'"{sys.executable}" -c "import os; print(os.path.basename(os.getcwd()))"'
     web_cfg.write_text(web_cfg.read_text().replace("commands:\n  test:\n", f"commands:\n  test: {json.dumps(pwd)}\n"))
     run_json("new", "web-change", "--module", "web", "--no-branch")
@@ -135,7 +135,7 @@ def test_code_gate_fails_when_only_source_files_changed(project, monkeypatch):
 def test_a_skip_specs_change_with_changed_test_files_only_warns(project, monkeypatch):
     run_json("new", "tidy-up", "--no-branch")
     run_json("skip-specs", "--change", "tidy-up")
-    tidy_up = project / "spec/changes/active/tidy-up"
+    tidy_up = project / ".specworks/changes/active/tidy-up"
     (tidy_up / "proposal.md").write_text("# P\n\n## Why\n\nTidy.\n\n## What Changes\n\nTidy.\n\n## Capabilities\n\nNone.\n")
     (tidy_up / "tasks.md").write_text("# Tasks\n\n## 1. Tidy\n\n- [x] 1.1 [test] Test the session\n- [x] 1.2 [code] Tidy the session\n")
     set_test_command(project, FAIL)
@@ -189,12 +189,12 @@ def test_no_run_turns_the_test_check_into_a_warning(project):
 def test_removed_requirement_still_tagged_blocks_implement(project):
     set_test_command(project, PASS)
     implement_everything(project)
-    delta = project / "spec/changes/active" / REF / "specs/user-auth/spec.md"
+    delta = project / ".specworks/changes/active" / REF / "specs/user-auth/spec.md"
     delta.write_text(
         delta.read_text()
         + "\n## REMOVED Requirements\n\n### Requirement: REQ-AUTH-001 Password login\n**Reason**: SSO only\n**Migration**: use SSO\n"
     )
-    tasks = project / "spec/changes/active" / REF / "tasks.md"
+    tasks = project / ".specworks/changes/active" / REF / "tasks.md"
     tasks.write_text(tasks.read_text() + "- [x] 2.2 Remove password login (REQ-AUTH-001)\n")
     (project / "src/auth/login.py").write_text("# @req REQ-AUTH-001\n")  # specworks: ignore-tags
     code, data = run_json("gate", "code", "--change", REF)
@@ -206,12 +206,12 @@ def test_criteria_of_a_removed_requirement_still_tested_block_implement(project)
     # Its code is gone, but a test of its criterion would point to an unknown ID after close.
     set_test_command(project, PASS)
     implement_everything(project)
-    delta = project / "spec/changes/active" / REF / "specs/user-auth/spec.md"
+    delta = project / ".specworks/changes/active" / REF / "specs/user-auth/spec.md"
     delta.write_text(
         delta.read_text()
         + "\n## REMOVED Requirements\n\n### Requirement: REQ-AUTH-001 Password login\n**Reason**: SSO only\n**Migration**: use SSO\n"
     )
-    tasks = project / "spec/changes/active" / REF / "tasks.md"
+    tasks = project / ".specworks/changes/active" / REF / "tasks.md"
     tasks.write_text(tasks.read_text() + "- [x] 2.2 Remove password login (REQ-AUTH-001)\n")
     (project / "tests/test_login.py").write_text("# @ac AC-AUTH-001.1\ndef test_login(): ...\n")  # specworks: ignore-tags
     code, data = run_json("gate", "code", "--change", REF)

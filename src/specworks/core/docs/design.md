@@ -4,8 +4,8 @@
 
 The project model, in `src/specworks/core`, is what every other capability
 builds on:
-- **Config** (`config.py`, `validators.py`): finding the project's `<dir>.yml`
-  and loading it into a validated `Config` (capabilities, modules, globs,
+- **Config** (`config.py`, `validators.py`): finding the project's
+  `.specworks/config.yml` and loading it into a validated `Config` (capabilities, modules, globs,
   commands, diagram settings).
 - **Config file** (`config_file.py`): writing the default config, and adding
   module and capability entries.
@@ -20,12 +20,30 @@ builds on:
 
 ## Decisions
 
-### The config file names the workflow folder
+### One fixed, hidden workflow folder
 
-`spec.yml` means the `spec/` folder. A `specworks: <n>` line marks the file, so
-an unrelated `docs.yml` is never taken for a config. Modules must use the top
-level's file name, so one name holds across the whole workspace.
-(baseline-project)
+A project is a folder holding `.specworks/config.yml`, and its changes live in
+`.specworks/changes/`, for the top level and every module, like `.github/`.
+`WORKFLOW_DIR` and `CONFIG_FILE` are constants; `Config.dir` stays as a field
+(always `.specworks`) so the callers that build paths or skip the folder are
+unchanged. `find_config` checks one path per folder and `find_root` walks up.
+A `specworks: <n>` line still marks the file. The `dir:` key is refused with a
+message saying the folder is always `.specworks/`. A config whose file name set
+the folder (`spec.yml` → `spec/`, chosen per workspace with `init --dir`) was
+dropped for one layout that is easy to find; a configurable name was rejected.
+(baseline-project, move-config-into-spec-folder)
+
+### The old layout is an error, never migrated
+
+When no folder up from the working directory holds `.specworks/config.yml`,
+`find_root` looks for an old-style config (a `*.yml` with the marker) in the
+same folders; the nearest one fails the lookup with `old_layout_error`, which
+names the file and the move (`move spec.yml to .specworks/config.yml and spec/
+to .specworks/`). A listed module with only an old-style config fails the same
+way, prefixed with the module's name, and `init` in an old-layout folder fails
+before writing anything, so it never hides the old changes behind a new, empty
+`.specworks/`. A folder with both layouts uses the new one. Reading or
+migrating old configs automatically was left out. (move-config-into-spec-folder)
 
 ### Modules are linked explicitly, like git submodules
 
@@ -103,12 +121,12 @@ rejected: more states to undo. (git-workflow)
 
 ### Active and archived changes live in sibling folders
 
-`Config.changes_dir` and `changes_path` name `<dir>/changes/active`, and
-`archive_dir` and `archive_path` name its sibling `<dir>/changes/archive`, both
+`Config.changes_dir` and `changes_path` name `.specworks/changes/active`, and
+`archive_dir` and `archive_path` name its sibling `.specworks/changes/archive`, both
 built from the `changes` folder. Every caller goes through these properties, so
 the CLI's `changesDir` and the error messages follow. `list_changes` no longer
 skips `archive`, and a folder with a `.change.yaml` directly under
-`<dir>/changes/` is not a change; there is no migration. `create_change` still
+`.specworks/changes/` is not a change; there is no migration. `create_change` still
 refuses `archive` and `active`, so a change name never looks like a folder
 name. A new `active_path` beside `changes_path` was rejected: callers could keep
 using the old one. (active-changes-dir)
@@ -123,16 +141,21 @@ where to configure one. (baseline-project, run-unknown-key)
 
 ## Interfaces
 
-- `src/specworks/core/config.py`: `find_root(start) -> Path | None`,
-  `load_config(root, dir=None) -> Config`, `Config` (`changes_dir`,
-  `changes_path`, `archive_dir`, `archive_path`), `Capability`,
-  `DiagramSettings`.
+- `src/specworks/core/config.py`: `WORKFLOW_DIR` (`.specworks`),
+  `CONFIG_FILE` (`config.yml`), `find_config(directory) -> Path | None`,
+  `find_root(start) -> Path | None` (raises the old-layout error),
+  `find_old_config(start) -> Path | None`,
+  `old_layout_error(path, module=None) -> ConfigError`,
+  `load_config(root) -> Config`, `Config` (`dir`, `config_path`,
+  `changes_dir`, `changes_path`, `archive_dir`, `archive_path`),
+  `Capability`, `DiagramSettings`.
 - `src/specworks/core/workspace.py`: `load_workspace(start=None) -> Workspace | None`,
   `require_workspace(start) -> Workspace`, `Workspace` (`modules`,
   `module(name)`, `split(ref)`, `context_chain`, `merged_context`, `commands`,
   `owner(path)`, `capabilities`, `prefixes`, `docs_folder(module, path)`, `docs_folders`), `Module`,
   `capability_prefix(module_name, name, prefix="")`.
-- `src/specworks/core/config_file.py`: `write_default_config`,
+- `src/specworks/core/config_file.py`: `write_default_config(root, diagram_theme=None)`
+  (writes `.specworks/config.yml`),
   `add_module_entry`, `add_capability_entry`.
 - `src/specworks/core/changes.py`: `PHASES`, `HALVES`, `Change`, `create_change`,
   `load_change`, `list_changes`, `list_archived`, `archived_as`, `set_phase`.

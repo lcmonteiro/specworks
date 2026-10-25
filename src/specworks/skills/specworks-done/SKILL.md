@@ -105,7 +105,7 @@ goes back to the phase that owns it.
    Validate   PASS (2 warnings)
    Living docs  src/auth/docs/: spec.md, requirements.md, design.md
    Requirements  +2 added, 1 modified, 0 removed
-   Archived   spec/changes/archive/2026-10-19-add-password-reset/
+   Archived   .specworks/changes/archive/2026-10-19-add-password-reset/
    ```
 
 <!-- specworks:include pushing -->

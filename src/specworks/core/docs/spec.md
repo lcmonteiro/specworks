@@ -10,28 +10,22 @@ phases, and running the project's own commands.
 
 ### Requirement: REQ-PROJ-001 Finding the project config
 
-The system SHALL treat as the project config a `<dir>.yml` file holding a
-`specworks: <n>` line, name the workflow folder after the file (`spec.yml` ->
-`spec/`), and find the project by walking up from the working directory to the
-nearest folder that holds a config.
+The system SHALL treat as the project config a `.specworks/config.yml` file
+holding a `specworks: <n>` line, with `.specworks/` as the workflow folder, and
+find the project by walking up from the working directory to the nearest folder
+that holds one.
 
-#### Scenario: AC-PROJ-001.1 The file name sets the workflow folder
+#### Scenario: AC-PROJ-001.1 The fixed workflow folder
 
-- **GIVEN** a project whose config is `<dir>.yml`, or was renamed to another name
+- **GIVEN** a project whose config is `.specworks/config.yml`
 - **WHEN** a change is created
-- **THEN** it goes to `<dir>/changes/active/<name>`, `<dir>` being the config file's name without `.yml`
+- **THEN** it goes to `.specworks/changes/active/<name>`
 
-#### Scenario: AC-PROJ-001.2 A YAML file without the marker is not a config
+#### Scenario: AC-PROJ-001.2 A config.yml without the marker is not a config
 
-- **GIVEN** a folder whose only `.yml` file has no `specworks:` line, or is not UTF-8 text
+- **GIVEN** a folder whose `.specworks/config.yml` has no `specworks:` line, or is not UTF-8 text
 - **WHEN** the project is looked up
 - **THEN** that file is ignored and no project is found there
-
-#### Scenario: AC-PROJ-001.3 Several configs in one folder
-
-- **GIVEN** a folder holding two specworks configs
-- **WHEN** the project is loaded
-- **THEN** it fails with an error saying the folder has several specworks configs
 
 #### Scenario: AC-PROJ-001.4 No project
 
@@ -44,6 +38,12 @@ nearest folder that holds a config.
 - **GIVEN** a working directory below a project's folder, but holding no config itself
 - **WHEN** the project is looked up
 - **THEN** the nearest config above it is used
+
+#### Scenario: AC-PROJ-001.6 Other YAML files are not configs
+
+- **GIVEN** a folder holding a `*.yml` without the marker and no `.specworks/config.yml`
+- **WHEN** the project is looked up
+- **THEN** no project is found there
 
 ### Requirement: REQ-PROJ-002 Config file checks
 
@@ -69,7 +69,7 @@ old `dir` key, with an error naming the problem.
 #### Scenario: AC-PROJ-002.4 The old dir key
 
 - **WHEN** the config sets `dir:`
-- **THEN** loading fails saying `'dir' is no longer a setting` and that the file name sets the folder
+- **THEN** loading fails saying `'dir' is no longer a setting` and that the workflow folder is always `.specworks/`
 
 ### Requirement: REQ-PROJ-003 Config value checks
 
@@ -146,8 +146,8 @@ modules, have the same requirement ID prefix, given or derived.
 ### Requirement: REQ-PROJ-006 Workspace of modules
 
 The system SHALL load a workspace made of a top-level project and the modules
-its config lists (recursively), each a project with its own config of the same
-file name. A module's folder (with symlinks resolved) SHALL be
+its config lists (recursively), each a project with its own
+`.specworks/config.yml`. A module's folder (with symlinks resolved) SHALL be
 inside the top level's, or loading SHALL fail naming the module and where its
 folder is. A folder SHALL be at most one module: a module whose folder (with
 symlinks resolved) is an ancestor or another module of the workspace SHALL make
@@ -166,11 +166,6 @@ nearest config to each ancestor that lists it as a module.
 
 - **WHEN** a module listed by its parent has no config in its folder
 - **THEN** the workspace still loads and reports it as missing, with its name and path
-
-#### Scenario: AC-PROJ-006.3 A module with another config name
-
-- **WHEN** a module's config file name differs from the top level's
-- **THEN** loading fails naming both file names and asking to rename the module's file and folder
 
 #### Scenario: AC-PROJ-006.4 A broken unrelated outer config
 
@@ -257,19 +252,13 @@ expected config.
 
 ### Requirement: REQ-PROJ-009 Default config
 
-The system SHALL write a new project's config as `<dir>.yml` starting with
-`specworks: 1`, refusing a folder name that is not a single name of letters,
-digits, `-` or `_`, and setting the diagram theme when one is given.
+The system SHALL write a new project's config as `.specworks/config.yml`
+starting with `specworks: 1`, and set the diagram theme when one is given.
 
-#### Scenario: AC-PROJ-009.1 Written under the folder's name
+#### Scenario: AC-PROJ-009.1 Written in the fixed folder
 
-- **WHEN** a project is initialised with folder `<dir>`
-- **THEN** `<dir>.yml` is the only config and starts with `specworks: 1`
-
-#### Scenario: AC-PROJ-009.2 Bad folder names
-
-- **WHEN** the folder is absolute, `..`, `.`, empty, nested or hidden
-- **THEN** it is refused and no config is written
+- **WHEN** a project is initialised
+- **THEN** `.specworks/config.yml` is its config and starts with `specworks: 1`
 
 #### Scenario: AC-PROJ-009.3 Diagram theme
 
@@ -278,10 +267,10 @@ digits, `-` or `_`, and setting the diagram theme when one is given.
 
 ### Requirement: REQ-PROJ-010 Creating a change
 
-The system SHALL create a change as a folder under `<dir>/changes/active/` named
-after it, starting in the `refine` phase and recording when it started. The name
-must be kebab-case, must not be `archive` or `active`, must not be in use, and
-must not be the name of an archived change.
+The system SHALL create a change as a folder under `.specworks/changes/active/`
+named after it, starting in the `refine` phase and recording when it started.
+The name must be kebab-case, must not be `archive` or `active`, must not be in
+use, and must not be the name of an archived change.
 
 #### Scenario: AC-PROJ-010.1 A new change
 
@@ -558,25 +547,60 @@ SHALL still get the branch.
 
 ### Requirement: REQ-PROJ-020 Where changes live
 
-The system SHALL keep changes in flight in `<dir>/changes/active/` and
-archived ones in `<dir>/changes/archive/`. A folder with change metadata that
-sits directly under `<dir>/changes/` SHALL NOT be a change: it is not listed
-and cannot be named.
+The system SHALL keep changes in flight in `.specworks/changes/active/` and
+archived ones in `.specworks/changes/archive/`. A folder with change metadata
+that sits directly under `.specworks/changes/` SHALL NOT be a change: it is not
+listed and cannot be named.
 
 #### Scenario: AC-PROJ-020.1 Active changes are listed from active
 
 - **GIVEN** a change created in the project
 - **WHEN** the active changes are listed
-- **THEN** the change is found, and its folder is `<dir>/changes/active/<name>`
+- **THEN** the change is found, and its folder is `.specworks/changes/active/<name>`
 
 #### Scenario: AC-PROJ-020.2 A loose folder is not a change
 
-- **GIVEN** a folder `<dir>/changes/<name>` holding a `.change.yaml`, outside `active/` and `archive/`
+- **GIVEN** a folder `.specworks/changes/<name>` holding a `.change.yaml`, outside `active/` and `archive/`
 - **WHEN** the active changes are listed, or the change is named
 - **THEN** it is not listed, and naming it fails saying the change is not found
 
 #### Scenario: AC-PROJ-020.3 Archived changes stay in archive
 
-- **GIVEN** a change in `<dir>/changes/active/`
+- **GIVEN** a change in `.specworks/changes/active/`
 - **WHEN** it is closed or abandoned
-- **THEN** it is in `<dir>/changes/archive/<date>-<name>` and no longer under `active/`
+- **THEN** it is in `.specworks/changes/archive/<date>-<name>` and no longer under `active/`
+
+### Requirement: REQ-PROJ-021 The old config layout
+
+When no project is found, but the working directory or one of its parents holds
+an old-style config (a `*.yml` holding a `specworks: <n>` line), the system
+SHALL fail with an error naming that file and the move to make
+(`<dir>.yml` to `.specworks/config.yml`, `<dir>/` to `.specworks/`). A module
+listed by its parent whose folder has an old-style config and no
+`.specworks/config.yml` SHALL fail the same way, and so SHALL `init` in a folder
+that holds an old-style config and no `.specworks/config.yml`. The system SHALL
+move nothing.
+
+#### Scenario: AC-PROJ-021.1 An old project
+
+- **GIVEN** a folder holding `spec.yml` with `specworks: 1` and a `spec/` folder, and no `.specworks/config.yml`
+- **WHEN** a command looks up the project there or below it
+- **THEN** it fails naming `spec.yml` and saying to move it to `.specworks/config.yml` and `spec/` to `.specworks/`; no file is moved
+
+#### Scenario: AC-PROJ-021.2 An old module
+
+- **GIVEN** a workspace listing module `billing`, whose folder holds `spec.yml` with `specworks: 1` and no `.specworks/config.yml`
+- **WHEN** the workspace is loaded
+- **THEN** it fails naming module `billing`, its `spec.yml` and the move to make
+
+#### Scenario: AC-PROJ-021.3 A new project wins
+
+- **GIVEN** a folder holding both `.specworks/config.yml` and an old `spec.yml`
+- **WHEN** the project is looked up
+- **THEN** `.specworks/config.yml` is used and the old file is ignored
+
+#### Scenario: AC-PROJ-021.4 An old project is not re-initialised
+
+- **GIVEN** a folder holding `spec.yml` with `specworks: 1` and no `.specworks/config.yml`
+- **WHEN** `init` runs there, with or without `--no-link`
+- **THEN** it fails with the old-layout error naming `spec.yml` and the move, and writes nothing (no `.specworks/`, no skills, no link)

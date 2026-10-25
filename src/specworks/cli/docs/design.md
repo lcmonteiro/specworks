@@ -47,8 +47,7 @@ every other command says where the change was archived. (baseline-cli)
 
 The commands refuse option combinations that would skip a safeguard: `close`
 runs validate first and takes `--no-run` only with `--dry-run`, and `init`
-rejects a bad `--tools` or a module's `--dir` before writing anything.
-(baseline-cli)
+rejects a bad `--tools` before writing anything. (baseline-cli)
 
 ### Git is a precondition; `new` branches
 
@@ -70,10 +69,15 @@ leave that module listed past it, which loading refuses. Refusing was chosen
 over moving the inner module's link, which would edit a config the user didn't
 name. (module-add-nested)
 
-### `init` creates the active and archive folders
+### `init` writes the fixed layout
 
-`init` makes `<dir>/changes/active/` and `<dir>/changes/archive/` with the
-config, so the two states of a change exist from the start. (active-changes-dir)
+`init` always writes `.specworks/config.yml` (there is no `--dir`) and makes
+`.specworks/changes/active/` and `.specworks/changes/archive/` with it, so the
+two states of a change exist from the start; `module add` creates a module's
+`.specworks/config.yml` the same way. Both refuse a folder that still holds an
+old-style config, with the old-layout error and before writing anything; with
+no project found, the "no project" message names `.specworks/config.yml`.
+(active-changes-dir, move-config-into-spec-folder)
 
 ### Upgrading is uv, then `update`
 

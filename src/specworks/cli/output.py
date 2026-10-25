@@ -8,7 +8,7 @@ from typing import NoReturn
 import typer
 
 from ..core.changes import ARCHIVE_DIR, Change, ChangeError, ChangeNotFound, archived_as, list_changes, load_change
-from ..core.config import CONFIG_EXT, DEFAULT_DIR, config_name
+from ..core.config import CONFIG_FILE, WORKFLOW_DIR
 from ..core.workspace import Module, Workspace, load_workspace
 from ..tools.skills import TOOLS
 
@@ -47,7 +47,7 @@ def workspace(as_json: bool) -> Workspace:
     ws = load_workspace()
     if ws is None:
         fail(
-            f"no specworks config (<dir>{CONFIG_EXT}, e.g. {config_name(DEFAULT_DIR)}) found in this directory or its parents",
+            f"no specworks config ({WORKFLOW_DIR}/{CONFIG_FILE}) found in this directory or its parents",
             as_json,
             root=None,
             fix="run `specworks init` at the repository root",

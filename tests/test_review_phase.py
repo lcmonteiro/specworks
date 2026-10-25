@@ -22,7 +22,7 @@ def test_review_without_drift(repo):
     assert data["findingCount"] == 0, findings(data)
     kinds = {f["path"]: f["kind"] for f in data["changedFiles"]}
     assert kinds["src/auth/reset.py"] == "source" and kinds["tests/test_reset.py"] == "test"
-    assert not any(p.startswith("spec/") for p in kinds)  # workflow files are not code
+    assert not any(p.startswith(".specworks/") for p in kinds)  # workflow files are not code
 
 
 # @ac AC-FLOW-009.2
@@ -84,7 +84,7 @@ def checks(data):
 
 
 def write_review(repo, body):
-    (repo / "spec/changes/active" / REF / "review.md").write_text(f"# Review: {REF}\n\n## Findings\n\n{body}\n")
+    (repo / ".specworks/changes/active" / REF / "review.md").write_text(f"# Review: {REF}\n\n## Findings\n\n{body}\n")
 
 
 # @ac AC-FLOW-011.1
@@ -134,7 +134,7 @@ def test_gate_review_allow_open_reports_open_findings_as_a_warning(repo):
 
 
 def fail_the_suite(repo):
-    cfg = repo / "spec.yml"
+    cfg = repo / ".specworks/config.yml"
     cfg.write_text(re.sub(r"(?m)^  test:.*$", lambda _: f"  test: {json.dumps(FAIL)}", cfg.read_text(), count=1))
 
 
@@ -211,7 +211,7 @@ def test_gate_review_passes_when_clean(repo):
 # @ac AC-FLOW-002.1
 def test_review_artifact_has_instructions(repo):
     code, data = run_json("instructions", "review", "--change", REF)
-    assert data["outputPath"] == f"spec/changes/active/{REF}/review.md"
+    assert data["outputPath"] == f".specworks/changes/active/{REF}/review.md"
     assert "## Changed files without tags" in data["template"] and "spec-gap" in data["instruction"]
 
 
@@ -240,7 +240,7 @@ def on_main(project, monkeypatch):
     for key, value in {"GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t", "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@t"}.items():
         monkeypatch.setenv(key, value)
     git(project, "init", "-q", "-b", "main")
-    git(project, "add", "spec.yml", "src")
+    git(project, "add", ".specworks/config.yml", "src")
     git(project, "commit", "-q", "-m", "baseline")
     return project
 

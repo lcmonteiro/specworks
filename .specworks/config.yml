@@ -1,7 +1,7 @@
 specworks: 1
-# specworks configuration. The file name sets the workflow folder:
-# spec.yml -> spec/changes/active/ (in-flight changes) and spec/changes/archive/.
-# Modules (sub-projects) use the same file and folder name as the top level.
+# specworks configuration. It always lives in .specworks/config.yml, and
+# .specworks/ is the workflow folder: .specworks/changes/active/ (in-flight
+# changes) and .specworks/changes/archive/. Every module has the same layout.
 #
 # context: free text the agent reads before every phase (stack, conventions,
 # constraints). Keep it short; it is guidance, not documentation.
@@ -47,7 +47,7 @@ capabilities:
     description: "The command surface and its conventions: --json output, errors as {\"error\": ...} with exit 1, and {\"root\": null} when there's no project"
     prefix: CLI
 
-# Modules: sub-projects with their own config (same file name as this one),
+# Modules: sub-projects with their own config (their own .specworks/config.yml),
 # like git submodules. Each one is a complete project (own context,
 # capabilities and changes) linked to this one. Add them with `specworks module add <path>`.
 # modules:
@@ -55,7 +55,7 @@ capabilities:
 modules: {}
 
 # Globs used by `specworks trace` to find tests and source files, relative to
-# this file's folder; they apply to this project's files, not to its modules'.
+# the project folder (the one holding .specworks/); they apply to this project's files, not to its modules'.
 # Empty means "scan everything that is not in the workflow folder", except
 # documentation (.md, .rst, .txt, ...): a tag quoted in a doc is not code or a test.
 # In a glob * and ? stay within one folder and ** spans any number of folders,

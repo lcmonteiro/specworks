@@ -12,7 +12,7 @@ from specworks.specs import merge
 
 runner = CliRunner()
 TODAY = date(2026, 6, 1)
-ARCHIVED = f"spec/changes/archive/{TODAY.isoformat()}-{REF}"
+ARCHIVED = f".specworks/changes/archive/{TODAY.isoformat()}-{REF}"
 
 
 @pytest.fixture(autouse=True)
@@ -37,7 +37,7 @@ def test_abandon_archives_without_merging(project):
     code, data = abandon()
     assert code == 0, data
     assert data["path"] == ARCHIVED and data["phase"] == "design" and data["abandoned"] == "replaced by add-sso"
-    assert not (project / "spec/changes/active" / REF).exists()
+    assert not (project / ".specworks/changes/active" / REF).exists()
     assert (project / "src/auth/docs/spec.md").read_text() == living
     assert not (project / "src/auth/docs/requirements.md").exists()
     meta = (project / ARCHIVED / ".change.yaml").read_text()
@@ -49,7 +49,7 @@ def test_abandon_archives_without_merging(project):
 def test_abandon_needs_a_reason(project):
     code, data = abandon("  ")
     assert code == 1 and "--reason" in data["error"]
-    assert (project / "spec/changes/active" / REF).is_dir()
+    assert (project / ".specworks/changes/active" / REF).is_dir()
 
 
 # @ac AC-CLI-002.5, AC-CLI-004.3
@@ -86,19 +86,19 @@ def test_new_refuses_an_archived_name_and_the_archive_folder(project):
 
 # @ac AC-PROJ-020.3
 def test_an_abandoned_change_moves_from_active_to_archive(project):
-    assert (project / "spec/changes/active" / REF).is_dir()
+    assert (project / ".specworks/changes/active" / REF).is_dir()
     code, data = abandon()
     assert code == 0 and data["path"] == ARCHIVED
     assert (project / ARCHIVED / ".change.yaml").is_file()
-    assert not (project / "spec/changes/active" / REF).exists()
-    assert not (project / "spec/changes" / REF).exists()
+    assert not (project / ".specworks/changes/active" / REF).exists()
+    assert not (project / ".specworks/changes" / REF).exists()
 
 
 # @ac AC-CLI-004.3
 def test_a_leftover_copy_of_an_archived_change_is_flagged(project):
     # A close or abandon that was not committed, undone by a branch switch, leaves the folder behind.
     abandon()
-    shutil.copytree(project / ARCHIVED, project / "spec/changes/active" / REF)
+    shutil.copytree(project / ARCHIVED, project / ".specworks/changes/active" / REF)
     code, data = run_json("list")
     assert data["changes"][0]["alsoArchived"] == ARCHIVED
     code, data = run_json("check", "--change", REF)
@@ -107,19 +107,19 @@ def test_a_leftover_copy_of_an_archived_change_is_flagged(project):
 
 def test_abandoning_twice_on_one_day_fails_without_moving(project):
     abandon()
-    shutil.copytree(project / ARCHIVED, project / "spec/changes/active" / REF)
+    shutil.copytree(project / ARCHIVED, project / ".specworks/changes/active" / REF)
     code, data = abandon()
     assert code == 1 and "already exists in the archive" in data["error"]
-    assert (project / "spec/changes/active" / REF).is_dir()
+    assert (project / ".specworks/changes/active" / REF).is_dir()
 
 
 # @ac AC-PROJ-012.1
 def test_unreadable_or_misnamed_archive_folders_are_left_out(project):
     abandon()
-    (project / "spec/changes/archive/2026-01-01-broken").mkdir()
-    (project / "spec/changes/archive/2026-01-01-broken/.change.yaml").write_text("- not a mapping\n")
-    (project / "spec/changes/archive/notes").mkdir()
-    (project / "spec/changes/archive/notes/.change.yaml").write_text("name: notes\n")
+    (project / ".specworks/changes/archive/2026-01-01-broken").mkdir()
+    (project / ".specworks/changes/archive/2026-01-01-broken/.change.yaml").write_text("- not a mapping\n")
+    (project / ".specworks/changes/archive/notes").mkdir()
+    (project / ".specworks/changes/archive/notes/.change.yaml").write_text("name: notes\n")
     code, data = run_json("list", "--archived")
     assert code == 0 and [c["name"] for c in data["changes"]] == [REF]
 
@@ -127,7 +127,7 @@ def test_unreadable_or_misnamed_archive_folders_are_left_out(project):
 # @ac AC-PROJ-012.2
 def test_archived_changes_are_listed_oldest_first(project):
     abandon()  # archived on TODAY
-    older = project / "spec/changes/archive/2026-01-02-zz-older"  # its name sorts after REF, its date before
+    older = project / ".specworks/changes/archive/2026-01-02-zz-older"  # its name sorts after REF, its date before
     older.mkdir()
     (older / ".change.yaml").write_text("name: zz-older\ncreated: '2026-01-01T10:00:00'\nphase: done\n")
     code, data = run_json("list", "--archived")

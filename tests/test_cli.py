@@ -53,9 +53,9 @@ def test_context_without_project_reports_null_root(tmp_path, monkeypatch):
 
 # @ac AC-CLI-003.1
 def test_init_creates_config_changes_and_skills(project):
-    assert (project / "specworks.yml").is_file()
-    assert (project / "specworks/changes/active").is_dir()
-    assert (project / "specworks/changes/archive").is_dir()
+    assert (project / ".specworks/config.yml").is_file()
+    assert (project / ".specworks/changes/active").is_dir()
+    assert (project / ".specworks/changes/archive").is_dir()
     assert (project / ".claude/skills/specworks-refine/SKILL.md").is_file()
 
 
@@ -63,8 +63,8 @@ def test_init_creates_config_changes_and_skills(project):
 def test_init_prints_paths_relative_to_the_project_root(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     init_repo(tmp_path)
-    result = runner.invoke(app, ["init", "--dir", "spec", "--no-skills"])
-    assert result.exit_code == 0 and result.output == "created spec.yml\nready   spec/changes/active/\n"
+    result = runner.invoke(app, ["init", "--no-skills"])
+    assert result.exit_code == 0 and result.output == "created .specworks/config.yml\nready   .specworks/changes/active/\n"
 
 
 # @ac AC-PROJ-010.1
@@ -102,16 +102,16 @@ def test_new_rejects_duplicates(project):
 # @ac AC-PROJ-020.1
 def test_active_changes_are_listed_from_the_active_folder(project):
     code, data = run_json("new", "add-login", "--no-branch")
-    assert code == 0 and data["path"] == "specworks/changes/active/add-login"
-    assert (project / "specworks/changes/active/add-login/.change.yaml").is_file()
-    assert not (project / "specworks/changes/add-login").exists()
+    assert code == 0 and data["path"] == ".specworks/changes/active/add-login"
+    assert (project / ".specworks/changes/active/add-login/.change.yaml").is_file()
+    assert not (project / ".specworks/changes/add-login").exists()
     code, data = run_json("list")
-    assert code == 0 and [(c["name"], c["path"]) for c in data["changes"]] == [("add-login", "specworks/changes/active/add-login")]
+    assert code == 0 and [(c["name"], c["path"]) for c in data["changes"]] == [("add-login", ".specworks/changes/active/add-login")]
 
 
 # @ac AC-PROJ-020.2
 def test_a_loose_folder_under_changes_is_not_a_change(project):
-    loose = project / "specworks/changes/add-login"
+    loose = project / ".specworks/changes/add-login"
     loose.mkdir()
     (loose / ".change.yaml").write_text("name: add-login\ncreated: '2026-01-01T10:00:00'\nphase: refine\n")
     code, data = run_json("list")
@@ -125,7 +125,7 @@ def test_a_loose_folder_under_changes_is_not_a_change(project):
 def test_new_refuses_the_reserved_folder_names(project, name):
     code, data = run_json("new", name, "--no-branch")
     assert code == 1 and "reserved" in data["error"] and name in data["error"]
-    assert not (project / "specworks/changes/active" / name).exists()
+    assert not (project / ".specworks/changes/active" / name).exists()
 
 
 # @ac AC-CLI-006.6
@@ -168,7 +168,7 @@ def test_new_outside_a_git_repository_creates_nothing(project, extra):
     remove_repo(project)
     code, data = run_json("new", "add-login", *extra)
     assert code == 1 and "git init" in data["error"]
-    assert not (project / "specworks/changes/active/add-login").exists()
+    assert not (project / ".specworks/changes/active/add-login").exists()
     assert not (project / ".git").exists()
 
 
@@ -178,7 +178,7 @@ def test_new_with_an_existing_branch_creates_nothing(committed):
     before = branch_names(committed)
     code, data = run_json("new", "add-login")
     assert code == 1 and "add-login" in data["error"]
-    assert not (committed / "specworks/changes/active/add-login").exists()
+    assert not (committed / ".specworks/changes/active/add-login").exists()
     assert current_branch(committed) == "main" and branch_names(committed) == before
 
 
@@ -188,7 +188,7 @@ def test_new_with_a_detached_head_creates_nothing(committed):
     before = branch_names(committed)
     code, data = run_json("new", "add-login")
     assert code == 1 and "detached" in data["error"]
-    assert not (committed / "specworks/changes/active/add-login").exists()
+    assert not (committed / ".specworks/changes/active/add-login").exists()
     assert branch_names(committed) == before and "add-login" not in branch_names(committed)
 
 
@@ -211,7 +211,7 @@ def test_instructions_for_refinement(project):
     run_json("new", "add-login", "--no-branch")
     code, data = run_json("instructions", "refinement", "--change", "add-login")
     assert code == 0
-    assert data["outputPath"] == "specworks/changes/active/add-login/refinement.md"
+    assert data["outputPath"] == ".specworks/changes/active/add-login/refinement.md"
     assert "## Options" in data["template"]
     assert data["exists"] is False
 
@@ -226,7 +226,7 @@ def test_instructions_for_an_unknown_artifact_are_refused(project):
 # @ac AC-FLOW-001.2
 def test_status_marks_refinement_done_once_written(project):
     run_json("new", "add-login", "--no-branch")
-    (project / "specworks/changes/active/add-login/refinement.md").write_text("# Refinement\n")
+    (project / ".specworks/changes/active/add-login/refinement.md").write_text("# Refinement\n")
     code, data = run_json("status", "--change", "add-login")
     states = {a["id"]: a["status"] for a in data["artifacts"]}
     assert states["refinement"] == "done"
@@ -234,7 +234,7 @@ def test_status_marks_refinement_done_once_written(project):
 
 # @ac AC-CLI-004.1
 def test_context_lists_capabilities_with_docs_path(project):
-    (project / "specworks.yml").write_text(
+    (project / ".specworks/config.yml").write_text(
         "specworks: 1\ncontext: Python 3.12 service\ncapabilities:\n  user-auth:\n    path: src/auth\n"
     )
     code, data = run_json("context")
@@ -277,49 +277,103 @@ def test_only_close_makes_a_change_done(project):
 
 
 # @ac AC-PROJ-001.1, AC-PROJ-009.1
-@pytest.mark.parametrize("folder", ["spec", "docs", "context", "specworks"])
-def test_init_with_custom_dir_names_config_after_folder(tmp_path, monkeypatch, folder):
+def test_init_writes_the_config_in_the_fixed_workflow_folder(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     init_repo(tmp_path)
-    assert runner.invoke(app, ["init", "--dir", folder]).exit_code == 0
-    assert (tmp_path / f"{folder}.yml").read_text().startswith("specworks: 1\n")
-    assert sorted(p.name for p in tmp_path.glob("*.yml")) == [f"{folder}.yml"]
-    assert (tmp_path / folder / "changes/active").is_dir()
-    assert (tmp_path / folder / "changes/archive").is_dir()
+    assert runner.invoke(app, ["init", "--no-skills"]).exit_code == 0
+    assert (tmp_path / ".specworks/config.yml").read_text().startswith("specworks: 1\n")
+    assert list(tmp_path.glob("*.yml")) == []  # nothing at the project's root
+    assert (tmp_path / ".specworks/changes/active").is_dir()
+    assert (tmp_path / ".specworks/changes/archive").is_dir()
     code, data = run_json("new", "add-login", "--no-branch")
-    assert data["path"] == f"{folder}/changes/active/add-login"
+    assert code == 0 and data["path"] == ".specworks/changes/active/add-login"
+    assert (tmp_path / ".specworks/changes/active/add-login/.change.yaml").is_file()
     code, data = run_json("context")
-    assert data["dir"] == folder and data["changesDir"] == f"{folder}/changes/active"
-
-
-# @ac AC-PROJ-001.1
-def test_renaming_config_renames_folder(project):
-    (project / "specworks.yml").rename(project / "context.yml")
-    code, data = run_json("new", "add-login", "--no-branch")
-    assert data["path"] == "context/changes/active/add-login"
+    assert data["dir"] == ".specworks" and data["changesDir"] == ".specworks/changes/active"
 
 
 # @ac AC-PROJ-001.2
-def test_unrelated_yml_is_not_a_project(tmp_path, monkeypatch):
+@pytest.mark.parametrize("content", [b"site_name: my docs\n", b"\xff\xfe specworks: 1\n"], ids=["no-marker", "not-utf8"])
+def test_a_config_yml_without_the_marker_is_not_a_project(tmp_path, monkeypatch, content):
     monkeypatch.chdir(tmp_path)
-    (tmp_path / "docs.yml").write_text("site_name: my docs\n")
+    (tmp_path / ".specworks").mkdir()
+    (tmp_path / ".specworks/config.yml").write_bytes(content)
     code, data = run_json("context")
     assert code == 1 and data["root"] is None
 
 
-# @ac AC-PROJ-001.3
-def test_two_configs_in_one_folder_is_an_error(project):
-    (project / "spec.yml").write_text("specworks: 1\n")
+# @ac AC-PROJ-001.6
+@pytest.mark.parametrize("name", ["docs.yml", "mkdocs.yml", "config.yml"])
+def test_other_yaml_files_are_not_configs(tmp_path, monkeypatch, name):
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / name).write_text("site_name: my docs\n")
     code, data = run_json("context")
-    assert code == 1 and "several specworks configs" in data["error"]
+    assert code == 1 and data["root"] is None
+
+
+def old_layout(root):
+    """A project in the old layout: ``spec.yml`` with the marker and its ``spec/`` folder."""
+    (root / "spec.yml").write_text("specworks: 1\ncapabilities: {}\n")
+    (root / "spec/changes/active/add-login").mkdir(parents=True)
+    (root / "spec/changes/active/add-login/.change.yaml").write_text("name: add-login\ncreated: '2026-01-01T10:00:00'\nphase: refine\n")
+
+
+# @ac AC-PROJ-021.1
+@pytest.mark.parametrize("where", [".", "src/auth"])
+def test_an_old_project_names_the_move_and_moves_nothing(tmp_path, monkeypatch, where):
+    old_layout(tmp_path)
+    (tmp_path / where).mkdir(parents=True, exist_ok=True)
+    monkeypatch.chdir(tmp_path / where)
+    before = sorted(str(p.relative_to(tmp_path)) for p in tmp_path.rglob("*"))
+    code, data = run_json("list")
+    assert code == 1
+    error = data["error"]
+    assert "spec.yml" in error and "move spec.yml to .specworks/config.yml and spec/ to .specworks/" in error
+    assert sorted(str(p.relative_to(tmp_path)) for p in tmp_path.rglob("*")) == before
+    assert not (tmp_path / ".specworks").exists()
+
+
+# @ac AC-PROJ-021.3
+def test_a_new_project_wins_over_a_leftover_old_config(project):
+    (project / "spec.yml").write_text("specworks: 1\nbogus: true\n")  # old and broken: never read
+    code, data = run_json("context")
+    assert code == 0 and data["root"] == str(project)
+    assert data["dir"] == ".specworks" and data["changesDir"] == ".specworks/changes/active"
+    code, data = run_json("new", "add-login", "--no-branch")
+    assert code == 0 and data["path"] == ".specworks/changes/active/add-login"
+
+
+# @ac AC-PROJ-021.4
+@pytest.mark.parametrize("flags", [[], ["--no-link"]], ids=["link", "no-link"])
+def test_init_in_an_old_project_names_the_move_and_writes_nothing(tmp_path, monkeypatch, flags):
+    monkeypatch.chdir(tmp_path)
+    init_repo(tmp_path)
+    old_layout(tmp_path)
+    before = sorted(str(p.relative_to(tmp_path)) for p in tmp_path.rglob("*") if ".git" not in p.relative_to(tmp_path).parts)
+    result = runner.invoke(app, ["init", *flags])  # skills not turned off: none may be written either
+    assert result.exit_code == 1
+    assert "spec.yml" in result.output and "move spec.yml to .specworks/config.yml and spec/ to .specworks/" in result.output
+    assert sorted(str(p.relative_to(tmp_path)) for p in tmp_path.rglob("*") if ".git" not in p.relative_to(tmp_path).parts) == before
+    assert not (tmp_path / ".specworks").exists() and not (tmp_path / ".claude").exists()
+    assert (tmp_path / "spec.yml").read_text() == "specworks: 1\ncapabilities: {}\n"  # the old config is left as it was
+
+
+# @ac AC-CLI-003.8
+def test_init_has_no_dir_option(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    init_repo(tmp_path)
+    result = runner.invoke(app, ["init", "--dir", "spec", "--no-skills"])
+    plain = re.sub(r"\x1b\[[0-9;]*m", "", result.output)  # CI's terminal colours split `--dir`
+    assert result.exit_code == 2 and "No such option: --dir" in plain
+    assert sorted(p.name for p in tmp_path.iterdir()) == [".git"]  # no config, no folder, no skills
 
 
 # @ac AC-PROJ-002.4
 def test_old_dir_key_is_rejected(project):
-    cfg = project / "specworks.yml"
+    cfg = project / ".specworks/config.yml"
     cfg.write_text(cfg.read_text() + "dir: spec\n")
     code, data = run_json("context")
-    assert code == 1 and "'dir' is no longer a setting" in data["error"]
+    assert code == 1 and "'dir' is no longer a setting" in data["error"] and "always .specworks/" in data["error"]
 
 
 # @ac AC-PROJ-002.3, AC-PROJ-003.1, AC-PROJ-003.2
@@ -339,7 +393,7 @@ def test_old_dir_key_is_rejected(project):
     ],
 )
 def test_malformed_config_is_a_clear_error(project, setting, message):
-    cfg = project / "specworks.yml"
+    cfg = project / ".specworks/config.yml"
     key = setting.split(":", 1)[0]
     text = "\n".join(line for line in cfg.read_text().splitlines() if not line.startswith(f"{key}:"))
     cfg.write_text(f"{text}\n{setting}\n")
@@ -348,20 +402,10 @@ def test_malformed_config_is_a_clear_error(project, setting, message):
 
 
 def test_nested_docs_dir_is_allowed(project):
-    cfg = project / "specworks.yml"
+    cfg = project / ".specworks/config.yml"
     cfg.write_text(cfg.read_text().replace("docs_dir: docs", "docs_dir: docs/specworks"))
     code, data = run_json("context")
     assert code == 0, data
-
-
-# @ac AC-PROJ-009.2
-@pytest.mark.parametrize("folder", ["/abs", "../outside", ".", "", "docs/spec", ".hidden"])
-def test_init_rejects_bad_dir(tmp_path, monkeypatch, folder):
-    monkeypatch.chdir(tmp_path)
-    init_repo(tmp_path)
-    result = runner.invoke(app, ["init", "--dir", folder])
-    assert result.exit_code == 1
-    assert list(tmp_path.glob("*.yml")) == []
 
 
 # @ac AC-PROJ-011.1
@@ -378,7 +422,7 @@ def test_phases_follow_the_workflow(project):
 @pytest.mark.parametrize("saved", ["test", "code"])
 def test_a_change_saved_in_test_or_code_is_in_implement(project, saved):
     run_json("new", "add-login", "--no-branch")
-    meta = project / "specworks/changes/active/add-login/.change.yaml"
+    meta = project / ".specworks/changes/active/add-login/.change.yaml"
     meta.write_text(re.sub(r"(?m)^phase: .*$", f"phase: {saved}", meta.read_text(encoding="utf-8")), encoding="utf-8")
     code, data = run_json("status", "--change", "add-login")
     assert code == 0 and data["phase"] == "implement", data
@@ -408,15 +452,15 @@ def test_skills_are_installed_with_specworks_prefix(project):
 @pytest.mark.parametrize(
     "meta, message",
     [
-        ("- a\n- list\n", "specworks/changes/active/add-login/.change.yaml must be a mapping (name, created, phase), got list"),
-        ("phase: [unclosed\n", "cannot read specworks/changes/active/add-login/.change.yaml"),
-        ("phase: shipping\n", "change 'add-login' has unknown phase 'shipping' in specworks/changes/active/add-login/.change.yaml"),
+        ("- a\n- list\n", ".specworks/changes/active/add-login/.change.yaml must be a mapping (name, created, phase), got list"),
+        ("phase: [unclosed\n", "cannot read .specworks/changes/active/add-login/.change.yaml"),
+        ("phase: shipping\n", "change 'add-login' has unknown phase 'shipping' in .specworks/changes/active/add-login/.change.yaml"),
     ],
     ids=["list", "bad-yaml", "unknown-phase"],
 )
 def test_a_broken_change_file_is_an_error_not_a_crash(project, monkeypatch, capsys, meta, message):
     run_json("new", "add-login", "--no-branch")
-    (project / "specworks/changes/active/add-login/.change.yaml").write_text(meta)
+    (project / ".specworks/changes/active/add-login/.change.yaml").write_text(meta)
     # Naming the change reports the broken file, not "not found".
     code, data = run_json("status", "--change", "add-login")
     assert code == 1 and message in data["error"]
@@ -434,7 +478,7 @@ def test_a_broken_change_file_is_an_error_not_a_crash(project, monkeypatch, caps
 
 # @ac AC-PROJ-004.3
 def test_null_description_is_empty(project):
-    cfg = project / "specworks.yml"
+    cfg = project / ".specworks/config.yml"
     cfg.write_text(cfg.read_text().replace("capabilities: {}", "capabilities:\n  user-auth:\n    path: src/auth\n    description:"))
     code, data = run_json("context")
     assert code == 0 and data["capabilities"][0]["description"] == "", data
@@ -443,8 +487,8 @@ def test_null_description_is_empty(project):
 # @ac AC-CLI-002.6
 def test_archived_changes_are_not_addressable(project):
     runner.invoke(app, ["new", "old", "--no-branch"])
-    archived = project / "specworks/changes/archive/2026-01-01-old"
-    (project / "specworks/changes/active/old").rename(archived)
+    archived = project / ".specworks/changes/archive/2026-01-01-old"
+    (project / ".specworks/changes/active/old").rename(archived)
     code, data = run_json("phase", "code", "--change", "archive/2026-01-01-old")
     assert code == 1 and "must be kebab-case" in data["error"]
     assert "phase: refine" in (archived / ".change.yaml").read_text()
@@ -453,7 +497,7 @@ def test_archived_changes_are_not_addressable(project):
 # @ac AC-PROJ-003.5
 @pytest.mark.parametrize("pad", ["true", "-1", "'24'"])
 def test_diagram_pad_must_be_a_non_negative_number(project, pad):
-    cfg = project / "specworks.yml"
+    cfg = project / ".specworks/config.yml"
     cfg.write_text(cfg.read_text().replace("diagrams:\n", f"diagrams:\n  pad: {pad}\n", 1))
     code, data = run_json("context")
     assert code == 1 and "'diagrams.pad' a non-negative number" in data["error"], data
@@ -478,19 +522,18 @@ def test_diagram_pad_must_be_a_non_negative_number(project, pad):
     ids=lambda value: value[:40],  # the test ID goes into an environment variable, which Windows caps at 32767 characters
 )
 def test_invalid_config_values_are_clear_errors(project, config, message):
-    (project / "specworks.yml").write_text(config)
+    (project / ".specworks/config.yml").write_text(config)
     code, data = run_json("context")
     assert code == 1 and message in data["error"], data
 
 
 # @ac AC-PROJ-004.1
 def test_a_capability_can_be_given_as_name_and_path(project):
-    (project / "specworks.yml").write_text("specworks: 1\ncapabilities:\n  user-auth: src/auth/\n")
+    (project / ".specworks/config.yml").write_text("specworks: 1\ncapabilities:\n  user-auth: src/auth/\n")
     code, data = run_json("context")
     assert code == 0 and [(c["name"], c["path"], c["prefix"]) for c in data["capabilities"]] == [("user-auth", "src/auth", "USER-AUTH")]
 
 
-# @ac AC-PROJ-001.2
 def test_a_yml_file_that_is_not_text_is_never_taken_for_a_config(project):
     (project / "logo.yml").write_bytes(b"\xff\xfe specworks: 1\n")  # not UTF-8: skipped, not an error
     code, data = run_json("context")
@@ -499,7 +542,8 @@ def test_a_yml_file_that_is_not_text_is_never_taken_for_a_config(project):
 
 # @ac AC-PROJ-006.4
 def test_a_broken_unrelated_outer_config_does_not_break_an_inner_project(tmp_path, monkeypatch):
-    (tmp_path / "spec.yml").write_text("specworks: 1\nbogus: true\n")
+    (tmp_path / ".specworks").mkdir()
+    (tmp_path / ".specworks/config.yml").write_text("specworks: 1\nbogus: true\n")
     inner = tmp_path / "inner"
     inner.mkdir()
     monkeypatch.chdir(inner)
@@ -511,9 +555,10 @@ def test_a_broken_unrelated_outer_config_does_not_break_an_inner_project(tmp_pat
 
 # @ac AC-PROJ-006.5
 def test_a_broken_parent_that_links_this_module_is_still_an_error(tmp_path, monkeypatch):
-    (tmp_path / "spec.yml").write_text("specworks: 1\nbogus: true\nmodules:\n  inner: inner\n")
-    (tmp_path / "inner").mkdir()
-    (tmp_path / "inner/spec.yml").write_text("specworks: 1\n")
+    (tmp_path / ".specworks").mkdir()
+    (tmp_path / ".specworks/config.yml").write_text("specworks: 1\nbogus: true\nmodules:\n  inner: inner\n")
+    (tmp_path / "inner/.specworks").mkdir(parents=True)
+    (tmp_path / "inner/.specworks/config.yml").write_text("specworks: 1\n")
     monkeypatch.chdir(tmp_path / "inner")
     code, data = run_json("list")
     assert code == 1 and "bogus" in data["error"]
@@ -527,7 +572,7 @@ def test_diagram_theme_on_an_existing_project_says_it_is_not_applied(project):
 
 def test_task_numbered_twice_is_not_ticked(project):
     run_json("new", "dup", "--no-branch")
-    tasks = project / "specworks/changes/active/dup/tasks.md"
+    tasks = project / ".specworks/changes/active/dup/tasks.md"
     tasks.write_text("- [ ] 1.1 first\n- [ ] 1.1 second\n")
     code, data = run_json("task", "done", "1.1", "--change", "dup")
     assert code == 1 and "numbered more than once" in data["error"]
@@ -536,7 +581,7 @@ def test_task_numbered_twice_is_not_ticked(project):
 
 def test_ticking_a_task_keeps_each_line_ending(project):
     run_json("new", "crlf", "--no-branch")
-    tasks = project / "specworks/changes/active/crlf/tasks.md"
+    tasks = project / ".specworks/changes/active/crlf/tasks.md"
     tasks.write_bytes(b"# Tasks\r\n\r\n- [ ] 1.1 first\r\n- [ ] 1.2 second\n")
     code, data = run_json("task", "done", "1.1", "--change", "crlf")
     assert code == 0, data

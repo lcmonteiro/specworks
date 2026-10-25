@@ -57,13 +57,13 @@ def on_a_branch(root, monkeypatch):
 def make_planned_project(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     init_repo(tmp_path)
-    assert runner.invoke(app, ["init", "--dir", "spec", "--no-skills"]).exit_code == 0
-    cfg = tmp_path / "spec.yml"
+    assert runner.invoke(app, ["init", "--no-skills"]).exit_code == 0
+    cfg = tmp_path / ".specworks/config.yml"
     cfg.write_text(cfg.read_text().replace("capabilities: {}", "capabilities:\n  user-auth:\n    path: src/auth\n    prefix: AUTH"))
     (tmp_path / "src/auth/docs").mkdir(parents=True)
     (tmp_path / "src/auth/docs/spec.md").write_text(LIVING)
     run_json("new", REF, "--no-branch")  # stay on main
-    change = tmp_path / "spec/changes/active" / REF
+    change = tmp_path / ".specworks/changes/active" / REF
     (change / "proposal.md").write_text(PROPOSAL)
     (change / "specs/user-auth").mkdir(parents=True)
     (change / "specs/user-auth/spec.md").write_text(DELTA)
@@ -84,7 +84,7 @@ def make_repo(project, monkeypatch):
     """The planned project as a git repo: baseline on main, the change's work on a feature branch."""
     for key, value in {"GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t", "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@t"}.items():
         monkeypatch.setenv(key, value)
-    cfg = project / "spec.yml"
+    cfg = project / ".specworks/config.yml"
     cfg.write_text(re.sub(r"(?m)^  test:.*$", lambda _: f"  test: {json.dumps(PASS)}", cfg.read_text(), count=1))
     (project / "src/auth/session.py").write_text("def session(): ...\n")
     git(project, "add", "-A")

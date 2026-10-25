@@ -9,7 +9,7 @@ import typer
 
 from .. import __version__
 from ..core.changes import archived_as, list_archived
-from ..core.config import DEFAULT_DIR, Config, ConfigError, config_name, find_config, load_config
+from ..core.config import Config, ConfigError, find_config, load_config, old_config_in, old_layout_error
 from ..core.config_file import add_capability_entry, add_module_entry, write_default_config
 from ..core.git import require_repo
 from ..core.validators import validate_relative
@@ -34,16 +34,15 @@ def write_skills(ws: Workspace, tools: str) -> None:
         typer.echo(f"skill   {ws.rel(written)}")
 
 
-def ensure_module_config(root: Path, name: str, workspace_dir: str) -> tuple[Config, bool]:
-    """Load the module's <workspace_dir>.yml, creating it (and its changes folder) when missing.
+def ensure_module_config(root: Path, name: str) -> tuple[Config, bool]:
+    """Load the module's .specworks/config.yml, creating it (and its changes folder) when missing.
 
-    Fails before writing anything if the folder already has a config under another name.
+    Fails before writing anything if the folder still has the old layout.
     """
-    existing = load_module_config(root, name, workspace_dir)
+    existing = load_module_config(root, name)
     if existing is None:
-        root.mkdir(parents=True, exist_ok=True)
-        write_default_config(root, workspace_dir)
-    cfg = existing or load_config(root, workspace_dir)
+        write_default_config(root)
+    cfg = existing or load_config(root)
     make_change_dirs(cfg)
     return cfg, existing is None
 
@@ -96,9 +95,6 @@ def version() -> None:
 @app.command()
 def init(
     path: Path = typer.Argument(Path("."), help="Project (or module) root."),
-    dir: str | None = typer.Option(
-        None, "--dir", help=f"Workflow folder name, also the config name: --dir spec -> spec.yml + spec/ (default: {DEFAULT_DIR})."
-    ),
     name: str | None = typer.Option(None, "--name", help="Module name when linking to a parent project (default: folder name)."),
     diagram_theme: str | None = typer.Option(
         None, "--diagram-theme", help="Diagram theme for the workspace, by name or number (see `specworks diagrams --themes`)."
@@ -107,29 +103,21 @@ def init(
     tools: str = ToolsOpt,
     no_skills: bool = typer.Option(False, "--no-skills", help="Do not install agent skills."),
 ) -> None:
-    """Create <dir>.yml and <dir>/changes/active/ and archive/, link to a parent project, and install the agent skills."""
+    """Create .specworks/config.yml and .specworks/changes/active/ and archive/, link to a parent project, and install the agent skills."""
     root = path.resolve()
     parse_tools(tools, root)  # reject a bad --tools before writing anything
     require_repo(root)
     parent = None if no_link else load_workspace(root.parent)
     if parent is not None:
-        # A module shares the workspace's folder (and config file) name.
-        workspace_dir = parent.top.config.dir
-        if dir is not None and dir != workspace_dir:
-            raise ConfigError(
-                f"this folder is inside the workspace at {parent.root}, which uses {config_name(workspace_dir)}; "
-                f"modules use the same name (drop --dir, or use --no-link for an independent project)"
-            )
         if inner := held_module(parent, root):
             raise ConfigError(held_message(parent, path, inner))
-        cfg, created = ensure_module_config(root, name or default_module_name(root), workspace_dir)
+        cfg, created = ensure_module_config(root, name or default_module_name(root))
     else:
         existing = find_config(root)
+        if existing is None and (old := old_config_in(root)) is not None:  # never a second, empty project beside an old one  @req REQ-PROJ-021
+            raise old_layout_error(old)
         if existing is None:
-            root.mkdir(parents=True, exist_ok=True)
-            write_default_config(root, DEFAULT_DIR if dir is None else dir, diagram_theme)
-        elif dir is not None and existing.stem != dir:
-            typer.echo(f"note    {existing.name} already exists; rename it (and its {existing.stem}/ folder) to change the name")
+            write_default_config(root, diagram_theme)
         cfg, created = load_config(root), existing is None
         make_change_dirs(cfg)
     linked = link_to_parent(root, name) if parent is not None else None
@@ -258,7 +246,7 @@ def module_add(
 ) -> None:
     """Link a folder as a module of the innermost module holding it, creating its config if needed.
 
-    The module uses the workspace's config file and folder name (e.g. spec.yml and spec/).
+    The module gets its own .specworks/config.yml, like every project.
     """
     ws = workspace(as_json)
     root = path.resolve()
@@ -269,7 +257,7 @@ def module_add(
     if inner := held_module(ws, root):
         fail(held_message(ws, path, inner), as_json)
     module_name = name or default_module_name(root)
-    ensure_module_config(root, module_name, ws.top.config.dir)
+    ensure_module_config(root, module_name)
     add_module_entry(owner.root, module_name, root.relative_to(owner.root).as_posix())
     ws = require_workspace(root)
     emit(module_dict(ws, ws.current), as_json, f"linked  {ws.rel(root)} as module '{ws.current.label}'")

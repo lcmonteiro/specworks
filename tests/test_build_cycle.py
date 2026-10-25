@@ -11,7 +11,7 @@ def open_findings(text):
 
 
 def write_review(root, body):
-    (root / "spec/changes/active" / REF / "review.md").write_text(f"# Review: {REF}\n\n## Findings\n\n{body}\n\n## Summary\n\nx\n")
+    (root / ".specworks/changes/active" / REF / "review.md").write_text(f"# Review: {REF}\n\n## Findings\n\n{body}\n\n## Summary\n\nx\n")
 
 
 def cycle():
