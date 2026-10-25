@@ -56,8 +56,22 @@ gate passes, with each check named `test: ` or `code: `. `start` treats
 implement's gate as both, so leaving implement needs both halves; going back
 to implement needs only the design gate. The half checks are new functions
 (`half_tasks_done`, `code_tests_pass`, `review_tests_pass`) rather than
-parameters on `tasks_done`/`tests_pass`, so validate keeps its "every task"
-and blocking-suite checks unchanged. (parallel-test-code)
+parameters on `tests_pass`, so validate keeps its blocking-suite check
+unchanged. (parallel-test-code)
+
+### Validate reports open tasks by kind
+
+Validate has three task checks instead of one "every task is done": the
+`[test]` and `[code]` halves' own `half_tasks_done(half)` checks (naming
+`/specworks-test` and `/specworks-code`) and `unmarked_tasks_done` for tasks
+with neither marker, design's stub tasks (naming `/specworks-design`). Each
+check still names one skill, so a failure points to the phase that fixes it
+and `goBackTo` keeps its shape. The unmarked check is its own function rather
+than `half_tasks_done("")`, whose name is built from the marker and which the
+gates never need. Open tasks of a change written before the markers existed
+go to `/specworks-design`. With tasks.md missing all three fail, behind
+`planning artifacts exist` naming `/specworks-specify`. The single
+`tasks_done` check is gone. (fix-validate-test-task-skill)
 
 ### The code gate does not wait for the tests
 
@@ -130,7 +144,8 @@ earliest finding was replaced: a code finding no longer re-runs the tests.
   implement, else None; `status` shows it as `test 3/3, code 1/4`).
 - `src/specworks/workflow/checks.py`: `Check`, `GateContext`, `passed(checks)`,
   `run_checks(ctx, checks)`, and the check functions (including
-  `half_tasks_done(half)`, `code_tests_pass`, `review_tests_pass`), and
+  `half_tasks_done(half)`, `unmarked_tasks_done`, `code_tests_pass`,
+  `review_tests_pass`), and
   `own_tests(ctx) -> str | None` (why the change has tests of its own, or
   None; used by `code_tests_pass` and the design gate's `existing_tests_pass`).
 - `src/specworks/workflow/gate.py`: `GATE_CHECKS`, `GATES` (with `test`,
@@ -142,8 +157,8 @@ earliest finding was replaced: a code finding no longer re-runs the tests.
   `Finding` (`phase` holds its step), `FINDING_STEPS`.
 - `src/specworks/workflow/cycle.py`: `next_cycle(change)` (`reviewed`, `open`,
   `startAt`, `phases`, `handOver`; `phases` lists steps).
-- `src/specworks/workflow/validate.py`: `validate_change(ctx)`,
-  `summary(checks)`.
+- `src/specworks/workflow/validate.py`: `VALIDATE` (rows of group, the skill
+  that fixes a failure, check), `validate_change(ctx)`, `summary(checks)`.
 
 ## Constraints
 
