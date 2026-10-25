@@ -16,5 +16,5 @@
 
 ## 3. Review R1: init in an old project, module add
 
-- [ ] 3.1 [test] Test for AC-PROJ-021.4: `init` (with and without `--no-link`) in a folder holding `spec.yml` with `specworks: 1` and no `.specworks/config.yml` fails with the old-layout error naming `spec.yml` and writes nothing; check the AC-CLI-005.1 and AC-CLI-005.2 tests assert `.specworks/config.yml` and the old-layout error (REQ-PROJ-021, REQ-CLI-005); verify the AC-PROJ-021.4 test fails before 3.2
+- [x] 3.1 [test] Test for AC-PROJ-021.4: `init` (with and without `--no-link`) in a folder holding `spec.yml` with `specworks: 1` and no `.specworks/config.yml` fails with the old-layout error naming `spec.yml` and writes nothing; check the AC-CLI-005.1 and AC-CLI-005.2 tests assert `.specworks/config.yml` and the old-layout error (REQ-PROJ-021, REQ-CLI-005); verify the AC-PROJ-021.4 test fails before 3.2
 - [x] 3.2 [code] `init` with no parent project checks the folder for an old-style config before writing and fails with the old-layout error; `module add` creates the module's `.specworks/config.yml` (REQ-PROJ-021, REQ-CLI-005); verify the 3.1 tests pass and `specworks run test` and `specworks run lint` pass

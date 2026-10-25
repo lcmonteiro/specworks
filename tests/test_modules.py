@@ -231,6 +231,7 @@ def test_module_add_rejects_a_folder_with_an_old_style_config(workspace):
     (other / "docs.yml").write_text("specworks: 1\n")
     code, data = run_json("module", "add", "libs/legacy")
     assert code == 1 and "docs.yml" in data["error"]
+    assert "move docs.yml to .specworks/config.yml and docs/ to .specworks/" in data["error"]  # the old-layout error
     assert not (other / ".specworks").exists()
     assert "legacy: libs/legacy" not in (workspace / ".specworks/config.yml").read_text()
 

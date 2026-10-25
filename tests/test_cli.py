@@ -343,6 +343,21 @@ def test_a_new_project_wins_over_a_leftover_old_config(project):
     assert code == 0 and data["path"] == ".specworks/changes/active/add-login"
 
 
+# @ac AC-PROJ-021.4
+@pytest.mark.parametrize("flags", [[], ["--no-link"]], ids=["link", "no-link"])
+def test_init_in_an_old_project_names_the_move_and_writes_nothing(tmp_path, monkeypatch, flags):
+    monkeypatch.chdir(tmp_path)
+    init_repo(tmp_path)
+    old_layout(tmp_path)
+    before = sorted(str(p.relative_to(tmp_path)) for p in tmp_path.rglob("*") if ".git" not in p.relative_to(tmp_path).parts)
+    result = runner.invoke(app, ["init", *flags])  # skills not turned off: none may be written either
+    assert result.exit_code == 1
+    assert "spec.yml" in result.output and "move spec.yml to .specworks/config.yml and spec/ to .specworks/" in result.output
+    assert sorted(str(p.relative_to(tmp_path)) for p in tmp_path.rglob("*") if ".git" not in p.relative_to(tmp_path).parts) == before
+    assert not (tmp_path / ".specworks").exists() and not (tmp_path / ".claude").exists()
+    assert (tmp_path / "spec.yml").read_text() == "specworks: 1\ncapabilities: {}\n"  # the old config is left as it was
+
+
 # @ac AC-CLI-003.8
 def test_init_has_no_dir_option(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
