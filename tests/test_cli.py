@@ -363,9 +363,18 @@ def test_init_has_no_dir_option(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     init_repo(tmp_path)
     result = runner.invoke(app, ["init", "--dir", "spec", "--no-skills"])
-    plain = re.sub(r"\x1b\[[0-9;]*m", "", result.output)  # CI's terminal colours split `--dir`
-    assert result.exit_code == 2 and "No such option: --dir" in plain
+    assert result.exit_code == 2 and "No such option: --dir" in result.output
     assert sorted(p.name for p in tmp_path.iterdir()) == [".git"]  # no config, no folder, no skills
+
+
+def test_cli_output_is_plain_even_when_ci_forces_colour(tmp_path, monkeypatch):
+    """CI's GITHUB_ACTIONS=true (or FORCE_COLOR=1) makes rich colour typer's errors, which splits text such as `--dir`."""
+    monkeypatch.setenv("GITHUB_ACTIONS", "true")
+    monkeypatch.setenv("FORCE_COLOR", "1")
+    monkeypatch.chdir(tmp_path)
+    result = runner.invoke(app, ["init", "--dir", "x"])
+    assert result.exit_code == 2
+    assert "\x1b" not in result.output and "No such option: --dir" in result.output
 
 
 # @ac AC-PROJ-002.4
