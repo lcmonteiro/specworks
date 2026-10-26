@@ -48,7 +48,7 @@ Serves: REQ-FLOW-015, REQ-CLI-010.
 
 ## Interfaces
 
-Proposed: waiting for the user's agreement
+Agreed with the user (BranchMergeError, as proposed)
 
 - `src/specworks/workflow/merge.py`: `merge_branch(ws: Workspace, module: Module,
   change: Change, branch: str) -> MergeResult` (new): refuses a dirty checkout
