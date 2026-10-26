@@ -14,8 +14,8 @@ result as text or JSON.
 - `changes.py`: `new`, `status`, `abandon`, `phase`, `skip-specs`,
   `instructions`, `task`.
 - `specs.py`: `check`, `trace`, `spec`, `diagrams`.
-- `workflow.py`: `gate`, `start`, `review`, `cycle`, `validate`, `close`,
-  `run`.
+- `workflow.py`: `gate`, `start`, `review`, `cycle`, `merge`, `validate`,
+  `close`, `run`.
 - `__init__.py`: `main` and the order commands are registered in.
 
 ## Decisions
@@ -58,7 +58,9 @@ creating the change folder, then creates the folder and switches to the branch:
 a refusal leaves neither. `--no-branch` skips the branch but still needs the
 repo. `new` finds the base branch with `detect_base` and passes it to core, and
 reports `branch` and `startedFrom` (`--json`, both `null` without a branch).
-Commits and pushes stay in the skills, not in the CLI. (git-workflow)
+Commits and pushes stay in the skills, not in the CLI, except the merge
+commit `merge` makes when it joins a half's branch. (git-workflow,
+merge-halves-without-conflicts)
 
 ### Modules are linked where the folder lives
 
@@ -102,7 +104,9 @@ a second config format exists. (upgrade-project)
   `update`, `context`, `list`, `module add|list`, `capability add`, `new`, `status`,
   `abandon`, `phase`, `skip-specs`, `instructions`, `task list|done|undo`,
   `check`, `trace`, `spec show|list`, `diagrams`, `gate`, `start`, `review`,
-  `cycle`, `validate`, `close`, `run`.
+  `cycle`, `merge`, `validate`, `close`, `run`.
+- `merge <branch> --change <ref> [--json]`: `--json` prints the change's
+  fields plus `merged`, `branch` and `resolved` (workspace-relative paths).
 
 ## Constraints
 

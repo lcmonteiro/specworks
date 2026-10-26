@@ -156,11 +156,10 @@ of <skills folder>/specworks-build/SKILL.md.
    - the **code** half in a subagent in the main checkout, at the same time.
 
    Wait for both. Then merge the worktree's branch into the main checkout
-   (`git merge <branch>`). On a conflict in `tasks.md`, keep every tick: a
-   task is `- [x]` when either side ticked it. On a conflict in
-   `traceability.md`, take either side and regenerate it with `specworks
-   trace --change "<ref>" --write`. Any other conflict means a half worked
-   outside its own files: stop and report it. After the merge, run
+   with `specworks merge <branch> --change "<ref>"`: it keeps every tick of
+   `tasks.md` and regenerates `traceability.md`, and aborts the merge on any
+   other conflict (a half worked outside its own files). If it fails, stop
+   and report its error. After the merge, run
    `specworks gate implement --change "<ref>"`; its suite may fail (the
    tests meet the code in review), every other check must pass.
 
@@ -265,7 +264,7 @@ of <skills folder>/specworks-build/SKILL.md.
 5. **Report and stop**
 
    Summarize per cycle: the steps run, the API agreed or changed, tests
-   added, the code written, the worktree merge (and any conflict resolved),
+   added, the code written, the worktree merge (and the files it resolved),
    and the findings (found, resolved, accepted).
    Run `specworks trace --change "<ref>" --write`. Say "The build is
    complete." and end with:

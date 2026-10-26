@@ -1,18 +1,21 @@
-"""Workflow commands: gates, starting a phase, review, cycle, validate, close and the project's own commands."""
+"""Workflow commands: gates, starting a phase, review, cycle, merging a half's branch, validate, close and the project's own commands."""
 
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 import typer
 
 from ..core.changes import PHASES
 from ..core.runner import cached_run
+from ..core.workspace import Workspace
 from ..specs.merge import archive_target, close_change, plan_merge
 from ..specs.trace import GAP_LABELS, Analysis
 from ..workflow.checks import Check, GateContext, passed
 from ..workflow.cycle import next_cycle
 from ..workflow.gate import GATES, run_gate, start_phase
+from ..workflow.merge import BranchMergeError, merge_branch
 from ..workflow.review import review_change
 from ..workflow.validate import GROUPS, summary, validate_change
 from .app import app
@@ -127,6 +130,37 @@ def cycle(
         else:
             lines.append(f"next cycle: {' -> '.join(result['phases'])}")
     emit(data, as_json, "\n".join(lines))
+
+
+# @req REQ-CLI-010
+@app.command()
+def merge(
+    branch: str = typer.Argument(..., help="Branch to merge into the current checkout (in /specworks-build, the test half's worktree branch)."),
+    change: str = ChangeOpt,
+    as_json: bool = JsonOpt,
+) -> None:
+    """Merge a branch for a change, resolving its tasks.md (every tick kept) and traceability.md (regenerated); abort on any other conflict.
+
+    Implements REQ-CLI-010.
+    """
+    ws, mod, ch = require_change(change, as_json)
+    try:
+        result = merge_branch(ws, mod, ch, branch)
+    except BranchMergeError as exc:
+        fail(str(exc), as_json, files=[_rel(ws, f) for f in exc.files])
+    data = {**change_dict(ws, mod, ch), **result.to_dict(ws)}
+    if not result.merged:
+        lines = [f"{branch}: already up to date, nothing to merge"]
+    else:
+        lines = [f"resolved {path}" for path in data["resolved"]] + [f"merged {branch} into the current checkout"]
+    emit(data, as_json, "\n".join(lines))
+
+
+def _rel(ws: Workspace, path: Path) -> str:
+    try:
+        return ws.rel(path)
+    except ValueError:  # a file of the repository outside the workspace
+        return path.as_posix()
 
 
 @app.command("validate")
