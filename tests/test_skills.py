@@ -187,11 +187,14 @@ def test_the_test_half_fast_forwards_its_worktree_to_the_main_checkout():
     assert "the worktree starts from HEAD" not in " ".join(read_skill("specworks-build").split())
 
 
-def test_build_gates_the_review_itself_when_every_finding_is_accepted():
-    # With nothing left to tick or change, a fresh review subagent is a run spent on nothing.
+def test_build_gates_the_review_itself_after_the_decisions():
+    # The first review run already ticks the earlier cycle's findings, so a second review subagent after the decisions only re-ran the gate.
     text = " ".join(read_skill("specworks-build").split())
+    first_run = text.split("**First run**")[1].split("**You**")[0]
+    assert "earlier cycle" in first_run and "- [x]" in first_run
     assert 'run `specworks gate review --change "<ref>" --allow-open` yourself' in text
-    assert "decided `accepted`" in text
+    assert "fresh review subagent" not in text
+    assert "decided `accepted`" not in text
 
 
 def test_build_review_proposes_every_finding_before_the_user_decides():
