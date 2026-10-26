@@ -1,6 +1,6 @@
 name: merge-halves-without-conflicts
 created: '2026-10-25T23:15:49'
-phase: design
+phase: implement
 specified:
   REQ-CLI-010: ad50c2c84562
   REQ-FLOW-015: f401158df010
