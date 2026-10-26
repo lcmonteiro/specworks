@@ -1,4 +1,4 @@
 name: colour-safe-cli-tests
 created: '2026-10-26T14:40:00'
-phase: specify
+phase: design
 skip_specs: true
