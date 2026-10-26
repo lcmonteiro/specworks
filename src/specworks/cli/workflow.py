@@ -1,4 +1,4 @@
-"""Workflow commands: gates, starting a phase, review, cycle, validate, close and the project's own commands."""
+"""Workflow commands: gates, starting a phase, review, cycle, merging a half's branch, validate, close and the project's own commands."""
 
 from __future__ import annotations
 
@@ -13,6 +13,7 @@ from ..specs.trace import GAP_LABELS, Analysis
 from ..workflow.checks import Check, GateContext, passed
 from ..workflow.cycle import next_cycle
 from ..workflow.gate import GATES, run_gate, start_phase
+from ..workflow.merge import merge_branch
 from ..workflow.review import review_change
 from ..workflow.validate import GROUPS, summary, validate_change
 from .app import app
@@ -127,6 +128,21 @@ def cycle(
         else:
             lines.append(f"next cycle: {' -> '.join(result['phases'])}")
     emit(data, as_json, "\n".join(lines))
+
+
+@app.command()
+def merge(
+    branch: str = typer.Argument(..., help="Branch to merge into the current checkout (in /specworks-build, the test half's worktree branch)."),
+    change: str = ChangeOpt,
+    as_json: bool = JsonOpt,
+) -> None:
+    """Merge a branch for a change, resolving its tasks.md (every tick kept) and traceability.md (regenerated); abort on any other conflict.
+
+    Implements REQ-CLI-010.
+    """
+    ws, mod, ch = require_change(change, as_json)
+    merge_branch(ws, mod, ch, branch)
+    raise NotImplementedError
 
 
 @app.command("validate")
