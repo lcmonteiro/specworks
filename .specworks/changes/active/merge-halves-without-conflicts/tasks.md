@@ -2,7 +2,7 @@
 
 ## 1. Merging a half's branch
 
-- [x] 1.1 Add the API as stubs: `merge_branch`, `MergeResult`, `MergeError` and `merge_ticks` in `src/specworks/workflow/merge.py`, and the `merge` command in `src/specworks/cli/workflow.py` (REQ-FLOW-015, REQ-CLI-010); verify `gate design` passes
+- [x] 1.1 Add the API as stubs: `merge_branch`, `MergeResult`, `BranchMergeError` and `merge_ticks` in `src/specworks/workflow/merge.py`, and the `merge` command in `src/specworks/cli/workflow.py` (REQ-FLOW-015, REQ-CLI-010); verify `gate design` passes
 - [ ] 1.2 [test] Tests for AC-FLOW-015.1-.6 with real git repositories and a second branch: no conflict, ticks on both sides, the trace on both sides, another file conflicting, a task's text differing, uncommitted changes and an unknown branch; each aborted case checks the files and HEAD are as before (REQ-FLOW-015); verify they fail against the stubs
 - [ ] 1.3 [test] Tests for AC-CLI-010.1-.3: the `--json` output with workspace-relative paths, an aborted merge's error and exit 1, and a project outside git (REQ-CLI-010); verify they fail against the stubs
 - [ ] 1.4 [code] Implement `merge_ticks` and `merge_branch`: refuse a dirty checkout or unknown branch, merge, abort on any conflict but the change's `tasks.md` and `traceability.md`, merge the ticks, regenerate the trace, commit (REQ-FLOW-015); verify the 1.2 tests pass
