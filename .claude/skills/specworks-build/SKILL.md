@@ -89,7 +89,8 @@ their questions, and write the answers to disk.
 - **On `Result: done`**: report its line and start the next phase.
 - **On `Result: question`**: ask the user the question as it is. Write the
   answer where the next run of the phase reads it, then start a fresh
-  subagent for the same phase with the same prompt:
+  subagent for the same phase with the same prompt (review in a build: see
+  its step 3):
 
   | Question | Where the answer goes |
   |---|---|
@@ -143,8 +144,9 @@ of <skills folder>/specworks-build/SKILL.md.
    `<phase>` set to the step: `test` and `code` for the two halves. The skill
    moves the change with `specworks start`, does the work and runs its gate.
    On `Result: done`, report its line and go on; on `Result: question`, ask,
-   write the answer to disk and start a fresh subagent for the same step; on
-   `Result: blocked`, stop and report where and why.
+   write the answer to disk and start a fresh subagent for the same step (for
+   review, step 3 says what follows instead); on `Result: blocked`, stop and
+   report where and why.
 
    **Implement: the two halves in parallel.** When the cycle has both
    halves, start them together (design's work is already committed by its own skill; the
@@ -192,9 +194,11 @@ of <skills folder>/specworks-build/SKILL.md.
    **open** with the phase that will carry it out, instead of being fixed
    inside review. It decides nothing with the user itself:
 
-   - **First run**: it writes review.md with every finding open and the
-     change it proposes, then returns them all in one `Result: question`
-     (small, obvious ones grouped into one yes/no question, as review does):
+   - **First run**: it ticks the findings from an earlier cycle that are
+     now done (`- [x]`, with what was done), writes review.md with every new
+     finding open and the change it proposes, then returns them all in one
+     `Result: question` (small, obvious ones grouped into one yes/no
+     question, as review does):
      ```markdown
      - [ ] R2 **design-gap** `reset()` returns None; callers need the token (REQ-AUTH-003)
        - **Proposal**: back to design: return `ResetToken` from `ResetService.request_reset`
@@ -205,12 +209,10 @@ of <skills folder>/specworks-build/SKILL.md.
      design, implement, test or code), the user's other choice,
      or `accepted: <reason>` with the box ticked. Spec findings
      (`spec-gap`) get `back to specify: ...`.
-   - **Then** a fresh review subagent reads the decided review.md, ticks
-     the findings from an earlier cycle that are now done (`- [x]`, with
-     what was done), finishes the file and gates it. When every finding is
-     decided `accepted` and no finding from an earlier cycle needs ticking,
-     nothing is left for it to do: skip that run and run
-     `specworks gate review --change "<ref>" --allow-open` yourself.
+   - **Then**, once every `**Decision**:` line is written, run
+     `specworks gate review --change "<ref>" --allow-open` yourself; no
+     second review subagent runs. If the gate rejects a Decision line, fix
+     your own line and run the gate again.
 
    The gate is `specworks gate review --change "<ref>" --allow-open`: open
    findings do not fail it here (step 4 turns them into the next cycle), nor
