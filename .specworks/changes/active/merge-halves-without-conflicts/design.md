@@ -48,16 +48,32 @@ Serves: REQ-FLOW-015, REQ-CLI-010.
 
 ## Interfaces
 
-To be settled in the design phase. Expected:
-- `src/specworks/workflow/merge.py`: `merge_branch(ws, change, branch: str) ->
-  MergeResult` (new), `MergeResult(merged: bool, branch: str, resolved:
-  list[Path])`, raises `MergeError` naming the conflicting files
-  (REQ-FLOW-015)
+Proposed: waiting for the user's agreement
+
+- `src/specworks/workflow/merge.py`: `merge_branch(ws: Workspace, module: Module,
+  change: Change, branch: str) -> MergeResult` (new): refuses a dirty checkout
+  or an unknown branch, merges, resolves `tasks.md` and `traceability.md`,
+  commits; raises `BranchMergeError`, and `GitError` (from `require_repo`)
+  outside a git repository. `module` gives the change's ref for the
+  regenerated trace (REQ-FLOW-015)
+- `src/specworks/workflow/merge.py`: `MergeResult(merged: bool, branch: str,
+  resolved: list[Path])` (new, frozen dataclass), with `to_dict(ws) -> dict`
+  giving `merged`, `branch` and `resolved` as workspace-relative paths;
+  `merged` is False only when git had nothing to merge ("Already up to date")
+  (REQ-FLOW-015, REQ-CLI-010)
+- `src/specworks/workflow/merge.py`: `BranchMergeError(SpecworksError)` (new)
+  with `files: list[Path]`, the conflicting files (empty when refused before
+  merging: uncommitted changes, unknown branch). Named apart from the existing
+  `specworks.specs.merge.MergeError`, which close raises (REQ-FLOW-015)
 - `src/specworks/workflow/merge.py`: `merge_ticks(ours: str, theirs: str) ->
-  str | None` (new), None when a line differs in more than its box
-  (REQ-FLOW-015)
+  str | None` (new): `tasks.md` with each line ticked when either side ticks
+  it, `None` when a line differs in more than its box (REQ-FLOW-015)
 - `src/specworks/cli/workflow.py`: `specworks merge <branch> --change <ref>
-  [--json]` (new) (REQ-CLI-010)
+  [--json]` (new): `--json` prints the change's fields plus `merged`,
+  `branch`, `resolved`; errors are values through the app's error wrapper
+  (REQ-CLI-010)
+
+No existing interface changes; nothing is BREAKING.
 
 ## Risks / Trade-offs
 
