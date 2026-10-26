@@ -23,5 +23,5 @@ Task 1.2's verification ("the 1.1 check passes", `specworks run test`
 passes) can only pass once the test half is merged, so 1.2 is not ticked and
 `gate code` does not pass yet.
 
-Proposed: waiting for the user's agreement. Rerun the code half after the
+Agreed with the user. Rerun the code half after the
 test half's worktree is merged; it then verifies, ticks 1.2 and gates.
