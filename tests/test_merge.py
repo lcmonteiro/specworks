@@ -13,17 +13,19 @@ CHANGE = f".specworks/changes/active/{REF}"
 TASKS_MD = f"{CHANGE}/tasks.md"
 TRACE_MD = f"{CHANGE}/traceability.md"
 BRANCH = "half"
+BASELINE = "baseline"
 
 
 @pytest.fixture
 def halves(project, monkeypatch):
-    """The planned project committed on main, with the change's trace written, and a `half` branch from there; on main."""
+    """The planned project committed on main (tagged `baseline`), with the change's trace written, and a `half` branch from there; on main."""
     for key, value in {"GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t", "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@t"}.items():
         monkeypatch.setenv(key, value)
     (project / "src/auth/session.py").write_text("def session():\n    return 1\n")
     run_json("trace", "--change", REF, "--write")
     git(project, "add", "-A")
     git(project, "commit", "-q", "-m", "baseline")
+    git(project, "tag", BASELINE)
     git(project, "branch", BRANCH)
     return project
 
@@ -40,8 +42,8 @@ def commit_on(root, branch, files, message):
 
 
 def tick(root, *numbers):
-    """tasks.md with the given tasks ticked."""
-    text = (root / TASKS_MD).read_text(encoding="utf-8")
+    """The baseline's tasks.md with the given tasks ticked, whatever is checked out, so each side carries only its own edits."""
+    text = git_text(root, "show", f"{BASELINE}:{TASKS_MD}")
     for n in numbers:
         text = text.replace(f"- [ ] {n} ", f"- [x] {n} ")
     return text
@@ -120,6 +122,8 @@ def test_both_files_conflicting_are_both_resolved(halves):
     commit_on(halves, "main", {TASKS_MD: tick(halves, "1.2"), TRACE_MD: "ours\n"}, "code half")
     ws, result = merge(halves)
     assert result.merged is True and sorted(ws.rel(p) for p in result.resolved) == sorted([TASKS_MD, TRACE_MD])
+    text = (halves / TASKS_MD).read_text(encoding="utf-8")
+    assert "- [x] 1.1 [test]" in text and "- [x] 1.2 [code]" in text
     assert len(parents(halves)) == 2 and status(halves) == ""
 
 
@@ -204,6 +208,8 @@ def test_ac_cli_010_1_merge_prints_the_resolved_files_relative_to_the_root(halve
     code, data = run_json("merge", BRANCH, "--change", REF)
     assert code == 0, data
     assert data["merged"] is True and data["branch"] == BRANCH and data["resolved"] == [TASKS_MD]
+    text = (halves / TASKS_MD).read_text(encoding="utf-8")
+    assert "- [x] 1.1 [test]" in text and "- [x] 1.2 [code]" in text
     assert status(halves) == "" and not merging(halves)
 
 
