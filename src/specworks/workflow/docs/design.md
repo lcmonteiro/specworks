@@ -20,6 +20,8 @@ capability gives them facts and gates.
 - **Cycles** (`cycle.py`): which steps the next build cycle runs after a
   review.
 - **Validate** (`validate.py`): the grouped, read-only final report.
+- **Merge** (`merge.py`): merging a half's branch into the checkout in a
+  build, resolving the change's `tasks.md` and `traceability.md`.
 
 ## Decisions
 
@@ -136,6 +138,22 @@ over to specify instead of starting a cycle. Re-running every phase after the
 earliest finding was replaced: a code finding no longer re-runs the tests.
 (baseline-workflow, parallel-test-code)
 
+### Merging a half's branch resolves only tasks.md and the trace
+
+Both implement halves tick `tasks.md` and rewrite `traceability.md`, so the
+test half's worktree branch conflicts there on every build. `merge_branch`
+refuses a dirty checkout or an unknown branch, runs `git merge --no-ff
+--no-edit`, and on conflicts resolves only those two files of the change:
+`tasks.md` keeps a line ticked when either side ticked it (`merge_ticks`,
+reading both sides from the index), and the trace is regenerated for the
+merged checkout. Any other conflicting file, or a `tasks.md` line that
+differs in more than its box, runs `git merge --abort`, so the checkout is
+never left half-merged. git's `union` strategy was rejected: it keeps both
+versions of a line, so a task would appear twice. Two task files and a git
+merge driver were rejected too. The merge commit keeps git's default message.
+Its error, `BranchMergeError`, is named apart from `specs.merge.MergeError`,
+which close raises. (merge-halves-without-conflicts)
+
 ## Interfaces
 
 - `src/specworks/workflow/artifacts.py`: `load_artifacts()`,
@@ -159,10 +177,18 @@ earliest finding was replaced: a code finding no longer re-runs the tests.
   `startAt`, `phases`, `handOver`; `phases` lists steps).
 - `src/specworks/workflow/validate.py`: `VALIDATE` (rows of group, the skill
   that fixes a failure, check), `validate_change(ctx)`, `summary(checks)`.
+- `src/specworks/workflow/merge.py`: `merge_branch(ws, module, change, branch)
+  -> MergeResult` (raises `BranchMergeError`, and `GitError` outside a git
+  repository), `MergeResult(merged, branch, resolved)` (`merged` is False only
+  when there was nothing to merge; `to_dict(ws)` gives workspace-relative
+  paths), `BranchMergeError` (`files`: the conflicting files, empty when
+  refused before merging), `merge_ticks(ours, theirs) -> str | None` (None
+  when a line differs in more than its box).
 
 ## Constraints
 
 - Validate and the gates write nothing to the project. Only `start` writes, to
-  the change's metadata.
+  the change's metadata, and `merge_branch`, which commits a merge or leaves
+  the checkout as it was.
 - Built on `project` (config, workspace, changes, runner) and `specs` (specs,
   tags, trace).
