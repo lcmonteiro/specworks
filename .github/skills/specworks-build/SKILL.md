@@ -88,7 +88,8 @@ their questions, and write the answers to disk.
 - **On `Result: done`**: report its line and start the next phase.
 - **On `Result: question`**: ask the user the question as it is. Write the
   answer where the next run of the phase reads it, then start a fresh
-  subagent for the same phase with the same prompt:
+  subagent for the same phase with the same prompt (review in a build: see
+  its step 3):
 
   | Question | Where the answer goes |
   |---|---|
@@ -142,8 +143,9 @@ of <skills folder>/specworks-build/SKILL.md.
    `<phase>` set to the step: `test` and `code` for the two halves. The skill
    moves the change with `specworks start`, does the work and runs its gate.
    On `Result: done`, report its line and go on; on `Result: question`, ask,
-   write the answer to disk and start a fresh subagent for the same step; on
-   `Result: blocked`, stop and report where and why.
+   write the answer to disk and start a fresh subagent for the same step (for
+   review, step 3 says what follows instead); on `Result: blocked`, stop and
+   report where and why.
 
    **Implement: the two halves in parallel.** When the cycle has both
    halves, start them together (design's work is already committed by its own skill; the

@@ -25,7 +25,8 @@ their questions, and write the answers to disk.
 - **On `Result: done`**: report its line and start the next phase.
 - **On `Result: question`**: ask the user the question as it is. Write the
   answer where the next run of the phase reads it, then start a fresh
-  subagent for the same phase with the same prompt:
+  subagent for the same phase with the same prompt (review in a build: see
+  its step 3):
 
   | Question | Where the answer goes |
   |---|---|
