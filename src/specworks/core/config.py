@@ -30,6 +30,8 @@ DEFAULT_DOCS_DIR = "docs"
 MAX_CONTEXT_BYTES = 50 * 1024
 CONFIG_KEYS = ("specworks", "context", "docs_dir", "capabilities", "modules", "test_globs", "source_globs", "commands", "diagrams")
 CAPABILITY_KEYS = ("path", "prefix", "description")
+# The AI tool IDs `tools:` may list; the same keys, in the same order, as TOOLS in tools/skills.py (core never imports tools).
+TOOL_IDS: tuple[str, ...] = ("claude", "copilot")
 DIAGRAM_KEYS = ("theme", "dark_theme", "layout", "sketch", "pad")
 
 
@@ -154,6 +156,7 @@ class Config:
     source_globs: list[str] = field(default_factory=list)
     commands: dict[str, str] = field(default_factory=dict)
     diagrams: DiagramSettings = field(default_factory=DiagramSettings)
+    tools: list[str] | None = None  # the AI tools saved at the top level (TOOL_IDS); None when none is saved
 
     @property
     def config_path(self) -> Path:

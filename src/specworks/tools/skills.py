@@ -26,7 +26,9 @@ FRONTMATTER_RE = re.compile(r"\A---\n(.*?)\n---\n", re.DOTALL)
 class Tool:
     id: str
     label: str
-    skills_dir: str
+    skills_dir: str  # the folder it prefers, written when no folder picked for another chosen tool is in ``reads``
+    # Every skills folder this tool reads, ``skills_dir`` first.
+    reads: tuple[str, ...] = ()
     prompts_dir: str | None = None
     # Files or folders whose presence means the project already uses this tool.
     detect: tuple[str, ...] = field(default_factory=tuple)
@@ -39,12 +41,14 @@ TOOLS: dict[str, Tool] = {
         id="claude",
         label="Claude Code",
         skills_dir=".claude/skills",
+        reads=(".claude/skills",),
         detect=(".claude", "CLAUDE.md"),
     ),
     "copilot": Tool(
         id="copilot",
         label="GitHub Copilot",
         skills_dir=".github/skills",
+        reads=(".github/skills", ".claude/skills", ".agents/skills"),
         prompts_dir=".github/prompts",
         detect=(
             ".github/copilot-instructions.md",
@@ -57,6 +61,10 @@ TOOLS: dict[str, Tool] = {
         keep_keys=("name", "description"),
     ),
 }
+
+
+# Copilot prompt files: none is written any more; specworks ones left by an older version are removed.
+PROMPTS_DIR = ".github/prompts"
 
 
 class ToolError(SpecworksError):
@@ -135,6 +143,24 @@ def parse_tools(value: str, root: Path) -> list[Tool]:
     if not tools:
         raise ToolError("no tool given; use auto, all or a list such as claude,copilot")
     return tools
+
+
+def resolve_tools(root: Path, saved: list[str] | None, given: str | None) -> tuple[list[Tool], bool]:
+    """The tools to install for, and whether to save them in the config.
+
+    ``given`` (``--tools``) wins and is saved; else the ``saved`` tool IDs; else the
+    installed tools, else ``auto``, saved. Implements REQ-INTEG-004, REQ-CLI-009.
+    """
+    raise NotImplementedError
+
+
+def skill_folders(tools: list[Tool]) -> list[tuple[Tool, str]]:
+    """The fewest skills folders every tool in ``tools`` reads, each with the tool whose frontmatter keys its copies keep.
+
+    Tools are taken in ``TOOLS`` order; a tool gets its preferred folder only when no folder
+    picked so far is in its ``reads``. Implements REQ-INTEG-005.
+    """
+    raise NotImplementedError
 
 
 # Skills shipped before every skill took the specworks- prefix; removed like any stale specworks-* skill.
@@ -239,8 +265,14 @@ def _differs(path: Path, text: str) -> Literal["changed", "missing"] | None:
 
 
 # @req REQ-INTEG-006
-def skills_state(root: Path) -> SkillsState:
-    """Compare the installed skills of every tool that has them with what this version installs."""
+def skills_state(root: Path, saved: list[str] | None = None) -> SkillsState:
+    """Compare the installed skills of the project's tools with what this version installs.
+
+    The tools are the ``saved`` tool IDs of the config, else every tool that has skills installed.
+    Implements REQ-INTEG-006.
+    """
+    if saved is not None:
+        raise NotImplementedError
     tools = installed_tools(root)
     if not tools:
         return SkillsState("none")

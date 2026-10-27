@@ -24,6 +24,11 @@ def default_module_name(path: Path) -> str:
     return re.sub(r"[^a-z0-9]+", "-", path.name.lower()).strip("-") or "module"
 
 
+def is_terminal() -> bool:
+    """Whether init runs in a terminal and may ask which tools the project uses (replaced in tests). Implements REQ-CLI-003."""
+    raise NotImplementedError
+
+
 def write_skills(ws: Workspace, tools: str) -> None:
     """Install the skills at the workspace root (shared by every module)."""
     selected = parse_tools(tools, ws.root)
@@ -100,11 +105,12 @@ def init(
         None, "--diagram-theme", help="Diagram theme for the workspace, by name or number (see `specworks diagrams --themes`)."
     ),
     no_link: bool = typer.Option(False, "--no-link", help="Do not register as a module of a parent specworks project."),
-    tools: str = ToolsOpt,
+    tools: str | None = ToolsOpt,
     no_skills: bool = typer.Option(False, "--no-skills", help="Do not install agent skills."),
 ) -> None:
     """Create .specworks/config.yml and .specworks/changes/active/ and archive/, link to a parent project, and install the agent skills."""
     root = path.resolve()
+    tools = tools or "auto"  # until the tools are resolved with the saved choice
     parse_tools(tools, root)  # reject a bad --tools before writing anything
     require_repo(root)
     parent = None if no_link else load_workspace(root.parent)
@@ -135,9 +141,9 @@ def init(
 
 
 @app.command()
-def skills(tools: str = ToolsOpt) -> None:
+def skills(tools: str | None = ToolsOpt) -> None:
     """Install or refresh the agent skills (e.g. after upgrading specworks)."""
-    write_skills(workspace(False), tools)
+    write_skills(workspace(False), tools or "auto")
 
 
 # @req REQ-CLI-009

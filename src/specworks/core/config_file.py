@@ -165,3 +165,12 @@ def add_capability_entry(root: Path, name: str, path: str, prefix: str = "", des
         return cap is not None and cap.path == path and cap.prefix == prefix
 
     _insert_entry(root, "capabilities", entry, applied)
+
+
+def save_tools(root: Path, ids: list[str]) -> None:
+    """Save ``tools: [<ids>]`` in the config at ``root``, replacing a ``tools:`` entry already there and keeping comments.
+
+    The file is edited as text and reloaded; when it does not load with those tools, it is
+    restored and ``ConfigError`` says to set ``tools`` by hand. Implements REQ-PROJ-022.
+    """
+    raise NotImplementedError

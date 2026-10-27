@@ -23,9 +23,9 @@ AllOpt = typer.Option(False, "--all", help="Include every module of the workspac
 
 
 ToolsOpt = typer.Option(
-    "auto",
+    None,
     "--tools",
-    help=f"AI tools to install skills for: auto (detected; all if none), all, or a list of {', '.join(TOOLS)}.",
+    help=f"AI tools to install skills for, saved in the config: auto (detected; all if none), all, or a list of {', '.join(TOOLS)} (default: the saved choice).",
 )
 
 
