@@ -81,9 +81,16 @@ When refinement is done, stop and suggest `/specworks-specify`.
    Map entry points, data flow and integration points. Then talk with the user
    until these are clear enough to write down:
    - the problem and who has it
+   - the outcomes: what a person outside the codebase would see or measure
+     once the change is done (observable results, not the solution), agreed
+     with the user after the problem and before the options. When an outcome
+     could reasonably go more than one way, offer the alternatives as
+     numbered options, the one you recommend marked, instead of choosing
+     silently. A change with no visible outcome says `None: <why>`
    - scope: what is in and what is explicitly out
    - hard vs soft constraints
-   - 2-3 real options, with trade-offs
+   - 2-3 real options, with trade-offs, each compared against the outcomes
+     (which ones it meets or fails)
    - which option the user prefers (do not decide for them on product
      questions): ask it as numbered options, the one you recommend marked
 

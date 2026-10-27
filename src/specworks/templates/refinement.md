@@ -4,6 +4,10 @@
 
 <!-- What hurts, for whom, and why now -->
 
+## Outcomes
+
+- <!-- What a person outside the codebase sees or measures once the change is done, or "None: <why>" -->
+
 ## Context
 
 **Observed:**
@@ -26,6 +30,7 @@
 - **Cons:**
 - **Effort:** S | M | L
 - **Touches:** <!-- capabilities -->
+- **Outcomes:** <!-- which outcomes it meets, and which it fails -->
 
 ### Option B: <!-- name -->
 
@@ -35,6 +40,7 @@
 - **Cons:**
 - **Effort:** S | M | L
 - **Touches:** <!-- capabilities -->
+- **Outcomes:** <!-- which outcomes it meets, and which it fails -->
 
 ## Recommendation
 

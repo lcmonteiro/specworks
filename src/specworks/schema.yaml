@@ -15,8 +15,16 @@ artifacts:
       This is the input for the proposal; it is not a plan.
 
       Sections:
-      - **Problem**: 2-4 sentences. What hurts, for whom, and why now. Quote the
-        user's words where they matter.
+      - **Problem**: 2-4 sentences. What hurts, for whom, and why now.
+        Paraphrase or reference its sources (an issue, a link, a doc) instead
+        of quoting people, and name no individuals.
+      - **Outcomes**: a short list of what a person outside the codebase would
+        see or measure once the change is done: observable results, not the
+        solution. Agree them with the user after the problem and before the
+        options. When an outcome could reasonably go more than one way, offer
+        the alternatives as numbered options with one marked (recommended)
+        instead of choosing silently. A change with no visible outcome says
+        `None: <why>` instead of inventing one.
       - **Context**: What exists today that this touches. Cite concrete files,
         modules, capabilities (from `specworks context`) and their living docs.
         Separate what you OBSERVED in the code from what you ASSUME.
@@ -25,7 +33,8 @@ artifacts:
       - **Options**: 2-3 genuinely different solutions. For each: a one-line
         summary, how it works at a high level, pros, cons, rough effort (S/M/L),
         and the capabilities it would touch. Include "do nothing / minimal" when
-        it is a real option.
+        it is a real option. Weigh each option against the outcomes: say which
+        outcomes it meets and which it fails.
       - **Recommendation**: The option you recommend and why, in a few lines.
         Leave it as "Pending" if the user has not agreed yet.
       - **Open Questions**: Questions that must be answered before proposing.
@@ -46,11 +55,14 @@ artifacts:
     requires: [refinement]
     instruction: |
       State WHY this change is needed and WHAT changes. If refinement.md exists,
-      build on its chosen option; do not repeat its analysis.
+      build on its chosen option and its outcomes; do not repeat its analysis.
+      Every outcome of the refinement is covered by a requirement or listed
+      under Out of Scope.
 
       Sections:
       - **Why**: 1-3 sentences. The problem or opportunity and why now.
-      - **What Changes**: bullets, specific. Mark breaking changes with **BREAKING**.
+      - **What Changes**: bullets, specific, built from the chosen option and
+        the outcomes. Mark breaking changes with **BREAKING**.
       - **Capabilities**: the contract with the specs step. List every capability
         whose BEHAVIOUR changes, by reference (`name` in this module,
         `module:name` elsewhere, as in `specworks context`):

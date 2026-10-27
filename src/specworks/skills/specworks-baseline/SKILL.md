@@ -111,8 +111,9 @@ with only a `refinement.md` (step 4).
    Record only observable behaviour (inputs, outputs, errors, side effects),
    not how the code does it. Keep a list of what looks like a bug or is
    unclear: it is not specified here (step 4). For each one, note the
-   evidence: where it shows (file, function, test), what happens, and what
-   was expected instead.
+   evidence: where it shows (file, function, test), what happens, and the
+   correct behaviour; when more than one is plausible, the alternatives, with
+   the one you recommend marked.
 
 4. **Write proposal, delta spec and tasks**
 
@@ -140,7 +141,8 @@ with only a `refinement.md` (step 4).
    does, with the source of each (the test that shows it, or `code only:
    <file>` for one that gets a new test in step 6), and the
    list of suspected bugs, numbered so the user can reject one by its
-   number. Ask: "Are these the right requirements, and are the listed bugs
+   number, each with its correct behaviour (or its alternatives, the
+   recommended one marked) so the user confirms one. Ask: "Are these the right requirements, and are the listed bugs
    real bugs? (yes/no, or the numbers to change)". **Stop and wait** for
    the user to confirm: a baseline that records a bug as a requirement
    makes the bug the spec.
@@ -153,8 +155,8 @@ with only a `refinement.md` (step 4).
    ```
    Write its `refinement.md` at `outputPath` from the `template`: Problem
    and Context from the evidence (observed, with file and test), saying that
-   the baseline of `<capability>` found it; Options and Recommendation
-   "Pending". Write nothing else in that change: it waits in phase refine until the
+   the baseline of `<capability>` found it; `## Outcomes` = the behaviour the
+   user confirmed; Options and Recommendation "Pending". Write nothing else in that change: it waits in phase refine until the
    bugs are fixed (step 9). In this baseline's proposal, name each bug's
    change ref under Out of Scope.
 
