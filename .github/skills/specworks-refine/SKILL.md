@@ -44,7 +44,7 @@ next step the same way: the next skill (recommended), any alternative, and
 - **One focused question at a time**: say briefly why it matters and which decision it unlocks.
 - **Honest about evidence**: separate what you observed from what you assume.
 - **Visual when it helps**: plain-ASCII diagrams for flows, states and boundaries.
-- **No premature solution**: the problem and constraints come before the options; the options come before the recommendation.
+- **No premature solution**: the problem, its outcomes and the constraints come before the options; the options come before the recommendation.
 
 ---
 
@@ -147,8 +147,9 @@ artifact is written), and before the closing question, commit its work:
    specworks status --change "<ref>"
    ```
 
-   Summarize: the problem in one line, the options, the recommendation (or
-   "pending"), and the open questions that still block the proposal.
+   Summarize: the problem in one line, the outcomes, the options, the
+   recommendation (or "pending"), and the open questions that still block
+   the proposal.
    End with:
    ```
    1. /specworks-specify <ref> (recommended): write the proposal, specs and tasks
