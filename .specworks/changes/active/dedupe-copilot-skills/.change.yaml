@@ -1,3 +1,11 @@
 name: dedupe-copilot-skills
 created: '2026-10-27T20:25:56'
-phase: specify
+phase: design
+specified:
+  REQ-CLI-003: bd61953b0018
+  REQ-CLI-009: 55c96490a111
+  REQ-INTEG-004: 64c158339de0
+  REQ-INTEG-005: 2f2ff4819b58
+  REQ-INTEG-006: 9970a6e6df0e
+  REQ-PROJ-022: eb2f605617a9
+  REQ-PROJ-003: ccf5efe36971

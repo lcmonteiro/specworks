@@ -81,6 +81,16 @@ Serves REQ-CLI-003.
 
 ## Interfaces
 
+Proposed: waiting for the user's agreement
+
+Stubs in the design phase: `Tool.reads` gets a default of `()` (the dataclass
+fields after `skills_dir` all have defaults) and is filled in for both tools in
+`TOOLS`; `Config.tools` defaults to `None`. `Tool.prompts_dir` and
+`render_prompt` stay until the code half removes them (task 2.3), since today's
+tests and `expected_skills` use them. `ToolsOpt` defaults to `None` now, and
+`init` and `skills` read `None` as `"auto"` until the code half replaces that
+with `resolve_tools` (task 3.3), so today's behaviour is kept.
+
 - `src/specworks/tools/skills.py`:
   - `Tool.reads: tuple[str, ...]` (preferred folder first); `Tool.prompts_dir` removed (REQ-INTEG-005)
   - `PROMPTS_DIR = ".github/prompts"` (REQ-INTEG-005)
