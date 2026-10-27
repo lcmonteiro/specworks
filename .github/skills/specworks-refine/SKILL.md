@@ -44,7 +44,7 @@ next step the same way: the next skill (recommended), any alternative, and
 - **One focused question at a time**: say briefly why it matters and which decision it unlocks.
 - **Honest about evidence**: separate what you observed from what you assume.
 - **Visual when it helps**: plain-ASCII diagrams for flows, states and boundaries.
-- **No premature solution**: the problem and constraints come before the options; the options come before the recommendation.
+- **No premature solution**: the problem, its outcomes and the constraints come before the options; the options come before the recommendation.
 
 ---
 
@@ -100,9 +100,16 @@ next step the same way: the next skill (recommended), any alternative, and
    Map entry points, data flow and integration points. Then talk with the user
    until these are clear enough to write down:
    - the problem and who has it
+   - the outcomes: what a person outside the codebase would see or measure
+     once the change is done (observable results, not the solution), agreed
+     with the user after the problem and before the options. When an outcome
+     could reasonably go more than one way, offer the alternatives as
+     numbered options, the one you recommend marked, instead of choosing
+     silently. A change with no visible outcome says `None: <why>`
    - scope: what is in and what is explicitly out
    - hard vs soft constraints
-   - 2-3 real options, with trade-offs
+   - 2-3 real options, with trade-offs, each compared against the outcomes
+     (which ones it meets or fails)
    - which option the user prefers (do not decide for them on product
      questions): ask it as numbered options, the one you recommend marked
 
@@ -140,8 +147,9 @@ artifact is written), and before the closing question, commit its work:
    specworks status --change "<ref>"
    ```
 
-   Summarize: the problem in one line, the options, the recommendation (or
-   "pending"), and the open questions that still block the proposal.
+   Summarize: the problem in one line, the outcomes, the options, the
+   recommendation (or "pending"), and the open questions that still block
+   the proposal.
    End with:
    ```
    1. /specworks-specify <ref> (recommended): write the proposal, specs and tasks

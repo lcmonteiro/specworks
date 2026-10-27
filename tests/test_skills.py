@@ -12,7 +12,7 @@ from specworks.cli import app
 from specworks.core.changes import PHASES
 from specworks.core.config import COMMAND_KEYS
 from specworks.tools.skills import TOOLS, packaged_skills, read_skill, render_prompt, render_skill, skills_state
-from specworks.workflow.artifacts import load_artifacts
+from specworks.workflow.artifacts import load_artifacts, read_template
 from specworks.workflow.gate import GATES
 
 runner = CliRunner()
@@ -326,6 +326,63 @@ def test_close_runs_the_project_commands_once_before_writing():
     text = read_skill("specworks-close")
     assert 'specworks close --change "<ref>" --dry-run --no-run' in text
     assert 'specworks start close --change "<ref>"' in text and '\n   specworks close --change "<ref>"\n' in text
+
+
+def flat(text):
+    return " ".join(text.split())
+
+
+def step(text, number):
+    """One numbered step of a skill's Steps, up to the next one."""
+    return text.split("## Steps", 1)[1].split(f"\n{number}. **", 1)[1].split(f"\n{number + 1}. **", 1)[0]
+
+
+def test_the_refinement_template_has_outcomes_between_problem_and_context():
+    # The outcomes are what the options are weighed against, so they come right after the problem.
+    template = read_template("refinement.md")
+    assert "## Outcomes" in template
+    assert template.index("## Problem") < template.index("## Outcomes") < template.index("## Context")
+    options = template.split("## Options", 1)[1].split("## Recommendation", 1)[0]
+    assert "outcome" in options.lower()  # each option says which outcomes it meets or fails
+
+
+def test_the_refinement_instruction_agrees_outcomes_and_paraphrases_its_sources():
+    text = flat(load_artifacts()["refinement"].instruction)
+    assert "**Outcomes**" in text and "None: <why>" in text
+    assert text.index("**Outcomes**") < text.index("**Options**")
+    problem = text.split("**Problem**", 1)[1].split("**Outcomes**", 1)[0].lower()
+    assert "paraphrase" in problem and "reference" in problem and "individual" in problem
+    assert "Quote the user's words" not in text
+
+
+def test_the_proposal_instruction_covers_every_outcome():
+    # Without the rule an agreed outcome can be lost between refinement and specs.
+    text = flat(load_artifacts()["proposal"].instruction)
+    assert re.search(r"[Ee]very outcome[^.]*requirement[^.]*Out of Scope", text), text
+    assert "outcomes" in text.split("**What Changes**", 1)[1].split("**Capabilities**", 1)[0]
+
+
+def test_refine_agrees_the_outcomes_before_the_options():
+    explore = flat(step(read_skill("specworks-refine"), 3)).lower()
+    assert "outcome" in explore and explore.index("outcome") < explore.index("option")
+    # An outcome that could go more than one way is the user's choice, offered with a recommendation.
+    assert "alternatives" in explore and "recommend" in explore
+
+
+def test_specify_covers_every_outcome_with_a_requirement_or_out_of_scope():
+    text = flat(read_skill("specworks-specify"))
+    assert re.search(r"[Ee]very outcome[^.]*requirement[^.]*Out of Scope", text)
+    assert "outcomes" in flat(step(read_skill("specworks-specify"), 2))
+
+
+def test_baseline_notes_each_bugs_correct_behaviour_as_the_fix_outcomes():
+    # The behaviour the user confirms for a bug is what its fix change must reach.
+    text = read_skill("specworks-baseline")
+    read = flat(step(text, 3))
+    assert "correct behaviour" in read and "alternatives" in read and "recommend" in read
+    assert "what was expected instead" not in read
+    write = flat(step(text, 4))
+    assert "## Outcomes" in write and "confirmed" in write and "alternatives" in write
 
 
 # Every `specworks ...` call a skill shows in code (a span or a fenced block) must be one the CLI

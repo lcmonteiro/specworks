@@ -78,9 +78,10 @@ next step the same way: the next skill (recommended), any alternative, and
    ```
 
    Re-read from disk every artifact that is `done` (the user may have edited
-   it), starting with `refinement.md` if present: its recommended option and
-   open questions drive the proposal. If a planning artifact already exists,
-   continue from it instead of overwriting it.
+   it), starting with `refinement.md` if present: its outcomes, recommended
+   option and open questions drive the proposal. Every outcome is covered by
+   a requirement or listed under Out of Scope. If a planning artifact already
+   exists, continue from it instead of overwriting it.
 
    **Back from review**: if the change has a `review.md`, list its open
    findings with `specworks cycle --change "<ref>" --json`. Those with
