@@ -1,4 +1,4 @@
 name: add-expected-outcomes
 created: '2026-10-27T13:56:09'
-phase: specify
+phase: design
 skip_specs: true
