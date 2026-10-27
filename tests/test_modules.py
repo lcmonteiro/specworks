@@ -4,8 +4,10 @@ import shutil
 import pytest
 from typer.testing import CliRunner
 
-from helpers import init_repo
+from helpers import init_repo, set_saved_tools
 from specworks.cli import app
+from specworks.core.config import load_config
+from specworks.core.config_file import save_tools
 from specworks.core.workspace import load_workspace
 from specworks.specs.trace import scan_tags
 
@@ -58,6 +60,38 @@ def test_module_add_links_parent_and_creates_module(workspace):
 # @ac AC-PROJ-008.1
 def test_module_add_keeps_comments(workspace):
     assert "# Modules: sub-projects" in (workspace / ".specworks/config.yml").read_text()
+
+
+# @ac AC-PROJ-003.7
+def test_tools_in_a_modules_config_are_refused(workspace):
+    set_saved_tools(workspace / "services/billing", "[claude]")
+    code, data = run_json("context")
+    assert code == 1 and "'tools'" in data["error"] and "top level" in data["error"], data
+
+
+# @ac AC-PROJ-022.1
+def test_saving_the_tools_keeps_the_comments(workspace):
+    config = workspace / ".specworks/config.yml"
+    before = config.read_text(encoding="utf-8")
+    save_tools(workspace, ["claude", "copilot"])
+    text = config.read_text(encoding="utf-8")
+    assert "tools: [claude, copilot]" in text.splitlines()
+    comments = [line for line in before.splitlines() if line.lstrip().startswith("#")]
+    assert comments and all(line in text.splitlines() for line in comments)
+    assert "  billing: services/billing" in text.splitlines()  # the other entries too
+    assert load_config(workspace).tools == ["claude", "copilot"]
+
+
+# @ac AC-PROJ-022.2
+@pytest.mark.parametrize("saved", ["tools: [claude]\n", "tools:\n  - claude\n"], ids=["flow", "block"])
+def test_saving_the_tools_replaces_the_saved_list(workspace, saved):
+    config = workspace / ".specworks/config.yml"
+    config.write_text(config.read_text(encoding="utf-8") + saved, encoding="utf-8")
+    save_tools(workspace, ["copilot"])
+    lines = config.read_text(encoding="utf-8").splitlines()
+    assert [line for line in lines if line.startswith("tools:")] == ["tools: [copilot]"]
+    assert "  - claude" not in lines
+    assert load_config(workspace).tools == ["copilot"]
 
 
 # @ac AC-CLI-004.4
