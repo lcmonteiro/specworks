@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+import sys
 from pathlib import Path
 
 import typer
@@ -10,12 +11,12 @@ import typer
 from .. import __version__
 from ..core.changes import archived_as, list_archived
 from ..core.config import Config, ConfigError, find_config, load_config, old_config_in, old_layout_error
-from ..core.config_file import add_capability_entry, add_module_entry, write_default_config
+from ..core.config_file import add_capability_entry, add_module_entry, save_tools, write_default_config
 from ..core.git import require_repo
 from ..core.validators import validate_relative
 from ..core.workspace import Module, Workspace, capability_prefix, load_module_config, load_workspace, require_workspace
 from ..specs.capabilities import capability_ref, describe
-from ..tools.skills import install_skills, installed_tools, parse_tools, remove_stale_skills, skills_state, update_skills
+from ..tools.skills import TOOLS, Tool, install_skills, parse_tools, remove_stale_skills, resolve_tools, skills_state, update_skills
 from .app import app, capability_app, module_app
 from .output import AllOpt, JsonOpt, ToolsOpt, change_dict, changes_of, emit, fail, missing_dicts, module_dict, workspace
 
@@ -24,15 +25,37 @@ def default_module_name(path: Path) -> str:
     return re.sub(r"[^a-z0-9]+", "-", path.name.lower()).strip("-") or "module"
 
 
+# @req REQ-CLI-003
 def is_terminal() -> bool:
-    """Whether init runs in a terminal and may ask which tools the project uses (replaced in tests). Implements REQ-CLI-003."""
-    raise NotImplementedError
+    """Whether init runs in a terminal and may ask which tools the project uses (replaced in tests)."""
+    return sys.stdin.isatty()
 
 
-def write_skills(ws: Workspace, tools: str) -> None:
-    """Install the skills at the workspace root (shared by every module)."""
-    selected = parse_tools(tools, ws.root)
+# @req REQ-CLI-003
+def ask_tools(root: Path) -> str:
+    """Ask which AI tools the project uses, the detected ones as the default; checked like ``--tools``."""
+    detected = ",".join(t.id for t in parse_tools("auto", root))
+    answer = typer.prompt(f"AI tools to install skills for ({', '.join(TOOLS)})", default=detected)
+    parse_tools(answer, root)  # an unknown or empty answer fails before anything is written
+    return answer
+
+
+# @req REQ-INTEG-004, REQ-CLI-003, REQ-CLI-009
+def chosen_tools(ws: Workspace, given: str | None) -> list[Tool]:
+    """The tools to install for (``--tools``, else the saved choice, else the inferred one), saved in the top level's config when asked."""
+    saved = ws.top.config.tools
+    selected, save = resolve_tools(ws.root, saved, given)
+    ids = [t.id for t in selected]
+    if save and ids != saved:
+        save_tools(ws.root, ids)
+        typer.echo(f"saved   tools: [{', '.join(ids)}] in {ws.rel(ws.top.config.config_path)}")
     typer.echo(f"tools   {', '.join(t.label for t in selected)}")
+    return selected
+
+
+def write_skills(ws: Workspace, tools: str | None) -> None:
+    """Install the skills at the workspace root (shared by every module)."""
+    selected = chosen_tools(ws, tools)
     for removed in remove_stale_skills(ws.root, selected):  # renamed or dropped by this version  @req REQ-INTEG-005
         typer.echo(f"removed {ws.rel(removed)}")
     for written in install_skills(ws.root, selected):
@@ -110,10 +133,15 @@ def init(
 ) -> None:
     """Create .specworks/config.yml and .specworks/changes/active/ and archive/, link to a parent project, and install the agent skills."""
     root = path.resolve()
-    tools = tools or "auto"  # until the tools are resolved with the saved choice
-    parse_tools(tools, root)  # reject a bad --tools before writing anything
+    if tools is not None:
+        parse_tools(tools, root)  # reject a bad --tools before writing anything
     require_repo(root)
     parent = None if no_link else load_workspace(root.parent)
+    # A new top level, or one that saves no tools yet: ask in a terminal, before anything is written.
+    if not no_skills and tools is None and parent is None and is_terminal():
+        existing = find_config(root)
+        if (existing is None and old_config_in(root) is None) or (existing is not None and load_config(root).tools is None):
+            tools = ask_tools(root)
     if parent is not None:
         if inner := held_module(parent, root):
             raise ConfigError(held_message(parent, path, inner))
@@ -143,20 +171,17 @@ def init(
 @app.command()
 def skills(tools: str | None = ToolsOpt) -> None:
     """Install or refresh the agent skills (e.g. after upgrading specworks)."""
-    write_skills(workspace(False), tools or "auto")
+    write_skills(workspace(False), tools)
 
 
 # @req REQ-CLI-009
 @app.command()
 def update(
-    tools: str | None = typer.Option(
-        None, "--tools", help="AI tools to update: the installed ones by default, or auto, all, or a list such as claude,copilot."
-    ),
+    tools: str | None = ToolsOpt,
 ) -> None:
     """Bring the project's agent skills up to this specworks (run after `uv tool upgrade specworks`)."""
     ws = workspace(False)
-    selected = parse_tools(tools, ws.root) if tools else installed_tools(ws.root) or parse_tools("auto", ws.root)
-    typer.echo(f"tools   {', '.join(t.label for t in selected)}")
+    selected = chosen_tools(ws, tools)
     updated, removed = update_skills(ws.root, selected)
     for path in removed:
         typer.echo(f"removed {ws.rel(path)}")
@@ -188,7 +213,7 @@ def context(as_json: bool = JsonOpt, all_modules: bool = AllOpt) -> None:
             }
         )
     changes = changes_of(ws, all_modules)
-    skills = skills_state(ws.root)
+    skills = skills_state(ws.root, ws.top.config.tools)
     data = {
         "root": str(ws.root),
         "module": ws.current.label,

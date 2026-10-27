@@ -167,10 +167,33 @@ def add_capability_entry(root: Path, name: str, path: str, prefix: str = "", des
     _insert_entry(root, "capabilities", entry, applied)
 
 
+# @req REQ-PROJ-022
 def save_tools(root: Path, ids: list[str]) -> None:
     """Save ``tools: [<ids>]`` in the config at ``root``, replacing a ``tools:`` entry already there and keeping comments.
 
     The file is edited as text and reloaded; when it does not load with those tools, it is
-    restored and ``ConfigError`` says to set ``tools`` by hand. Implements REQ-PROJ-022.
+    restored and ``ConfigError`` says to set ``tools`` by hand.
     """
-    raise NotImplementedError
+    entry = f"tools: [{', '.join(ids)}]"
+    config_file = root / WORKFLOW_DIR / CONFIG_FILE
+    original = read_text(config_file)
+    lines = original.splitlines()
+    for i, line in enumerate(lines):
+        if re.match(r"^tools:", line):
+            # A flow list stays on its line; a block list's items follow, indented or starting with "-".
+            end = i + 1
+            while end < len(lines) and lines[end].startswith((" ", "\t", "-")):
+                end += 1
+            lines[i:end] = [entry]
+            break
+    else:
+        lines += ["", "# AI tools the skills are installed for (`specworks skills --tools` changes it).", entry]
+    config_file.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+    try:
+        ok = load_config(root).tools == ids
+    except ConfigError:
+        ok = False
+    if not ok:
+        config_file.write_text(original, encoding="utf-8")
+        raise ConfigError(f"could not save the tools in {WORKFLOW_DIR}/{CONFIG_FILE} automatically; set them by hand:\n{entry}")

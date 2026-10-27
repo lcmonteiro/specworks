@@ -28,7 +28,7 @@ WORKFLOW_DIR = ".specworks"  # the fixed workflow folder of every project and mo
 CONFIG_FILE = "config.yml"  # the config's name inside WORKFLOW_DIR
 DEFAULT_DOCS_DIR = "docs"
 MAX_CONTEXT_BYTES = 50 * 1024
-CONFIG_KEYS = ("specworks", "context", "docs_dir", "capabilities", "modules", "test_globs", "source_globs", "commands", "diagrams")
+CONFIG_KEYS = ("specworks", "context", "docs_dir", "capabilities", "modules", "test_globs", "source_globs", "commands", "diagrams", "tools")
 CAPABILITY_KEYS = ("path", "prefix", "description")
 # The AI tool IDs `tools:` may list; the same keys, in the same order, as TOOLS in tools/skills.py (core never imports tools).
 TOOL_IDS: tuple[str, ...] = ("claude", "copilot")
@@ -125,6 +125,19 @@ def load_globs(raw: object, key: str) -> list[str]:
     if unsupported := [g for g in raw if any(ch in g for ch in "[]{}")]:
         raise ConfigError(f"'{key}': {', '.join(unsupported)}: globs support *, ? and ** only; list each pattern instead of [..] or {{..}}")
     return [g.strip() for g in raw]
+
+
+# @req REQ-PROJ-003
+def load_tools(raw: object, present: bool) -> list[str] | None:
+    """The AI tool IDs saved under ``tools:``; None when the key is absent."""
+    if not present:
+        return None
+    known = ", ".join(TOOL_IDS)
+    if not isinstance(raw, list) or not raw:
+        raise ConfigError(f"'tools' must be a non-empty list of tool IDs ({known})")
+    if unknown := [t for t in raw if not isinstance(t, str) or t not in TOOL_IDS]:
+        raise ConfigError(f"'tools': unknown tool {', '.join(repr(t) for t in unknown)}; the known tool IDs are {known}")
+    return list(dict.fromkeys(raw))
 
 
 # @req REQ-PROJ-003
@@ -300,4 +313,5 @@ def load_config(root: Path) -> Config:
         source_globs=load_globs(raw.get("source_globs"), "source_globs"),
         commands=load_commands(raw.get("commands")),
         diagrams=load_diagram_settings(raw.get("diagrams")),
+        tools=load_tools(raw.get("tools"), "tools" in raw),
     )

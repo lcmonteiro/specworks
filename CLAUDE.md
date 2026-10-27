@@ -56,8 +56,8 @@ are in `<path>/docs/`.
 - Read and write text files with `encoding="utf-8"`. Without it, Windows CI
   reads the files as cp1252 and garbles non-ASCII text such as `—`.
 - Edit skills in `src/specworks/skills/` only, then run `uv run specworks
-  skills` to refresh the installed copies (`.claude/skills/`,
-  `.github/skills/`, `.github/prompts/`) and commit them together.
+  skills` to refresh the installed copies (`.claude/skills/`, which Copilot
+  reads too) and commit them together.
   `tests/test_skills.py` checks some skill wording verbatim.
 - Every skill stop for the user ends with one closing question: yes/no, or
   numbered options with one `(recommended)` (`_shared/asking-the-user.md`).
