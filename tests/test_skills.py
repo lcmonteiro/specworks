@@ -1,17 +1,18 @@
 import json
 import re
 import shlex
+import shutil
 from importlib import resources
 
 import pytest
 import typer.main
 from typer.testing import CliRunner
 
-from helpers import init_repo
+from helpers import init_repo, set_saved_tools
 from specworks.cli import app
 from specworks.core.changes import PHASES
-from specworks.core.config import COMMAND_KEYS
-from specworks.tools.skills import TOOLS, packaged_skills, read_skill, render_prompt, render_skill, skills_state
+from specworks.core.config import COMMAND_KEYS, TOOL_IDS, load_config
+from specworks.tools.skills import TOOLS, packaged_skills, read_skill, render_skill, resolve_tools, skill_folders, skills_state
 from specworks.workflow.artifacts import load_artifacts, read_template
 from specworks.workflow.gate import GATES
 
@@ -31,12 +32,21 @@ def frontmatter(path):
     return path.read_text().split("---\n")[1]
 
 
+def specworks_skills_in(folder):
+    return sorted(p.name for p in folder.iterdir() if p.name.startswith("specworks-")) if folder.is_dir() else []
+
+
 # @ac AC-INTEG-004.1
 def test_no_tool_detected_installs_for_all(tmp_path, monkeypatch):
     init(tmp_path, monkeypatch)
-    assert (tmp_path / f".claude/skills/{SKILL}/SKILL.md").is_file()
-    assert (tmp_path / f".github/skills/{SKILL}/SKILL.md").is_file()
-    assert (tmp_path / f".github/prompts/{SKILL}.prompt.md").is_file()
+    assert (tmp_path / f".claude/skills/{SKILL}/SKILL.md").is_file()  # Copilot reads .claude/skills/ too
+    assert specworks_skills_in(tmp_path / ".github/skills") == [] and not (tmp_path / ".github/prompts").exists()
+    assert load_config(tmp_path).tools == ["claude", "copilot"]
+
+
+def test_the_tool_ids_core_knows_are_the_tools_table():
+    # core checks `tools:` without importing tools/skills.py, so the two lists must not drift.
+    assert tuple(TOOLS) == TOOL_IDS
 
 
 # @ac AC-INTEG-005.2
@@ -48,16 +58,7 @@ def test_copilot_only(tmp_path, monkeypatch):
     assert f"name: {SKILL}\n" in meta and "description:" in meta
     assert "allowed-tools" not in meta  # Claude Code tool names mean nothing to Copilot
     assert "## Steps" in skill.read_text()
-
-
-# @ac AC-INTEG-005.3
-def test_copilot_prompt_file_is_an_agent_mode_slash_command(tmp_path, monkeypatch):
-    init(tmp_path, monkeypatch, "--tools", "copilot")
-    prompt = tmp_path / f".github/prompts/{SKILL}.prompt.md"
-    meta = frontmatter(prompt)
-    assert meta.startswith("description: ") and "agent: agent" in meta
-    assert "name:" not in meta  # the file name is the command name
-    assert "specworks context --json" in prompt.read_text()
+    assert not (tmp_path / ".github/prompts").exists()
 
 
 # @ac AC-INTEG-005.2
@@ -88,12 +89,13 @@ def test_an_empty_tool_list_is_rejected(tmp_path, monkeypatch):
     assert list(tmp_path.iterdir()) == []
 
 # @ac AC-INTEG-005.1
-def test_every_packaged_skill_is_installed(tmp_path, monkeypatch):
-    init(tmp_path, monkeypatch, "--tools", "all")
+@pytest.mark.parametrize("tool, folder", [("copilot", ".github/skills"), ("claude", ".claude/skills")])
+def test_every_packaged_skill_is_installed(tmp_path, monkeypatch, tool, folder):
+    init(tmp_path, monkeypatch, "--tools", tool)
     for name in packaged_skills():
-        assert (tmp_path / f".claude/skills/{name}/SKILL.md").is_file()
-        assert (tmp_path / f".github/skills/{name}/SKILL.md").is_file()
-        assert (tmp_path / f".github/prompts/{name}.prompt.md").is_file()
+        assert name.startswith("specworks-") and (tmp_path / f"{folder}/{name}/SKILL.md").is_file()
+    assert specworks_skills_in(tmp_path / folder) == packaged_skills()
+    assert not (tmp_path / ".github/prompts").exists()  # skills are the slash commands: no prompt file
 
 
 # @ac AC-INTEG-004.3
@@ -120,12 +122,105 @@ def test_module_init_installs_skills_at_workspace_root(tmp_path, monkeypatch):
 
 
 # @ac AC-INTEG-005.4
-def test_installed_skills_have_their_shared_parts_filled_in(tmp_path, monkeypatch):
-    init(tmp_path, monkeypatch, "--tools", "all")
+@pytest.mark.parametrize("tool, folder", [("claude", ".claude/skills"), ("copilot", ".github/skills")])
+def test_installed_skills_have_their_shared_parts_filled_in(tmp_path, monkeypatch, tool, folder):
+    init(tmp_path, monkeypatch, "--tools", tool)
     for name in packaged_skills():
-        for path in (tmp_path / f".claude/skills/{name}/SKILL.md", tmp_path / f".github/prompts/{name}.prompt.md"):
-            text = path.read_text()
-            assert "specworks:include" not in text and "**Running the CLI**" in text, path
+        path = tmp_path / f"{folder}/{name}/SKILL.md"
+        text = path.read_text()
+        assert "specworks:include" not in text and "**Running the CLI**" in text, path
+
+
+# @ac AC-INTEG-005.8
+def test_claude_code_and_copilot_share_the_claude_folder(tmp_path, monkeypatch):
+    init(tmp_path, monkeypatch, "--tools", "claude,copilot")
+    assert specworks_skills_in(tmp_path / ".claude/skills") == packaged_skills()
+    assert "allowed-tools:" in frontmatter(tmp_path / f".claude/skills/{SKILL}/SKILL.md")  # the folder is Claude Code's: its keys
+    assert specworks_skills_in(tmp_path / ".github/skills") == [] and not (tmp_path / ".github/prompts").exists()
+
+
+# @ac AC-INTEG-005.8
+@pytest.mark.parametrize(
+    "chosen, folders",
+    [
+        (["claude", "copilot"], [("claude", ".claude/skills")]),
+        (["copilot", "claude"], [("claude", ".claude/skills")]),  # taken in TOOLS order, whatever the order given
+        (["copilot"], [("copilot", ".github/skills")]),
+        (["claude"], [("claude", ".claude/skills")]),
+    ],
+)
+def test_skill_folders_are_the_fewest_every_tool_reads(chosen, folders):
+    assert [(tool.id, folder) for tool, folder in skill_folders([TOOLS[t] for t in chosen])] == folders
+
+
+# @ac AC-INTEG-005.9
+def test_copies_an_older_version_left_for_copilot_are_removed(tmp_path, monkeypatch):
+    init(tmp_path, monkeypatch, "--tools", "claude")
+    old = {
+        f".github/skills/{SKILL}/SKILL.md": "old\n",
+        f".github/prompts/{SKILL}.prompt.md": "old\n",
+        ".github/skills/my-skill/SKILL.md": "mine\n",
+        ".github/prompts/my.prompt.md": "mine\n",
+    }
+    for rel, text in old.items():
+        (tmp_path / rel).parent.mkdir(parents=True, exist_ok=True)
+        (tmp_path / rel).write_text(text, encoding="utf-8")
+    result = runner.invoke(app, ["skills", "--tools", "claude,copilot"])
+    assert result.exit_code == 0, result.output
+    for rel in (f".github/skills/{SKILL}", f".github/prompts/{SKILL}.prompt.md"):
+        assert not (tmp_path / rel).exists() and f"removed {rel}" in result.output, rel
+    assert (tmp_path / ".github/skills/my-skill/SKILL.md").is_file() and (tmp_path / ".github/prompts/my.prompt.md").is_file()
+    assert "my-skill" not in result.output and "my.prompt.md" not in result.output
+    assert (tmp_path / f".claude/skills/{SKILL}/SKILL.md").is_file()
+
+
+# @ac AC-INTEG-004.5
+def test_the_saved_tools_are_used_without_tools(tmp_path, monkeypatch):
+    init(tmp_path, monkeypatch, "--no-skills")
+    set_saved_tools(tmp_path, "[copilot]")
+    (tmp_path / "CLAUDE.md").write_text("# Claude\n")  # auto would pick Claude Code
+    result = runner.invoke(app, ["skills"])
+    assert result.exit_code == 0, result.output
+    assert specworks_skills_in(tmp_path / ".github/skills") == packaged_skills()
+    assert not (tmp_path / ".claude").exists()
+    assert load_config(tmp_path).tools == ["copilot"]
+
+
+# @ac AC-INTEG-004.6
+def test_tools_given_replace_the_saved_tools(tmp_path, monkeypatch):
+    init(tmp_path, monkeypatch, "--no-skills")
+    set_saved_tools(tmp_path, "[claude]")
+    result = runner.invoke(app, ["skills", "--tools", "claude,copilot"])
+    assert result.exit_code == 0, result.output
+    text = (tmp_path / ".specworks/config.yml").read_text(encoding="utf-8")
+    assert "tools: [claude, copilot]" in text and load_config(tmp_path).tools == ["claude", "copilot"]
+    assert specworks_skills_in(tmp_path / ".claude/skills") == packaged_skills()  # one folder both tools read
+    assert state_of(tmp_path) == ("current", set())
+
+
+# @ac AC-INTEG-004.7
+def test_the_installed_tools_are_saved_when_none_is_saved(tmp_path, monkeypatch):
+    init(tmp_path, monkeypatch, "--tools", "claude")
+    set_saved_tools(tmp_path, None)  # a project from before tools were saved
+    result = runner.invoke(app, ["skills"])
+    assert result.exit_code == 0, result.output
+    assert load_config(tmp_path).tools == ["claude"]  # inferred from the folders, not auto (which would be both here)
+    assert "tools: [claude]" in (tmp_path / ".specworks/config.yml").read_text(encoding="utf-8")
+    assert specworks_skills_in(tmp_path / ".claude/skills") == packaged_skills() and not (tmp_path / ".github").exists()
+
+
+# @ac AC-INTEG-004.5, AC-INTEG-004.6, AC-INTEG-004.7
+def test_resolve_tools_prefers_given_then_saved_then_installed(tmp_path, monkeypatch):
+    init(tmp_path, monkeypatch, "--tools", "claude")
+    (tmp_path / ".github").mkdir()
+    (tmp_path / ".github/copilot-instructions.md").write_text("# Copilot\n")  # auto would add Copilot
+
+    def ids(resolved):
+        return [t.id for t in resolved[0]], resolved[1]
+
+    assert ids(resolve_tools(tmp_path, ["claude"], "claude,copilot")) == (["claude", "copilot"], True)
+    assert ids(resolve_tools(tmp_path, ["copilot"], None)) == (["copilot"], False)
+    assert ids(resolve_tools(tmp_path, None, None)) == (["claude"], True)
 
 
 def test_skill_triggers_name_specworks(tmp_path, monkeypatch):
@@ -281,6 +376,14 @@ def test_adopt_stops_after_mapping_and_hands_baselines_to_their_own_skill():
     assert "specworks capability add <name>" in text and "**End here.**" in text
     assert "## Stage 3" not in text and "specworks new" not in text
     assert "`/specworks-baseline <first capability>`" in text
+
+
+def test_adopt_asks_which_ai_tools_and_passes_them_to_init():
+    # init's own question needs a terminal; an agent running adopt has none, so the skill asks and passes --tools.
+    text = read_skill("specworks-adopt")
+    assert re.search(r"which AI tools", text, re.IGNORECASE)
+    assert re.search(r"specworks init --tools <[a-z ]+>", text)
+    assert not re.search(r"^\s*specworks init\s*$", text, re.MULTILINE)  # never a bare init that guesses the tools
 
 
 def test_adopt_baseline_and_close_chain_through_every_capability():
@@ -504,10 +607,9 @@ MULTILINE = (
 # @ac AC-INTEG-005.7
 def test_a_multi_line_frontmatter_value_is_kept_or_dropped_whole():
     description = "description: >\n  Does x.\n  Use when: the user asks for x.\n"
-    copilot, claude, prompt = render_skill(MULTILINE, TOOLS["copilot"]), render_skill(MULTILINE, TOOLS["claude"]), render_prompt(MULTILINE)
-    assert copilot == "---\nname: specworks-x\n" + description + "---\n# Body\n"  # allowed-tools dropped with its second line
+    github, claude = render_skill(MULTILINE, TOOLS["copilot"]), render_skill(MULTILINE, TOOLS["claude"])  # the .github/skills/ and .claude/skills/ copies
+    assert github == "---\nname: specworks-x\n" + description + "---\n# Body\n"  # allowed-tools dropped with its second line
     assert claude == MULTILINE
-    assert prompt == "---\n" + description + "agent: agent\n---\n# Body\n"
 
 
 # @ac AC-INTEG-005.7
@@ -527,7 +629,7 @@ def installed_files(root):
 
 
 def state_of(root):
-    st = skills_state(root)
+    st = skills_state(root, load_config(root).tools)  # as the CLI computes it: with the saved tools
     return st.state, {(f.path, f.reason) for f in st.files}
 
 
@@ -545,14 +647,10 @@ def test_an_edited_skill_is_outdated(tmp_path, monkeypatch):
 
 
 # @ac AC-INTEG-006.3
-def test_a_deleted_skill_or_prompt_file_is_missing(tmp_path, monkeypatch):
-    init(tmp_path, monkeypatch, "--tools", "all")
-    (tmp_path / f".github/skills/{SKILL}/SKILL.md").unlink()
-    (tmp_path / f".github/prompts/{SKILL}.prompt.md").unlink()
-    assert state_of(tmp_path) == (
-        "outdated",
-        {(f".github/skills/{SKILL}/SKILL.md", "missing"), (f".github/prompts/{SKILL}.prompt.md", "missing")},
-    )
+def test_a_deleted_skill_is_missing(tmp_path, monkeypatch):
+    init(tmp_path, monkeypatch, "--tools", "copilot")
+    shutil.rmtree(tmp_path / f".github/skills/{SKILL}")
+    assert state_of(tmp_path) == ("outdated", {(f".github/skills/{SKILL}/SKILL.md", "missing")})
 
 
 # @ac AC-INTEG-006.4
@@ -562,6 +660,17 @@ def test_a_skill_no_longer_shipped_is_stale_and_a_users_own_is_ignored(tmp_path,
         (tmp_path / f".claude/skills/{name}").mkdir()
         (tmp_path / f".claude/skills/{name}/SKILL.md").write_text("old\n")
     assert state_of(tmp_path) == ("outdated", {(".claude/skills/specworks-propose", "stale")})
+
+
+# @ac AC-INTEG-006.6
+def test_copies_an_older_version_left_are_stale(tmp_path, monkeypatch):
+    init(tmp_path, monkeypatch, "--tools", "claude")
+    set_saved_tools(tmp_path, "[claude, copilot]")
+    (tmp_path / f".github/skills/{SKILL}").mkdir(parents=True)
+    (tmp_path / f".github/skills/{SKILL}/SKILL.md").write_text("old\n", encoding="utf-8")
+    (tmp_path / ".github/prompts").mkdir()
+    (tmp_path / f".github/prompts/{SKILL}.prompt.md").write_text("old\n", encoding="utf-8")
+    assert state_of(tmp_path) == ("outdated", {(f".github/skills/{SKILL}", "stale"), (f".github/prompts/{SKILL}.prompt.md", "stale")})
 
 
 # @ac AC-INTEG-006.5
@@ -597,6 +706,7 @@ def test_update_on_current_skills_writes_nothing(tmp_path, monkeypatch):
 # @ac AC-CLI-009.3
 def test_update_keeps_the_installed_tools(tmp_path, monkeypatch):
     init(tmp_path, monkeypatch, "--tools", "claude")
+    set_saved_tools(tmp_path, None)  # a project from before tools were saved
     (tmp_path / ".github").mkdir()
     (tmp_path / ".github/copilot-instructions.md").write_text("# Copilot\n")
     (tmp_path / f".claude/skills/{SKILL}/SKILL.md").write_text("edited\n", encoding="utf-8")
@@ -604,6 +714,18 @@ def test_update_keeps_the_installed_tools(tmp_path, monkeypatch):
     assert result.exit_code == 0, result.output
     assert f"updated .claude/skills/{SKILL}/SKILL.md" in result.output
     assert not (tmp_path / ".github/skills").exists() and not (tmp_path / ".github/prompts").exists()
+    assert load_config(tmp_path).tools == ["claude"]
+    assert "tools: [claude]" in (tmp_path / ".specworks/config.yml").read_text(encoding="utf-8")
+
+
+# @ac AC-CLI-009.5
+def test_update_with_both_tools_in_one_folder_is_up_to_date(tmp_path, monkeypatch):
+    init(tmp_path, monkeypatch, "--tools", "claude,copilot")
+    set_saved_tools(tmp_path, "[claude, copilot]")
+    result = runner.invoke(app, ["update"])
+    assert result.exit_code == 0, result.output
+    assert "skills up to date" in result.output and "updated" not in result.output
+    assert specworks_skills_in(tmp_path / ".github/skills") == []
 
 
 # @ac AC-CLI-009.4

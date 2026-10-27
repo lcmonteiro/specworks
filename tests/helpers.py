@@ -77,6 +77,13 @@ def write_tests(root, *acs):
     (root / "tests/test_reset.py").write_text(body)
 
 
+def set_saved_tools(root, value):
+    """Write ``tools: <value>`` as the only ``tools:`` entry of the config at ``root`` (``None`` removes it), as text, without save_tools."""
+    config = root / ".specworks/config.yml"
+    text = re.sub(r"^tools:.*\n(?:[ \t]+-.*\n)*", "", config.read_text(encoding="utf-8"), flags=re.MULTILINE)
+    config.write_text(text if value is None else text + f"tools: {value}\n", encoding="utf-8")
+
+
 PASS = f'"{sys.executable}" -c "print(\'ok\')"'
 
 
