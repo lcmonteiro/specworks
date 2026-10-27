@@ -6,6 +6,7 @@ Base: `origin/main`
 
 - [ ] R1 **quality** `specworks-refine` agrees the outcomes in step 3 but two other places of the same skill still leave them out: the "No premature solution" principle says "the problem and constraints come before the options" (no outcomes), and step 5's summary lists the problem, the options, the recommendation and the open questions, so the user never sees the agreed outcomes when the refinement is recorded (`src/specworks/skills/specworks-refine/SKILL.md:28`, `:121`; no requirement: `skip-specs`)
   - **Proposal**: back to code: the principle says "the problem, its outcomes and the constraints come before the options"; step 5 summarizes "the problem in one line, the outcomes, the options, ..."; refresh the installed copies with `uv run specworks skills`; no test change needed (alternative: accept as it is, step 3 already says outcomes come before the options)
+  - **Decision**: back to code: the principle says "the problem, its outcomes and the constraints come before the options"; step 5 summarizes the outcomes too; refresh the installed copies with `uv run specworks skills` (agreed with the user)
 
 ## Changed files without tags
 
