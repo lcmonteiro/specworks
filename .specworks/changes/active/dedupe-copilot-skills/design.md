@@ -81,7 +81,7 @@ Serves REQ-CLI-003.
 
 ## Interfaces
 
-Proposed: waiting for the user's agreement
+Agreed with the user
 
 Stubs in the design phase: `Tool.reads` gets a default of `()` (the dataclass
 fields after `skills_dir` all have defaults) and is filled in for both tools in
