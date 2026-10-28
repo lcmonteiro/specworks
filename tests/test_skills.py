@@ -570,6 +570,7 @@ def test_skills_that_are_no_longer_shipped_are_removed(tmp_path, monkeypatch):
             (tmp_path / folder / name).mkdir(parents=True)
             (tmp_path / folder / name / "SKILL.md").write_text("old\n")
             stale.append(f"{folder}/{name}")
+        (tmp_path / ".github/prompts").mkdir(parents=True, exist_ok=True)
         (tmp_path / f".github/prompts/{name}.prompt.md").write_text("old\n")
         stale.append(f".github/prompts/{name}.prompt.md")
     result = runner.invoke(app, ["skills", "--tools", "all"])
