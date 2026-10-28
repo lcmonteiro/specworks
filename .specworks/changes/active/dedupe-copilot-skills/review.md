@@ -12,6 +12,7 @@ Base: `origin/main`
   - **Decision**: back to test: create `.github/prompts/` before writing the old prompt files; assertions unchanged (agreed with the user)
 - [ ] R3 **spec-gap** REQ-PROJ-022 says "when the edit would not give the expected config, it SHALL leave the file unchanged and say to set `tools` by hand", but no criterion covers it, so no test does: once R1 is fixed the restore path of `save_tools` runs in no test (`src/specworks/core/config_file.py:193-199`). The other config edits have one (AC-PROJ-008.4). It is reachable only with a hand-edited config (e.g. two `tools:` keys); overall branch coverage stays at 98%
   - **Proposal**: back to specify: add AC-PROJ-022.3 "A list the text edit cannot replace" (GIVEN a config with two `tools:` entries, WHEN the tool `copilot` is saved, THEN the config is unchanged and the error says to set `tools` by hand), then its test in the test half; no code change. Alternative: accepted, as a safety net for hand-broken configs
+  - **Decision**: back to specify: add AC-PROJ-022.3 "A list the text edit cannot replace" (GIVEN a config with two `tools:` entries, WHEN the tool `copilot` is saved, THEN the config is unchanged and the error says to set `tools` by hand), then its test; no code change (agreed with the user)
 
 ## Changed files without tags
 
