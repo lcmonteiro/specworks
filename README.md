@@ -109,12 +109,15 @@ files work in several tools:
 | Tool | Installed files | How to run a phase |
 |------|-----------------|--------------------|
 | Claude Code | `.claude/skills/specworks-*/SKILL.md` | `/specworks-refine` or just ask ("let's refine ...") |
-| GitHub Copilot | `.github/skills/specworks-*/SKILL.md` and `.github/prompts/specworks-*.prompt.md` | `/specworks-refine` in Copilot Chat (agent mode), or just ask |
+| GitHub Copilot | `.github/skills/specworks-*/SKILL.md`, or `.claude/skills/` when Claude Code is chosen too (Copilot reads both) | `/specworks-refine` in Copilot Chat (agent mode), or just ask |
 
-`specworks init --tools auto` (the default) installs for the tools the project
-already uses, and for all of them when none is found; `--tools claude,copilot` or
-`--tools all` chooses. `specworks skills` re-installs them, e.g. after upgrading
-specworks. The skills call the `specworks` CLI, so the agent needs terminal access.
+`specworks init` asks which tools the project uses (in a terminal, with the
+detected ones as the default) and saves the answer as `tools:` in
+`.specworks/config.yml`; `--tools claude,copilot`, `--tools all` or
+`--tools auto` chooses without asking. Each skill is installed once, in the
+fewest folders the chosen tools read. `specworks skills` re-installs them for
+the saved tools, e.g. after upgrading specworks. The skills call the
+`specworks` CLI, so the agent needs terminal access.
 
 ## Learn more
 
