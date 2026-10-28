@@ -14,6 +14,7 @@ Base: `origin/main`
   - **Proposal**: back to specify: add AC-PROJ-022.3 "A list the text edit cannot replace" (GIVEN a config with two `tools:` entries, WHEN the tool `copilot` is saved, THEN the config is unchanged and the error says to set `tools` by hand), then its test in the test half; no code change. Alternative: accepted, as a safety net for hand-broken configs
   - **Decision**: back to specify: add AC-PROJ-022.3 "A list the text edit cannot replace" (GIVEN a config with two `tools:` entries, WHEN the tool `copilot` is saved, THEN the config is unchanged and the error says to set `tools` by hand), then its test; no code change (agreed with the user)
   - done in specify: added AC-PROJ-022.3 "A list the text edit cannot replace" to REQ-PROJ-022 and test task 1.4; no other spec change
+  - done in design: no new API; AC-PROJ-022.3 is reached through `save_tools`, which raises `ConfigError` (set `tools` by hand) and restores the file, as the Decision "Saving edits the config as text" says; design.md `## Interfaces` now names that error on the `save_tools` entry; no stub changes
 
 ## Changed files without tags
 

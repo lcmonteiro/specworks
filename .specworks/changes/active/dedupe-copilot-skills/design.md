@@ -101,7 +101,7 @@ with `resolve_tools` (task 3.3), so today's behaviour is kept.
   - `remove_stale_skills(root: Path, tools: list[Tool]) -> list[Path]`: same signature, wider search (REQ-INTEG-005)
   - `render_prompt` removed
 - `src/specworks/core/config.py`: `TOOL_IDS: tuple[str, ...]`; `Config.tools: list[str] | None` (REQ-PROJ-003)
-- `src/specworks/core/config_file.py`: `save_tools(root: Path, ids: list[str]) -> None` (REQ-PROJ-022)
+- `src/specworks/core/config_file.py`: `save_tools(root: Path, ids: list[str]) -> None`, raises `ConfigError` saying to set `tools` by hand, with the file restored, when the edited config does not load with `ids` (REQ-PROJ-022)
 - `src/specworks/cli/output.py`: `ToolsOpt` defaults to `None`; help names the saved choice (REQ-INTEG-004)
 - `src/specworks/cli/project.py`: `is_terminal() -> bool`; `init`, `skills`, `update` resolve and save the tools (REQ-CLI-003, REQ-CLI-009)
 - Config file: top-level `tools: [claude, copilot]` (REQ-PROJ-003, REQ-PROJ-022)
