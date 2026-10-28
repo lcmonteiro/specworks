@@ -4,8 +4,10 @@ import re
 import pytest
 from typer.testing import CliRunner
 
-from helpers import git, init_repo, remove_repo
+from helpers import git, init_repo, remove_repo, set_saved_tools
 from specworks.cli import app, main
+from specworks.cli import project as project_cli
+from specworks.core.config import TOOL_IDS, load_config
 from specworks.core.git import git_text
 
 runner = CliRunner()
@@ -536,6 +538,22 @@ def test_invalid_config_values_are_clear_errors(project, config, message):
     assert code == 1 and message in data["error"], data
 
 
+# @ac AC-PROJ-003.6
+@pytest.mark.parametrize("tools", ["claude", "{claude: true}", "[]", "[claude, cursor]", "[1]"], ids=["string", "mapping", "empty", "unknown", "number"])
+def test_tools_must_be_a_list_of_known_tool_ids(project, tools):
+    set_saved_tools(project, tools)
+    code, data = run_json("context")
+    assert code == 1 and "'tools'" in data["error"], data
+    assert all(tool_id in data["error"] for tool_id in TOOL_IDS), data  # the known IDs are named
+
+
+# @ac AC-PROJ-003.6
+def test_a_list_of_known_tool_ids_loads(project):
+    set_saved_tools(project, "[copilot, claude]")
+    assert load_config(project).tools == ["copilot", "claude"]
+    assert run_json("context")[0] == 0
+
+
 # @ac AC-PROJ-004.1
 def test_a_capability_can_be_given_as_name_and_path(project):
     (project / ".specworks/config.yml").write_text("specworks: 1\ncapabilities:\n  user-auth: src/auth/\n")
@@ -577,6 +595,99 @@ def test_a_broken_parent_that_links_this_module_is_still_an_error(tmp_path, monk
 def test_diagram_theme_on_an_existing_project_says_it_is_not_applied(project):
     result = runner.invoke(app, ["init", "--no-skills", "--diagram-theme", "c4"])
     assert result.exit_code == 0 and "--diagram-theme not applied" in result.output
+
+
+QUESTION = "AI tools to install skills for"
+
+
+@pytest.fixture
+def new_project(tmp_path, monkeypatch):
+    """An empty folder in a git repository, before init."""
+    monkeypatch.chdir(tmp_path)
+    init_repo(tmp_path)
+    return tmp_path
+
+
+def in_a_terminal(monkeypatch, answer=True):
+    monkeypatch.setattr(project_cli, "is_terminal", lambda: answer)
+
+
+def skill_folders_written(root):
+    return {folder for folder in (".claude/skills", ".github/skills") if (root / folder / "specworks-refine/SKILL.md").is_file()}
+
+
+def saved_tools_line(root):
+    return [line for line in (root / ".specworks/config.yml").read_text(encoding="utf-8").splitlines() if line.startswith("tools:")]
+
+
+# @ac AC-CLI-003.9
+def test_init_in_a_terminal_asks_which_tools(new_project, monkeypatch):
+    (new_project / "CLAUDE.md").write_text("# Claude\n")
+    in_a_terminal(monkeypatch)
+    result = runner.invoke(app, ["init"], input="copilot\n")
+    assert result.exit_code == 0, result.output
+    question = next(line for line in result.output.splitlines() if QUESTION in line)
+    assert "claude" in question and "copilot" in question and "[claude]" in question  # the detected tool is the default
+    assert skill_folders_written(new_project) == {".github/skills"} and not (new_project / ".claude").exists()
+    assert saved_tools_line(new_project) == ["tools: [copilot]"] and load_config(new_project).tools == ["copilot"]
+
+
+@pytest.mark.parametrize("answer, message", [("cursor", "unknown tool 'cursor'"), (",", "no tool given")])
+def test_a_bad_answer_fails_like_tools_and_writes_nothing(new_project, monkeypatch, answer, message):
+    in_a_terminal(monkeypatch)
+    result = runner.invoke(app, ["init"], input=f"{answer}\n")
+    assert result.exit_code == 1 and message in result.output, result.output
+    assert sorted(p.name for p in new_project.iterdir()) == [".git"]
+
+
+# @ac AC-CLI-003.10
+def test_an_empty_answer_takes_the_detected_tools(new_project, monkeypatch):
+    (new_project / "CLAUDE.md").write_text("# Claude\n")
+    in_a_terminal(monkeypatch)
+    result = runner.invoke(app, ["init"], input="\n")
+    assert result.exit_code == 0, result.output
+    assert QUESTION in result.output
+    assert skill_folders_written(new_project) == {".claude/skills"} and not (new_project / ".github").exists()
+    assert saved_tools_line(new_project) == ["tools: [claude]"]
+
+
+# @ac AC-CLI-003.11
+def test_init_without_a_terminal_asks_nothing_and_saves_the_detected_tools(new_project):
+    result = runner.invoke(app, ["init"])  # the runner's stdin is not a terminal, as from CI or an agent
+    assert result.exit_code == 0, result.output
+    assert QUESTION not in result.output
+    assert skill_folders_written(new_project) == {".claude/skills"} and not (new_project / ".github").exists()
+    assert saved_tools_line(new_project) == ["tools: [claude, copilot]"]
+
+
+# @ac AC-CLI-003.11
+def test_is_terminal_is_whether_stdin_is_a_terminal(monkeypatch):
+    for tty in (True, False):
+        monkeypatch.setattr("sys.stdin", type("Stdin", (), {"isatty": lambda self, tty=tty: tty})())
+        assert project_cli.is_terminal() is tty
+
+
+# @ac AC-CLI-003.12
+def test_init_with_tools_in_a_terminal_asks_nothing(new_project, monkeypatch):
+    in_a_terminal(monkeypatch)
+    result = runner.invoke(app, ["init", "--tools", "copilot"])  # no input: a question would abort
+    assert result.exit_code == 0, result.output
+    assert QUESTION not in result.output
+    assert skill_folders_written(new_project) == {".github/skills"}
+    assert saved_tools_line(new_project) == ["tools: [copilot]"]
+
+
+# @ac AC-CLI-003.12
+def test_init_again_uses_the_saved_tools_without_asking(new_project, monkeypatch):
+    assert runner.invoke(app, ["init", "--no-skills"]).exit_code == 0
+    set_saved_tools(new_project, "[copilot]")
+    (new_project / "CLAUDE.md").write_text("# Claude\n")  # auto would pick Claude Code
+    in_a_terminal(monkeypatch)
+    result = runner.invoke(app, ["init"])
+    assert result.exit_code == 0, result.output
+    assert QUESTION not in result.output
+    assert skill_folders_written(new_project) == {".github/skills"} and not (new_project / ".claude").exists()
+    assert saved_tools_line(new_project) == ["tools: [copilot]"]
 
 
 def test_task_numbered_twice_is_not_ticked(project):

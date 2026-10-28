@@ -37,32 +37,57 @@ Each tool keeps only the frontmatter keys it understands, so Copilot drops
 Claude Code's `allowed-tools`. The frontmatter is copied as text, line by line,
 not through a YAML parser, so today's skills install byte-for-byte as written.
 An indented line belongs to the key above it, so a multi-line value is kept or
-dropped whole. Copilot also gets a prompt file per skill, so each phase is a
-slash command. `auto` installs for the tools a project already uses, or for all
-of them when none is detected. (baseline-integrations, skill-frontmatter-multiline)
+dropped whole. Skills are the slash commands, so no Copilot prompt files are
+written (they repeated each skill in Copilot's `/` menu). `auto` installs for
+the tools a project already uses, or for all of them when none is detected.
+(baseline-integrations, skill-frontmatter-multiline, dedupe-copilot-skills)
+
+### Each tool lists the folders it reads; the installer picks the fewest
+
+`Tool.reads` lists the skills folders a tool reads, its preferred one
+(`skills_dir`) first: Claude Code `.claude/skills/`; Copilot `.github/skills/`,
+then `.claude/skills/` and `.agents/skills/`. `skill_folders` goes through the
+chosen tools in `TOOLS` order (Claude Code first) and gives a tool its
+preferred folder only when no folder picked so far is in its `reads`, so
+Claude Code and Copilot together get `.claude/skills/` only. Each folder's
+copy keeps the frontmatter keys of the tool that owns it. A special case for
+the Claude Code + Copilot pair was rejected: the table covers any harness
+added later with one line. (dedupe-copilot-skills)
+
+### The saved choice of tools, resolved in one place
+
+The chosen tools are saved as the top-level config's `tools:` list, which is
+the source of truth once it exists. `resolve_tools(root, saved, given)` returns
+the tools and whether to save them: `--tools` wins and is saved; else the saved
+list; else the tools whose skills are installed (`installed_tools`), else
+`auto`, and that inferred choice is saved. Inference from the folders is only
+for projects that never saved a choice. (dedupe-copilot-skills)
 
 ### Stale specworks skills are removed by name
 
-Before installing, specworks deletes from the chosen tools' folders every
-skill folder and Copilot prompt file in its own namespace (the `specworks-`
-prefix, or a retired name such as `sw-refine`) that it no longer ships, and
-prints each one. Any other name is never touched, and a symlinked skill is
+Before installing, specworks looks in the skills folders of every tool in
+`TOOLS` (not only the chosen ones) and deletes every skill folder in its own
+namespace (the `specworks-` prefix, or a retired name such as `sw-refine`)
+that it no longer ships or that sits in a folder `skill_folders` did not pick,
+plus every such Copilot prompt file in `.github/prompts/` (`PROMPTS_DIR`, kept
+only to find them), and prints each one. Any other name is never touched, and a symlinked skill is
 unlinked without following it. A manifest of installed files was rejected: it
 would add a file to every project and miss the copies older versions already
-left behind. (remove-stale-skills)
+left behind. (remove-stale-skills, dedupe-copilot-skills)
 
 ### Staleness is found by comparing files, not versions
 
 `expected_skills(tools)` renders, in memory, every file the install writes.
 `install_skills` writes from it, and `skills_state` compares it with the
 installed files: a file can be `changed`, `missing` or `stale` (a no longer
-shipped name, from the same rule as the removal). That way the comparison
-can never disagree with the install. Only the tools that already have a
-`specworks-` skill installed are checked (`installed_tools`). A version stamp
+shipped name or a copy no longer needed, from the same rule as the removal).
+That way the comparison can never disagree with the install. The tools checked
+are the saved ones, else those that already have a `specworks-` skill
+installed (`installed_tools`); with none installed the state is `none`. A version stamp
 was rejected because installs come from git and the version does not move.
 Hashes kept in a manifest were also rejected: they add one more file and miss
 hand edits. `update_skills` writes only the files that differ, so an update
-of current skills touches nothing. (upgrade-project)
+of current skills touches nothing. (upgrade-project, dedupe-copilot-skills)
 
 ## Interfaces
 
@@ -70,11 +95,14 @@ of current skills touches nothing. (upgrade-project)
   `state(diagram, settings) -> "ok" | "missing" | "stale"`,
   `render(diagram, settings)` (raises `DiagramError`), `find_d2()`,
   `referenced_images(markdown)`.
-- `src/specworks/tools/skills.py`: `TOOLS`, `Tool`, `parse_tools(value, root)`
-  (raises `ToolError`), `install_skills(root, tools) -> list[Path]`,
+- `src/specworks/tools/skills.py`: `TOOLS`, `Tool` (`skills_dir`, `reads`),
+  `PROMPTS_DIR`, `parse_tools(value, root)` (raises `ToolError`),
+  `resolve_tools(root, saved, given) -> (tools, save)`,
+  `skill_folders(tools) -> list[(Tool, folder)]`,
+  `install_skills(root, tools) -> list[Path]`,
   `remove_stale_skills(root, tools) -> list[Path]`, `RETIRED_NAMES`,
   `packaged_skills()`, `read_skill(name)`, `expected_skills(tools) ->
-  dict[str, str]`, `installed_tools(root)`, `skills_state(root) ->
+  dict[str, str]`, `installed_tools(root)`, `skills_state(root, saved=None) ->
   SkillsState` (`state`: `current` | `outdated` | `none`, `files`:
   `SkillFile(path, reason)`), `update_skills(root, tools) -> (updated,
   removed)`.
@@ -83,4 +111,7 @@ of current skills touches nothing. (upgrade-project)
 
 - The render settings come only from the top-level config, so every diagram in
   the workspace shares one look.
-- Skills are installed at the workspace root, never inside a module.
+- Skills are installed at the workspace root, never inside a module, and the
+  saved `tools:` list lives only in the top-level config.
+- Only `specworks-…` names (and retired ones) are ever removed; a user's own
+  skills and prompt files are never touched.

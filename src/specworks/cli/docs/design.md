@@ -47,7 +47,21 @@ every other command says where the change was archived. (baseline-cli)
 
 The commands refuse option combinations that would skip a safeguard: `close`
 runs validate first and takes `--no-run` only with `--dry-run`, and `init`
-rejects a bad `--tools` before writing anything. (baseline-cli)
+rejects a bad `--tools` (given or typed at its question) before writing
+anything. (baseline-cli, dedupe-copilot-skills)
+
+### The tools are chosen once and saved
+
+`init`, `skills` and `update` call `resolve_tools` and save the result in the
+config with `save_tools` when it says to. `--tools` defaults to `None`, not
+`auto`, so "not given" can be told from an explicit `auto`. When `init`
+installs skills at a top level with no `--tools` and no saved tools, and
+`is_terminal()` (`sys.stdin.isatty()`, its own function so tests can replace
+it) is true, it asks once, before writing anything, with `typer.prompt`:
+`AI tools to install skills for (claude, copilot)`, the detected tools as the
+default comma list. The answer goes through `parse_tools`. Without a terminal
+it uses `auto`, so scripts and agents are never blocked. A checklist widget was
+rejected: the question is one line of text. (dedupe-copilot-skills)
 
 ### Git is a precondition; `new` branches
 
@@ -84,20 +98,23 @@ no project found, the "no project" message names `.specworks/config.yml`.
 ### Upgrading is uv, then `update`
 
 `uv tool upgrade specworks` upgrades the CLI. `specworks update` then brings
-the project's skills up to it, by default for the tools that already have
-them installed. `context`, which every skill runs first, reports the skills
+the project's skills up to it, by default for the saved tools, else those that
+already have them installed (then saved), and removes the copies no longer
+needed. `context`, which every skill runs first, reports the skills
 state and the hint `skills out of date: run specworks update`, so an agent
 notices a stale project without being told. A self-upgrading `specworks
 upgrade` was rejected: the CLI would have to find out how it was installed
 and replace itself while running. Config migration will run in `update` once
-a second config format exists. (upgrade-project)
+a second config format exists. (upgrade-project, dedupe-copilot-skills)
 
 ## Interfaces
 
 - `src/specworks/cli/__init__.py`: `app`, `main()` (the `specworks` entry
   point).
 - `src/specworks/cli/output.py`: `emit`, `fail`, `workspace`,
-  `resolve_change`, `resolve_archived`, `require_change`.
+  `resolve_change`, `resolve_archived`, `require_change`, `ToolsOpt`
+  (`--tools`, default `None`: the saved choice).
+- `src/specworks/cli/project.py`: `is_terminal() -> bool`.
 - `new <name> [--module M] [--no-branch] [--json]`: `--json` adds `branch` and
   `startedFrom`.
 - The commands as `specworks --help` lists them: `version`, `init`, `skills`,

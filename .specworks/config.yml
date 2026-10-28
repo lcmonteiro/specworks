@@ -82,3 +82,6 @@ diagrams:
   dark_theme: dark-mauve
   layout: elk           # elk or dagre
   sketch: false         # true for a hand-drawn look
+
+# AI tools the skills are installed for (`specworks skills --tools` changes it).
+tools: [claude, copilot]

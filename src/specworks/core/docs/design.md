@@ -7,8 +7,8 @@ builds on:
 - **Config** (`config.py`, `validators.py`): finding the project's
   `.specworks/config.yml` and loading it into a validated `Config` (capabilities, modules, globs,
   commands, diagram settings).
-- **Config file** (`config_file.py`): writing the default config, and adding
-  module and capability entries.
+- **Config file** (`config_file.py`): writing the default config, adding
+  module and capability entries, and saving the AI tools a project uses.
 - **Workspace** (`workspace.py`): the top-level project and its modules, and
   what each module inherits.
 - **Changes** (`changes.py`): changes in flight and archived, and their phases
@@ -79,7 +79,20 @@ as unasked-for. (baseline-project, unique-capability-paths)
 
 Entries are added by editing the config as text, never by dumping YAML. The
 file is then re-read, and the edit is undone, with an "add it by hand" message,
-when the result isn't the expected mapping. (baseline-project)
+when the result isn't the expected mapping. Saving the tools follows the same
+rule: `save_tools` replaces a `tools:` entry (a flow list on one line or a
+block list) or appends `tools: [a, b]`, then reloads; when the config does not
+load with those tools (e.g. a hand-edited one with two `tools:` keys), the file
+is restored and the error says to set `tools` by hand.
+(baseline-project, dedupe-copilot-skills)
+
+### Tool IDs are known to core without importing the tools layer
+
+`TOOL_IDS = ("claude", "copilot")` in `config.py` checks the `tools:` list, so
+`core` keeps not importing `tools`; a test checks that `TOOLS` has the same
+keys in the same order. `tools` belongs to the top level only: a module's
+config that sets it is refused when the workspace loads the module, since
+skills are installed once, at the root. (dedupe-copilot-skills)
 
 ### Command results are reused on an identical tree
 
@@ -147,8 +160,8 @@ where to configure one. (baseline-project, run-unknown-key)
   `find_old_config(start) -> Path | None`,
   `old_layout_error(path, module=None) -> ConfigError`,
   `load_config(root) -> Config`, `Config` (`dir`, `config_path`,
-  `changes_dir`, `changes_path`, `archive_dir`, `archive_path`),
-  `Capability`, `DiagramSettings`.
+  `changes_dir`, `changes_path`, `archive_dir`, `archive_path`, `tools`:
+  the saved tool IDs or `None`), `TOOL_IDS`, `Capability`, `DiagramSettings`.
 - `src/specworks/core/workspace.py`: `load_workspace(start=None) -> Workspace | None`,
   `require_workspace(start) -> Workspace`, `Workspace` (`modules`,
   `module(name)`, `split(ref)`, `context_chain`, `merged_context`, `commands`,
@@ -156,7 +169,9 @@ where to configure one. (baseline-project, run-unknown-key)
   `capability_prefix(module_name, name, prefix="")`.
 - `src/specworks/core/config_file.py`: `write_default_config(root, diagram_theme=None)`
   (writes `.specworks/config.yml`),
-  `add_module_entry`, `add_capability_entry`.
+  `add_module_entry`, `add_capability_entry`, `save_tools(root, ids)` (raises
+  `ConfigError`, file restored).
+- Config file: top-level `tools: [claude, copilot]`.
 - `src/specworks/core/changes.py`: `PHASES`, `HALVES`, `Change`, `create_change`,
   `load_change`, `list_changes`, `list_archived`, `archived_as`, `set_phase`.
 - `src/specworks/core/runner.py`: `run_command`, `cached_run`, `RunResult`.

@@ -47,12 +47,23 @@ through `init`, the agent skills).
    specworks context --json
    ```
 
-   - `"root": null`: not set up yet. Run:
+   - `"root": null`: not set up yet. Ask the user which AI tools the
+     project uses (`init` cannot ask from here, without a terminal), the
+     ones the project already shows recommended (`CLAUDE.md` or `.claude/`
+     for Claude Code; `.github/copilot-instructions.md` or `.github/skills/`
+     for Copilot), e.g.:
+     ```
+     1. claude,copilot (recommended): the project has CLAUDE.md and copilot-instructions.md
+     2. claude
+     3. copilot
+     ```
+     Then run, with the tools chosen:
      ```bash
-     specworks init
+     specworks init --tools <list>
      ```
      It writes `.specworks/config.yml` and `.specworks/changes/`, always
-     under that name.
+     under that name, installs the skills for those tools and saves them as
+     `tools:` in the config.
    - An error naming an old-style config (`spec.yml` with `spec/`): the
      project predates the fixed layout. Show the move the error names
      (`<dir>.yml` to `.specworks/config.yml`, `<dir>/changes/` to

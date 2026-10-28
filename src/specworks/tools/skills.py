@@ -4,8 +4,8 @@ Skills follow the Agent Skills format (``<name>/SKILL.md`` with ``name`` and
 ``description`` frontmatter), which Claude Code and GitHub Copilot both read:
 
 - claude:  ``.claude/skills/<name>/SKILL.md``
-- copilot: ``.github/skills/<name>/SKILL.md`` plus ``.github/prompts/<name>.prompt.md``
-  so each phase is also a slash command in Copilot Chat (VS Code, JetBrains, ...).
+- copilot: ``.github/skills/<name>/SKILL.md``; Copilot also reads ``.claude/skills/``, so with
+  Claude Code chosen too the skills are written there only, and each shows once in its ``/`` menu.
 """
 
 from __future__ import annotations
@@ -26,8 +26,9 @@ FRONTMATTER_RE = re.compile(r"\A---\n(.*?)\n---\n", re.DOTALL)
 class Tool:
     id: str
     label: str
-    skills_dir: str
-    prompts_dir: str | None = None
+    skills_dir: str  # the folder it prefers, written when no folder picked for another chosen tool is in ``reads``
+    # Every skills folder this tool reads, ``skills_dir`` first.
+    reads: tuple[str, ...] = ()
     # Files or folders whose presence means the project already uses this tool.
     detect: tuple[str, ...] = field(default_factory=tuple)
     # Frontmatter keys this tool understands; others are dropped from its copy.
@@ -39,13 +40,14 @@ TOOLS: dict[str, Tool] = {
         id="claude",
         label="Claude Code",
         skills_dir=".claude/skills",
+        reads=(".claude/skills",),
         detect=(".claude", "CLAUDE.md"),
     ),
     "copilot": Tool(
         id="copilot",
         label="GitHub Copilot",
         skills_dir=".github/skills",
-        prompts_dir=".github/prompts",
+        reads=(".github/skills", ".claude/skills", ".agents/skills"),
         detect=(
             ".github/copilot-instructions.md",
             ".github/instructions",
@@ -57,6 +59,10 @@ TOOLS: dict[str, Tool] = {
         keep_keys=("name", "description"),
     ),
 }
+
+
+# Copilot prompt files: none is written any more; specworks ones left by an older version are removed.
+PROMPTS_DIR = ".github/prompts"
 
 
 class ToolError(SpecworksError):
@@ -106,14 +112,6 @@ def render_skill(text: str, tool: Tool) -> str:
     return "---\n" + "\n".join(kept) + "\n---\n" + body
 
 
-# @req REQ-INTEG-005
-def render_prompt(text: str) -> str:
-    """Copilot prompt file: description frontmatter, agent mode, and the skill's instructions."""
-    pairs, body = split_frontmatter(text)
-    description = next((line for key, line in pairs if key == "description"), "description: ''")
-    return f"---\n{description}\nagent: agent\n---\n{body}"
-
-
 # @req REQ-INTEG-004
 def parse_tools(value: str, root: Path) -> list[Tool]:
     """``auto`` (default), ``all`` or a comma list such as ``claude,copilot``.
@@ -137,6 +135,36 @@ def parse_tools(value: str, root: Path) -> list[Tool]:
     return tools
 
 
+# @req REQ-INTEG-004, REQ-CLI-009
+def resolve_tools(root: Path, saved: list[str] | None, given: str | None) -> tuple[list[Tool], bool]:
+    """The tools to install for, in ``TOOLS`` order, and whether to save them in the config.
+
+    ``given`` (``--tools``) wins and is saved; else the ``saved`` tool IDs; else the
+    installed tools, else ``auto``, saved.
+    """
+    if given is not None:
+        selected, save = parse_tools(given, root), True
+    elif saved:
+        selected, save = [TOOLS[i] for i in saved if i in TOOLS], False
+    else:
+        selected, save = installed_tools(root) or parse_tools("auto", root), True
+    return [tool for tool in TOOLS.values() if tool in selected], save
+
+
+# @req REQ-INTEG-005
+def skill_folders(tools: list[Tool]) -> list[tuple[Tool, str]]:
+    """The fewest skills folders every tool in ``tools`` reads, each with the tool whose frontmatter keys its copies keep.
+
+    Tools are taken in ``TOOLS`` order; a tool gets its preferred folder only when no folder
+    picked so far is in its ``reads``.
+    """
+    picked: list[tuple[Tool, str]] = []
+    for tool in TOOLS.values():
+        if tool in tools and not any(folder in tool.reads for _, folder in picked):
+            picked.append((tool, tool.skills_dir))
+    return picked
+
+
 # Skills shipped before every skill took the specworks- prefix; removed like any stale specworks-* skill.
 RETIRED_NAMES: tuple[str, ...] = ("sw-refine",)
 
@@ -148,7 +176,7 @@ def _stale(name: str, shipped: set[str]) -> bool:
 
 # @req REQ-INTEG-005
 def remove_stale_skills(root: Path, tools: list[Tool]) -> list[Path]:
-    """Delete the specworks skills (and Copilot prompt files) of ``tools`` that are no longer shipped; return what was deleted."""
+    """Delete the specworks skills ``tools`` no longer need (not shipped, or in an unused folder) and specworks prompt files; return what was deleted."""
     removed = []
     for rel in _stale_files(root, tools):
         path = root / rel
@@ -162,7 +190,7 @@ def remove_stale_skills(root: Path, tools: list[Tool]) -> list[Path]:
 
 # @req REQ-INTEG-005
 def install_skills(root: Path, tools: list[Tool]) -> list[Path]:
-    """Write every packaged skill (and Copilot prompt files) for ``tools``; return written files."""
+    """Write every packaged skill to the folders ``tools`` read; return written files."""
     written = []
     for rel, text in expected_skills(tools).items():
         dest = root / rel
@@ -174,7 +202,7 @@ def install_skills(root: Path, tools: list[Tool]) -> list[Path]:
 
 @dataclass(frozen=True)
 class SkillFile:
-    """An installed skill or prompt file that differs from what this version installs."""
+    """An installed skill (or a prompt file left by an older version) that differs from what this version installs."""
 
     path: str  # relative to the workspace root, with /
     reason: Literal["changed", "missing", "stale"]
@@ -190,14 +218,11 @@ class SkillsState:
 
 # @req REQ-INTEG-005, REQ-INTEG-006
 def expected_skills(tools: list[Tool]) -> dict[str, str]:
-    """Every skill file (and Copilot prompt file) of ``tools`` this version installs: relative path -> text."""
+    """Every skill file this version installs for ``tools``, one copy per folder of ``skill_folders``: relative path -> text."""
     files = {}
-    for tool in tools:
+    for tool, folder in skill_folders(tools):
         for name in packaged_skills():
-            text = read_skill(name)
-            files[f"{tool.skills_dir}/{name}/SKILL.md"] = render_skill(text, tool)
-            if tool.prompts_dir:
-                files[f"{tool.prompts_dir}/{name}.prompt.md"] = render_prompt(text)
+            files[f"{folder}/{name}/SKILL.md"] = render_skill(read_skill(name), tool)
     return files
 
 
@@ -217,17 +242,22 @@ def installed_tools(root: Path) -> list[Tool]:
 
 # @req REQ-INTEG-005, REQ-INTEG-006
 def _stale_files(root: Path, tools: list[Tool]) -> list[str]:
-    """Relative paths of the specworks skill folders and prompt files of ``tools`` this version no longer ships."""
+    """Relative paths of the specworks skill folders ``tools`` no longer need, and of every specworks prompt file.
+
+    Every tool's folder is searched: a specworks skill is stale when this version does not ship it,
+    or when its folder is not one ``skill_folders`` picks for ``tools``. Other names are never listed.
+    """
     shipped, stale = set(packaged_skills()), []
-    for tool in tools:
-        skills = root / tool.skills_dir
+    used = {folder for _, folder in skill_folders(tools)}
+    for skills_dir in dict.fromkeys(tool.skills_dir for tool in TOOLS.values()):
+        skills = root / skills_dir
         for folder in sorted(skills.iterdir()) if skills.is_dir() else []:
-            if folder.is_dir() and _stale(folder.name, shipped):
-                stale.append(f"{tool.skills_dir}/{folder.name}")
-        prompts = root / tool.prompts_dir if tool.prompts_dir else None
-        for prompt in sorted(prompts.glob("*.prompt.md")) if prompts and prompts.is_dir() else []:
-            if _stale(prompt.name.removesuffix(".prompt.md"), shipped):
-                stale.append(f"{tool.prompts_dir}/{prompt.name}")
+            if folder.is_dir() and _ours(folder.name) and (skills_dir not in used or _stale(folder.name, shipped)):
+                stale.append(f"{skills_dir}/{folder.name}")
+    prompts = root / PROMPTS_DIR
+    for prompt in sorted(prompts.glob("*.prompt.md")) if prompts.is_dir() else []:
+        if _ours(prompt.name.removesuffix(".prompt.md")):
+            stale.append(f"{PROMPTS_DIR}/{prompt.name}")
     return stale
 
 
@@ -239,11 +269,16 @@ def _differs(path: Path, text: str) -> Literal["changed", "missing"] | None:
 
 
 # @req REQ-INTEG-006
-def skills_state(root: Path) -> SkillsState:
-    """Compare the installed skills of every tool that has them with what this version installs."""
-    tools = installed_tools(root)
-    if not tools:
+def skills_state(root: Path, saved: list[str] | None = None) -> SkillsState:
+    """Compare the installed skills of the project's tools with what this version installs.
+
+    The tools are the ``saved`` tool IDs of the config, else every tool that has skills installed;
+    with no specworks skill installed in any tool's folder, the state is ``none``.
+    """
+    installed = installed_tools(root)
+    if not installed:
         return SkillsState("none")
+    tools = [TOOLS[i] for i in saved if i in TOOLS] if saved else installed
     files = [SkillFile(rel, reason) for rel, text in expected_skills(tools).items() if (reason := _differs(root / rel, text))]
     files += [SkillFile(rel, "stale") for rel in _stale_files(root, tools)]
     files.sort(key=lambda f: f.path)
