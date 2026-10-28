@@ -1,6 +1,6 @@
 name: dedupe-copilot-skills
 created: '2026-10-27T20:25:56'
-phase: review
+phase: close
 specified:
   REQ-CLI-003: bd61953b0018
   REQ-CLI-009: 55c96490a111
