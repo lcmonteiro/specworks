@@ -8,6 +8,7 @@ from helpers import init_repo, set_saved_tools
 from specworks.cli import app
 from specworks.core.config import load_config
 from specworks.core.config_file import save_tools
+from specworks.core.errors import ConfigError
 from specworks.core.workspace import load_workspace
 from specworks.specs.trace import scan_tags
 
@@ -83,15 +84,27 @@ def test_saving_the_tools_keeps_the_comments(workspace):
 
 
 # @ac AC-PROJ-022.2
-@pytest.mark.parametrize("saved", ["tools: [claude]\n", "tools:\n  - claude\n"], ids=["flow", "block"])
+@pytest.mark.parametrize("saved", ["[claude]", "\n  - claude"], ids=["flow", "block"])
 def test_saving_the_tools_replaces_the_saved_list(workspace, saved):
     config = workspace / ".specworks/config.yml"
-    config.write_text(config.read_text(encoding="utf-8") + saved, encoding="utf-8")
+    set_saved_tools(workspace, saved)
     save_tools(workspace, ["copilot"])
     lines = config.read_text(encoding="utf-8").splitlines()
     assert [line for line in lines if line.startswith("tools:")] == ["tools: [copilot]"]
     assert "  - claude" not in lines
     assert load_config(workspace).tools == ["copilot"]
+
+
+# @ac AC-PROJ-022.3
+def test_saving_the_tools_leaves_a_config_it_cannot_edit_unchanged(workspace):
+    config = workspace / ".specworks/config.yml"
+    set_saved_tools(workspace, "[claude]")
+    config.write_text(config.read_text(encoding="utf-8") + "tools:\n  - claude\n", encoding="utf-8")  # a second `tools:` entry
+    before = config.read_text(encoding="utf-8")
+    with pytest.raises(ConfigError, match="by hand") as error:
+        save_tools(workspace, ["copilot"])
+    assert "tools" in str(error.value)
+    assert config.read_text(encoding="utf-8") == before
 
 
 # @ac AC-CLI-004.4
