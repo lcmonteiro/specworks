@@ -101,14 +101,14 @@ jobs:
           sw instructions refinement --change add-example --json > /dev/null
           sw instructions tasks --change add-example --json > /dev/null
           test -f .specworks/config.yml
-          # Every packaged skill, for both tools (the list comes from the source tree).
+          # Every packaged skill, once, in .claude/skills/ (Copilot reads it too; the list comes from the source tree).
           for skill in $(cd "$GITHUB_WORKSPACE/src/specworks/skills" && ls -d specworks-*); do
-            for f in ".claude/skills/$skill/SKILL.md" ".github/skills/$skill/SKILL.md" ".github/prompts/$skill.prompt.md"; do
-              test -f "$f" || { echo "missing $f"; exit 1; }
-            done
+            test -f ".claude/skills/$skill/SKILL.md" || { echo "missing .claude/skills/$skill/SKILL.md"; exit 1; }
           done
+          if [ -e .github/skills ] || [ -e .github/prompts ]; then echo 'unexpected .github/skills or .github/prompts'; exit 1; fi
+          grep -q 'tools: \[claude, copilot\]' .specworks/config.yml
           grep -q 'Running the CLI' .claude/skills/specworks-refine/SKILL.md
-          if grep -rq 'specworks:include' .claude .github; then echo 'unfilled include in an installed skill'; exit 1; fi
+          if grep -rq 'specworks:include' .claude; then echo 'unfilled include in an installed skill'; exit 1; fi
           mkdir -p .specworks/changes/active/add-example/diagrams
           printf 'shape: sequence_diagram\nuser -> api: "POST /reset {email}"\n' > .specworks/changes/active/add-example/diagrams/flow.d2
           sw diagrams --themes | grep -q '(pyd2)'
