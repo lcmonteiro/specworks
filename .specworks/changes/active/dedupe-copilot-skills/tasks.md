@@ -5,6 +5,7 @@
 - [x] 1.1 Add the stubs in design.md: `TOOL_IDS` and `Config.tools` in `src/specworks/core/config.py`, `save_tools` in `src/specworks/core/config_file.py` (REQ-PROJ-003, REQ-PROJ-022); verify `specworks run lint` passes
 - [x] 1.2 [test] Tests for AC-PROJ-003.6 (a non-list, empty or unknown `tools` fails naming `tools` and the known IDs), AC-PROJ-003.7 (`tools` in a module's config is refused), AC-PROJ-022.1 (saved with comments kept, loads back), AC-PROJ-022.2 (an existing list replaced, one entry), tagged `@ac`; and a test that `TOOLS` in `tools/skills.py` has the keys of `TOOL_IDS` in order; verify they fail before 1.3
 - [x] 1.3 [code] Load and check `tools` (top level only) and implement `save_tools` as a text edit that reloads and restores on a bad result (REQ-PROJ-003, REQ-PROJ-022), tagged `@req`; verify the 1.2 tests pass
+- [ ] 1.4 [test] Test for AC-PROJ-022.3 (a config with two `tools:` entries: saving `copilot` leaves the file unchanged and the error says to set `tools` by hand), tagged `@ac`; the code is already in place (review R3), so verify it passes
 
 ## 2. Installing for the chosen tools
 

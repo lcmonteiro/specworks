@@ -22,6 +22,12 @@ file unchanged and say to set `tools` by hand.
 - **WHEN** the tool `copilot` is saved
 - **THEN** the config has one `tools:` entry, `tools: [copilot]`
 
+#### Scenario: AC-PROJ-022.3 A list the text edit cannot replace
+
+- **GIVEN** a config with two `tools:` entries
+- **WHEN** the tool `copilot` is saved
+- **THEN** the config file is unchanged and the error says to set `tools` by hand
+
 ## MODIFIED Requirements
 
 ### Requirement: REQ-PROJ-003 Config value checks
