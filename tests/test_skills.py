@@ -361,8 +361,8 @@ def test_baseline_no_longer_asks_for_a_new_branch():
     assert "preferably on a new branch" not in " ".join(read_skill("specworks-baseline").split())
 
 
-# refine, adopt and baseline create the change they work on (adopt none) instead of picking one.
-@pytest.mark.parametrize("name", [n for n in packaged_skills() if n not in ("specworks-refine", "specworks-adopt", "specworks-baseline")])
+# refine, adopt and baseline create the change they work on (adopt and start none) instead of picking one.
+@pytest.mark.parametrize("name", [n for n in packaged_skills() if n not in ("specworks-refine", "specworks-adopt", "specworks-baseline", "specworks-start")])
 def test_skills_pick_the_change_by_one_shared_rule(name):
     # "Select the change as the other phases do" pointed at no rule; the shared paragraph is that rule.
     text = read_skill(name)
@@ -384,6 +384,59 @@ def test_adopt_asks_which_ai_tools_and_passes_them_to_init():
     assert re.search(r"which AI tools", text, re.IGNORECASE)
     assert re.search(r"specworks init --tools <[a-z ]+>", text)
     assert not re.search(r"^\s*specworks init\s*$", text, re.MULTILINE)  # never a bare init that guesses the tools
+
+
+def test_start_is_a_packaged_skill_that_creates_its_project_instead_of_picking_a_change():
+    # Like adopt, start runs before any change exists, so the shared change-picking rule does not apply to it.
+    assert "specworks-start" in packaged_skills()
+    text = read_skill("specworks-start")
+    assert "**Picking the change**" not in text and "Pick the change (above)" not in text
+
+
+def test_start_refuses_a_set_up_project_and_hands_existing_code_to_adopt():
+    # start is for an empty repository: a config already there goes to refine, a repository with code to adopt.
+    # The check comes first: everything before the structure is proposed.
+    check = flat(read_skill("specworks-start").split("Create this structure? (yes/no)", 1)[0])
+    assert "specworks context --json" in check
+    assert "/specworks-refine" in check and "/specworks-adopt" in check
+    assert "git init" in check  # init refuses outside a git repository
+
+
+def test_start_recommends_the_tooling_as_options():
+    tooling = flat(read_skill("specworks-start"))
+    assert "(recommended)" in tooling
+    assert re.search(r"\buv\b[^.]*Python|Python[^.]*\buv\b", tooling)
+    assert "CMake" in tooling and "Bazel" in tooling and "C++" in tooling
+
+
+def test_start_shows_the_tree_and_asks_before_writing():
+    text = read_skill("specworks-start")
+    assert "Create this structure? (yes/no)" in text
+    # Nothing is created before the question: every command that writes comes after it.
+    question = text.index("Create this structure? (yes/no)")
+    for command in ("specworks init --tools", "specworks module add", "specworks capability add"):
+        assert command in text and text.index(command) > question, command
+
+
+def test_start_creates_the_structure_with_the_cli_and_a_gitkeep_per_code_folder():
+    text = read_skill("specworks-start")
+    assert re.search(r"specworks init --tools <[a-z ]+>", text)
+    assert not re.search(r"^\s*specworks init\s*$", text, re.MULTILINE)  # never a bare init that guesses the tools
+    assert "specworks module add <" in text
+    assert re.search(r"specworks capability add <name> --path <[a-z ]+>", text) and "--description" in text
+    assert ".gitkeep" in text
+
+
+def test_start_writes_no_language_files():
+    # The first change sets up the stack; start writes only the configs, the .gitkeep files and the skills.
+    guardrails = flat(read_skill("specworks-start").split("## Guardrails", 1)[1]).lower()
+    assert "no language files" in guardrails and "manifest" in guardrails
+
+
+def test_start_ends_by_handing_over_to_refine():
+    steps = flat(read_skill("specworks-start").split("## Guardrails", 1)[0])
+    assert "`/specworks-refine <first change>` (recommended)" in steps
+    assert "stop here" in steps.lower()
 
 
 def test_adopt_baseline_and_close_chain_through_every_capability():
