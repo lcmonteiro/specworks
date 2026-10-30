@@ -45,7 +45,7 @@ When refinement is done, stop and suggest `/specworks-specify`.
      (`contextChain`): a module adds rules, it never removes its parent's.
    - `capabilities` lists durable behaviours of the WHOLE workspace, the code
      folder that owns each one, and `docsPath` with its living docs
-     (`spec.md`, `requirements.md`, `design.md`, `architecture.md`).
+     (`spec.md`, `requirements.md`, and `design.md` with its diagrams).
      Capabilities of other modules are named `module:capability`
      (e.g. `billing:invoices`). Read the docs of the capabilities that look
      related, in any module, before deciding what already exists.

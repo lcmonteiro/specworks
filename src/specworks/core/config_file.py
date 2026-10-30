@@ -22,7 +22,7 @@ specworks: 1
 context: |
 
 # Name of the folder, inside each capability's code path, that holds its
-# living docs (spec.md, requirements.md, design.md, architecture.md).
+# living docs (spec.md, requirements.md, design.md and its diagrams).
 docs_dir: docs
 
 # Capabilities: durable behaviours of the system and the code folder that owns

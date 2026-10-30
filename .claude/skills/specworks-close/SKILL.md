@@ -1,6 +1,6 @@
 ---
 name: specworks-close
-description: Close phase of spec-driven development - fold a verified change into the project's living documentation next to the code (spec, requirements index, design, architecture, diagrams), register new capabilities, and archive the change. Use when a specworks change has passed validate and the user wants to finish it, or says "close the change", "archive the change", "merge the specs" or "specworks close".
+description: Close phase of spec-driven development - fold a verified change into the project's living documentation next to the code (spec, requirements index, design, diagrams), register new capabilities, and archive the change. Use when a specworks change has passed validate and the user wants to finish it, or says "close the change", "archive the change", "merge the specs" or "specworks close".
 allowed-tools: Bash(specworks:*), Bash(uv run specworks:*), Bash(uvx --from git+https://github.com/lcmonteiro/specworks specworks:*), Bash(git add:*), Bash(git commit:*), Read, Grep, Glob, Write, Edit
 ---
 
@@ -99,7 +99,7 @@ next step the same way: the next skill (recommended), any alternative, and
    requirements added, modified and removed. Ask: "Merge and archive? (yes/no)"
    Nothing is written until the user agrees.
 
-4. **Update the living design and architecture (before archiving)**
+4. **Update the living design and its diagrams (before archiving)**
 
    The change folder moves in the next step, so do this first. For each
    capability the change touched, in its docs folder (`docsPath` from
@@ -110,12 +110,16 @@ next step the same way: the next skill (recommended), any alternative, and
      (public APIs, data shapes, events), Constraints. Fold in the decisions
      from the change's design.md that still hold; drop the ones review.md
      overturned; leave out task-level detail.
-   - **architecture.md**: only when the change altered structure: components
-     and their responsibilities, dependencies between modules and services,
-     data flows, deployment units.
-   - **diagrams**: copy the change's diagrams that describe the system as it
-     now is into `<docsPath>/diagrams/` (the `.d2` source; update it if
-     review changed the design), render them and embed them:
+   - **block diagram**: `design.md` keeps one block diagram of the capability
+     as it is now. When the change's design has a block diagram of this
+     capability (`diagrams/<capability>-blocks.d2`, a structural change), it
+     replaces the living one in `<docsPath>/diagrams/` (the `.d2` source;
+     update it if review changed the design) and is embedded in the living
+     `design.md`; when it has none for this capability, or says "No
+     structural change", the living one stays as it is.
+   - **other diagrams**: copy the change's diagrams that describe the system
+     as it now is into `<docsPath>/diagrams/` too. Render them all and embed
+     them:
      ```bash
      specworks diagrams --dir "<docsPath>"
      ```
@@ -149,7 +153,7 @@ artifact is written), and before the closing question, commit its work:
 6. **Report and stop**
 
    Summarize: living docs written per capability (spec, requirements, design,
-   architecture, diagrams), requirements added / modified / removed,
+   diagrams), requirements added / modified / removed,
    capabilities registered, and the archive path. The living docs, the archive
    and the code are already committed together (above).
 

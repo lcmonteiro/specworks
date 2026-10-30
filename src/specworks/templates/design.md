@@ -26,7 +26,11 @@ Settled in the design phase; "None" when the API does not change. -->
 
 ## Diagrams
 
-<!-- Optional. Write diagrams/<name>.d2, run `specworks diagrams --change <ref>`, then embed:
+<!-- A change that adds, removes or moves components, or changes the dependencies between them,
+gets one block diagram per capability whose structure changes, of that structure after it,
+named diagrams/<capability>-blocks.d2; otherwise write "No structural change".
+Other diagrams (flows, states, tables) are optional.
+Write diagrams/<name>.d2, run `specworks diagrams --change <ref>`, then embed:
 ![Password reset flow (REQ-AUTH-003)](diagrams/reset-flow.svg)
 -->
 

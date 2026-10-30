@@ -168,9 +168,14 @@ next step the same way: the next skill (recommended), any alternative, and
    interfaces (APIs, data shapes, CLI surfaces) the test half will target,
    and resolve open questions that would change the tasks with the user now.
 
-   Diagrams, when they help: write `diagrams/<name>.d2` in the change folder
-   following the D2 rules in `instruction` (no colours or styles; the theme
-   handles the look), then render and embed them:
+   Diagrams follow the rule in `instruction`: a change that adds, removes or
+   moves components, or changes the dependencies between them, gets one
+   block diagram per capability whose structure changes, written as
+   `diagrams/<capability>-blocks.d2` (close looks for that name); otherwise
+   `## Diagrams` says "No structural change". Write any other diagram as
+   `diagrams/<name>.d2`. Put them in the change folder following the D2 rules
+   in `instruction` (no colours or styles; the theme handles the look), then
+   render and embed them:
    ```bash
    specworks diagrams --change "<ref>"
    ```
