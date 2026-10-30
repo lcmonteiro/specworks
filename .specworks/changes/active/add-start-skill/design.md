@@ -10,8 +10,11 @@ needs no registration in Python code.
 ## Goals / Non-Goals
 
 **Goals:**
-- A new skill file on today's CLI commands (`init`, `module add`,
-  `capability add`, `context`).
+- A new skill file on today's CLI commands (`context`, `skills --tools`,
+  `module add`, `capability add`). It runs after `specworks init` (the
+  step that installs it) and goes on with the fresh config `init` wrote;
+  it saves the AI tools with `specworks skills --tools <list>` instead of
+  running `init` (review R1).
 
 **Non-Goals:**
 - Any CLI or library change (Options B and C of the refinement).
@@ -41,7 +44,7 @@ user).
 
 ## Interfaces
 
-None: the change adds a packaged skill (Markdown text, task 1.2) and a README line; no public class, function or CLI command is added or changed.
+None: the change adds a packaged skill (Markdown text, tasks 1.2 and 1.5) and a README line; no public class, function or CLI command is added or changed. Review R1 (cycle 2) changes only which existing commands the skill calls: `specworks skills --tools <list>` (an existing option that saves `tools:` and installs the skills) replaces `specworks init --tools`.
 
 ## Diagrams
 
