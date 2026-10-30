@@ -81,11 +81,12 @@ here; if something is wrong, go back to the phase that owns it.
      from the change's design.md that still hold; drop the ones review.md
      overturned; leave out task-level detail.
    - **block diagram**: `design.md` keeps one block diagram of the capability
-     as it is now. When the change's design has a block diagram (a structural
-     change), it replaces the living one in `<docsPath>/diagrams/` (the `.d2`
-     source; update it if review changed the design) and is embedded in the
-     living `design.md`; when it says "No structural change", the living one
-     stays as it is.
+     as it is now. When the change's design has a block diagram of this
+     capability (`diagrams/<capability>-blocks.d2`, a structural change), it
+     replaces the living one in `<docsPath>/diagrams/` (the `.d2` source;
+     update it if review changed the design) and is embedded in the living
+     `design.md`; when it has none for this capability, or says "No
+     structural change", the living one stays as it is.
    - **other diagrams**: copy the change's diagrams that describe the system
      as it now is into `<docsPath>/diagrams/` too. Render them all and embed
      them:

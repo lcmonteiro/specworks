@@ -148,10 +148,12 @@ artifacts:
         section with the user and creates the stubs; tests are written
         against it. Write "None" when the API does not change.
       - **Diagrams**: a change that adds, removes or moves components, or
-        changes the dependencies between them, gets a block diagram of the
-        capability's structure after the change (components as nested
-        containers, every connection labelled with what flows); otherwise the
-        section says "No structural change". The other kinds stay optional,
+        changes the dependencies between them, gets one block diagram per
+        capability whose structure changes, named after it
+        (`diagrams/<capability>-blocks.d2`): that capability's structure after
+        the change (components as nested containers, every connection
+        labelled with what flows); otherwise the section says "No structural
+        change". The other kinds stay optional,
         only where a picture explains what text cannot - a sequence diagram
         for a new flow, a state diagram for a lifecycle, a data model for new
         tables. Usually 0-3 per design.
