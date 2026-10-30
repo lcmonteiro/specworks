@@ -11,6 +11,7 @@ Base: `origin/main`
   - confirmed in review (cycle 2): `schema.yaml:150`, `templates/design.md:29`, close step 4 (`specworks-close/SKILL.md:83`) and baseline step 5 (`specworks-baseline/SKILL.md:175`) name `diagrams/<capability>-blocks.d2`; the installed copies are current (`uv run specworks skills` changes nothing); the suite passes (678 tests)
 - [ ] R2 **quality** Specify step 6 still restates the rule as it was before R1: a structural change "gets a block diagram" (one per change, not one per capability whose structure changes), and "Write each one as `diagrams/<name>.d2`" gives no name for the block diagram; a specify run that follows this text can name it anything, and close step 4 then finds no `diagrams/<capability>-blocks.d2` for the capability and keeps the old living diagram, so the new one is silently dropped (`src/specworks/skills/specworks-specify/SKILL.md:141`)
   - **Proposal**: back to code: specify step 6 says a structural change gets one block diagram per capability whose structure changes, `diagrams/<capability>-blocks.d2`, and other diagrams `diagrams/<name>.d2`; refresh the installed copies with `uv run specworks skills`
+  - **Decision**: back to code: specify step 6 asks for one `diagrams/<capability>-blocks.d2` per capability whose structure changes, other diagrams stay `diagrams/<name>.d2`; refresh the installed copies (agreed with the user)
 
 ## Changed files without tags
 
