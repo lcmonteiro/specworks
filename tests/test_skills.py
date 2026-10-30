@@ -422,10 +422,13 @@ def test_start_recommends_the_tooling_as_options():
 def test_start_shows_the_tree_and_asks_before_writing():
     text = read_skill("specworks-start")
     assert "Create this structure? (yes/no)" in text
-    # Nothing is created before the question: every command that writes comes after it.
+    # Nothing is created before the question: the "Create it" step, which runs every command that writes, comes after it.
+    # (Step 2 names `specworks skills --tools` earlier only to say when the tools are saved.)
     question = text.index("Create this structure? (yes/no)")
+    assert text.index("**Create it**") > question
+    create = start_step(text, "Create it", "Report and hand over")
     for command in ("specworks skills --tools", "specworks module add", "specworks capability add"):
-        assert command in text and text.index(command) > question, command
+        assert command in create, command
     assert "specworks init" not in text.split("## Stage 2", 1)[1].split("## Guardrails", 1)[0]  # init has run before start
 
 
