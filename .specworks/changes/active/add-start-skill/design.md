@@ -25,7 +25,7 @@ commands. The only Python touched is `tests/test_skills.py`, which adds
 `specworks-start` to the skills excluded from the shared change-picking
 rule (next to `specworks-refine`, `specworks-adopt`, `specworks-baseline`).
 
-**Code half (proposed: waiting for the user's agreement)**: the skill is
+**Code half (agreed with the user)**: the skill is
 written and installed, but until that exclusion (task 1.1, the test half)
 is in, the existing `test_skills_pick_the_change_by_one_shared_rule
 [specworks-start]` fails: the new skill creates its project and picks no
@@ -33,7 +33,11 @@ change. So task 1.2's verification ("the 1.1 checks and `specworks run
 test` pass") and the code gate's suite check can only pass once the test
 half is merged. Proposed: leave 1.2 open in the code half, and tick it
 (and re-run `gate code`) after the test half's worktree is merged and the
-suite is green; the code half does not edit the test.
+suite is green; the code half does not edit the test. After the merge,
+`test_start_ends_by_handing_over_to_refine` expected the hand-over with
+backticks; the skill writes its closing options in a code block as every
+skill does, so the test is fixed (task 1.3), not the skill (agreed with the
+user).
 
 ## Interfaces
 
