@@ -435,7 +435,7 @@ def test_start_writes_no_language_files():
 
 def test_start_ends_by_handing_over_to_refine():
     steps = flat(read_skill("specworks-start").split("## Guardrails", 1)[0])
-    assert "`/specworks-refine <first change>` (recommended)" in steps
+    assert "1. /specworks-refine <first change> (recommended)" in steps
     assert "stop here" in steps.lower()
 
 
