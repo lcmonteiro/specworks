@@ -55,3 +55,8 @@ No structural change.
 - [the agent judges "already has code" by reading the files] -> the skill
   names what does not count (docs, licence, git files) and hands anything
   else to `/specworks-adopt`.
+
+Cycle 2: `test_start_shows_the_tree_and_asks_before_writing` took the first
+mention of `specworks skills --tools`, which step 2 makes only to say when the
+tools are saved; the test is fixed to check the command in the "Create it" step
+(task 1.6), not the skill (agreed with the user).
