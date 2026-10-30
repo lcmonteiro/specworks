@@ -139,10 +139,12 @@ When the artifacts are done, stop and offer `/specworks-build` (or
    and resolve open questions that would change the tasks with the user now.
 
    Diagrams follow the rule in `instruction`: a change that adds, removes or
-   moves components, or changes the dependencies between them, gets a block
-   diagram; otherwise `## Diagrams` says "No structural change". Write each
-   one as `diagrams/<name>.d2` in the change folder following the D2 rules in
-   `instruction` (no colours or styles; the theme handles the look), then
+   moves components, or changes the dependencies between them, gets one
+   block diagram per capability whose structure changes, written as
+   `diagrams/<capability>-blocks.d2` (close looks for that name); otherwise
+   `## Diagrams` says "No structural change". Write any other diagram as
+   `diagrams/<name>.d2`. Put them in the change folder following the D2 rules
+   in `instruction` (no colours or styles; the theme handles the look), then
    render and embed them:
    ```bash
    specworks diagrams --change "<ref>"
