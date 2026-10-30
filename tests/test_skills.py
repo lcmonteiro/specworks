@@ -478,6 +478,48 @@ def test_specify_covers_every_outcome_with_a_requirement_or_out_of_scope():
     assert "outcomes" in flat(step(read_skill("specworks-specify"), 2))
 
 
+def test_the_design_instruction_asks_a_structural_change_for_a_block_diagram():
+    # Architecture lives in design.md: a structural change draws its block diagram, any other says so in one line.
+    text = flat(load_artifacts()["design"].instruction)
+    reasons = text.split("Sections:", 1)[0]
+    assert "component" in reasons and "dependencies" in reasons  # a structural change is a reason to write design.md
+    diagrams = text.split("**Diagrams**", 1)[1].split("**Risks / Trade-offs**", 1)[0]
+    assert "block diagram" in diagrams and "No structural change" in diagrams
+
+
+def test_the_design_template_diagrams_comment_follows_the_structural_change_rule():
+    diagrams = flat(read_template("design.md").split("## Diagrams", 1)[1].split("\n## ", 1)[0])
+    assert "block diagram" in diagrams and "No structural change" in diagrams
+
+
+@pytest.mark.parametrize("name", packaged_skills())
+def test_no_skill_mentions_architecture_md(name):
+    # The capability's living design.md carries its block diagram; architecture.md was never written.
+    assert "architecture.md" not in read_skill(name)
+
+
+def test_close_keeps_one_block_diagram_of_the_capability_in_the_living_design():
+    living = flat(step(read_skill("specworks-close"), 4))
+    assert "one block diagram" in living and "design.md" in living
+
+
+def test_baseline_draws_a_block_diagram_for_a_capability_with_several_components():
+    design = flat(step(read_skill("specworks-baseline"), 5))
+    assert "block diagram" in design and "more than one component" in design
+
+
+def test_specify_draws_diagrams_by_the_structural_change_rule():
+    design = flat(step(read_skill("specworks-specify"), 6))
+    assert "when they help" not in design
+    assert "structural change" in design and "block diagram" in design
+
+
+def test_the_default_config_names_the_living_docs_without_architecture(tmp_path, monkeypatch):
+    init(tmp_path, monkeypatch, "--tools", "claude")
+    config = (tmp_path / ".specworks/config.yml").read_text(encoding="utf-8")
+    assert "design.md" in config and "architecture.md" not in config
+
+
 def test_baseline_notes_each_bugs_correct_behaviour_as_the_fix_outcomes():
     # The behaviour the user confirms for a bug is what its fix change must reach.
     text = read_skill("specworks-baseline")
