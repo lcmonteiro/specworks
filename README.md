@@ -60,7 +60,10 @@ specworks init   # writes .specworks/config.yml, .specworks/changes/active/ and 
 
 Then, in your agent:
 
-1. **`/specworks-adopt`** on a project that already has code: it finds the test and
+1. **`/specworks-start`** in an empty repository (it runs `init` for you): it recommends
+   the tooling, proposes the structure (one project or several modules, with their
+   capabilities and code folders) and creates it once you approve the tree. Or
+   **`/specworks-adopt`** on a project that already has code: it finds the test and
    lint commands from the build files and CI, writes a short `context`, and maps the
    code to capabilities with you.
 2. **`/specworks-refine <what you want>`**: explore the problem and the options.

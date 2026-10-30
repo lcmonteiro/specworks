@@ -7,4 +7,4 @@
 
 ## 2. The README
 
-- [ ] 2.1 [code] List `/specworks-start` in `README.md` for an empty repository, next to `/specworks-adopt`; verify the README names both and `specworks run test` passes
+- [x] 2.1 [code] List `/specworks-start` in `README.md` for an empty repository, next to `/specworks-adopt`; verify the README names both and `specworks run test` passes
