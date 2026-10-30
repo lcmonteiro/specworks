@@ -11,4 +11,4 @@
 ## 2. The README
 
 - [x] 2.1 [code] List `/specworks-start` in `README.md` for an empty repository, next to `/specworks-adopt`; verify the README names both and `specworks run test` passes
-- [ ] 2.2 [code] Review R1: the README keeps `specworks init` and then lists `/specworks-start` for a repository with no code yet (not "it runs `init` for you"); verify the README no longer says start runs `init`
+- [x] 2.2 [code] Review R1: the README keeps `specworks init` and then lists `/specworks-start` for a repository with no code yet (not "it runs `init` for you"); verify the README no longer says start runs `init`

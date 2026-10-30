@@ -60,7 +60,7 @@ specworks init   # writes .specworks/config.yml, .specworks/changes/active/ and 
 
 Then, in your agent:
 
-1. **`/specworks-start`** in an empty repository (it runs `init` for you): it recommends
+1. **`/specworks-start`** in a repository with no code yet: it recommends
    the tooling, proposes the structure (one project or several modules, with their
    capabilities and code folders) and creates it once you approve the tree. Or
    **`/specworks-adopt`** on a project that already has code: it finds the test and

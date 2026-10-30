@@ -5,7 +5,8 @@ allowed-tools: Bash(specworks:*), Bash(uv run specworks:*), Bash(uvx --from git+
 ---
 
 Start: set up a project that has no code yet, deciding its structure first.
-It runs in two stages:
+It runs after `specworks init` (the step that installs this skill) and goes
+on with the fresh config `init` wrote. It runs in two stages:
 
 1. **Decide**: what the project is, its tooling, and its structure (a simple
    project or several modules, the capabilities each one owns and the
@@ -17,7 +18,7 @@ Then the first change starts with `/specworks-refine`. A capability gets its
 spec from its first change, as ADDED requirements.
 
 **Boundary**: starting writes only the configs, a `.gitkeep` in each
-capability's code folder and (through `init`) the agent skills. No language
+capability's code folder and (through `specworks skills`) the agent skills. No language
 files: no manifest, sources or tests; the first change sets up the stack.
 
 <!-- specworks:include running-cli -->
@@ -34,18 +35,24 @@ files: no manifest, sources or tests; the first change sets up the stack.
    specworks context --json
    ```
 
-   - A config is already there (`root` is not null): refuse. The project is
-     set up already; say so, and suggest `/specworks-refine <what you want>`
-     for its next change (or `/specworks-adopt` when capabilities or
-     commands are still missing). Stop here.
-   - `"root": null` and the repository already has code (source files
-     beyond docs such as `README.md`, a licence, and git files such as
-     `.gitignore` and `.gitattributes`): hand over to `/specworks-adopt`,
-     which maps existing code. Stop here.
-   - Not inside a git repository (no `.git` at the root): `init` refuses
-     there. Ask the user to run `git init` first, and ask "Done? (yes/no)".
-   - Otherwise (an empty repository, or one with only docs, a licence and
-     git files): go on.
+   - `"root": null`: `specworks init` has not run here, and it is the step
+     that sets up the config and installs the skills. Ask the user to run
+     `specworks init` from the repository root (after `git init` when there
+     is no `.git` at the root: `init` refuses outside a git repository), and
+     ask "Done? (yes/no)". On yes, run this step again.
+   - The project is set up already (the config is not the fresh one `init`
+     writes: it has capabilities, another module, changes, or a `context`
+     or `commands` filled in): refuse. Say so, and suggest
+     `/specworks-refine <what you want>` for its next change (or
+     `/specworks-adopt` when capabilities or commands are still missing).
+     Stop here.
+   - The repository already has code (source files beyond docs such as
+     `README.md`, a licence, git files such as `.gitignore` and
+     `.gitattributes`, and what `init` wrote): hand over to
+     `/specworks-adopt`, which maps existing code. Stop here.
+   - Otherwise (the fresh config `init` wrote: no capabilities, no module
+     other than the top level, no changes, empty `context` and `commands`,
+     in a repository with only docs, a licence and git files): go on.
 
 2. **Understand the project**
 
@@ -53,8 +60,8 @@ files: no manifest, sources or tests; the first change sets up the stack.
    - what the project is and for whom (one or two sentences);
    - its stack: languages, frameworks, runtime (a service, a library, a CLI,
      a web app);
-   - the AI tools it uses (`init` cannot ask from here, without a
-     terminal), the ones the repository already shows recommended
+   - the AI tools it uses (saved in step 5 with `specworks skills --tools`),
+     the ones the repository already shows recommended
      (`CLAUDE.md` or `.claude/` for Claude Code; `.github/copilot-instructions.md`
      for Copilot), e.g.:
      ```
@@ -118,10 +125,10 @@ files: no manifest, sources or tests; the first change sets up the stack.
 
    From the repository root, with the tools chosen in step 2:
    ```bash
-   specworks init --tools <list>
+   specworks skills --tools <list>
    ```
-   It writes `.specworks/config.yml` and `.specworks/changes/`, installs the
-   skills for those tools and saves them as `tools:` in the config.
+   It saves them as `tools:` in the config `init` wrote and installs the
+   skills for them.
 
    For each module of a multi-module tree:
    ```bash
@@ -166,14 +173,16 @@ files: no manifest, sources or tests; the first change sets up the stack.
 
 ## Guardrails
 
-- Only an empty repository: a project with a config is refused, and one
-  that already has code goes to `/specworks-adopt`.
+- Only a repository with no code, right after `init`: a project already
+  set up is refused, and one that already has code goes to
+  `/specworks-adopt`.
 - Nothing is written before the user approves the tree.
 - No language files: no manifest, sources or tests, not even a test runner
   config; the first change sets up the stack.
-- Only the `specworks` commands shown here, which exist today: `init`,
-  `module add`, `capability add` and `context`.
-- Writes only the configs, the `.gitkeep` files and (through `init`) the
-  agent skills; no commit.
+- Only the `specworks` commands shown here, which exist today: `context`,
+  `skills --tools`, `module add` and `capability add`; `init` is the user's,
+  before this skill.
+- Writes only the configs, the `.gitkeep` files and (through
+  `specworks skills`) the agent skills; no commit.
 - Never edit the living docs (`<path>/<docs_dir>/`) by hand: a capability's
   first change writes them at close.
