@@ -1,0 +1,18 @@
+# Review: add-start-skill
+
+Base: `origin/main`
+
+## Findings
+
+- [ ] R1 **spec-gap** `/specworks-start` cannot run where the proposal and the README say it runs. The skill is installed only by `specworks init` (`specworks skills` refuses with "no specworks config ... found" in an empty repository; tried in an empty git repository), so in an empty repository the agent has no `/specworks-start` until `init` has run; but once it has, step 1 sees `root` not null and refuses ("the project is set up already"). The README's quick start does exactly that: `specworks init` first, then "`/specworks-start` in an empty repository (it runs `init` for you)". The proposal (What Changes, steps 1 and 5) has the same assumption: "a config already there is refused" and step 5 runs `specworks init --tools`. A freshly initialised project is recognisable: `specworks context --json` gives no capabilities, no changes, no other module, empty `context` and `commands` (`src/specworks/skills/specworks-start/SKILL.md:37`, `:121`; `README.md:58`, `:63`; `proposal.md` What Changes 1 and 5)
+  - **Proposal**: back to specify: the proposal says start runs after `specworks init` (the step that installs the skills): step 1 goes on when the config is the fresh one `init` wrote (no capabilities, no modules, no changes, empty context and commands) and refuses only a project already set up (`/specworks-refine`) or one with code (`/specworks-adopt`); step 5 no longer runs `init`, it saves the AI tools chosen in step 2 with `specworks skills --tools <list>` (which re-installs the skills for them; tried: it updates `tools:`); after the `git init` question, step 1 runs again. The README keeps `specworks init` and then says "`/specworks-start` in a repository with no code yet". Then the test half updates `test_start_refuses_a_set_up_project_and_hands_existing_code_to_adopt` and `test_start_shows_the_tree_and_asks_before_writing` (the writing command after the question is `specworks skills --tools`, and no `specworks init` in Stage 2), and the code half rewrites steps 1 and 5, the Boundary and Guardrails lines that name `init`, the README line, and refreshes the installed copies with `uv run specworks skills`
+- [ ] R2 **test-gap** `test_start_recommends_the_tooling_as_options` (task 1.1: "it recommends tooling as options") asserts `(recommended)` anywhere in the skill, which the AI-tools options (step 2) and the hand-over options (step 6) already satisfy; it would still pass if the tooling step (step 3) lost its recommendation (`tests/test_skills.py:405`)
+  - **Proposal**: back to test: check `(recommended)`, uv with Python, and CMake, Bazel and C++ in the text of the tooling step alone ("Recommend the tooling", up to "Propose the structure"), not the whole skill
+
+## Changed files without tags
+
+- None: `specworks review` lists no untracedSource or untracedTests. The changed files are the new skill (`src/specworks/skills/specworks-start/SKILL.md`) and its installed copy, `README.md`, and wording checks in `tests/test_skills.py`; the change is `skip-specs`.
+
+## Summary
+
+The skill follows the proposal step by step, its commands and options exist in the CLI (`init --tools`, `module add <path>`, `capability add <name> --path --module --description`, `context`), the installed copy matches the source with the shared parts filled in, and the suite passes (690 tests). R1 (spec-gap): the skill refuses the config that `init`, the only way to install it, has just written, so it cannot run as the README's quick start says; proposed back to specify. R2 (test-gap): the tooling-recommendation test checks the whole skill instead of the tooling step; proposed back to test.
