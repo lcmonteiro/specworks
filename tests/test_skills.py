@@ -394,16 +394,26 @@ def test_start_is_a_packaged_skill_that_creates_its_project_instead_of_picking_a
 
 
 def test_start_refuses_a_set_up_project_and_hands_existing_code_to_adopt():
-    # start is for an empty repository: a config already there goes to refine, a repository with code to adopt.
+    # start runs after init (which installs it) and goes on with the fresh config init wrote;
+    # a project set up already goes to refine, a repository with code to adopt.
     # The check comes first: everything before the structure is proposed.
     check = flat(read_skill("specworks-start").split("Create this structure? (yes/no)", 1)[0])
     assert "specworks context --json" in check
     assert "/specworks-refine" in check and "/specworks-adopt" in check
     assert "git init" in check  # init refuses outside a git repository
+    assert "fresh config" in check and "no capabilities" in check and "no changes" in check
+    # With no config (`"root": null`), init has not run: the skill says to run it.
+    assert '"root": null' in check and "specworks init" in check
+
+
+def start_step(text, start, end):
+    """One step of the start skill, from its heading up to the next one's."""
+    return text.split(f"**{start}**", 1)[1].split(f"**{end}**", 1)[0]
 
 
 def test_start_recommends_the_tooling_as_options():
-    tooling = flat(read_skill("specworks-start"))
+    # Only the tooling step: the AI-tools and hand-over options carry a (recommended) of their own.
+    tooling = flat(start_step(read_skill("specworks-start"), "Recommend the tooling", "Propose the structure"))
     assert "(recommended)" in tooling
     assert re.search(r"\buv\b[^.]*Python|Python[^.]*\buv\b", tooling)
     assert "CMake" in tooling and "Bazel" in tooling and "C++" in tooling
@@ -414,17 +424,19 @@ def test_start_shows_the_tree_and_asks_before_writing():
     assert "Create this structure? (yes/no)" in text
     # Nothing is created before the question: every command that writes comes after it.
     question = text.index("Create this structure? (yes/no)")
-    for command in ("specworks init --tools", "specworks module add", "specworks capability add"):
+    for command in ("specworks skills --tools", "specworks module add", "specworks capability add"):
         assert command in text and text.index(command) > question, command
+    assert "specworks init" not in text.split("## Stage 2", 1)[1].split("## Guardrails", 1)[0]  # init has run before start
 
 
 def test_start_creates_the_structure_with_the_cli_and_a_gitkeep_per_code_folder():
-    text = read_skill("specworks-start")
-    assert re.search(r"specworks init --tools <[a-z ]+>", text)
-    assert not re.search(r"^\s*specworks init\s*$", text, re.MULTILINE)  # never a bare init that guesses the tools
-    assert "specworks module add <" in text
-    assert re.search(r"specworks capability add <name> --path <[a-z ]+>", text) and "--description" in text
-    assert ".gitkeep" in text
+    # init has run before start: `skills --tools` saves the tools chosen in step 2 and installs the skills for them.
+    create = start_step(read_skill("specworks-start"), "Create it", "Report and hand over")
+    assert re.search(r"specworks skills --tools <[a-z ]+>", create)
+    assert "specworks init" not in create
+    assert "specworks module add <" in create
+    assert re.search(r"specworks capability add <name> --path <[a-z ]+>", create) and "--description" in create
+    assert ".gitkeep" in create
 
 
 def test_start_writes_no_language_files():
