@@ -9,6 +9,7 @@ Base: `origin/main`
   - **Decision**: back to specify: start runs after `specworks init` and goes on with the fresh config it wrote (no capabilities, modules or changes, empty context and commands); it refuses only a set-up project (`/specworks-refine`) or one with code (`/specworks-adopt`); step 5 saves the AI tools with `specworks skills --tools <list>` instead of running `init`; the README keeps `specworks init`, then `/specworks-start` in a repository with no code yet; then the two tests and the skill text follow (agreed with the user)
 - [ ] R2 **test-gap** `test_start_recommends_the_tooling_as_options` (task 1.1: "it recommends tooling as options") asserts `(recommended)` anywhere in the skill, which the AI-tools options (step 2) and the hand-over options (step 6) already satisfy; it would still pass if the tooling step (step 3) lost its recommendation (`tests/test_skills.py:405`)
   - **Proposal**: back to test: check `(recommended)`, uv with Python, and CMake, Bazel and C++ in the text of the tooling step alone ("Recommend the tooling", up to "Propose the structure"), not the whole skill
+  - **Decision**: back to test: check `(recommended)`, uv with Python, and CMake, Bazel and C++ in the tooling step's text alone, not the whole skill (agreed with the user)
 
 ## Changed files without tags
 
