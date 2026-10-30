@@ -172,6 +172,15 @@ with only a `refinement.md` (step 4).
 
    None: a baseline records existing behaviour and changes no API.
    ```
+   For a capability with more than one component, add a `## Diagrams`
+   section with a block diagram of its existing structure (components as
+   nested containers, connections labelled with what flows), following the
+   D2 rules in `specworks instructions design --change "<ref>" --json`;
+   close puts it in the capability's first living `design.md`. Render and
+   embed it:
+   ```bash
+   specworks diagrams --change "<ref>"
+   ```
 
 6. **Tag the tests** (the test half of implement)
 

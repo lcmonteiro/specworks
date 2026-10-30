@@ -130,10 +130,11 @@ artifacts:
     optional: true
     instruction: |
       Explain HOW the change will be built. Write it only when one applies:
-      cross-cutting change (several modules or capabilities), new dependency or
-      architectural pattern, data model or API change, security, performance or
-      migration risk, or real ambiguity worth deciding before coding. Otherwise
-      skip it and say so.
+      cross-cutting change (several modules or capabilities), a change that
+      adds, removes or moves components or changes the dependencies between
+      them, new dependency or architectural pattern, data model or API change,
+      security, performance or migration risk, or real ambiguity worth
+      deciding before coding. Otherwise skip it and say so.
 
       Sections:
       - **Context**: current state and constraints that shape the approach (link
@@ -146,10 +147,14 @@ artifacts:
         code span (`src/auth/reset.py`). The design phase settles this
         section with the user and creates the stubs; tests are written
         against it. Write "None" when the API does not change.
-      - **Diagrams**: only where a picture explains what text cannot - a
-        sequence diagram for a new flow, a state diagram for a lifecycle, a
-        component diagram for a change across modules or services, a data
-        model for new tables. Usually 0-3 per design.
+      - **Diagrams**: a change that adds, removes or moves components, or
+        changes the dependencies between them, gets a block diagram of the
+        capability's structure after the change (components as nested
+        containers, every connection labelled with what flows); otherwise the
+        section says "No structural change". The other kinds stay optional,
+        only where a picture explains what text cannot - a sequence diagram
+        for a new flow, a state diagram for a lifecycle, a data model for new
+        tables. Usually 0-3 per design.
       - **Risks / Trade-offs**: `[risk] -> mitigation`.
       - **Migration / Rollback**: when deployment or data needs steps.
       - **Open Questions**: only ones that do not change specs, approach or

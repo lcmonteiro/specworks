@@ -39,7 +39,7 @@ DIAGRAM_KEYS = ("theme", "dark_theme", "layout", "sketch", "pad")
 class Capability:
     """A durable system behaviour, owned by a folder of code.
 
-    Its living docs (spec, requirements, design, architecture) live in
+    Its living docs (spec, requirements, design and its diagrams) live in
     ``<path>/<docs_dir>/`` next to the code that implements it.
     """
 

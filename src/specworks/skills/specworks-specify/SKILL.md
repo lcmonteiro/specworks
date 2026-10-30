@@ -138,9 +138,12 @@ When the artifacts are done, stop and offer `/specworks-build` (or
    interfaces (APIs, data shapes, CLI surfaces) the test half will target,
    and resolve open questions that would change the tasks with the user now.
 
-   Diagrams, when they help: write `diagrams/<name>.d2` in the change folder
-   following the D2 rules in `instruction` (no colours or styles; the theme
-   handles the look), then render and embed them:
+   Diagrams follow the rule in `instruction`: a change that adds, removes or
+   moves components, or changes the dependencies between them, gets a block
+   diagram; otherwise `## Diagrams` says "No structural change". Write each
+   one as `diagrams/<name>.d2` in the change folder following the D2 rules in
+   `instruction` (no colours or styles; the theme handles the look), then
+   render and embed them:
    ```bash
    specworks diagrams --change "<ref>"
    ```
