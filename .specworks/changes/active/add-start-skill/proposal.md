@@ -12,11 +12,15 @@ Option A: a new skill, `specworks-start`, on today's commands.
 - New packaged skill `src/specworks/skills/specworks-start/SKILL.md`
   (with the shared `running-cli` and `asking-the-user` parts), in the shape
   of `specworks-adopt`:
-  1. **Check the repository**: `specworks context --json`. A config already
-     there is refused (use `/specworks-refine`); a repository that already
-     has code (source files beyond docs, licence and git files) is handed
-     over to `/specworks-adopt`. It must be inside a git repository
-     (`init` refuses otherwise, saying to run `git init`).
+  1. **Check the repository**: `specworks context --json`. Start runs after
+     `specworks init`, the step that installs the skills, so it goes on with
+     the fresh config `init` wrote (no capabilities, no other module, no
+     changes, empty `context` and `commands`). A project already set up is
+     refused (use `/specworks-refine`); a repository that already has code
+     (source files beyond docs, licence and git files) is handed over to
+     `/specworks-adopt`; `"root": null` means `init` has not run: say to run
+     `specworks init` (and `git init` first when there is no repository).
+     (review R1)
   2. **Understand the project**: what it is, for whom, its stack, and the AI
      tools it uses, one question at a time.
   3. **Recommend the tooling**: for the stack, numbered options with one
@@ -32,7 +36,8 @@ Option A: a new skill, `specworks-start`, on today's commands.
      name, code folder, one-line description) and the config's context and
      commands. Ask "Create this structure? (yes/no)"; nothing is written
      before a yes.
-  5. **Create it**: `specworks init --tools <list>`; `specworks module add
+  5. **Create it**: `specworks skills --tools <list>` (saves the AI tools
+     chosen in step 2 and installs the skills for them); `specworks module add
      <path>` per module; `specworks capability add <name> --path <folder>
      [--module <m>] --description "<line>"` per capability; a `.gitkeep` in
      each capability's code folder; `context:` and `commands:` written in
@@ -44,10 +49,11 @@ Option A: a new skill, `specworks-start`, on today's commands.
      `/specworks-refine <first change>` (recommended), or stop here.
   - Guardrails: no language files (no manifest, sources or tests); only
     `specworks-…` commands that exist; writes only the configs, the
-    `.gitkeep` files and (through `init`) the agent skills; no commit, as in
+    `.gitkeep` files and (through `specworks skills`) the agent skills; no commit, as in
     adopt.
-- `README.md`: the steps list `/specworks-start` for an empty repository
-  (it runs `init`) next to `/specworks-adopt` for a project with code.
+- `README.md`: after `specworks init`, the steps list `/specworks-start` for
+  a repository with no code yet, next to `/specworks-adopt` for a project
+  with code (review R1).
 - `tests/test_skills.py`: wording checks for the new skill, and
   `specworks-start` joins the skills that create their project instead of
   picking a change. Installed copies refreshed with `specworks skills`.
