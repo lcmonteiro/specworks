@@ -59,25 +59,47 @@ The tests assert these and the code writes them verbatim:
 Proposed: waiting for the user's agreement
 
 - `src/specworks/core/git.py` (REQ-PROJ-023, REQ-PROJ-024):
-  - `dirty_files(root: Path) -> dict[str, str]`: dirty and untracked files
-    under `root`, relative to it, with the SHA-256 of their content or
-    `deleted`.
-  - `commit(root: Path, paths: list[str], message: str) -> str`: stages
-    exactly `paths`, commits with `message`, returns the short hash.
+  - `dirty_files(root: Path) -> dict[str, str]` (new): dirty and untracked
+    files under `root`, relative to it (POSIX), with the SHA-256 hex of
+    their content or `deleted`; raises `GitError` outside a repository.
+  - `commit(root: Path, paths: Sequence[str], message: str) -> str` (new):
+    stages exactly `paths` (relative to `root`, deletions included), commits
+    with `message` on stdin, returns the short hash; raises `GitError`
+    (`cannot commit on a detached HEAD; switch to a branch first`) before
+    staging anything on a detached HEAD.
 - `src/specworks/core/changes.py`:
-  - `Change.dirty: dict[str, str]` (REQ-PROJ-023)
-  - `set_phase(change: Change, phase: str, root: Path | None = None) -> None`:
-    with `root`, records `dirty_files(root)` when the phase changes
-    (REQ-PROJ-023)
-  - `CommitResult` dataclass: `commit: str | None`, `subject: str`,
-    `committed: list[str]`, `left_out: list[str]`, `already_dirty: list[str]`
-    (REQ-PROJ-024)
-  - `commit_phase(ws: Workspace, change: Change, subject: str | None = None, trailers: list[str] = []) -> CommitResult` (REQ-PROJ-024)
+  - `Change.dirty: dict[str, str]` (extended; default empty, saved under
+    `dirty:` only when not empty, read as empty when missing) (REQ-PROJ-023)
+  - `set_phase(change: Change, phase: str, root: Path | None = None) -> None`
+    (extended, not breaking): with `root`, records `dirty_files(root)` when
+    the phase changes, in the same save (REQ-PROJ-023)
+  - `create_change(cfg: Config, name: str, root: Path | None = None) -> Change`
+    (extended, not breaking): with `root`, records `dirty_files(root)` in
+    the first save (REQ-PROJ-023)
+  - `CommitResult` (new, frozen dataclass): `commit: str | None` (short hash,
+    `None` when nothing was committed), `subject: str`, `committed:
+    list[str]`, `left_out: list[str]`, `already_dirty: list[str]`, paths
+    relative to the workspace root (REQ-PROJ-024)
+  - `commit_phase(root: Path, ref: str, change: Change, subject: str | None = None, trailers: Sequence[str] = ()) -> CommitResult`
+    (new): `root` is the workspace root, `ref` the change's ref for the
+    default subject `<ref>: <phase>`; nothing to commit returns
+    `commit=None` (not an error); a detached HEAD raises `GitError` from
+    `commit` before staging (REQ-PROJ-024)
+- `src/specworks/workflow/gate.py`: `start_phase` (unchanged signature)
+  passes `ctx.ws.root` to `set_phase` (REQ-PROJ-023)
 - `src/specworks/cli/changes.py` (REQ-CLI-012): `specworks commit --change
-  REF [--message TEXT] [--trailer TEXT]... [--json]`; `--json` returns
-  `commit`, `subject`, `committed`, `leftOut`, `alreadyDirty`; `new`,
-  `phase` and `start` pass the workspace root to `set_phase` /
-  `create_change`.
+  REF [--message TEXT] [--trailer TEXT]... [--json]` (new); `--json` returns
+  `ref`, `commit`, `subject`, `committed`, `leftOut`, `alreadyDirty`; text
+  prints `<hash> <subject>`, then one line per committed file and the pinned
+  `left out ...` / `already dirty ...` lines, or the pinned nothing-to-commit
+  line; an unknown change is the existing `ChangeNotFound` error. `new` and
+  `phase` pass `ws.root` to `create_change` / `set_phase` (extended).
+
+Notes on the proposal written at specify: `commit_phase` takes the
+workspace root and the ref instead of a `Workspace`, since the default
+subject needs the qualified ref (`module:name`) that a `Change` alone does
+not know, and `core/changes.py` stays free of `workspace`; `trailers` is a
+`Sequence[str] = ()` (ruff B006 rejects a `[]` default).
 
 ## Diagrams
 
