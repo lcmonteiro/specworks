@@ -39,8 +39,10 @@ module_app = App(help="Manage modules (sub-projects linked to this one, like git
 spec_app = App(help="Read capabilities and their living specs.")
 task_app = App(help="List and tick the tasks of a change (tasks.md).")
 capability_app = App(help="Register capabilities (durable behaviours owned by a code folder).")
+finding_app = App(help="Write a change's review findings (review.md).")
 
 app.add_typer(module_app, name="module")
 app.add_typer(spec_app, name="spec")
 app.add_typer(task_app, name="task")
 app.add_typer(capability_app, name="capability")
+app.add_typer(finding_app, name="finding")

@@ -169,6 +169,14 @@ next step the same way: the next skill (recommended), any alternative, and
    Fix every failing blocking check and re-run. Warnings: fix them or explain
    them.
 
+   **Back from review**: when `specworks cycle --change "<ref>" --json`
+   lists open findings whose `phase` is `design`, you carried out their
+   agreed proposal (the Decision); once the gate passes, record each one:
+   ```bash
+   specworks finding done R<n> --in design --change "<ref>" "<what changed>"
+   ```
+   It stays open: review checks it and closes it.
+
 **Committing**: once this phase's gate has passed (a phase with no gate: once its
 artifact is written), and before the closing question, commit its work:
 - stage explicit paths only: the change folder and the files this phase wrote

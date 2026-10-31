@@ -165,7 +165,10 @@ next step the same way: the next skill (recommended), any alternative, and
    `/specworks-code`) as the recommended next step. When the change comes
    back to review, check that the proposal was carried out (a `done in
    <step>: ...` line under the finding says what changed) and close the
-   finding.
+   finding:
+   ```bash
+   specworks finding close R<n> --change "<ref>" "<what was confirmed>"
+   ```
    - **accepted**: only with the user's explicit agreement, with the reason.
 
 5. **Write `review.md`**
@@ -174,10 +177,20 @@ next step the same way: the next skill (recommended), any alternative, and
    specworks instructions review --change "<ref>" --json
    ```
 
-   Follow `template` and `instruction`: every finding as `- [x] R<n>` with its
-   type, IDs, location and Decision (`- [ ] R<n>` only while still open), and
-   every file from `untracedSource` / `untracedTests` under "Changed files
-   without tags" with why it needs no tag or which finding covers it.
+   Write the findings with the `specworks finding` commands, never by
+   editing their lines: each takes the next free ID, checks the type, step
+   and Decision, and writes only what `specworks cycle` and the gate read
+   back.
+   ```bash
+   specworks finding add <type> "<what drifts, with REQ/AC IDs and file:line>" --proposal "<the change proposed>" --change "<ref>"
+   specworks finding decide R<n> --change "<ref>" "back to <step>: <proposal>"   # or "accepted: <reason>", which ticks it
+   specworks finding close R<n> --change "<ref>" "<what was fixed or confirmed>"
+   ```
+   A finding fixed here is added, then closed with what changed; one sent
+   back stays open with its Decision. Follow `template` and `instruction`
+   for the rest: every file from `untracedSource` / `untracedTests` under
+   "Changed files without tags" with why it needs no tag or which finding
+   covers it, and the summary.
 
 6. **Gate and trace**
 

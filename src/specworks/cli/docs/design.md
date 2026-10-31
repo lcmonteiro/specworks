@@ -7,15 +7,15 @@ each command resolves the workspace and the change, calls the capability that
 does the work (`project`, `specs`, `workflow`, `integrations`), and prints the
 result as text or JSON.
 - `app.py`: the Typer app and its command groups (`module`, `spec`, `task`,
-  `capability`).
+  `capability`, `finding`).
 - `output.py`: the shared options, output, errors, and resolving the workspace
   and changes.
 - `project.py`: `init`, `skills`, `context`, `list`, `module`, `capability`.
 - `changes.py`: `new`, `status`, `abandon`, `phase`, `skip-specs`,
   `instructions`, `task`.
 - `specs.py`: `check`, `trace`, `spec`, `diagrams`.
-- `workflow.py`: `gate`, `start`, `review`, `cycle`, `merge`, `validate`,
-  `close`, `run`.
+- `workflow.py`: `gate`, `start`, `review`, `finding`, `cycle`, `merge`,
+  `validate`, `close`, `run`.
 - `__init__.py`: `main` and the order commands are registered in.
 
 ## Decisions
@@ -76,6 +76,16 @@ Commits and pushes stay in the skills, not in the CLI, except the merge
 commit `merge` makes when it joins a half's branch. (git-workflow,
 merge-halves-without-conflicts)
 
+### Findings are written through `finding`, not by hand
+
+`specworks finding add|decide|done|close` write a change's review.md through
+the `workflow` writers, so the skills never edit it by hand and a malformed
+line is refused when it is written, not when `gate review` runs. A
+`FindingError` reaches the `App` wrapper like any other error. Under `--json`
+each prints the change, the finding as `specworks cycle` sees it plus
+`done`, and `path` (review.md); `done` is added here rather than to
+`Finding.to_dict()`, so `cycle`'s output is unchanged. (finding-commands)
+
 ### Modules are linked where the folder lives
 
 `module add <path>` and `init <path>` both link the folder in the config of the
@@ -121,7 +131,13 @@ a second config format exists. (upgrade-project, dedupe-copilot-skills)
   `update`, `context`, `list`, `module add|list`, `capability add`, `new`, `status`,
   `abandon`, `phase`, `skip-specs`, `instructions`, `task list|done|undo`,
   `check`, `trace`, `spec show|list`, `diagrams`, `gate`, `start`, `review`,
-  `cycle`, `merge`, `validate`, `close`, `run`.
+  `finding add|decide|done|close`, `cycle`, `merge`, `validate`, `close`, `run`.
+- `finding add TYPE TEXT --proposal TEXT`, `finding decide ID DECISION`,
+  `finding done ID TEXT --in STEP`, `finding close ID TEXT`, each with
+  `--change <ref> [--json]`: `--json` prints the change's fields plus
+  `finding` (`id`, `type`, `text`, `phase`, `doneIn` when set, `done`) and
+  `path` (review.md, workspace-relative); text output is
+  `<id> <type> -> <phase> (open|done)` and the path.
 - `merge <branch> --change <ref> [--json]`: `--json` prints the change's
   fields plus `merged`, `branch` and `resolved` (workspace-relative paths).
 

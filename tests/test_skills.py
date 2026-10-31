@@ -891,3 +891,27 @@ def test_context_shows_the_skills_state(tmp_path, monkeypatch):
     data = json.loads(runner.invoke(app, ["context", "--json"]).output)
     assert data["skills"] == {"state": "outdated", "files": [{"path": f".claude/skills/{SKILL}/SKILL.md", "reason": "changed"}]}
     assert "skills out of date: run specworks update" in runner.invoke(app, ["context"]).output
+
+
+# --- the skills write findings with `specworks finding` ---------------------------
+
+
+def build_review_step(text):
+    return text.split("3. **Review: propose, do not fix**", 1)[1].split("4. **After the review", 1)[0]
+
+
+def test_review_adds_and_ticks_findings_with_the_finding_commands():
+    # Hand-written finding lines drift from what `specworks cycle` reads; the commands write them as the reader expects.
+    text = read_skill("specworks-review")
+    assert "specworks finding add" in text and "specworks finding close" in text
+
+
+def test_build_and_the_phase_subagents_write_decisions_with_finding_decide():
+    assert "specworks finding decide" in build_review_step(read_skill("specworks-build"))
+    shared = resources.files("specworks").joinpath("skills", "_shared", "phase-subagents.md").read_text(encoding="utf-8")
+    assert "specworks finding decide" in shared
+
+
+@pytest.mark.parametrize("name", ["specworks-specify", "specworks-design", "specworks-test", "specworks-code"])
+def test_the_steps_record_their_part_with_finding_done(name):
+    assert "specworks finding done" in read_skill(name)

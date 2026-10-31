@@ -137,6 +137,14 @@ change's tests. When the code gate passes, stop and suggest
    of its own, a failing suite is a warning: those tests meet the code in
    review. Fix every failing blocking check and re-run.
 
+   **Back from review**: when `specworks cycle --change "<ref>" --json`
+   lists open findings whose `phase` is `code` or `implement`, you carried out their
+   agreed proposal (the Decision); once the gate passes, record each one:
+   ```bash
+   specworks finding done R<n> --in <code, or implement for a finding routed to both halves> --change "<ref>" "<what changed>"
+   ```
+   It stays open: review checks it and closes it.
+
 <!-- specworks:include committing -->
 
 6. **Report and stop**
