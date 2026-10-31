@@ -43,6 +43,29 @@ the text contains them.
 - Code skill: `Write the pinned phrases of design.md verbatim`
 - Test skill: `Assert only the pinned phrases of design.md, verbatim`
 
+### Existing sample tasks that break the new rule
+
+Resolved without a new task: the test half reworded both samples in its own
+commit (task 1.1), keeping every assertion; the merge brings them in.
+
+Two sample `tasks.md` texts in the tests have a `[code]` task that names a
+`[test]` task, so the new warning fires and 6 existing tests that expect no
+`check` warnings fail (`test_design_phase::test_none_passes_without_files`,
+`test_propose::test_a_half_with_no_task_is_a_warning` (both cases),
+`test_test_phase::test_ac_tag_in_source_file_is_a_warning`,
+`test_validate_phase::test_no_run_turns_commands_into_warnings`,
+`test_walkthrough::test_walkthrough`):
+
+- `tests/samples.py`: `1.2 [code] Implement reset links (REQ-AUTH-003); verify 1.1 passes`
+- `tests/test_walkthrough.py`: `1.3 [code] Implement slugify (REQ-SLUG-001) tagged @req; verify the 1.2 tests pass`
+
+The proposal: a new `[test]` task 1.3 rewords both so the `[code]` task is
+verified without the test half (e.g. `verify lint passes and the reset link
+is sent`, `verify lint passes and slugify("A b") returns "a-b"`), keeping
+every assertion of those tests as it is. The warning is the agreed
+behaviour (REQ-SPECS-015); the samples, not the tests' expectations, are out
+of date. Serves REQ-SPECS-015.
+
 ## Interfaces
 
 None: the warning is a new pass inside `_check_tasks`; no public function,

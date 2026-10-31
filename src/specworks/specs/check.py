@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal
@@ -380,6 +381,30 @@ def _check_tasks(ws: Workspace, change: Change, specs: ChangeSpecs, issues: list
         issues.append(Issue.warning(file, 0, "no [test] task: mark the tasks that write the failing tests with '[test]' (e.g. '- [ ] 1.2 [test] ...')"))
     if changed and "code" not in halves:
         issues.append(Issue.warning(file, 0, "no [code] task: mark the tasks that write the code with '[code]' (e.g. '- [ ] 1.3 [code] ...')"))
+    _check_code_tasks_wait(specs.tasks, file, issues)
+
+
+VERIFY_ALONE = "verify it with lint, typecheck or observable behaviour"
+SUITE_COMMAND = "specworks run test"
+
+
+# @req REQ-SPECS-015
+def _check_code_tasks_wait(tasks: list[Task], file: str, issues: list[Issue]) -> None:
+    """Warn about a [code] task whose verification waits on the test half: it names a [test] task's number, or the suite."""
+    test_nums = [task.num for task in tasks if task.half == "test"]
+    for task in tasks:
+        if task.half != "code":
+            continue
+        for num in test_nums:
+            # a whole token: 1.1, not 11.1, 3.11 or 1.10 (a trailing full stop still counts)
+            if re.search(rf"(?<![\d.]){re.escape(num)}(?!\d|\.\d)", task.text):
+                issues.append(Issue.warning(file, task.line, (
+                    f"task {task.num} [code] names task {num} [test]: the code half cannot see the test half's tests until the merge; {VERIFY_ALONE}"
+                )))
+        if SUITE_COMMAND in task.text:
+            issues.append(Issue.warning(file, task.line, (
+                f"task {task.num} [code] requires the suite ({SUITE_COMMAND}): the suite runs in gate implement after the merge; {VERIFY_ALONE}"
+            )))
 
 
 # @req REQ-SPECS-014
