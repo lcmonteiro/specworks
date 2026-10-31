@@ -64,19 +64,34 @@ The tests assert these and the code writes them verbatim:
 Proposed: waiting for the user's agreement
 
 - `src/specworks/workflow/review.py` (REQ-FLOW-016):
-  - `class FindingError(SpecworksError)`
-  - `add_finding(change: Change, type: str, text: str, proposal: str) -> Finding`
+  - `class FindingError(SpecworksError)`: every refusal (unknown finding,
+    type or step, empty text, a decision in another form, a block that does
+    not read back); its message names the problem, using the pinned wording
+    above.
+  - `add_finding(change: Change, kind: str, text: str, proposal: str) -> Finding`:
+    `kind` is one of `TYPE_PHASE` (`kind`, not `type`, so the builtin is not
+    shadowed; `Finding.type` is unchanged).
   - `decide_finding(change: Change, finding_id: str, decision: str) -> Finding`
-  - `mark_finding_done(change: Change, finding_id: str, step: str, text: str) -> Finding`
+  - `mark_finding_done(change: Change, finding_id: str, step: str, text: str) -> Finding`:
+    `step` is one of specify, design, implement, test, code (what `DONE_RE` reads).
   - `close_finding(change: Change, finding_id: str, text: str) -> Finding`
-  - each returns the finding as `read_review` reads it after the write.
+  - each returns the finding as `read_review` reads it after the write, and
+    raises `FindingError` with review.md left as it was.
 - `src/specworks/cli/app.py`: `finding_app = App(help="Write a change's review findings (review.md).")`, added as `specworks finding` (REQ-CLI-011).
-- `src/specworks/cli/workflow.py` (REQ-CLI-011): the commands
+- `src/specworks/cli/workflow.py` (REQ-CLI-011): the commands, as
+  `finding_add`, `finding_decide`, `finding_done` and `finding_close`
+  registered on `finding_app`:
   - `finding add TYPE TEXT --proposal TEXT --change REF [--json]`
   - `finding decide ID DECISION --change REF [--json]`
   - `finding done ID TEXT --in STEP --change REF [--json]`
   - `finding close ID TEXT --change REF [--json]`
-  - output: the finding (`Finding.to_dict()`) and `path`, review.md relative to the workspace root.
+  - `--json` output: the change (`change_dict`), plus
+    `"finding": {**Finding.to_dict(), "done": <bool>}` (`id`, `type`,
+    `text`, `phase`, `doneIn` when set, and its state) and `"path"`,
+    review.md relative to the workspace root. `done` is added here, not to
+    `Finding.to_dict()`, so `specworks cycle`'s output is unchanged.
+  - text output: one line, `<id> <type> -> <phase> (open|done)` then the path.
+  - errors: `FindingError` reaches the `App` wrapper (`{"error": ...}`, exit 1).
 
 ## Diagrams
 
