@@ -7,7 +7,7 @@ import pytest
 import yaml
 from typer.testing import CliRunner
 
-from helpers import git, init_repo, on_a_branch
+from helpers import git, init_repo, on_a_branch, remove_repo
 from specworks.cli import app
 from specworks.core.changes import META_FILE, commit_phase, load_change, set_phase
 from specworks.core.config import load_config
@@ -89,8 +89,9 @@ def test_a_phase_move_records_the_modified_untracked_and_deleted_files(project):
     (project / "draft.md").write_bytes(b"# draft\n")
     (project / "old.txt").unlink()
     ch = change(project)
-    set_phase(ch, "specify")  # no root: nothing recorded
-    assert change(project).dirty == {}
+    before = change(project).dirty
+    set_phase(ch, "specify")  # no root: the record is left as it was
+    assert change(project).dirty == before
     set_phase(ch, "design", project)
     expected = {"notes.txt": sha(b"notes, edited\n"), "draft.md": sha(b"# draft\n"), "old.txt": "deleted"}
     for dirty in (change(project).dirty, meta(project)["dirty"]):
@@ -104,6 +105,33 @@ def test_the_phase_command_records_paths_relative_to_the_workspace_root(project)
     code, _ = run_json("phase", "design", "--change", REF)
     assert code == 0
     assert change(project).dirty.get("src/a.py") == sha(b"A = 2\n")
+
+
+# @ac AC-PROJ-023.1
+def test_a_workspace_below_the_git_root_records_only_its_own_files_relative_to_itself(tmp_path, monkeypatch):
+    init_repo(tmp_path)
+    workspace = tmp_path / "app"
+    workspace.mkdir()
+    monkeypatch.chdir(workspace)
+    assert runner.invoke(app, ["init", "--no-skills"]).exit_code == 0
+    assert run_json("new", REF, "--no-branch")[0] == 0
+    (workspace / "src").mkdir()
+    (workspace / "src/a.py").write_bytes(b"A = 1\n")
+    on_a_branch(tmp_path, monkeypatch)
+    (tmp_path / "outside.txt").write_bytes(b"outside\n")
+    (workspace / "src/a.py").write_bytes(b"A = 2\n")
+    set_phase(change(workspace), "design", workspace)
+    dirty = change(workspace).dirty
+    assert dirty == {"src/a.py": sha(b"A = 2\n")}  # not `outside.txt`, and not `app/src/a.py`
+
+
+# @ac AC-PROJ-023.1
+def test_a_staged_rename_records_both_paths(project):
+    git(project, "mv", "old.txt", "renamed.txt")
+    set_phase(change(project), "design", project)
+    dirty = change(project).dirty
+    assert dirty.get("renamed.txt") == sha(b"old\n")
+    assert dirty.get("old.txt") == "deleted"
 
 
 # @ac AC-PROJ-023.2
@@ -128,6 +156,25 @@ def test_a_change_with_no_record_loads_with_no_recorded_files(project):
     assert ch.phase == "design" and ch.dirty == {}
     ch.save()
     assert "dirty" not in meta(project)  # an empty record is not written
+
+
+# @ac AC-PROJ-023.4
+def test_a_move_outside_a_git_repository_succeeds_with_no_record(project):
+    remove_repo(project)
+    ch = change(project)
+    set_phase(ch, "specify")
+    (project / "draft.md").write_bytes(b"# draft\n")
+    set_phase(ch, "design", project)
+    assert change(project).phase == "design" and change(project).dirty == {}
+    assert "dirty" not in meta(project)
+
+
+# @ac AC-PROJ-023.4
+def test_the_phase_command_moves_a_change_outside_a_git_repository(project):
+    remove_repo(project)
+    code, data = run_json("phase", "design", "--change", REF)
+    assert code == 0, data
+    assert change(project).phase == "design" and change(project).dirty == {}
 
 
 # @ac AC-PROJ-024.1
