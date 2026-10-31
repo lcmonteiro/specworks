@@ -61,7 +61,7 @@ The tests assert these and the code writes them verbatim:
 
 ## Interfaces
 
-Proposed: waiting for the user's agreement
+Agreed with the user (`done` added in the `finding` commands' output only)
 
 - `src/specworks/workflow/review.py` (REQ-FLOW-016):
   - `class FindingError(SpecworksError)`: every refusal (unknown finding,
