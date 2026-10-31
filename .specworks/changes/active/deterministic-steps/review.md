@@ -10,9 +10,11 @@ Base: `origin/main`
 
 - [ ] R2 **quality** In `specworks-code` step 3.6 the new "Existing tests must stay green (step 4 fixes what fails)" points to "step 4" inside a numbered list whose item 4 is "Tag the code"; it means the top-level step 4, "Run the project's checks". An agent following the skill can read it as the tagging step (`src/specworks/skills/specworks-code/SKILL.md:93`, and its installed copy)
   - **Proposal**: back to code: write "(step 4, Run the project's checks, fixes what fails)" in `src/specworks/skills/specworks-code/SKILL.md` and refresh the installed copy with `uv run specworks skills`; no pinned phrase or wording test changes
+  - **Decision**: back to code: write "(step 4, Run the project's checks, fixes what fails)" in `specworks-code` step 3.6 and refresh the installed copy (agreed with the user)
 
 - [ ] R3 **design-gap** The Decision "Existing sample tasks that break the new rule" opens with "Resolved without a new task: the test half reworded both samples in its own commit (task 1.1)", then keeps the superseded paragraph "The proposal: a new `[test]` task 1.3 rewords both ... (e.g. `verify lint passes and the reset link is sent` ...)". There is no task 1.3, and the samples now read `verify lint passes`. Close folds this Decision into the living `design.md`, so the paragraph would record a plan that never happened (`design.md:48`, `design.md:62`)
   - **Proposal**: back to design: replace the superseded proposal paragraph with what was done: the test half reworded `tests/samples.py` task 1.2 and `tests/test_walkthrough.py` task 1.3 to `verify lint passes`, kept every assertion, and updated the one detail string in `tests/test_validate_phase.py` that quotes the sample. No API, test or code change follows
+  - **Decision**: back to design: replace the superseded proposal paragraph of the Decision "Existing sample tasks that break the new rule" with what was done (agreed with the user)
 
 ## Changed files without tags
 
