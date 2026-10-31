@@ -141,7 +141,10 @@ artifacts:
         to proposal.md for motivation instead of repeating it).
       - **Goals / Non-Goals**: design-level boundaries only.
       - **Decisions**: each choice with the alternatives considered and why.
-        Reference requirement IDs a decision serves.
+        Reference requirement IDs a decision serves. A change whose tests
+        check text (skill wording, templates, instructions) lists the exact
+        phrases under **Pinned wording**: the test half asserts them and the
+        code half writes them, both verbatim.
       - **Interfaces**: public APIs, data shapes, events or CLI surfaces the
         change adds or extends. Name them precisely, each with its file in a
         code span (`src/auth/reset.py`). The design phase settles this
@@ -208,6 +211,9 @@ artifacts:
         specs and design, so a `[code]` task never depends on a `[test]` task.
         `specworks check` warns when criteria have no `[test]` task or
         requirements no `[code]` task.
+      - A [code] task is verified by lint, typecheck or observable behaviour, never by the test half's tests or the suite:
+        the suite runs in `gate implement` after the merge. `specworks check` warns when a
+        `[code]` task names a `[test]` task or `specworks run test`.
       - REMOVED requirements get a task that deletes their code and tests.
       - Resolve design.md Open Questions that would change the tasks before
         writing them.

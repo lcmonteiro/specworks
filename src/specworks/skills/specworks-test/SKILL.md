@@ -112,6 +112,9 @@ other half's. When the test gate passes, stop and suggest `/specworks-code`
      whole flow.
    - Keep tests deterministic: control time, randomness, network and
      filesystem the way the project already does.
+   - Wording checks (tests that check text: skill wording, templates,
+     instructions): Assert only the pinned phrases of design.md, verbatim
+     (its **Pinned wording**); never phrases picked from the proposal.
 
    MODIFIED criteria: update the existing tests found in step 2 to the new
    behaviour and keep their `@ac` tags. REMOVED requirements, and criteria a

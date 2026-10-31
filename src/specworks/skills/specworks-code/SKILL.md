@@ -71,7 +71,9 @@ change's tests. When the code gate passes, stop and suggest
       change.
    3. Write the smallest code that does what each criterion's WHEN/THEN
       says, the way the requirement intends, in the project's style; follow
-      design.md's decisions. Replace stubs with real code.
+      design.md's decisions. Replace stubs with real code. When the change
+      writes text its tests check (skill wording, templates, instructions):
+      Write the pinned phrases of design.md verbatim (its **Pinned wording**).
    4. Tag the code that implements each requirement with a comment in the
       language's syntax, at its main entry point (function, class, handler,
       route):
@@ -83,14 +85,18 @@ change's tests. When the code gate passes, stop and suggest
       that actually implements it.
    5. For REMOVED requirements, delete their code and its `@req` tags (their
       tests are the test half's).
-   6. Run the suite when the task is done:
+   6. Run the task's own checks when it is done (the verification it names:
+      lint, typecheck or observable behaviour), then the suite:
       ```bash
       specworks run test --change "<ref>"
       ```
-      Existing tests must stay green. This change's own `@ac` tests may
-      fail (or not exist yet): do not read them to make them pass; review
-      compares them with the code.
-   7. Tick the task only when its verification passes:
+      Existing tests must stay green (step 4, Run the project's checks, fixes
+      what fails). This change's own `@ac` tests may fail (or not exist
+      yet): do not read them to make them pass; review compares them with
+      the code. In a build the test half may be changing existing tests at
+      the same time; the suite meets them in `gate implement` after the
+      merge.
+   7. Tick a [code] task when its own checks pass; the suite is not one of them:
       ```bash
       specworks task done <N.M> --change "<ref>"
       ```
@@ -155,7 +161,7 @@ change's tests. When the code gate passes, stop and suggest
   this change's `@ac` tests, tick `[test]` tasks or run `gate test`.
 - No scope creep: no features, refactors or clean-ups the tasks do not ask
   for. Note ideas for later instead.
-- Tick a task only after its verification passed; never tick ahead.
+- Tick a task only after its own checks passed; never tick ahead.
 - `@req` tags mark real implementations, never stubs or unrelated code.
 - Re-read specs, design and tasks from disk before relying on them; the user
   may have edited them.

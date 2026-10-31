@@ -82,6 +82,18 @@ every task done. `check` warns when a change with criteria has no `[test]`
 task, or one with requirements has no `[code]` task, so a task list written
 without markers is noticed. (parallel-test-code)
 
+### A code task never waits on the test half
+
+The two halves run in parallel and the code half cannot see the test half's
+tests until the merge, so `check` warns, without failing, when a `[code]` task
+names the number of a `[test]` task of the same change, or the literal
+`specworks run test`; the suite runs in `gate implement` after the merge. A
+number counts only as a whole token (`1.1`, not `11.1` or `3.11`) and only
+when it is a real `[test]` task of the change, so version numbers and
+references to `[code]` or no-half tasks stay silent. The warning texts are
+fixed and tested verbatim. Alternative rejected: a list of phrases such as
+"the tests pass", fuzzy and firing on ordinary wording. (deterministic-steps)
+
 ### Issues are built by constructors, checks are split by concern
 
 `Issue.level` is `Literal["error", "warning"]`, and `Issue.error(file, line,

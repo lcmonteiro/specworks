@@ -191,7 +191,9 @@ next step the same way: the next skill (recommended), any alternative, and
 
    Ordered `- [ ] N.M` tasks; each names its REQ/AC IDs and how to verify it;
    failing tests (tagged `@ac`) come before the implementation (tagged `@req`)
-   in every group; every acceptance criterion is covered.
+   in every group; every acceptance criterion is covered. Follow the
+   instruction's rules, above all how a `[code]` task is verified, and fix
+   every `check` warning about the tasks before the gate.
 
 8. **Validate, trace and gate**
 
