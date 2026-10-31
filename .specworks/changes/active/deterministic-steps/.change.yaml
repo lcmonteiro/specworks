@@ -1,5 +1,5 @@
 name: deterministic-steps
 created: '2026-10-30T22:42:39'
-phase: implement
+phase: review
 specified:
   REQ-SPECS-015: 3342b271cd78

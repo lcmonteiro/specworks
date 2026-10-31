@@ -1,0 +1,23 @@
+# Review: deterministic-steps
+
+Base: `origin/main`
+
+## Findings
+
+- [ ] R1 **design-gap** REQ-SPECS-015 says "Each warning SHALL say that the code half is verified by lint, typecheck or observable behaviour and that the suite runs after the merge", but the pinned warning for a named `[test]` task (design.md Pinned wording), which the code writes verbatim, says "the code half cannot see the test half's tests until the merge; verify it with lint, typecheck or observable behaviour": it never says the suite runs after the merge. The suite warning does. AC-SPECS-015.1's THEN asks only for the line and both task numbers, so the tests pass either way (`src/specworks/specs/check.py:402`; `design.md:38`; `specs/specs/spec.md:9`)
+  - **Proposal**: accepted: the warning says the same in its own words (the test half's tests are only seen after the merge), and its exact text was agreed with the user as pinned wording in design. Alternative: back to design: extend the pinned phrase to `...until the merge, where the suite runs in gate implement; verify it with lint, typecheck or observable behaviour`, then the test and code halves follow it
+
+- [ ] R2 **quality** In `specworks-code` step 3.6 the new "Existing tests must stay green (step 4 fixes what fails)" points to "step 4" inside a numbered list whose item 4 is "Tag the code"; it means the top-level step 4, "Run the project's checks". An agent following the skill can read it as the tagging step (`src/specworks/skills/specworks-code/SKILL.md:93`, and its installed copy)
+  - **Proposal**: back to code: write "(step 4, Run the project's checks, fixes what fails)" in `src/specworks/skills/specworks-code/SKILL.md` and refresh the installed copy with `uv run specworks skills`; no pinned phrase or wording test changes
+
+- [ ] R3 **design-gap** The Decision "Existing sample tasks that break the new rule" opens with "Resolved without a new task: the test half reworded both samples in its own commit (task 1.1)", then keeps the superseded paragraph "The proposal: a new `[test]` task 1.3 rewords both ... (e.g. `verify lint passes and the reset link is sent` ...)". There is no task 1.3, and the samples now read `verify lint passes`. Close folds this Decision into the living `design.md`, so the paragraph would record a plan that never happened (`design.md:48`, `design.md:62`)
+  - **Proposal**: back to design: replace the superseded proposal paragraph with what was done: the test half reworded `tests/samples.py` task 1.2 and `tests/test_walkthrough.py` task 1.3 to `verify lint passes`, kept every assertion, and updated the one detail string in `tests/test_validate_phase.py` that quotes the sample. No API, test or code change follows
+
+## Changed files without tags
+
+- `tests/samples.py`: shared sample data, not a test of a criterion. Its `[code]` task 1.2 no longer names task 1.1, so the new REQ-SPECS-015 warning does not fire in the tests that expect no `check` warnings (design.md Decision "Existing sample tasks that break the new rule"; R3 covers how that Decision is worded)
+- `tests/test_walkthrough.py`: the walkthrough's sample `tasks.md` text, reworded for the same reason (task 1.3 no longer names task 1.2); its assertions are unchanged
+
+## Summary
+
+The `_check_tasks` pass (REQ-SPECS-015) does what the three criteria say: it matches only the change's own `[test]` numbers, as whole tokens, plus the literal `specworks run test`, and the tests assert the pinned texts, lines and the controls. The schema instructions and the code, test and specify skills carry the pinned phrases, and their installed copies match. The suite (699 tests), lint and typecheck pass. Three findings are open and waiting for the user: R1 (the first warning does not say the suite runs after the merge; proposed: accept), R2 (an ambiguous "step 4" in the code skill; back to code) and R3 (a superseded paragraph in a design Decision; back to design).
