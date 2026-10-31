@@ -101,6 +101,21 @@ def phase(
     emit(change_dict(ws, mod, ch), as_json, f"{mod.qualify(ch.name)}: phase → {ch.phase}")
 
 
+@app.command()
+def commit(
+    change: str = ChangeOpt,
+    message: str | None = typer.Option(None, "--message", help="The commit subject (default: `<ref>: <phase>`)."),
+    trailer: list[str] | None = typer.Option(None, "--trailer", help="A trailer line, e.g. 'Co-Authored-By: A <a@x>'; repeat it for more, kept in order."),
+    as_json: bool = JsonOpt,
+) -> None:
+    """Commit the change's phase: its folder and the files changed since the phase started. Never pushes.
+
+    `--json` returns ref, commit (null when nothing was committed), subject, committed, leftOut and alreadyDirty.
+    """
+    # Implements REQ-CLI-012 (the help text above is user-facing, so the ID is cited here).
+    raise NotImplementedError
+
+
 # @req REQ-CLI-006
 @app.command("skip-specs")
 def skip_specs(

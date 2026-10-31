@@ -2,7 +2,7 @@
 
 ## 1. The record of dirty files
 
-- [ ] 1.1 Add the stubs in design.md's Interfaces: `dirty_files` and `commit` in `src/specworks/core/git.py`, `Change.dirty`, the `root` parameter of `set_phase`, `CommitResult` and `commit_phase` in `src/specworks/core/changes.py` (REQ-PROJ-023, REQ-PROJ-024); verify `specworks run lint` passes
+- [x] 1.1 Add the stubs in design.md's Interfaces: `dirty_files` and `commit` in `src/specworks/core/git.py`, `Change.dirty`, the `root` parameter of `set_phase`, `CommitResult` and `commit_phase` in `src/specworks/core/changes.py` (REQ-PROJ-023, REQ-PROJ-024); verify `specworks run lint` passes
 - [ ] 1.2 [test] Tests for AC-PROJ-023.1 (modified, untracked and deleted files recorded with their SHA-256 or `deleted` at a phase move), AC-PROJ-023.2 (moving to the same phase keeps the record) and AC-PROJ-023.3 (a `.change.yaml` with no record loads), tagged `@ac`; verify they fail on the stubs
 - [ ] 1.3 [code] Implement `dirty_files`, `Change.dirty` (saved and loaded) and the record in `set_phase` and `create_change` (REQ-PROJ-023), tagged `@req`; verify `specworks run lint` passes and, in a scratch repository with a dirty file, `specworks phase design` on a sample change writes a `dirty:` list in its `.change.yaml`
 

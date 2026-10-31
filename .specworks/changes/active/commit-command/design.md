@@ -98,7 +98,7 @@ Agreed with the user
 Notes on the proposal written at specify: `commit_phase` takes the
 workspace root and the ref instead of a `Workspace`, since the default
 subject needs the qualified ref (`module:name`) that a `Change` alone does
-not know, and `core/changes.py` stays free of `workspace`; `trailers` is a
+not know, and `src/specworks/core/changes.py` stays free of `workspace`; `trailers` is a
 `Sequence[str] = ()` (ruff B006 rejects a `[]` default).
 
 ## Diagrams

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
@@ -45,6 +46,7 @@ class Change:
     skip_specs: bool = False
     abandoned: str = ""  # why it was archived without merging (specworks abandon)
     specified: dict[str, str] = field(default_factory=dict)  # requirement ID -> fingerprint when specify last passed
+    dirty: dict[str, str] = field(default_factory=dict)  # path -> SHA-256 hex or `deleted`, dirty when the phase started (REQ-PROJ-023)
 
     @property
     def order(self) -> tuple[str, str, str]:
@@ -63,7 +65,10 @@ class Change:
 
 
 # @req REQ-PROJ-010
-def create_change(cfg: Config, name: str) -> Change:
+def create_change(cfg: Config, name: str, root: Path | None = None) -> Change:
+    """Create the change folder and its metadata; with `root` (the workspace root), record its dirty files (REQ-PROJ-023)."""
+    if root is not None:
+        raise NotImplementedError
     validate_kebab(name, "change name", "add-user-auth")
     if name in (ARCHIVE_DIR, ACTIVE_DIR):
         raise ChangeError(f"'{name}' is reserved for the changes folders; pick another name")
@@ -148,7 +153,13 @@ def archived_as(cfg: Config, name: str) -> Change | None:
 
 
 # @req REQ-PROJ-011
-def set_phase(change: Change, phase: str) -> None:
+def set_phase(change: Change, phase: str, root: Path | None = None) -> None:
+    """Move the change to `phase` and save it; with `root` (the workspace root), a new phase also records its dirty files.
+
+    Moving to the phase the change is already in keeps the record it has. Implements REQ-PROJ-023.
+    """
+    if root is not None:
+        raise NotImplementedError
     if phase in HALVES:
         raise ChangeError(half_error(phase))
     if phase not in PHASES:
@@ -158,3 +169,24 @@ def set_phase(change: Change, phase: str) -> None:
         raise ChangeError("a change becomes done only through `specworks close`, which merges its specs and archives it")
     change.phase = phase
     change.save()
+
+
+@dataclass(frozen=True)
+class CommitResult:
+    """A phase commit (REQ-PROJ-024); paths are relative to the workspace root."""
+
+    commit: str | None  # the short hash, None when nothing was committed
+    subject: str
+    committed: list[str]
+    left_out: list[str]  # dirty, but unchanged since the phase started
+    already_dirty: list[str]  # committed, but already dirty when the phase started
+
+
+def commit_phase(root: Path, ref: str, change: Change, subject: str | None = None, trailers: Sequence[str] = ()) -> CommitResult:
+    """Commit the change folder and every file dirty now that is not in its record or whose content differs.
+
+    `root` is the workspace root and `ref` the change's ref, for the default subject `<ref>: <phase>`; the trailers
+    follow a blank line, in order. Nothing to commit returns `commit=None`. Raises `GitError` on a detached HEAD
+    before staging anything. Never pushes. Implements REQ-PROJ-024.
+    """
+    raise NotImplementedError

@@ -1,5 +1,6 @@
 """Running git: its output as bytes or text, and one error for a missing git or a failed command."""
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from subprocess import run
@@ -93,3 +94,21 @@ def plan_branch(cwd: Path, name: str, base: str | None = None) -> Branch:
 def create_branch(cwd: Path, branch: Branch) -> None:
     """Create the branch and switch to it, carrying the working tree over. Implements REQ-PROJ-018, REQ-PROJ-019."""
     git(cwd, "checkout", "-b", branch.name)
+
+
+def dirty_files(root: Path) -> dict[str, str]:
+    """The staged, unstaged and untracked (not ignored) files under `root`, by path relative to it (POSIX).
+
+    Each maps to the SHA-256 hex of its content, or `deleted` when it no longer exists. Raises `GitError` outside a
+    repository. Implements REQ-PROJ-023, REQ-PROJ-024.
+    """
+    raise NotImplementedError
+
+
+def commit(root: Path, paths: Sequence[str], message: str) -> str:
+    """Stage exactly `paths` (relative to `root`, deletions included) and commit them with `message`; return the short hash.
+
+    The message goes to git on stdin. Raises `GitError` ("cannot commit on a detached HEAD; switch to a branch first")
+    before staging anything on a detached HEAD. Never pushes. Implements REQ-PROJ-024.
+    """
+    raise NotImplementedError
