@@ -377,6 +377,7 @@ def _locate(path: Path, text: str) -> _Review:
     review = _Review(path, text.splitlines(keepends=True), "\r\n" if "\r\n" in text else "\n")
     lines = blank_comments(text).splitlines()
     current: _Block | None = None
+    owner: str | None = None  # the ID of the finding ``current`` is, when it is the one kept in ``blocks``
     section = ""
     for number, (line, example) in enumerate(zip(lines, fenced(lines), strict=True)):
         indented = line.startswith((" ", "\t"))
@@ -395,14 +396,15 @@ def _locate(path: Path, text: str) -> _Review:
             continue
         if match := FINDING_RE.match(line):
             current = _Block(number, number, line[: len(line) - len(line.lstrip())])
-            review.blocks.setdefault(match.group("id"), current)  # a repeated ID: the first one is the finding
+            owner = match.group("id") if match.group("id") not in review.blocks else None  # a repeated ID: the first one is the finding
+            review.blocks.setdefault(match.group("id"), current)
             continue
         if (CHECKBOX_RE.match(line) and (current is None or not indented)) or (current is not None and line.strip() and not indented):
             current = None
         if current is not None and line.strip():
             current.end = number
-            if DECISION_LINE_RE.match(line):
-                review.decisions.setdefault(next(k for k, b in review.blocks.items() if b is current), []).append(number)
+            if owner is not None and DECISION_LINE_RE.match(line):
+                review.decisions.setdefault(owner, []).append(number)
     return review
 
 
@@ -490,7 +492,9 @@ def add_finding(change: Change, kind: str, text: str, proposal: str) -> Finding:
         _insert(review, at, new + ([""] if at < len(review.lines) and review.lines[at].strip() else []))
         if not in_list:
             _insert(review, at, [""])
-    return _write(review, original, fid, {"done": False, "type": kind, "phase": TYPE_PHASE[kind]})
+    # The step the reader gives: a 'back to <step>:' in its text or proposal (the last line with one) routes it.
+    routes = [back.group("phase").lower() for line in new if (back := BACK_RE.search(line))]
+    return _write(review, original, fid, {"done": False, "type": kind, "phase": routes[-1] if routes else TYPE_PHASE[kind]})
 
 
 # @req REQ-FLOW-016
