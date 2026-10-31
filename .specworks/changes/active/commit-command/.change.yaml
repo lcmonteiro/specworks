@@ -1,7 +1,7 @@
 name: commit-command
 created: '2026-10-31T15:50:14'
-phase: specify
+phase: design
 specified:
   REQ-CLI-012: 14b03b3114b4
-  REQ-PROJ-023: 48f063ff4cfb
+  REQ-PROJ-023: 807be212b8e0
   REQ-PROJ-024: f4f305a8be2a

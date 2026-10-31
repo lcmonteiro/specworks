@@ -29,8 +29,12 @@ through the gates first. The workspace root can be below the git root.
 phase changes, and `create_change` records it when the change is created.
 `dirty_files` reads `git status --porcelain=v1 -z --untracked-files=all`
 from the workspace root, keeps the paths under it, and hashes each file's
-bytes. Alternative rejected: a hidden git ref (refinement Option B). Serves
-REQ-PROJ-023.
+bytes. Outside a git repository `dirty_files` raises `GitError`;
+`set_phase` and `create_change` catch it and still move (or create) the
+change, with an empty record, so `phase` and `start` keep working without
+git (review R2). `dirty_files` itself keeps raising, since `commit_phase`
+cannot work without git. Alternative rejected: a hidden git ref (refinement
+Option B). Serves REQ-PROJ-023.
 
 ### Commit what is not in the record
 
@@ -72,10 +76,12 @@ Agreed with the user
     `dirty:` only when not empty, read as empty when missing) (REQ-PROJ-023)
   - `set_phase(change: Change, phase: str, root: Path | None = None) -> None`
     (extended, not breaking): with `root`, records `dirty_files(root)` when
-    the phase changes, in the same save (REQ-PROJ-023)
+    the phase changes, in the same save; outside a git repository it still
+    moves the change, with an empty record, and raises nothing (REQ-PROJ-023)
   - `create_change(cfg: Config, name: str, root: Path | None = None) -> Change`
     (extended, not breaking): with `root`, records `dirty_files(root)` in
-    the first save (REQ-PROJ-023)
+    the first save; outside a git repository it creates the change with an
+    empty record (REQ-PROJ-023)
   - `CommitResult` (new, frozen dataclass): `commit: str | None` (short hash,
     `None` when nothing was committed), `subject: str`, `committed:
     list[str]`, `left_out: list[str]`, `already_dirty: list[str]`, paths
