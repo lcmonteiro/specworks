@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Callable
 from pathlib import Path
 
 import typer
 
-from ..core.changes import PHASES
+from ..core.changes import PHASES, Change
 from ..core.runner import cached_run
 from ..core.workspace import Workspace
 from ..specs.merge import archive_target, close_change, plan_merge
@@ -16,7 +17,7 @@ from ..workflow.checks import Check, GateContext, passed
 from ..workflow.cycle import next_cycle
 from ..workflow.gate import GATES, run_gate, start_phase
 from ..workflow.merge import BranchMergeError, merge_branch
-from ..workflow.review import review_change
+from ..workflow.review import REVIEW_FILE, Finding, FindingError, add_finding, close_finding, decide_finding, mark_finding_done, review_change
 from ..workflow.validate import GROUPS, summary, validate_change
 from .app import app, finding_app
 from .output import ChangeOpt, FreshOpt, JsonOpt, change_dict, emit, fail, require_change, workspace
@@ -156,6 +157,7 @@ def merge(
     emit(data, as_json, "\n".join(lines))
 
 
+# @req REQ-CLI-011
 @finding_app.command("add")
 def finding_add(
     kind: str = typer.Argument(..., metavar="TYPE", help="The finding's type: spec-gap, design-gap, test-gap, code-gap, tag or quality."),
@@ -168,9 +170,10 @@ def finding_add(
 
     Implements REQ-CLI-011.
     """
-    raise NotImplementedError
+    _write_finding(change, as_json, lambda ch: add_finding(ch, kind, text, proposal))
 
 
+# @req REQ-CLI-011
 @finding_app.command("decide")
 def finding_decide(
     finding_id: str = typer.Argument(..., metavar="ID", help="The finding's ID, e.g. R1."),
@@ -182,9 +185,10 @@ def finding_decide(
 
     Implements REQ-CLI-011.
     """
-    raise NotImplementedError
+    _write_finding(change, as_json, lambda ch: decide_finding(ch, finding_id, decision))
 
 
+# @req REQ-CLI-011
 @finding_app.command("done")
 def finding_done(
     finding_id: str = typer.Argument(..., metavar="ID", help="The finding's ID, e.g. R1."),
@@ -197,9 +201,10 @@ def finding_done(
 
     Implements REQ-CLI-011.
     """
-    raise NotImplementedError
+    _write_finding(change, as_json, lambda ch: mark_finding_done(ch, finding_id, step, text))
 
 
+# @req REQ-CLI-011
 @finding_app.command("close")
 def finding_close(
     finding_id: str = typer.Argument(..., metavar="ID", help="The finding's ID, e.g. R1."),
@@ -211,7 +216,21 @@ def finding_close(
 
     Implements REQ-CLI-011.
     """
-    raise NotImplementedError
+    _write_finding(change, as_json, lambda ch: close_finding(ch, finding_id, text))
+
+
+# @req REQ-CLI-011
+def _write_finding(ref: str, as_json: bool, write: Callable[[Change], Finding]) -> None:
+    """Run one of review.md's writers on the change and print the finding as `specworks cycle` reads it, with review.md's path."""
+    ws, mod, ch = require_change(ref, as_json)
+    path = ch.path / REVIEW_FILE
+    try:
+        finding = write(ch)
+    except FindingError as exc:  # the message names review.md: shown relative to the workspace root, as every path
+        raise FindingError(str(exc).replace(str(path), ws.rel(path))) from None
+    rel = ws.rel(path)
+    data = {**change_dict(ws, mod, ch), "finding": {**finding.to_dict(), "done": finding.done}, "path": rel}
+    emit(data, as_json, f"{finding.id} {finding.type or '?'} -> {finding.phase} ({'done' if finding.done else 'open'})\n{rel}")
 
 
 def _rel(ws: Workspace, path: Path) -> str:

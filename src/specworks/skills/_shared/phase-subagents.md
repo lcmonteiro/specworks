@@ -33,7 +33,7 @@ their questions, and write the answers to disk.
   | design: the API | design.md `## Interfaces`: the subagent writes it with a line `Proposed: waiting for the user's agreement`; replace that line with `Agreed with the user` (and the user's changes) |
   | test, code: the test command | `.specworks/config.yml` `commands:` (`test: <command>`) |
   | code: an unclear task, an existing test against the spec, new work | the Decision in design.md, or a new task in tasks.md |
-  | review: each finding | the finding's `**Decision**:` line in review.md |
+  | review: each finding | the finding's `**Decision**:` line in review.md, written with `specworks finding decide R<n> --change "<ref>" "<decision>"` |
 
   Write only the answer, in the place the question is about. Never do the
   phase's own work.

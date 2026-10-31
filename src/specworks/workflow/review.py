@@ -25,6 +25,7 @@ from ..core.git import GitError, git, git_text
 from ..core.workspace import Workspace
 from ..specs.specfile import H2_RE, blank_comments, fenced
 from ..specs.trace import Analysis, scan_rule
+from .artifacts import read_template
 
 CODE_EXTENSIONS = {
     ".py", ".pyi", ".js", ".jsx", ".mjs", ".cjs", ".ts", ".tsx", ".go", ".rs", ".java", ".kt", ".kts",
@@ -333,41 +334,226 @@ def read_review(change: Change) -> ReviewDoc:
 # with ``parse_review``, and writes the file only when the finding reads as expected.
 
 
+
+# A Decision line under a finding, as written by hand (``- **Decision**: ...``) or by ``decide_finding``.
+DECISION_LINE_RE = re.compile(r"^(?P<indent>\s*)(?:[-*+]|\d+[.)])\s+\**Decision\**\s*:", re.IGNORECASE)
+DECISION_RE = re.compile(r"^(?:back to (?:specify|design|implement|test|code)|accepted)\s*:\s*\S", re.IGNORECASE)
+DECISION_FORM = "a decision starts with 'back to <step>:' (specify, design, implement, test or code) or 'accepted:'"
+LIST_ITEM_RE = re.compile(r"^\s*(?:[-*+]|\d+[.)])\s")
+CHECKBOX_MARK_RE = re.compile(r"\[[ xX]?\]")
+
+
 class FindingError(SpecworksError):
     """A refused write to review.md: an unknown finding, type or step, an empty text, a decision in another form,
     or an edit that does not read back; review.md is left as it was."""
 
 
+@dataclass
+class _Block:
+    start: int  # the finding's checkbox line
+    end: int  # its last non-blank line
+    indent: str  # the checkbox line's own indentation
+
+
+@dataclass
+class _Review:
+    """review.md split into lines (each with its own ending), where its findings and the Findings section are."""
+
+    path: Path
+    lines: list[str]
+    newline: str
+    blocks: dict[str, _Block] = field(default_factory=dict)
+    section: tuple[int, int] | None = None  # the "## Findings" heading and the line after its last one
+    decisions: dict[str, list[int]] = field(default_factory=dict)  # the Decision lines under each finding
+
+    @property
+    def text(self) -> str:
+        return "".join(self.lines)
+
+
+# @req REQ-FLOW-016
+def _locate(path: Path, text: str) -> _Review:
+    """Where each finding's block is, read the way ``parse_review`` reads it (comments blanked, fences ignored)."""
+    review = _Review(path, text.splitlines(keepends=True), "\r\n" if "\r\n" in text else "\n")
+    lines = blank_comments(text).splitlines()
+    current: _Block | None = None
+    section = ""
+    for number, (line, example) in enumerate(zip(lines, fenced(lines), strict=True)):
+        indented = line.startswith((" ", "\t"))
+        if example:  # a fence indented under a finding is part of it
+            if current is not None and indented:
+                current.end = number
+            continue
+        if h2 := H2_RE.match(line):
+            if section == "findings" and review.section:
+                review.section = (review.section[0], number)
+            section, current = h2.group("title").strip().lower(), None
+            if section == "findings" and review.section is None:
+                review.section = (number, len(lines))
+            continue
+        if section == ACCOUNTED_SECTION:
+            continue
+        if match := FINDING_RE.match(line):
+            current = _Block(number, number, line[: len(line) - len(line.lstrip())])
+            review.blocks.setdefault(match.group("id"), current)  # a repeated ID: the first one is the finding
+            continue
+        if (CHECKBOX_RE.match(line) and (current is None or not indented)) or (current is not None and line.strip() and not indented):
+            current = None
+        if current is not None and line.strip():
+            current.end = number
+            if DECISION_LINE_RE.match(line):
+                review.decisions.setdefault(next(k for k, b in review.blocks.items() if b is current), []).append(number)
+    return review
+
+
+def _one_line(value: str, what: str) -> str:
+    text = " ".join(value.split())
+    if not text:
+        raise FindingError(f"the {what} is empty")
+    return text
+
+
+def _open(change: Change) -> tuple[Path, str]:
+    path = change.path / REVIEW_FILE
+    return path, read_text(path, keep_newlines=True) if path.is_file() else ""
+
+
+def _find(review: _Review, finding_id: str) -> tuple[str, _Block]:
+    fid = finding_id.strip().upper()
+    if fid not in review.blocks:
+        raise FindingError(f"no finding {finding_id.strip()} in {review.path}")
+    return fid, review.blocks[fid]
+
+
+def _insert(review: _Review, at: int, new: list[str]) -> None:
+    """Insert ``new`` lines before line ``at``, each ending with the file's own newline."""
+    if at > 0 and not review.lines[at - 1].endswith(("\n", "\r")):
+        review.lines[at - 1] += review.newline
+    review.lines[at:at] = [line + review.newline for line in new]
+
+
+def _tick(review: _Review, block: _Block) -> None:
+    review.lines[block.start] = CHECKBOX_MARK_RE.sub("[x]", review.lines[block.start], count=1)
+
+
+def _write(review: _Review, original: str, fid: str, expect: dict[str, object]) -> Finding:
+    """Write the edited review.md only when ``fid`` reads back as ``expect`` and every other finding as before."""
+    before, after = parse_review(original) if original else ReviewDoc(exists=False), parse_review(review.text)
+    others_before = [(f.id, f.done, f.type, f.text, f.phase, f.done_in) for f in before.findings if f.id != fid]
+    others_after = [(f.id, f.done, f.type, f.text, f.phase, f.done_in) for f in after.findings if f.id != fid]
+    found = [f for f in after.findings if f.id == fid]
+    problems = []
+    if not found:
+        problems.append(f"{fid} is not read")
+    else:
+        problems += [f"its {key} reads {getattr(found[0], key)!r}, not {value!r}" for key, value in expect.items() if getattr(found[0], key) != value]
+    if others_after != others_before:
+        problems.append("another finding reads differently")
+    if len(after.problems) > len(before.problems):
+        problems.append("the file has a new unreadable line")
+    if problems:
+        raise FindingError(f"{fid} would not read back as expected from {review.path} ({'; '.join(problems)}); it is left as it was")
+    review.path.write_text(review.text, encoding="utf-8", newline="")  # each line keeps its own ending
+    return found[0]
+
+
+def _new_review(change: Change) -> str:
+    """The review.md template with the change's name, its headings and guidance comments, without its example lines."""
+    template = read_template(REVIEW_FILE).replace("<!-- change ref -->", change.name, 1)
+    lines = template.splitlines(keepends=True)
+    kept = [line for line, blanked in zip(lines, blank_comments(template).splitlines(), strict=True) if not LIST_ITEM_RE.match(blanked)]
+    return re.sub(r"\n{3,}", "\n\n", "".join(kept))
+
+
+# @req REQ-FLOW-016
 def add_finding(change: Change, kind: str, text: str, proposal: str) -> Finding:
     """Add an open finding of type ``kind`` (one of ``TYPE_PHASE``) with the next free ID and its Proposal line under
     ``## Findings``, creating review.md from its template when missing; the finding as ``read_review`` reads it after.
 
     Implements REQ-FLOW-016.
     """
-    raise NotImplementedError
+    kind = kind.strip().lower()
+    if kind not in TYPE_PHASE:
+        raise FindingError(f"unknown finding type {kind!r}; one of {', '.join(TYPE_PHASE)}")
+    text, proposal = _one_line(text, "finding's text"), _one_line(proposal, "proposal")
+    path, original = _open(change)
+    review = _locate(path, original or _new_review(change))
+    fid = f"R{max((int(f.id[1:]) for f in parse_review(review.text).findings), default=0) + 1}"
+    new = [f"- [ ] {fid} **{kind}** {text}", f"  - **Proposal**: {proposal}"]
+    if review.section is None:
+        _insert(review, len(review.lines), ["", "## Findings", "", *new])
+    else:
+        heading, end = review.section
+        last = max((i for i in range(heading, end) if review.lines[i].strip()), default=heading)
+        in_list = any(block.end == last for block in review.blocks.values())
+        at = last + 1
+        _insert(review, at, new + ([""] if at < len(review.lines) and review.lines[at].strip() else []))
+        if not in_list:
+            _insert(review, at, [""])
+    return _write(review, original, fid, {"done": False, "type": kind, "phase": TYPE_PHASE[kind]})
 
 
+# @req REQ-FLOW-016
 def decide_finding(change: Change, finding_id: str, decision: str) -> Finding:
     """Write the finding's Decision (``back to <step>: ...`` or ``accepted: ...``), replacing the one it has;
     ``accepted`` ticks it. The finding as ``read_review`` reads it after.
 
     Implements REQ-FLOW-016.
     """
-    raise NotImplementedError
+    decision = _one_line(decision, "decision")
+    if not DECISION_RE.match(decision):
+        raise FindingError(DECISION_FORM)
+    path, original = _open(change)
+    review = _locate(path, original)
+    fid, block = _find(review, finding_id)
+    current = next(f for f in parse_review(original).findings if f.id == fid)
+    line = f"{block.indent}  - **Decision**: {decision}"
+    if fid in review.decisions:
+        at = review.decisions[fid][0]  # only that line is replaced, keeping its own ending
+        ending = review.lines[at][len(review.lines[at].rstrip("\r\n")) :]
+        review.lines[at] = line + ending
+    else:
+        _insert(review, block.end + 1, [line])
+    expect: dict[str, object]
+    if decision.lower().startswith("accepted"):
+        _tick(review, block)
+        expect = {"done": True}
+    else:
+        step = BACK_RE.match(decision)
+        assert step is not None  # DECISION_RE checked the form
+        expect = {"done": current.done, "phase": NEXT_STEP[current.done_in] if current.done_in else step.group("phase").lower()}
+    return _write(review, original, fid, expect)
 
 
+# @req REQ-FLOW-016
 def mark_finding_done(change: Change, finding_id: str, step: str, text: str) -> Finding:
     """Add ``done in <step>: <text>`` to the finding (``step``: specify, design, implement, test or code);
     the finding as ``read_review`` reads it after.
 
     Implements REQ-FLOW-016.
     """
-    raise NotImplementedError
+    step = step.strip().lower()
+    if step not in NEXT_STEP:
+        raise FindingError(f"unknown step {step!r}; one of {', '.join(NEXT_STEP)}")
+    text = _one_line(text, "text")
+    path, original = _open(change)
+    review = _locate(path, original)
+    fid, block = _find(review, finding_id)
+    current = next(f for f in parse_review(original).findings if f.id == fid)
+    _insert(review, block.end + 1, [f"{block.indent}  - done in {step}: {text}"])
+    return _write(review, original, fid, {"done": current.done, "done_in": step, "phase": NEXT_STEP[step]})
 
 
+# @req REQ-FLOW-016
 def close_finding(change: Change, finding_id: str, text: str) -> Finding:
     """Tick the finding and add ``confirmed in review: <text>``; the finding as ``read_review`` reads it after.
 
     Implements REQ-FLOW-016.
     """
-    raise NotImplementedError
+    text = _one_line(text, "text")
+    path, original = _open(change)
+    review = _locate(path, original)
+    fid, block = _find(review, finding_id)
+    _insert(review, block.end + 1, [f"{block.indent}  - confirmed in review: {text}"])
+    _tick(review, block)
+    return _write(review, original, fid, {"done": True})

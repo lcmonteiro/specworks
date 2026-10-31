@@ -185,6 +185,14 @@ next step the same way: the next skill (recommended), any alternative, and
    affect it. Fix every failing blocking check (an untested criterion, a tag
    with a wrong ID) and re-run. Warnings: fix them or explain them.
 
+   **Back from review**: when `specworks cycle --change "<ref>" --json`
+   lists open findings whose `phase` is `test`, you carried out their
+   agreed proposal (the Decision); once the gate passes, record each one (a finding routed to `implement` is recorded by the code half, so the two halves never write the same lines):
+   ```bash
+   specworks finding done R<n> --in test --change "<ref>" "<what changed>"
+   ```
+   It stays open: review checks it and closes it.
+
 **Committing**: once this phase's gate has passed (a phase with no gate: once its
 artifact is written), and before the closing question, commit its work:
 - stage explicit paths only: the change folder and the files this phase wrote

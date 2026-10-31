@@ -155,6 +155,14 @@ other half's. When the test gate passes, stop and suggest `/specworks-code`
    affect it. Fix every failing blocking check (an untested criterion, a tag
    with a wrong ID) and re-run. Warnings: fix them or explain them.
 
+   **Back from review**: when `specworks cycle --change "<ref>" --json`
+   lists open findings whose `phase` is `test`, you carried out their
+   agreed proposal (the Decision); once the gate passes, record each one (a finding routed to `implement` is recorded by the code half, so the two halves never write the same lines):
+   ```bash
+   specworks finding done R<n> --in test --change "<ref>" "<what changed>"
+   ```
+   It stays open: review checks it and closes it.
+
 <!-- specworks:include committing -->
 
 7. **Report and stop**

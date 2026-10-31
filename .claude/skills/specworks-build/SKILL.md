@@ -97,7 +97,7 @@ their questions, and write the answers to disk.
   | design: the API | design.md `## Interfaces`: the subagent writes it with a line `Proposed: waiting for the user's agreement`; replace that line with `Agreed with the user` (and the user's changes) |
   | test, code: the test command | `.specworks/config.yml` `commands:` (`test: <command>`) |
   | code: an unclear task, an existing test against the spec, new work | the Decision in design.md, or a new task in tasks.md |
-  | review: each finding | the finding's `**Decision**:` line in review.md |
+  | review: each finding | the finding's `**Decision**:` line in review.md, written with `specworks finding decide R<n> --change "<ref>" "<decision>"` |
 
   Write only the answer, in the place the question is about. Never do the
   phase's own work.
@@ -195,8 +195,8 @@ of <skills folder>/specworks-build/SKILL.md.
    inside review. It decides nothing with the user itself:
 
    - **First run**: it ticks the findings from an earlier cycle that are
-     now done (`- [x]`, with what was done), writes review.md with every new
-     finding open and the change it proposes, then returns them all in one
+     now done (`- [x]`, with `specworks finding close`), adds every new
+     finding open with the change it proposes (`specworks finding add`), then returns them all in one
      `Result: question` (small, obvious ones grouped into one yes/no
      question, as review does):
      ```markdown
@@ -204,15 +204,16 @@ of <skills folder>/specworks-build/SKILL.md.
        - **Proposal**: back to design: return `ResetToken` from `ResetService.request_reset`
      ```
    - **You** ask the user about each finding, one at a time, and turn each
-     answer into the finding's `**Decision**:` line in review.md: the
+     answer into the finding's `**Decision**:` line in review.md with
+     `specworks finding decide R<n> --change "<ref>" "<decision>"`: the
      proposal as agreed (`back to <step>: ...`, where a step is specify,
      design, implement, test or code), the user's other choice,
-     or `accepted: <reason>` with the box ticked. Spec findings
+     or `accepted: <reason>`, which ticks the box. Spec findings
      (`spec-gap`) get `back to specify: ...`.
    - **Then**, once every `**Decision**:` line is written, run
      `specworks gate review --change "<ref>" --allow-open` yourself; no
-     second review subagent runs. If the gate rejects a Decision line, fix
-     your own line and run the gate again.
+     second review subagent runs. If the gate rejects a Decision line,
+     decide it again with `specworks finding decide` and run the gate again.
 
    The gate is `specworks gate review --change "<ref>" --allow-open`: open
    findings do not fail it here (step 4 turns them into the next cycle), nor

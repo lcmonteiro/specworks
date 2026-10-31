@@ -88,8 +88,9 @@ next step the same way: the next skill (recommended), any alternative, and
    `"phase": "specify"` are why the change is back here: carry out the agreed
    proposal in each one's Decision (`back to specify: ...`) in the delta
    specs, tasks and design.md, and nothing more. Once `gate specify` passes
-   (step 8), add a line under each of those findings in review.md:
-   `  - done in specify: <what changed, with the IDs added or modified>`.
+   (step 8), record it under each of those findings:
+   `specworks finding done R<n> --in specify --change "<ref>" "<what changed, with the IDs added or modified>"`
+   (it writes `done in specify: ...`).
    Leave its box open (`- [ ]`): review ticks it once tests and code follow,
    and `specworks cycle` now starts the next build cycle at design instead of
    handing the change back to specify.
