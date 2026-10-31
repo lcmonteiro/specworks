@@ -565,6 +565,84 @@ def test_a_half_with_no_task_is_a_warning(change, missing, other):
     assert len(warnings) == 1 and missing in warnings[0] and other not in warnings[0], warnings
 
 
+TASKS_FILE_REL = ".specworks/changes/active/add-password-reset/tasks.md"
+NAMES_A_TEST_TASK = (
+    "task {code} [code] names task {test} [test]: the code half cannot see the test half's tests until the merge; "
+    "verify it with lint, typecheck or observable behaviour"
+)
+REQUIRES_THE_SUITE = (
+    "task {num} [code] requires the suite (specworks run test): the suite runs in gate implement after the merge; "
+    "verify it with lint, typecheck or observable behaviour"
+)
+
+
+def check_tasks(change, text):
+    """Write tasks.md, run `check`, and return (exit code, error messages, warnings as (line, message))."""
+    (change / "tasks.md").write_text(text)
+    code, data = run_json("check", "--change", "add-password-reset")
+    warnings = [(i["line"], i["message"]) for i in data["issues"] if i["level"] == "warning" and i["file"] == TASKS_FILE_REL]
+    return code, errors(data), warnings
+
+
+def line_of(text, prefix):
+    return next(n for n, line in enumerate(text.splitlines(), start=1) if line.startswith(prefix))
+
+
+# @ac AC-SPECS-015.1
+def test_a_code_task_naming_a_test_task_is_a_warning_on_its_line(change):
+    text = (
+        "# Tasks\n\n## 1. Reset\n\n"
+        "- [ ] 1.1 [test] Wording checks for AC-AUTH-003.1 and AC-AUTH-003.2; verify they fail before 1.2\n"
+        "- [ ] 1.2 [code] Write the skill (REQ-AUTH-003); verify the 1.1 checks pass\n\n"
+        "## 2. Lockout\n\n"
+        "- [x] 2.1 [code] Lower the lockout threshold (REQ-AUTH-002); verify lint passes\n"
+    )
+    code, errs, warnings = check_tasks(change, text)
+    assert code == 0 and errs == [], errs
+    expected = (line_of(text, "- [ ] 1.2"), NAMES_A_TEST_TASK.format(code="1.2", test="1.1"))
+    assert warnings == [expected], warnings  # one warning, on 1.2's line; the [test] task 1.1 naming 1.2 is not one
+
+
+# @ac AC-SPECS-015.2
+def test_a_code_task_requiring_the_suite_is_a_warning_on_its_line(change):
+    text = TASKS + "- [ ] 1.3 [code] Implement; verify specworks run test passes\n"
+    code, errs, warnings = check_tasks(change, text)
+    assert code == 0 and errs == [], errs
+    assert warnings == [(line_of(text, "- [ ] 1.3"), REQUIRES_THE_SUITE.format(num="1.3"))], warnings
+
+
+# @ac AC-SPECS-015.3
+def test_no_warning_for_a_code_task_naming_code_or_no_half_tasks_or_a_version(change):
+    text = (
+        "# Tasks\n\n## 1. Reset\n\n"
+        "- [ ] 1.1 Add stubs (REQ-AUTH-003)\n"
+        "- [ ] 1.2 [test] Tests for AC-AUTH-003.1, AC-AUTH-003.2 and AC-AUTH-002.1\n\n"
+        "## 2. Code\n\n"
+        "- [ ] 2.1 [code] Implement the reset (REQ-AUTH-003); verify lint passes\n"
+        "- [ ] 2.2 [code] Follow 2.1 and 1.1; works on Python 3.11 (REQ-AUTH-002)\n"
+        "- [ ] 2.3 [code] Log resets; verify the 1.2 tests pass\n"  # the control: the pass runs on this change
+    )
+    code, errs, warnings = check_tasks(change, text)
+    assert code == 0 and errs == [], errs
+    assert warnings == [(line_of(text, "- [ ] 2.3"), NAMES_A_TEST_TASK.format(code="2.3", test="1.2"))], warnings
+
+
+# @ac AC-SPECS-015.3
+def test_a_test_task_number_matches_only_as_a_whole_token(change):
+    # 1.1 and 3.1 are [test] tasks, yet `11.1` and `3.11` are other numbers, not references to them.
+    text = (
+        "# Tasks\n\n## 1. Reset\n\n"
+        "- [ ] 1.1 [test] Tests for AC-AUTH-003.1 and AC-AUTH-003.2\n"
+        "- [ ] 1.2 [code] Implement the reset (REQ-AUTH-003) as in step 11.1 of the runbook; works on Python 3.11\n\n"
+        "## 3. Lockout\n\n"
+        "- [ ] 3.1 [test] Tests for AC-AUTH-002.1\n"
+        "- [ ] 3.2 [code] Lower the lockout threshold (REQ-AUTH-002); verify the 3.1 tests pass\n"  # the control
+    )
+    code, errs, warnings = check_tasks(change, text)
+    assert code == 0 and errs == [], errs
+    assert warnings == [(line_of(text, "- [ ] 3.2"), NAMES_A_TEST_TASK.format(code="3.2", test="3.1"))], warnings
+
+
 # --- trace -------------------------------------------------------------------
 
 
