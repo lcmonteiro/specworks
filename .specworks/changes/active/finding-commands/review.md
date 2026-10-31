@@ -14,6 +14,7 @@ reading the diff. `- [ ] R<n>` while open, `- [x] R<n>` once resolved. Write
   - **Proposal**: accept: wrapped hand-written Decisions are rare, the read-back refuses safely and leaves review.md unchanged; or replace the Decision item with its more-indented continuation lines
 - [ ] R3 **code-gap** add_finding refuses a finding whose Proposal (or text) names another step in the 'back to <step>:' form, e.g. a code-gap proposing to go back to implement (with the colon): it fails with 'its phase reads implement, not code', because parse_review routes on that form anywhere in the block while add_finding expects TYPE_PHASE[kind] (src/specworks/workflow/review.py:493); the review and build skills tell review to record its proposals in that very form, and this review's own first finding was refused that way (REQ-FLOW-016, AC-FLOW-016.1)
   - **Proposal**: code: in add_finding expect the phase parse_review gives the new lines (the step named by the form in the proposal or text, else TYPE_PHASE[kind]) instead of refusing; test: a test under AC-FLOW-016.1 adding a code-gap whose proposal routes it to implement, expecting R3 open and routed to implement
+  - **Decision**: back to implement: add_finding expects the step the reader gives (a 'back to <step>:' in its proposal or text routes it), with a test under AC-FLOW-016.1 (agreed with the user)
 
 ## Changed files without tags
 
