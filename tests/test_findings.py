@@ -70,6 +70,19 @@ def test_ac_flow_016_1_a_new_finding_is_the_next_id(project):
     assert [(f.id, f.done) for f in read_review(change_of(project)).findings] == [("R1", False), ("R2", True), ("R3", False)]
 
 
+# @ac AC-FLOW-016.1
+def test_ac_flow_016_1_a_proposal_naming_another_step_routes_the_new_finding(project):
+    write_review(project, TWO_FINDINGS)
+    proposal = "back to implement: lower-case the email, with a test"
+    added = add_finding(change_of(project), "code-gap", "reset ignores case in the lookup", proposal)
+    assert (added.id, added.done, added.type, added.phase) == ("R3", False, "code-gap", "implement")
+    again = finding(project, "R3")
+    assert (again.done, again.type, again.phase) == (False, "code-gap", "implement")
+    lines = added_lines(TWO_FINDINGS, read(project))
+    assert f"  - **Proposal**: {proposal}" in lines
+    assert [(f.id, f.done) for f in read_review(change_of(project)).findings] == [("R1", False), ("R2", True), ("R3", False)]
+
+
 # @ac AC-FLOW-016.2
 def test_ac_flow_016_2_no_review_md_creates_it_from_the_template(project):
     assert not review_path(project).exists()
