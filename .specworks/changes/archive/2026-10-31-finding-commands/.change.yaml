@@ -1,6 +1,6 @@
 name: finding-commands
 created: '2026-10-31T11:39:40'
-phase: close
+phase: done
 specified:
   REQ-CLI-011: 829be0991666
   REQ-FLOW-016: 6ffe0bde54d1

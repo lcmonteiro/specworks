@@ -16,7 +16,8 @@ capability gives them facts and gates.
 - **Gates** (`gate.py`): each phase's (and each half's) list of checks, and
   `start`, which runs the gates a phase depends on before moving the change.
 - **Review** (`review.py`): the drift report (changed files against the base
-  branch, untagged code and tests) and the parser for review.md.
+  branch, untagged code and tests), the parser for review.md, and the writers
+  that add findings and their follow-up lines to it.
 - **Cycles** (`cycle.py`): which steps the next build cycle runs after a
   review.
 - **Validate** (`validate.py`): the grouped, read-only final report.
@@ -126,6 +127,33 @@ The same goes for any checkbox outside a finding, at the top level or indented
 under another bullet: only sub-steps inside a finding's block are allowed, so
 open work can't hide behind indentation. (baseline-workflow, review-indented-checkboxes)
 
+### review.md is written by commands that read their edit back
+
+The `finding` writers (`add_finding`, `decide_finding`, `mark_finding_done`,
+`close_finding`) edit review.md's text in place: each finds the finding's
+block as `parse_review` sees it (its checkbox line and the indented lines
+after it), adds one line at the end of the block, replaces the Decision line
+or ticks the box, then parses the new text and checks that the finding reads
+back as expected (ID, state, step). Only then is the file written; otherwise a
+`FindingError` names the problem and review.md is left as it was. The writers
+use the reader's own rules (`FINDING_RE`, `TYPE_PHASE`, `BACK_RE`, `DONE_RE`,
+`FINDING_STEPS`), so they cannot write what the gate would refuse. A
+structured data file with review.md generated from it was rejected.
+(finding-commands)
+- A decision starts `back to <step>:` or `accepted:`; `accepted` ticks the
+  box. A new finding is expected to route where the reader routes it: the last
+  `back to <step>:` in its text or proposal, else its type's step, so a
+  proposal written in that form is not refused.
+- With an ID repeated, the writers act on the first block with it, as
+  `parse_review` does, and a refusal is a `FindingError`, never a traceback.
+- `close_finding` adds `confirmed in review: <text>`; the parser does not
+  route on it (only the box counts).
+- A new review.md gets the template's title, `Base:` line, headings and
+  comments, without its example lines, which would read as a bad finding.
+- Replacing a Decision replaces its first line only: a hand-wrapped Decision
+  keeps its continuation lines, and when they would misroute the finding the
+  read-back refuses. Accepted, since the commands write one-line Decisions.
+
 ### Build cycles run only the steps the findings need
 
 A finding's route is a step: `specify, design, implement, test, code,
@@ -172,7 +200,16 @@ which close raises. (merge-halves-without-conflicts)
 - `src/specworks/workflow/review.py`: `review_change(analysis, base)`,
   `changed_paths(ws, since)`, `deleted_paths(ws, since)`, `ChangedFile` (`kind`, `was`),
   `ReviewReport`, `parse_review(text)`, `read_review(change)`, `ReviewDoc`,
-  `Finding` (`phase` holds its step), `FINDING_STEPS`.
+  `Finding` (`phase` holds its step), `FINDING_STEPS`; the writers, each
+  returning the finding as `read_review` reads it after the write and raising
+  `FindingError` with review.md unchanged:
+  `add_finding(change, kind, text, proposal) -> Finding` (`kind` one of
+  `TYPE_PHASE`; the next free ID, under `## Findings`),
+  `decide_finding(change, finding_id, decision)`,
+  `mark_finding_done(change, finding_id, step, text)` (`step` one of specify,
+  design, implement, test, code), `close_finding(change, finding_id, text)`.
+  Lines written: `  - **Proposal**: …`, `  - **Decision**: …`,
+  `  - done in <step>: …`, `  - confirmed in review: …`.
 - `src/specworks/workflow/cycle.py`: `next_cycle(change)` (`reviewed`, `open`,
   `startAt`, `phases`, `handOver`; `phases` lists steps).
 - `src/specworks/workflow/validate.py`: `VALIDATE` (rows of group, the skill
@@ -188,7 +225,8 @@ which close raises. (merge-halves-without-conflicts)
 ## Constraints
 
 - Validate and the gates write nothing to the project. Only `start` writes, to
-  the change's metadata, and `merge_branch`, which commits a merge or leaves
-  the checkout as it was.
+  the change's metadata, `merge_branch`, which commits a merge or leaves
+  the checkout as it was, and the finding writers, which write only the
+  change's review.md and only when it reads back as expected.
 - Built on `project` (config, workspace, changes, runner) and `specs` (specs,
   tags, trace).
