@@ -56,7 +56,7 @@ The tests assert these and the code writes them verbatim:
 
 ## Interfaces
 
-Proposed: waiting for the user's agreement
+Agreed with the user
 
 - `src/specworks/core/git.py` (REQ-PROJ-023, REQ-PROJ-024):
   - `dirty_files(root: Path) -> dict[str, str]` (new): dirty and untracked
