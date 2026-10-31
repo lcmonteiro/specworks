@@ -10,7 +10,8 @@ staged, unstaged or untracked (not ignored), by its path relative to the
 workspace root, with a SHA-256 of its content or `deleted` when it no longer
 exists. Moving a change to the phase it is already in SHALL keep the record
 it has. A change whose metadata has no record (created before this) SHALL be
-read as having none.
+read as having none. Outside a git repository, the move SHALL still
+succeed, with no record.
 
 #### Scenario: AC-PROJ-023.1 Recorded at a phase move
 
@@ -29,6 +30,12 @@ read as having none.
 - **GIVEN** a change whose metadata has no record
 - **WHEN** it is read
 - **THEN** it loads, with no recorded files
+
+#### Scenario: AC-PROJ-023.4 Outside a git repository
+
+- **GIVEN** a change whose workspace is in no git repository
+- **WHEN** it is moved from specify to design
+- **THEN** its phase is design and it has no recorded files
 
 ### Requirement: REQ-PROJ-024 Committing a phase
 
