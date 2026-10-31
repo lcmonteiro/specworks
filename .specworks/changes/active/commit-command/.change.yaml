@@ -1,6 +1,6 @@
 name: commit-command
 created: '2026-10-31T15:50:14'
-phase: implement
+phase: review
 specified:
   REQ-CLI-012: 14b03b3114b4
   REQ-PROJ-023: 807be212b8e0
