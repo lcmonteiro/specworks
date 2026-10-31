@@ -120,11 +120,12 @@ next step the same way: the next skill (recommended), any alternative, and
       ```bash
       specworks run test --change "<ref>"
       ```
-      Existing tests must stay green (step 4 fixes what fails). This
-      change's own `@ac` tests may fail (or not exist yet): do not read them
-      to make them pass; review compares them with the code. In a build the
-      test half may be changing existing tests at the same time; the suite
-      meets them in `gate implement` after the merge.
+      Existing tests must stay green (step 4, Run the project's checks, fixes
+      what fails). This change's own `@ac` tests may fail (or not exist
+      yet): do not read them to make them pass; review compares them with
+      the code. In a build the test half may be changing existing tests at
+      the same time; the suite meets them in `gate implement` after the
+      merge.
    7. Tick a [code] task when its own checks pass; the suite is not one of them:
       ```bash
       specworks task done <N.M> --change "<ref>"
