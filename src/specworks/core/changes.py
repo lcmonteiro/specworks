@@ -12,7 +12,7 @@ import yaml
 
 from .config import Config
 from .errors import SpecworksError
-from .git import commit, dirty_files
+from .git import GitError, commit, dirty_files
 from .validators import validate_kebab
 
 META_FILE = ".change.yaml"
@@ -67,6 +67,15 @@ class Change:
         (self.path / META_FILE).write_text(yaml.safe_dump(data, sort_keys=False), encoding="utf-8")
 
 
+# @req REQ-PROJ-023
+def _record(root: Path) -> dict[str, str]:
+    """The dirty files to record when a phase starts; none outside a git repository, where the move still succeeds."""
+    try:
+        return dirty_files(root)
+    except GitError:
+        return {}
+
+
 # @req REQ-PROJ-010
 # @req REQ-PROJ-023
 def create_change(cfg: Config, name: str, root: Path | None = None) -> Change:
@@ -82,7 +91,7 @@ def create_change(cfg: Config, name: str, root: Path | None = None) -> Change:
     path = cfg.changes_path / name
     if path.exists():
         raise ChangeError(f"change '{name}' already exists at {path.relative_to(cfg.root)}")
-    dirty = dirty_files(root) if root is not None else {}  # before the folder exists: it is the change's own
+    dirty = _record(root) if root is not None else {}  # before the folder exists: it is the change's own
     path.mkdir(parents=True)
     change = Change(name=name, path=path, created=datetime.now().isoformat(timespec="seconds"), dirty=dirty)
     change.save()
@@ -171,7 +180,7 @@ def set_phase(change: Change, phase: str, root: Path | None = None) -> None:
         # `done` means merged into the living specs and archived; only `specworks close` does that.
         raise ChangeError("a change becomes done only through `specworks close`, which merges its specs and archives it")
     if root is not None and phase != change.phase:
-        change.dirty = dirty_files(root)
+        change.dirty = _record(root)
     change.phase = phase
     change.save()
 
