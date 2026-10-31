@@ -223,6 +223,7 @@ def gates_to_start(current: str, phase: str) -> list[str]:
 
 
 # @req REQ-FLOW-014, REQ-FLOW-005
+# @req REQ-PROJ-023
 def start_phase(ctx: GateContext, phase: str) -> tuple[bool, list[tuple[str, list[Check]]]]:
     """Run the gates ``phase`` depends on, in order, and move the change to it if they all pass.
 
@@ -238,5 +239,5 @@ def start_phase(ctx: GateContext, phase: str) -> tuple[bool, list[tuple[str, lis
         if gate == "specify":
             # The specs are agreed as they are now; later gates warn when they change (saved with the phase).
             ctx.change.specified = ctx.analysis.specs.fingerprints()
-    set_phase(ctx.change, phase)
+    set_phase(ctx.change, phase, ctx.ws.root)  # a new phase records the files already dirty
     return True, ran
