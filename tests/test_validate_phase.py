@@ -130,7 +130,7 @@ def test_open_tasks_fail_the_check_of_their_kind(repo):
     code = checks["every [code] task is done (specworks task list --pending)"]
     unmarked = checks["every task with no [test] or [code] marker is done (specworks task list --pending)"]
     assert test["ok"] is False and test["details"] == ["1.1 [test] Write failing tests for AC-AUTH-003.1 and AC-AUTH-003.2; verify they fail"]
-    assert code["ok"] is False and code["details"] == ["1.2 [code] Implement reset links (REQ-AUTH-003); verify 1.1 passes"]
+    assert code["ok"] is False and code["details"] == ["1.2 [code] Implement reset links (REQ-AUTH-003); verify lint passes"]
     assert unmarked["ok"] is False and unmarked["details"] == ["2.2 Add the reset link stub (REQ-AUTH-003)"]
     assert (test["fix"], code["fix"], unmarked["fix"]) == ("/specworks-test", "/specworks-code", "/specworks-design")
     assert all(c["group"] == "completeness" for c in (test, code, unmarked))

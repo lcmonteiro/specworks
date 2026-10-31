@@ -555,6 +555,34 @@ def test_the_design_instruction_asks_a_structural_change_for_a_block_diagram():
     assert "block diagram" in diagrams and "No structural change" in diagrams
 
 
+def test_the_tasks_instruction_verifies_a_code_task_without_the_test_half():
+    # The code half cannot see the test half's tests until the merge, so a [code] task that waits on them cannot be ticked in its half.
+    text = flat(load_artifacts()["tasks"].instruction)
+    assert "A [code] task is verified by lint, typecheck or observable behaviour, never by the test half's tests or the suite" in text
+
+
+def test_the_design_instruction_pins_the_wording_a_change_tests():
+    # Both halves read the same phrases from design.md, so the wording tests and the text they check agree at the merge.
+    assert "**Pinned wording**" in flat(load_artifacts()["design"].instruction)
+
+
+def test_the_code_half_ticks_a_task_on_its_own_checks_and_writes_the_pinned_phrases():
+    text = flat(read_skill("specworks-code"))
+    assert "Tick a [code] task when its own checks pass; the suite is not one of them" in text
+    assert "Write the pinned phrases of design.md verbatim" in text
+
+
+def test_the_test_half_asserts_only_the_pinned_phrases():
+    assert "Assert only the pinned phrases of design.md, verbatim" in flat(read_skill("specworks-test"))
+
+
+def test_specify_fixes_the_check_warnings_about_the_tasks_when_writing_them():
+    # The warning is cheapest to act on in specify, before the build; the step pins no phrase, so only its subject is checked.
+    tasks_step = flat(step(read_skill("specworks-specify"), 7))
+    assert "specworks check" in tasks_step or "`check`" in tasks_step, tasks_step
+    assert "warning" in tasks_step, tasks_step
+
+
 def test_the_design_template_diagrams_comment_follows_the_structural_change_rule():
     diagrams = flat(read_template("design.md").split("## Diagrams", 1)[1].split("\n## ", 1)[0])
     assert "block diagram" in diagrams and "No structural change" in diagrams

@@ -68,7 +68,7 @@ TASKS = """\
 
 - [ ] 1.1 Add `slugify(title: str) -> str` as a stub in `src/textkit/slug.py` (REQ-SLUG-001); verify the existing tests pass
 - [ ] 1.2 [test] Write failing tests for AC-SLUG-001.1 and AC-SLUG-001.2 tagged `@ac`; verify they fail on the stub
-- [ ] 1.3 [code] Implement `slugify` (REQ-SLUG-001) tagged `@req`; verify the 1.2 tests pass
+- [ ] 1.3 [code] Implement `slugify` (REQ-SLUG-001) tagged `@req`; verify lint passes
 """
 
 DESIGN = """\
