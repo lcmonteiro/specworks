@@ -19,6 +19,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from ..core.changes import META_FILE, Change
+from ..core.errors import SpecworksError
 from ..core.files import read_text
 from ..core.git import GitError, git, git_text
 from ..core.workspace import Workspace
@@ -323,3 +324,50 @@ def parse_review(text: str) -> ReviewDoc:
 def read_review(change: Change) -> ReviewDoc:
     path = change.path / REVIEW_FILE
     return parse_review(read_text(path)) if path.is_file() else ReviewDoc(exists=False)
+
+
+# --- writing review.md --------------------------------------------------------
+#
+# Each writer edits review.md's text in place (one line added at the end of the
+# finding's block, a Decision replaced, a box ticked), reads the edited text back
+# with ``parse_review``, and writes the file only when the finding reads as expected.
+
+
+class FindingError(SpecworksError):
+    """A refused write to review.md: an unknown finding, type or step, an empty text, a decision in another form,
+    or an edit that does not read back; review.md is left as it was."""
+
+
+def add_finding(change: Change, kind: str, text: str, proposal: str) -> Finding:
+    """Add an open finding of type ``kind`` (one of ``TYPE_PHASE``) with the next free ID and its Proposal line under
+    ``## Findings``, creating review.md from its template when missing; the finding as ``read_review`` reads it after.
+
+    Implements REQ-FLOW-016.
+    """
+    raise NotImplementedError
+
+
+def decide_finding(change: Change, finding_id: str, decision: str) -> Finding:
+    """Write the finding's Decision (``back to <step>: ...`` or ``accepted: ...``), replacing the one it has;
+    ``accepted`` ticks it. The finding as ``read_review`` reads it after.
+
+    Implements REQ-FLOW-016.
+    """
+    raise NotImplementedError
+
+
+def mark_finding_done(change: Change, finding_id: str, step: str, text: str) -> Finding:
+    """Add ``done in <step>: <text>`` to the finding (``step``: specify, design, implement, test or code);
+    the finding as ``read_review`` reads it after.
+
+    Implements REQ-FLOW-016.
+    """
+    raise NotImplementedError
+
+
+def close_finding(change: Change, finding_id: str, text: str) -> Finding:
+    """Tick the finding and add ``confirmed in review: <text>``; the finding as ``read_review`` reads it after.
+
+    Implements REQ-FLOW-016.
+    """
+    raise NotImplementedError
