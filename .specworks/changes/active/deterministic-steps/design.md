@@ -45,12 +45,9 @@ the text contains them.
 
 ### Existing sample tasks that break the new rule
 
-Resolved without a new task: the test half reworded both samples in its own
-commit (task 1.1), keeping every assertion; the merge brings them in.
-
-Two sample `tasks.md` texts in the tests have a `[code]` task that names a
-`[test]` task, so the new warning fires and 6 existing tests that expect no
-`check` warnings fail (`test_design_phase::test_none_passes_without_files`,
+Two sample `tasks.md` texts in the tests had a `[code]` task that named a
+`[test]` task, so the new warning would fire and 6 existing tests that expect
+no `check` warnings would fail (`test_design_phase::test_none_passes_without_files`,
 `test_propose::test_a_half_with_no_task_is_a_warning` (both cases),
 `test_test_phase::test_ac_tag_in_source_file_is_a_warning`,
 `test_validate_phase::test_no_run_turns_commands_into_warnings`,
@@ -59,12 +56,12 @@ Two sample `tasks.md` texts in the tests have a `[code]` task that names a
 - `tests/samples.py`: `1.2 [code] Implement reset links (REQ-AUTH-003); verify 1.1 passes`
 - `tests/test_walkthrough.py`: `1.3 [code] Implement slugify (REQ-SLUG-001) tagged @req; verify the 1.2 tests pass`
 
-The proposal: a new `[test]` task 1.3 rewords both so the `[code]` task is
-verified without the test half (e.g. `verify lint passes and the reset link
-is sent`, `verify lint passes and slugify("A b") returns "a-b"`), keeping
-every assertion of those tests as it is. The warning is the agreed
-behaviour (REQ-SPECS-015); the samples, not the tests' expectations, are out
-of date. Serves REQ-SPECS-015.
+The test half reworded both, with no new task: `tests/samples.py` task 1.2
+and `tests/test_walkthrough.py` task 1.3 now end in `verify lint passes`.
+Every assertion of those tests is kept; the one detail string in
+`tests/test_validate_phase.py` that quotes the sample task 1.2 follows the
+new text. The warning is the agreed behaviour; the samples, not the tests'
+expectations, were out of date. Serves REQ-SPECS-015.
 
 ## Interfaces
 

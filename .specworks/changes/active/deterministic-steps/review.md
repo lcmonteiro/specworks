@@ -15,6 +15,7 @@ Base: `origin/main`
 - [ ] R3 **design-gap** The Decision "Existing sample tasks that break the new rule" opens with "Resolved without a new task: the test half reworded both samples in its own commit (task 1.1)", then keeps the superseded paragraph "The proposal: a new `[test]` task 1.3 rewords both ... (e.g. `verify lint passes and the reset link is sent` ...)". There is no task 1.3, and the samples now read `verify lint passes`. Close folds this Decision into the living `design.md`, so the paragraph would record a plan that never happened (`design.md:48`, `design.md:62`)
   - **Proposal**: back to design: replace the superseded proposal paragraph with what was done: the test half reworded `tests/samples.py` task 1.2 and `tests/test_walkthrough.py` task 1.3 to `verify lint passes`, kept every assertion, and updated the one detail string in `tests/test_validate_phase.py` that quotes the sample. No API, test or code change follows
   - **Decision**: back to design: replace the superseded proposal paragraph of the Decision "Existing sample tasks that break the new rule" with what was done (agreed with the user)
+  - done in design: the paragraph proposing a new `[test]` task 1.3 is replaced by what the test half did (samples.py task 1.2 and test_walkthrough.py task 1.3 reworded to `verify lint passes`, assertions kept, the test_validate_phase.py detail string updated); no API, test or code change follows
 
 ## Changed files without tags
 
