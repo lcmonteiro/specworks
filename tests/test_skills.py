@@ -12,7 +12,8 @@ from helpers import init_repo, set_saved_tools
 from specworks.cli import app
 from specworks.core.changes import PHASES
 from specworks.core.config import COMMAND_KEYS, TOOL_IDS, load_config
-from specworks.tools.skills import TOOLS, packaged_skills, read_skill, render_skill, resolve_tools, skill_folders, skills_state
+from specworks.tools import skills as skills_module
+from specworks.tools.skills import TOOLS, ToolError, fill_includes, packaged_skills, read_skill, render_skill, resolve_tools, skill_folders, skills_state
 from specworks.workflow.artifacts import load_artifacts, read_template
 from specworks.workflow.gate import GATES
 
@@ -972,3 +973,97 @@ def test_the_start_skill_creates_the_code_folders_with_capability_add_create(phr
 
 def test_the_start_skill_no_longer_writes_the_gitkeep_by_hand():
     assert "write an empty `.gitkeep`" not in raw_skill_file("specworks-start/SKILL.md")
+
+
+# --- includes with parameters (REQ-INTEG-007) --------------------------------------------
+
+def fake_shared(files):
+    """A ``shared`` for ``fill_includes``: the text of each shared file by name."""
+    return lambda name: files[name]
+
+
+# @ac AC-INTEG-007.1
+def test_ac_integ_007_1_a_parameter_is_filled_in():
+    text = "# Skill\n<!-- specworks:include record phase=test -->\nAfter.\n"
+    filled = fill_includes(text, "specworks-x", fake_shared({"record": "Record it with --in {{phase}}.\n"}))
+    assert filled == "# Skill\nRecord it with --in test.\nAfter.\n"
+
+
+# @ac AC-INTEG-007.2
+def test_ac_integ_007_2_a_quoted_value_is_filled_in():
+    text = '<!-- specworks:include who who="the code half" -->\n'
+    filled = fill_includes(text, "specworks-x", fake_shared({"who": "Done by {{who}}.\n"}))
+    assert filled == "Done by the code half.\n"
+
+
+# @ac AC-INTEG-007.3
+def test_ac_integ_007_3_a_placeholder_left_unfilled_fails():
+    text = "<!-- specworks:include record -->\n"
+    with pytest.raises(ToolError) as error:
+        fill_includes(text, "specworks-x", fake_shared({"record": "Record it with --in {{phase}}.\n"}))
+    message = str(error.value)
+    assert "leaves {{phase}} unfilled" in message and "specworks-x" in message and "record" in message
+
+
+# @ac AC-INTEG-007.4
+def test_ac_integ_007_4_a_key_the_shared_file_does_not_use_fails():
+    text = "<!-- specworks:include record colour=red -->\n"
+    with pytest.raises(ToolError) as error:
+        fill_includes(text, "specworks-x", fake_shared({"record": "No placeholder here.\n"}))
+    message = str(error.value)
+    assert "does not use colour" in message and "specworks-x" in message and "record" in message
+
+
+def test_a_key_given_twice_fails():
+    # design.md: a key given twice is an error (pinned fragment `gives`).
+    text = "<!-- specworks:include record phase=test phase=code -->\n"
+    with pytest.raises(ToolError) as error:
+        fill_includes(text, "specworks-x", fake_shared({"record": "Record it with --in {{phase}}.\n"}))
+    message = str(error.value)
+    assert "gives" in message and "phase" in message and "specworks-x" in message and "record" in message
+
+
+# @ac AC-INTEG-007.5
+def test_ac_integ_007_5_an_include_without_parameters_is_copied_exactly():
+    shared = "Use `a\\1` and {single} braces, $HOME and — as they are.\n\nSecond paragraph.\n"
+    filled = fill_includes("Before.\n<!-- specworks:include plain -->\nAfter.\n", "specworks-x", fake_shared({"plain": shared}))
+    assert filled == f"Before.\n{shared}After.\n"
+
+
+# @ac AC-INTEG-007.6
+def test_ac_integ_007_6_nothing_is_written_when_a_packaged_include_fails(tmp_path, monkeypatch):
+    init(tmp_path, monkeypatch, "--tools", "claude")
+    stale = tmp_path / ".claude/skills/specworks-retired/SKILL.md"  # a specworks skill this version does not ship
+    stale.parent.mkdir(parents=True)
+    stale.write_text("old\n", encoding="utf-8")
+    (tmp_path / f".claude/skills/{SKILL}/SKILL.md").write_text("old\n", encoding="utf-8")
+    before = installed_files(tmp_path)
+    real = skills_module.fill_includes
+
+    def failing(text, skill, shared):
+        if skill == "specworks-test":
+            raise ToolError(f"skill {skill}: include back-from-review leaves {{{{phase}}}} unfilled")
+        return real(text, skill, shared)
+
+    monkeypatch.setattr(skills_module, "fill_includes", failing)
+    result = runner.invoke(app, ["skills", "--tools", "claude"])
+    assert result.exit_code == 1, result.output
+    assert "leaves {{phase}} unfilled" in result.output
+    assert installed_files(tmp_path) == before
+
+
+# @ac AC-INTEG-007.7
+@pytest.mark.parametrize("name", packaged_skills())
+def test_ac_integ_007_7_every_packaged_skill_fills_in(name):
+    text = read_skill(name)
+    assert "{{" not in text and "specworks:include" not in text
+
+
+@pytest.mark.parametrize("name", ["specworks-design", "specworks-test", "specworks-code"])
+def test_the_back_from_review_rule_is_shared(name):
+    assert "<!-- specworks:include back-from-review" in raw_skill_file(f"{name}/SKILL.md")
+
+
+@pytest.mark.parametrize("name", ["specworks-test", "specworks-code"])
+def test_the_start_implement_rule_is_shared(name):
+    assert "<!-- specworks:include start-implement" in raw_skill_file(f"{name}/SKILL.md")
