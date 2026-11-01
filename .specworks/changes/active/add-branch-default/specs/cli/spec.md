@@ -41,6 +41,12 @@ null.
 - **WHEN** `new add-login` runs
 - **THEN** the output has a line `stayed on work`
 
+#### Scenario: AC-CLI-015.6 Staying on a detached HEAD
+
+- **GIVEN** `branch_per_change: false` and a detached HEAD
+- **WHEN** `new add-login --json` runs
+- **THEN** the change is created, HEAD is still detached, and the output has `branch` and `stayedOn` null
+
 ## MODIFIED Requirements
 
 ### Requirement: REQ-CLI-006 Creating, moving and dropping changes
@@ -50,7 +56,8 @@ null.
 change's branch unless `branch_per_change` or `--no-branch` says to stay
 (REQ-CLI-015), and it SHALL fail without
 creating the change, naming the reason, when the folder is not inside a git
-repository, the branch already exists, or HEAD is detached. `phase <phase>
+repository or, when it creates the branch, the branch already exists or HEAD
+is detached. `phase <phase>
 --change <ref>` SHALL move a change without checking gates, and SHALL refuse
 the old argument order with a hint. `abandon` SHALL archive a change without
 merging, and requires a reason. `skip-specs` SHALL mark a change as having no
@@ -93,7 +100,7 @@ behaviour change, and `--off` removes the mark.
 
 #### Scenario: AC-CLI-006.8 Nothing is left behind
 
-- **WHEN** `new` runs outside a git repository, with the change's branch already existing, or with a detached HEAD
+- **WHEN** `new` runs outside a git repository, or creates the change's branch while that branch already exists or HEAD is detached
 - **THEN** it fails naming the reason, and no change folder and no branch are created
 
 #### Scenario: AC-CLI-006.9 Not on the base branch

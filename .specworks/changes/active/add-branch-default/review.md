@@ -29,6 +29,8 @@ reading the diff. `- [ ] R<n>` while open, `- [x] R<n>` once resolved. Write
   - confirmed in review: confirmed in cycle 2: config set's KEY help and docstring name branch_per_change (src/specworks/cli/project.py:355, :361)
 - [ ] R4 **spec-gap** with a detached HEAD and new staying (branch_per_change false, or --no-branch), the code creates the change with branch and stayedOn null (current_branch returns None, src/specworks/core/git.py:103; new at src/specworks/cli/changes.py:42), as REQ-CLI-015 says ('none with a detached HEAD'); but REQ-CLI-006 (MODIFIED) still says new SHALL fail, creating nothing, when HEAD is detached (AC-CLI-006.8), without limiting that to creating the branch, so the two requirements contradict each other; and no criterion covers the detached stay, so its path (git.py:107-110) has no test
   - **Proposal**: back to specify: reword REQ-CLI-006 so the existing-branch and detached-HEAD failures apply when new creates the branch (staying on a detached HEAD creates the change, REQ-CLI-015), AC-CLI-006.8 likewise; add AC-CLI-015.6 (GIVEN branch_per_change false and a detached HEAD, WHEN new add-login --json runs, THEN the change is created, HEAD is still detached, and branch and stayedOn are null); then the test half adds its test. No code change
+  - **Decision**: back to specify: limit REQ-CLI-006's detached-HEAD and existing-branch failures to creating the branch, add AC-CLI-015.6 for staying on a detached HEAD; the test half adds its test, no code change
+  - done in specify: REQ-CLI-006 and AC-CLI-006.8 limit the detached-HEAD and existing-branch failures to creating the branch; added AC-CLI-015.6 and task 4.1
 
 ## Changed files without tags
 
