@@ -10,6 +10,7 @@ reading the diff. `- [ ] R<n>` while open, `- [x] R<n>` once resolved. Write
 
 - [ ] R1 **quality** With --create, a --path whose parent exists as a file (a file `src`, `--path src/auth`) passes the file check, the config is written, then mkdir raises an uncaught NotADirectoryError: a traceback with exit 1 and no {"error": ...} under --json, and the capability stays registered; REQ-CLI-014 says a path that exists as a file is refused before the config is written and a refused add creates nothing (`src/specworks/cli/project.py:337`)
   - **Proposal**: back to implement: code: before add_capability_entry, with --create, refuse when the code folder or any of its parents below the module root exists and is not a folder, with the existing ConfigError '<that path> exists and is not a folder; give <name> another --path' (path relative to the workspace root); test: a test under AC-CLI-014.5 with a file `src` and `--path src/auth --create --json` asserting {"error": ...} naming src, exit 1, the file and the config unchanged
+  - **Decision**: back to implement: before registering, refuse when the code folder or any parent below the module root exists and is not a folder (ConfigError naming it), plus a test under AC-CLI-014.5 with a file src and --path src/auth
 
 ## Changed files without tags
 
