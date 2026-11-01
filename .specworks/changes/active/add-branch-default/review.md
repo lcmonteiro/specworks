@@ -13,14 +13,17 @@ reading the diff. `- [ ] R<n>` while open, `- [x] R<n>` once resolved. Write
   - **Decision**: back to specify: drop 'outside a git repository' from REQ-CLI-015 and modify REQ-CLI-006 so the branch also follows branch_per_change
   - done in specify: REQ-CLI-015 no longer names an outside-git case; REQ-CLI-006 modified to name branch_per_change; task 3.1/3.2 confirm its tests and tag
   - done in design: no API change: REQ-CLI-006 is reworded only; design.md's Interfaces says so
+  - done in implement: code: new already carries @req REQ-CLI-006 next to REQ-CLI-015; no code change
 - [ ] R2 **spec-gap** config set branch_per_change writes the current module's config, or --module's (REQ-CLI-013; set_config_value(target.root, ...) at src/specworks/cli/project.py:376), but REQ-PROJ-026 ignores a module's own branch_per_change: run from inside a module, the command reports success and changes nothing
   - **Proposal**: back to specify: REQ-CLI-013 (MODIFIED) says branch_per_change is always written to the top level's config, whatever the current module or --module, and the output names that config's path; add its criterion (from inside module billing, config set branch_per_change false changes only the top config and ws.top.config.branch_per_change is false); then design and both halves follow (config_set passes ws.top.root for that key)
   - **Decision**: back to specify: REQ-CLI-013 always writes branch_per_change to the top level's config (whatever the current module or --module), with a new criterion
   - done in specify: REQ-CLI-013 modified: branch_per_change is always written to the top level's config; added AC-CLI-013.6 and tasks 3.1/3.2
   - done in design: design.md: config_set targets ws.top for branch_per_change, output names the top level; signature unchanged, no stub needed
+  - done in implement: code: config_set writes branch_per_change to ws.top's config whatever the current module or --module; output names the top level (src/specworks/cli/project.py)
 - [ ] R3 **quality** config set's help does not list the new key: the KEY argument says 'context, or commands.<test|lint|typecheck|build|format>' and the docstring 'Set a command or the context' (src/specworks/cli/project.py:355 and :361)
   - **Proposal**: back to code: name branch_per_change (true|false) in the KEY help and the docstring
   - **Decision**: back to code: name branch_per_change in config set's key help and docstring
+  - done in code: config set's KEY help and docstring name branch_per_change (true|false, top level's config)
 
 ## Changed files without tags
 
