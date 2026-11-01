@@ -60,8 +60,9 @@ the entry is appended. Serves: REQ-PROJ-025.
 Before writing, the file is parsed as YAML; after writing, it is loaded with
 `load_config` and parsed again. The edit stands only when it loads and the
 parsed mapping equals the one before with just that key set (for `context`,
-the text plus one newline, or `None` when empty; for a command, the value, or
-`None` when empty). Otherwise the original text is written back and the error
+the text plus one newline, or an empty string when the text is empty, which
+is what `context: |` alone loads as; for a command, the value, or `None` when
+empty). Otherwise the original text is written back and the error
 is `could not set <key> in <config path> automatically; set it by hand`. A
 flow mapping such as `commands: {test: pytest}` gets a second `commands:`
 block, the check sees `test` gone, and the file is restored. Serves:
