@@ -200,12 +200,20 @@ class CommitResult:
 def commit_phase(root: Path, ref: str, change: Change, subject: str | None = None, trailers: Sequence[str] = ()) -> CommitResult:
     """Commit the change folder and every file dirty now that is not in its record or whose content differs.
 
-    `root` is the workspace root and `ref` the change's ref, for the default subject `<ref>: <phase>`; the trailers
-    follow a blank line, in order. Nothing to commit returns `commit=None`. Raises `GitError` on a detached HEAD
-    before staging anything. Never pushes. Implements REQ-PROJ-024.
+    `root` is the workspace root and `ref` the change's ref, for the default subject `<ref>: <phase>` (`<ref>: close`
+    for a change close has archived, phase `done`); the trailers follow a blank line, in order. Files of the change's
+    own folder (and, once archived, of its former active folder) are never reported as already dirty. Nothing to
+    commit returns `commit=None`. Raises `GitError` on a detached HEAD before staging anything. Never pushes.
+    Implements REQ-PROJ-024.
     """
-    subject = subject if subject is not None else f"{ref}: {change.phase}"
-    folder = change.path.resolve().relative_to(root.resolve()).as_posix() + "/"
+    archived = change.phase == "done"
+    subject = subject if subject is not None else f"{ref}: {'close' if archived else change.phase}"
+    def rel(path: Path) -> str:
+        return path.resolve().relative_to(root.resolve()).as_posix() + "/"
+
+    folder = rel(change.path)
+    # An archived change's folder is <changes>/archive/<date>-<name>/; close removed <changes>/active/<name>/.
+    own = (folder, rel(change.path.parent.parent / ACTIVE_DIR / change.name)) if archived else (folder,)
     now = dirty_files(root)
     committed = [p for p, digest in now.items() if p.startswith(folder) or change.dirty.get(p) != digest]
     left_out = [p for p in now if p not in committed]
@@ -213,4 +221,4 @@ def commit_phase(root: Path, ref: str, change: Change, subject: str | None = Non
         return CommitResult(None, subject, [], left_out, [])
     message = subject + ("\n\n" + "\n".join(trailers) if trailers else "") + "\n"
     short = commit(root, committed, message)
-    return CommitResult(short, subject, committed, left_out, [p for p in committed if p in change.dirty])
+    return CommitResult(short, subject, committed, left_out, [p for p in committed if p in change.dirty and not p.startswith(own)])

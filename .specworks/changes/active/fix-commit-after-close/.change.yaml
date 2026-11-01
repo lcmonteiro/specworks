@@ -1,6 +1,6 @@
 name: fix-commit-after-close
 created: '2026-11-01T03:09:41'
-phase: design
+phase: implement
 specified:
   REQ-CLI-012: 424dd7f6893a
   REQ-PROJ-024: 07725cd4e09f

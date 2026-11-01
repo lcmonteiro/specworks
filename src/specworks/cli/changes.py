@@ -111,9 +111,15 @@ def commit(
 ) -> None:
     """Commit the change's phase: its folder and the files changed since the phase started. Never pushes.
 
-    `--json` returns ref, commit (null when nothing was committed), subject, committed, leftOut and alreadyDirty.
+    With no active change of that name, it commits the newest archived one (after `specworks close`), subject
+    `<ref>: close`. `--json` returns ref, commit (null when nothing was committed), subject, committed, leftOut and
+    alreadyDirty.
     """
-    ws, mod, ch = require_change(change, as_json)
+    ws = workspace(as_json)
+    try:
+        mod, ch = resolve_change(ws, change)
+    except ChangeNotFound:
+        mod, ch = resolve_archived(ws, change)
     ref = mod.qualify(ch.name)
     result = commit_phase(ws.root, ref, ch, message, trailer or ())
     data = {
