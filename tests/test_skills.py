@@ -953,3 +953,22 @@ def test_the_skills_write_the_config_with_config_set(path, phrase):
 def test_the_skills_no_longer_write_commands_or_context_by_hand(path):
     text = raw_skill_file(path)
     assert "under `commands:`" not in text and "under `context:`" not in text
+
+
+# --- the start skill creates the code folders with `capability add --create` -------------
+
+START_CREATE_WORDING = [
+    'specworks capability add <name> --path <folder> [--module <m>] --create --description "<one line>"',
+    "`--create` creates the code folder with an empty `.gitkeep` so git keeps it",
+    "`module add`, `capability add --create` and `config set`",
+]
+
+
+@pytest.mark.parametrize("phrase", START_CREATE_WORDING)
+def test_the_start_skill_creates_the_code_folders_with_capability_add_create(phrase):
+    # `capability add --create` writes each `.gitkeep`; the start skill no longer writes them by hand (REQ-CLI-014).
+    assert phrase in raw_skill_file("specworks-start/SKILL.md")
+
+
+def test_the_start_skill_no_longer_writes_the_gitkeep_by_hand():
+    assert "write an empty `.gitkeep`" not in raw_skill_file("specworks-start/SKILL.md")
