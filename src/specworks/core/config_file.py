@@ -13,7 +13,7 @@ from .config import COMMAND_KEYS, CONFIG_FILE, MAX_CONTEXT_BYTES, WORKFLOW_DIR, 
 from .files import read_text
 from .validators import validate_capability_name, validate_module_name, validate_prefix, validate_relative
 
-SETTABLE_KEYS: tuple[str, ...] = ("context", *(f"commands.{key}" for key in COMMAND_KEYS))
+SETTABLE_KEYS: tuple[str, ...] = ("context", *(f"commands.{key}" for key in COMMAND_KEYS), "branch_per_change")
 """The keys `specworks config set` writes, in the order an error names them. Implements REQ-PROJ-025."""
 
 DEFAULT_CONFIG = """\
@@ -208,12 +208,15 @@ def save_tools(root: Path, ids: list[str]) -> None:
 def set_config_value(root: Path, key: str, value: str) -> None:
     """Set ``key`` (one of ``SETTABLE_KEYS``) to ``value`` in the config at ``root``, keeping the user's comments.
 
-    An empty ``value`` clears the key. The file is edited as text and reloaded; when it does not
-    load with just that key changed, it is restored. Raises ``ConfigError`` for an unknown key, a
-    context over ``MAX_CONTEXT_BYTES``, or an edit that does not load back. Implements REQ-PROJ-025.
+    An empty ``value`` clears the key (``branch_per_change`` takes only ``true`` or ``false``). The file is
+    edited as text and reloaded; when it does not load with just that key changed, it is restored. Raises
+    ``ConfigError`` for an unknown key, a context over ``MAX_CONTEXT_BYTES``, a ``branch_per_change`` that is
+    not ``true`` or ``false``, or an edit that does not load back. Implements REQ-PROJ-025.
     """
     if key not in SETTABLE_KEYS:
         raise ConfigError(f"unknown config key '{key}'; use one of: {', '.join(SETTABLE_KEYS)}")
+    if key == "branch_per_change":
+        raise NotImplementedError
     expected: object
     if key == "context":
         text = value.replace("\r\n", "\n").rstrip("\n")

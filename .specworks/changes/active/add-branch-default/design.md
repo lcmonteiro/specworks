@@ -75,7 +75,7 @@ Messages and text the tests assert, verbatim:
 
 ## Interfaces
 
-Proposed: waiting for the user's agreement
+Agreed with the user
 
 - `src/specworks/core/config.py`: `Config.branch_per_change: bool = True`;
   `"branch_per_change"` in `CONFIG_KEYS` (REQ-PROJ-026).

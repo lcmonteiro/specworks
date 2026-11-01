@@ -19,15 +19,17 @@ from .output import ChangeOpt, JsonOpt, change_dict, emit, require_change, resol
 def new(
     name: str,
     module: str | None = typer.Option(None, "--module", "-m", help="Create it in this module instead of the current one."),
-    no_branch: bool = typer.Option(False, "--no-branch", help="Stay on the current branch instead of creating the change's branch."),
+    branch: bool | None = typer.Option(
+        None, "--branch/--no-branch", help="Create the change's branch, or stay on the current one, whatever the config's branch_per_change says."
+    ),
     as_json: bool = JsonOpt,
 ) -> None:
-    """Create a new change folder (phase: refine) in the current module, on its own branch."""
+    """Create a new change folder (phase: refine) in the current module, on its own branch unless branch_per_change is false."""
     ws = workspace(as_json)
     target = ws.module(module) if module is not None else ws.current
     require_repo(target.root)
     plan = None
-    if not no_branch:
+    if branch is not False:  # stub: the setting is not read yet (REQ-CLI-015)
         try:
             base = detect_base(target.root)
         except GitError:
@@ -36,7 +38,7 @@ def new(
     change = create_change(target.config, name, ws.root)
     if plan is not None:
         create_branch(target.root, plan)
-    data = {**change_dict(ws, target, change), "branch": plan.name if plan else None, "startedFrom": plan.started_from if plan else None}
+    data = {**change_dict(ws, target, change), "branch": plan.name if plan else None, "startedFrom": plan.started_from if plan else None, "stayedOn": None}
     lines = [f"created {ws.rel(change.path)}"]
     if plan is not None:
         lines.append(f"branch  {plan.name}")
