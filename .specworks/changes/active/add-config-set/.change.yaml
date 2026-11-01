@@ -1,6 +1,6 @@
 name: add-config-set
 created: '2026-11-01T10:08:27'
-phase: review
+phase: specify
 specified:
   REQ-CLI-013: 9e477edaa870
   REQ-PROJ-025: 723da2b9e2ac

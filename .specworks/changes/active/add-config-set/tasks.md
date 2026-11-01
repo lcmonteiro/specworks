@@ -16,3 +16,8 @@
 
 - [x] 3.1 [test] Wording tests in `tests/test_skills.py` for the skill phrases pinned in design.md, and that none of the five files contains ``under `commands:` `` or ``under `context:` `` (REQ-CLI-013); verify they fail on the current skills
 - [x] 3.2 [code] Rewrite the steps in `specworks-adopt`, `specworks-start`, `specworks-test`, `specworks-code` and `_shared/phase-subagents.md` with the pinned wording, then refresh the installed copies with `uv run specworks skills` (REQ-CLI-013); verify `grep -rn 'config set' .claude/skills` lists each phrase
+
+## 4. Review cycle 1
+
+- [ ] 4.1 [test] Review R1 and R2: tests for AC-PROJ-025.10 (the default config gets a `typecheck:` line under `commands:`, test and lint unchanged, comments kept) and AC-PROJ-025.11 (a context over the size limit refused naming it, file unchanged), tagged `@ac`; verify they pass on the current code
+- [ ] 4.2 [test] Review R3: tests for the restore when the edited file does not load (a 4-space `commands:` block, tagged `@ac AC-PROJ-025.9`), a context added to a config with no `context:` line (tagged `@ac AC-PROJ-025.6`) and an unreadable `--file` (config unchanged, tagged `@ac AC-CLI-013.2`); verify each asserts the config file unchanged on error

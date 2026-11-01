@@ -10,7 +10,8 @@ the user's comments and the other entries SHALL be kept. A command SHALL be
 one line under `commands:`, replacing that key's line when there is one; the
 context SHALL be a block replacing the `context:` entry there. An empty value
 SHALL clear the key. Any other key SHALL be refused before writing, naming the
-keys it accepts. When the edit would not load with the new value and every
+keys it accepts. A context larger than the config's size limit SHALL be
+refused before writing, naming the limit. When the edit would not load with the new value and every
 other entry unchanged, the file SHALL be left unchanged and the error SHALL
 say to set the key by hand.
 
@@ -65,3 +66,14 @@ say to set the key by hand.
 - **GIVEN** a config with `commands: {test: pytest}`
 - **WHEN** `commands.lint` is set to `ruff check .`
 - **THEN** the config file is unchanged and the error says to set `commands.lint` by hand
+
+#### Scenario: AC-PROJ-025.10 A command added to the commands block
+
+- **GIVEN** the default config written by `init`
+- **WHEN** `commands.typecheck` is set to `uv run mypy`
+- **THEN** the config loads with that typecheck command and its test and lint entries unchanged, has one `typecheck:` line, and its comments are still there
+
+#### Scenario: AC-PROJ-025.11 A context over the size limit
+
+- **WHEN** `context` is set to a text larger than the config's size limit
+- **THEN** it is refused naming the limit, and the config file is unchanged
