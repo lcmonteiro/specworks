@@ -11,7 +11,7 @@ import typer
 from .. import __version__
 from ..core.changes import archived_as, list_archived
 from ..core.config import Config, ConfigError, find_config, load_config, old_config_in, old_layout_error
-from ..core.config_file import add_capability_entry, add_module_entry, save_tools, write_default_config
+from ..core.config_file import add_capability_entry, add_module_entry, save_tools, set_config_value, write_default_config
 from ..core.git import require_repo
 from ..core.validators import validate_relative
 from ..core.workspace import Module, Workspace, capability_prefix, load_module_config, load_workspace, require_workspace
@@ -334,6 +334,7 @@ def capability_add(
     emit(data, as_json, f"registered {data['ref']} -> {data['codePath']} (REQ-{data['prefix']}-)")
 
 
+# @req REQ-CLI-013
 @config_app.command("set")
 def config_set(
     key: str = typer.Argument(..., help="context, or commands.<test|lint|typecheck|build|format>."),
@@ -343,4 +344,20 @@ def config_set(
     as_json: bool = JsonOpt,
 ) -> None:
     """Set a command or the context in a module's config, keeping its comments. Implements REQ-CLI-013."""
-    raise NotImplementedError
+    if value is not None and file is not None:
+        fail("give the value as an argument or with --file, not both", as_json)
+    if value is None and file is None:
+        fail("give a value, or --file <path> (- for standard input)", as_json)
+    ws = workspace(as_json)
+    target = ws.module(module) if module is not None else ws.current
+    if file is None:
+        text = value or ""
+    else:
+        try:
+            raw = sys.stdin.read() if file == "-" else Path(file).read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError) as exc:
+            fail(f"cannot read {file}: {exc}", as_json)
+        text = raw.rstrip("\r\n")  # the newline that ends a file or an echo is not part of the value
+    set_config_value(target.root, key, text)
+    config = ws.rel(target.config.config_path)
+    emit({"key": key, "value": text, "config": config, "module": target.label}, as_json, f"set {key} in {config}")

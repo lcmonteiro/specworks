@@ -89,9 +89,9 @@ through `init`, the agent skills).
 
    Propose `test`, and `lint` / `typecheck` / `build` when the project has
    them, in a short table with where each one came from, and ask "Use these
-   commands? (yes/no)" (on no, apply the user's edits). Once confirmed, write
-   them under `commands:` in the config (`.specworks/config.yml` in the
-   module's folder), then run each one:
+   commands? (yes/no)" (on no, apply the user's edits). Once confirmed,
+   write each one with `specworks config set commands.<key> "<command>"`
+   (in the module's folder), then run each one:
    ```bash
    specworks run test
    specworks run lint
@@ -106,9 +106,8 @@ through `init`, the agent skills).
    the contributing guide and the dependencies: a few lines on what the
    project is, its stack, and the conventions a change must follow (style,
    error handling, layering, what not to touch). Show it and ask "Write this
-   context? (yes/no)"; apply corrections, and write it under `context:` in
-   the config. Keep it short: it is read
-   before every phase. Point to those files rather than copying them.
+   context? (yes/no)"; apply corrections, and write it with `specworks config set context --file -` (the text on standard input).
+   Keep it short: it is read before every phase. Point to those files rather than copying them.
 
 4. **Choose the files to scan for tags** (only when needed)
 

@@ -7,7 +7,9 @@ import json
 import re
 from pathlib import Path
 
-from .config import COMMAND_KEYS, CONFIG_FILE, WORKFLOW_DIR, Config, ConfigError, load_config, theme_id, theme_name
+import yaml
+
+from .config import COMMAND_KEYS, CONFIG_FILE, MAX_CONTEXT_BYTES, WORKFLOW_DIR, Config, ConfigError, load_config, theme_id, theme_name
 from .files import read_text
 from .validators import validate_capability_name, validate_module_name, validate_prefix, validate_relative
 
@@ -202,6 +204,7 @@ def save_tools(root: Path, ids: list[str]) -> None:
         raise ConfigError(f"could not save the tools in {WORKFLOW_DIR}/{CONFIG_FILE} automatically; set them by hand:\n{entry}")
 
 
+# @req REQ-PROJ-025
 def set_config_value(root: Path, key: str, value: str) -> None:
     """Set ``key`` (one of ``SETTABLE_KEYS``) to ``value`` in the config at ``root``, keeping the user's comments.
 
@@ -209,4 +212,80 @@ def set_config_value(root: Path, key: str, value: str) -> None:
     load with just that key changed, it is restored. Raises ``ConfigError`` for an unknown key, a
     context over ``MAX_CONTEXT_BYTES``, or an edit that does not load back. Implements REQ-PROJ-025.
     """
-    raise NotImplementedError
+    if key not in SETTABLE_KEYS:
+        raise ConfigError(f"unknown config key '{key}'; use one of: {', '.join(SETTABLE_KEYS)}")
+    expected: object
+    if key == "context":
+        text = value.replace("\r\n", "\n").rstrip("\n")
+        expected = f"{text}\n" if text else ""  # `context: |` alone loads as an empty string
+        if len(expected.encode("utf-8")) > MAX_CONTEXT_BYTES:
+            raise ConfigError(f"'context' is larger than {MAX_CONTEXT_BYTES} bytes")
+    config_file = load_config(root).config_path
+    original = read_text(config_file)
+    before = yaml.safe_load(original) or {}
+    lines = original.splitlines()
+    field = key
+    if key == "context":
+        _set_context(lines, text)
+    else:
+        field, name = key.split(".")
+        _set_command(lines, name, value)
+        commands = before.get(field)
+        expected = {**(commands if isinstance(commands, dict) else {}), name: value or None}
+    config_file.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+    try:
+        load_config(root)
+        ok = yaml.safe_load(read_text(config_file)) == {**before, field: expected}
+    except (ConfigError, yaml.YAMLError):
+        ok = False
+    if not ok:
+        config_file.write_text(original, encoding="utf-8")
+        raise ConfigError(f"could not set {key} in {WORKFLOW_DIR}/{CONFIG_FILE} automatically; set it by hand")
+
+
+def _block_end(lines: list[str], start: int) -> int:
+    """The end of the block whose header is ``lines[start]``: its indented and blank lines, without the trailing blank ones."""
+    end = start + 1
+    while end < len(lines) and (lines[end].startswith((" ", "\t")) or not lines[end].strip()):
+        end += 1
+    while end > start + 1 and not lines[end - 1].strip():
+        end -= 1
+    return end
+
+
+# @req REQ-PROJ-025
+def _set_command(lines: list[str], name: str, value: str) -> None:
+    """Write ``name: value`` as one line of the ``commands:`` block, replacing that key's line or adding one."""
+    entry = f"{name}:"
+    if value:
+        try:
+            plain = yaml.safe_load(f"{name}: {value}") == {name: value}
+        except yaml.YAMLError:
+            plain = False
+        entry += f" {value}" if plain else f" {json.dumps(value, ensure_ascii=False)}"
+    header = re.compile(r"^commands:\s*(\{\s*\})?\s*(#.*)?$")
+    for i, line in enumerate(lines):
+        if match := header.match(line):
+            lines[i] = f"commands: {match[2]}" if match[2] else "commands:"
+            end = _block_end(lines, i)
+            for j in range(i + 1, end):
+                if found := re.match(rf"^([ \t]+){re.escape(name)}:(\s|$)", lines[j]):
+                    lines[j] = found[1] + entry
+                    return
+            lines.insert(end, f"  {entry}")
+            return
+    lines += ["", "commands:", f"  {entry}"]
+
+
+# @req REQ-PROJ-025
+def _set_context(lines: list[str], text: str) -> None:
+    """Write ``text`` as the ``context: |`` block, replacing the ``context:`` entry or adding one."""
+    body = [f"  {line}" if line else "" for line in text.split("\n")] if text else []
+    # A first line that starts with a space would set the block's indent: give it explicitly.
+    entry = ["context: |2" if text.lstrip("\n").startswith(" ") else "context: |", *body]
+    for i, line in enumerate(lines):
+        if re.match(r"^context:", line):
+            lines[i : _block_end(lines, i)] = entry
+            return
+    lines += ["", *entry]
