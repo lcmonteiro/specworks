@@ -166,9 +166,10 @@ next step the same way: the next skill (recommended), any alternative, and
    create the folder: write an empty `.gitkeep` in each capability's code
    folder (`<module path>/<folder>/.gitkeep`) so git keeps it.
 
-   Write the context and the commands from the approved tree under
-   `context:` and `commands:` in the top level's `.specworks/config.yml`,
-   and in a module's `<path>/.specworks/config.yml` when its stack differs.
+   Write the context from the approved tree, for the top level and for a
+   module whose stack differs: write it with `specworks config set context --file -` (the text on standard input).
+   Write each of its commands with `specworks config set commands.<key> "<command>"`.
+   For both, add `--module "<name>"` for a module's own config.
    Keep the context to a few lines (what the project is, its stack, the
    conventions a change must follow): it is read before every phase.
 

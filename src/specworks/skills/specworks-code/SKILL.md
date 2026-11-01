@@ -48,7 +48,7 @@ change's tests. When the code gate passes, stop and suggest
    - `commands` in the context are this project's tools; `specworks run test`
      (and `run lint`, `run typecheck` when configured) runs them in the right
      folder. If `test` is not configured, find it and ask "Use `<command>` as
-     the test command and add it under `commands:`? (yes/no)".
+     the test command? (yes/no)"; on yes, save it with `specworks config set commands.test "<command>"`.
 
 2. **Load the plan**
 

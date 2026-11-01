@@ -11,13 +11,13 @@ import typer
 from .. import __version__
 from ..core.changes import archived_as, list_archived
 from ..core.config import Config, ConfigError, find_config, load_config, old_config_in, old_layout_error
-from ..core.config_file import add_capability_entry, add_module_entry, save_tools, write_default_config
+from ..core.config_file import add_capability_entry, add_module_entry, save_tools, set_config_value, write_default_config
 from ..core.git import require_repo
 from ..core.validators import validate_relative
 from ..core.workspace import Module, Workspace, capability_prefix, load_module_config, load_workspace, require_workspace
 from ..specs.capabilities import capability_ref, describe
 from ..tools.skills import TOOLS, Tool, install_skills, parse_tools, remove_stale_skills, resolve_tools, skills_state, update_skills
-from .app import app, capability_app, module_app
+from .app import app, capability_app, config_app, module_app
 from .output import AllOpt, JsonOpt, ToolsOpt, change_dict, changes_of, emit, fail, missing_dicts, module_dict, workspace
 
 
@@ -332,3 +332,32 @@ def capability_add(
     ws = require_workspace(target.root)
     data = describe(ws, capability_ref(ws.module(target.name), name), with_scenarios=False)
     emit(data, as_json, f"registered {data['ref']} -> {data['codePath']} (REQ-{data['prefix']}-)")
+
+
+# @req REQ-CLI-013
+@config_app.command("set")
+def config_set(
+    key: str = typer.Argument(..., help="context, or commands.<test|lint|typecheck|build|format>."),
+    value: str | None = typer.Argument(None, help="The value (empty clears the key); or use --file."),
+    file: str | None = typer.Option(None, "--file", help="Read the value from this file (- for standard input)."),
+    module: str | None = typer.Option(None, "--module", "-m", help="Module whose config to set (default: the current one)."),
+    as_json: bool = JsonOpt,
+) -> None:
+    """Set a command or the context in a module's config, keeping its comments. Implements REQ-CLI-013."""
+    if value is not None and file is not None:
+        fail("give the value as an argument or with --file, not both", as_json)
+    if value is None and file is None:
+        fail("give a value, or --file <path> (- for standard input)", as_json)
+    ws = workspace(as_json)
+    target = ws.module(module) if module is not None else ws.current
+    if file is None:
+        text = value or ""
+    else:
+        try:
+            raw = sys.stdin.read() if file == "-" else Path(file).read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError) as exc:
+            fail(f"cannot read {file}: {exc}", as_json)
+        text = raw.rstrip("\r\n")  # the newline that ends a file or an echo is not part of the value
+    set_config_value(target.root, key, text)
+    config = ws.rel(target.config.config_path)
+    emit({"key": key, "value": text, "config": config, "module": target.label}, as_json, f"set {key} in {config}")

@@ -7,10 +7,11 @@ each command resolves the workspace and the change, calls the capability that
 does the work (`project`, `specs`, `workflow`, `integrations`), and prints the
 result as text or JSON.
 - `app.py`: the Typer app and its command groups (`module`, `spec`, `task`,
-  `capability`, `finding`).
+  `capability`, `config`, `finding`).
 - `output.py`: the shared options, output, errors, and resolving the workspace
   and changes.
-- `project.py`: `init`, `skills`, `context`, `list`, `module`, `capability`.
+- `project.py`: `init`, `skills`, `context`, `list`, `module`, `capability`,
+  `config`.
 - `changes.py`: `new`, `status`, `abandon`, `phase`, `skip-specs`,
   `instructions`, `task`.
 - `specs.py`: `check`, `trace`, `spec`, `diagrams`.
@@ -92,6 +93,17 @@ each prints the change, the finding as `specworks cycle` sees it plus
 `done`, and `path` (review.md); `done` is added here rather than to
 `Finding.to_dict()`, so `cycle`'s output is unchanged. (finding-commands)
 
+### Config values are set through `config set`, not by hand
+
+`specworks config set <key> [<value>] [--file <path>|-]` wraps
+`set_config_value` in core, so the adopt, start, test and code skills write
+`commands.<key>` and `context` through a checked writer instead of editing
+the YAML. Exactly one of `<value>` and `--file` is taken (`-` reads standard
+input, so a multi-line context needs no shell quoting); both or neither is
+refused before anything is read or written. The target is `--module` when
+given, else the current module, as in `capability add`. `config get` was left
+out: `context` already prints the commands and context. (add-config-set)
+
 ### Modules are linked where the folder lives
 
 `module add <path>` and `init <path>` both link the folder in the config of the
@@ -134,7 +146,7 @@ a second config format exists. (upgrade-project, dedupe-copilot-skills)
 - `new <name> [--module M] [--no-branch] [--json]`: `--json` adds `branch` and
   `startedFrom`.
 - The commands as `specworks --help` lists them: `version`, `init`, `skills`,
-  `update`, `context`, `list`, `module add|list`, `capability add`, `new`, `status`,
+  `update`, `context`, `list`, `module add|list`, `capability add`, `config set`, `new`, `status`,
   `abandon`, `phase`, `skip-specs`, `instructions`, `task list|done|undo`,
   `check`, `trace`, `spec show|list`, `diagrams`, `gate`, `start`, `review`,
   `finding add|decide|done|close`, `cycle`, `merge`, `commit`, `validate`,
@@ -145,6 +157,10 @@ a second config format exists. (upgrade-project, dedupe-copilot-skills)
   `finding` (`id`, `type`, `text`, `phase`, `doneIn` when set, `done`) and
   `path` (review.md, workspace-relative); text output is
   `<id> <type> -> <phase> (open|done)` and the path.
+- `config set <key> [<value>] [--file <path>] [--module/-m <name>] [--json]`
+  (`--file -` for standard input): text `set <key> in <config path>`;
+  `--json` prints `key`, `value`, `config` (workspace-relative) and `module`
+  (the module's label).
 - `merge <branch> --change <ref> [--json]`: `--json` prints the change's
   fields plus `merged`, `branch` and `resolved` (workspace-relative paths).
 - `commit --change <ref> [--message TEXT] [--trailer TEXT]... [--json]`

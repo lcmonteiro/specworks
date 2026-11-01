@@ -88,7 +88,7 @@ next step the same way: the next skill (recommended), any alternative, and
    - `commands.test` in the context is how this project runs its tests. If it
      is empty, find the test command from the repository (pyproject, package.json,
      go.mod, Cargo.toml, CMake, Makefile, CI config), and ask "Use `<command>` as
-     the test command and add it under `commands:`? (yes/no)".
+     the test command? (yes/no)"; on yes, save it with `specworks config set commands.test "<command>"`.
 
 2. **Load the plan and the project's test conventions**
 
