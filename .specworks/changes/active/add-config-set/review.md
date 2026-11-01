@@ -18,6 +18,7 @@ Base: `origin/main`
   - **Decision**: accepted: a trailing comment on the replaced line is about the old value, and init writes none
 - [ ] R5 **design-gap** design.md (The check after writing) says the expected context is `None` when the text is empty; the code expects `""` (`src/specworks/core/config_file.py:220`), which is what `context: |` alone loads as, so the code is right and the Decision is wrong
   - **Proposal**: back to design: in The check after writing, say the expected context is an empty string when the text is empty (`context: |` alone loads as ""); no code change
+  - **Decision**: back to design: fix the Decision 'The check after writing' to say an empty context is expected as an empty string, as the code does
 
 ## Changed files without tags
 
