@@ -5,7 +5,7 @@ from __future__ import annotations
 import typer
 
 from ..core.changes import PHASES, ChangeError, ChangeNotFound, commit_phase, create_change, set_phase
-from ..core.git import GitError, branch_name, create_branch, plan_branch, require_repo
+from ..core.git import GitError, branch_name, create_branch, current_branch, plan_branch, require_repo
 from ..specs.merge import archive_change
 from ..specs.tasks import read_tasks, set_done
 from ..workflow.artifacts import artifact_states, half_progress, instructions
@@ -15,6 +15,7 @@ from .output import ChangeOpt, JsonOpt, change_dict, emit, require_change, resol
 
 
 # @req REQ-CLI-006
+# @req REQ-CLI-015
 @app.command()
 def new(
     name: str,
@@ -29,21 +30,28 @@ def new(
     target = ws.module(module) if module is not None else ws.current
     require_repo(target.root)
     plan = None
-    if branch is not False:  # stub: the setting is not read yet (REQ-CLI-015)
+    stayed_on = None
+    if branch is None:
+        branch = ws.top.config.branch_per_change  # only the top level's setting counts
+    if branch:
         try:
             base = detect_base(target.root)
         except GitError:
             base = None
         plan = plan_branch(target.root, branch_name(target.qualify(name)), base)
+    else:
+        stayed_on = current_branch(target.root)
     change = create_change(target.config, name, ws.root)
     if plan is not None:
         create_branch(target.root, plan)
-    data = {**change_dict(ws, target, change), "branch": plan.name if plan else None, "startedFrom": plan.started_from if plan else None, "stayedOn": None}
+    data = {**change_dict(ws, target, change), "branch": plan.name if plan else None, "startedFrom": plan.started_from if plan else None, "stayedOn": stayed_on}
     lines = [f"created {ws.rel(change.path)}"]
     if plan is not None:
         lines.append(f"branch  {plan.name}")
         if plan.started_from is not None:
             lines.append(f"started from {plan.started_from}, not the base branch")
+    if stayed_on is not None:
+        lines.append(f"stayed on {stayed_on}")
     emit(data, as_json, "\n".join(lines))
 
 

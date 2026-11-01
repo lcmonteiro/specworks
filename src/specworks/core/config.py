@@ -157,6 +157,16 @@ def load_diagram_settings(raw: object) -> DiagramSettings:
     return settings
 
 
+# @req REQ-PROJ-026
+def load_branch_per_change(raw: object, present: bool) -> bool:
+    """Whether a new change gets its own branch: true when the key is absent, else its YAML boolean."""
+    if not present:
+        return True
+    if not isinstance(raw, bool):
+        raise ConfigError("'branch_per_change' must be true or false")
+    return raw
+
+
 @dataclass
 class Config:
     root: Path
@@ -250,7 +260,7 @@ def find_root(start: Path | None = None) -> Path | None:
     return None
 
 
-# @req REQ-PROJ-001, REQ-PROJ-002, REQ-PROJ-003, REQ-PROJ-004
+# @req REQ-PROJ-001, REQ-PROJ-002, REQ-PROJ-003, REQ-PROJ-004, REQ-PROJ-026
 def load_config(root: Path) -> Config:
     """Load ``root/.specworks/config.yml``."""
     path = root / WORKFLOW_DIR / CONFIG_FILE
@@ -315,4 +325,5 @@ def load_config(root: Path) -> Config:
         commands=load_commands(raw.get("commands")),
         diagrams=load_diagram_settings(raw.get("diagrams")),
         tools=load_tools(raw.get("tools"), "tools" in raw),
+        branch_per_change=load_branch_per_change(raw.get("branch_per_change"), "branch_per_change" in raw),
     )

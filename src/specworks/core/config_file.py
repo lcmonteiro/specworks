@@ -16,6 +16,7 @@ from .validators import validate_capability_name, validate_module_name, validate
 SETTABLE_KEYS: tuple[str, ...] = ("context", *(f"commands.{key}" for key in COMMAND_KEYS), "branch_per_change")
 """The keys `specworks config set` writes, in the order an error names them. Implements REQ-PROJ-025."""
 
+# @req REQ-PROJ-026
 DEFAULT_CONFIG = """\
 specworks: 1
 # specworks configuration. It always lives in .specworks/config.yml, and
@@ -29,6 +30,11 @@ context: |
 # Name of the folder, inside each capability's code path, that holds its
 # living docs (spec.md, requirements.md, design.md and its diagrams).
 docs_dir: docs
+
+# Whether `specworks new` creates and switches to a branch for each change
+# (true, the default). Set it to false to stay on the current branch, e.g.
+# when the branch is chosen for you; `new --branch` / `--no-branch` override it.
+# branch_per_change: false
 
 # Capabilities: durable behaviours of the system and the code folder that owns
 # each one. `close` writes the capability's living docs into <path>/<docs_dir>/.
@@ -215,9 +221,11 @@ def set_config_value(root: Path, key: str, value: str) -> None:
     """
     if key not in SETTABLE_KEYS:
         raise ConfigError(f"unknown config key '{key}'; use one of: {', '.join(SETTABLE_KEYS)}")
-    if key == "branch_per_change":
-        raise NotImplementedError
     expected: object
+    if key == "branch_per_change":
+        if value not in ("true", "false"):
+            raise ConfigError("branch_per_change must be true or false")
+        expected = value == "true"
     if key == "context":
         text = value.replace("\r\n", "\n").rstrip("\n")
         expected = f"{text}\n" if text else ""  # `context: |` alone loads as an empty string
@@ -230,6 +238,8 @@ def set_config_value(root: Path, key: str, value: str) -> None:
     field = key
     if key == "context":
         _set_context(lines, text)
+    elif key == "branch_per_change":
+        _set_top_line(lines, key, value)
     else:
         field, name = key.split(".")
         _set_command(lines, name, value)
@@ -279,6 +289,16 @@ def _set_command(lines: list[str], name: str, value: str) -> None:
             lines.insert(end, f"  {entry}")
             return
     lines += ["", "commands:", f"  {entry}"]
+
+
+# @req REQ-PROJ-025
+def _set_top_line(lines: list[str], key: str, value: str) -> None:
+    """Write ``key: value`` as one top-level line, replacing the uncommented ``key:`` line or appending one."""
+    for i, line in enumerate(lines):
+        if re.match(rf"^{re.escape(key)}:", line):
+            lines[i] = f"{key}: {value}"
+            return
+    lines += ["", f"{key}: {value}"]
 
 
 # @req REQ-PROJ-025

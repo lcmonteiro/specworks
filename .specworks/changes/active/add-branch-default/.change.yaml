@@ -1,6 +1,6 @@
 name: add-branch-default
 created: '2026-11-01T14:44:53'
-phase: design
+phase: implement
 specified:
   REQ-CLI-015: 3b653a99c285
   REQ-PROJ-026: 410aa422e1df
