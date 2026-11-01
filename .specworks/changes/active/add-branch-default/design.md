@@ -52,6 +52,12 @@ the expected value the boolean. An empty value is refused like any other
 non-boolean (clearing would mean "default", which is `true`; set `true`
 instead). Serves: REQ-PROJ-025.
 
+`config set branch_per_change` writes the top level's config whatever the
+current module or `--module` (review R2): the CLI passes `ws.top.root` to
+`set_config_value` for that key, and the output's `config` and `module`
+name the top level, since that is the config written. Other keys keep the
+current module or `--module`. Serves: REQ-CLI-013.
+
 ### `new`
 
 The flag becomes `--branch/--no-branch` with default `None`
@@ -88,6 +94,10 @@ Agreed with the user
   JSON gains `stayedOn: str | None` (REQ-CLI-015). Extended, not breaking:
   `--no-branch` keeps its spelling (the existing tests in `tests/test_cli.py`
   pass it), and only the Python parameter `no_branch` becomes `branch`.
+- `src/specworks/cli/project.py`: `config_set` keeps its signature; for
+  `branch_per_change` it targets `ws.top` whatever `--module`, and its output
+  (`key`, `value`, `config`, `module`) names the top level (REQ-CLI-013,
+  review R2). No new interface for review R1: REQ-CLI-006 is reworded only.
 
 ## Diagrams
 
