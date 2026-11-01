@@ -334,8 +334,9 @@ def capability_add(
         where = ws.rel(folder) if folder.is_relative_to(ws.root) else folder.as_posix()
         raise ConfigError(f"the docs folder {where} is already used by {taken}; give {name} its own --path")
     code_folder = target.root / code_path
-    if create and code_folder.exists() and not code_folder.is_dir():  # refused before the config is written
-        raise ConfigError(f"{ws.rel(code_folder)} exists and is not a folder; give {name} another --path")
+    below_root = [code_folder, *(p for p in code_folder.parents if p.is_relative_to(target.root) and p != target.root)]
+    if create and (file := next((p for p in below_root if p.exists() and not p.is_dir()), None)):  # refused before the config is written
+        raise ConfigError(f"{ws.rel(file)} exists and is not a folder; give {name} another --path")
     add_capability_entry(target.root, name, path, prefix=prefix, description=description)
     ws = require_workspace(target.root)
     data = describe(ws, capability_ref(ws.module(target.name), name), with_scenarios=False)
