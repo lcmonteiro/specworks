@@ -262,6 +262,18 @@ def test_ac_cli_015_5_the_text_output_names_the_branch_it_stayed_on(committed):
     assert current_branch(committed) == "work"
 
 
+# @ac AC-CLI-015.6
+def test_ac_cli_015_6_staying_on_a_detached_head_creates_the_change(committed):
+    stay_on_work(committed)
+    git(committed, "checkout", "-q", "--detach")
+    before = branch_names(committed)
+    code, data = run_json("new", "add-login")
+    assert code == 0, data
+    assert (committed / ".specworks/changes/active/add-login").is_dir()
+    assert current_branch(committed) == "" and branch_names(committed) == before
+    assert data["branch"] is None and data["stayedOn"] is None
+
+
 # @ac AC-FLOW-002.1
 def test_instructions_for_refinement(project):
     run_json("new", "add-login", "--no-branch")

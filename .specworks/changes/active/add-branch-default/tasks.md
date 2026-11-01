@@ -19,4 +19,4 @@
 
 ## 4. Review cycle 2
 
-- [ ] 4.1 [test] Review R4: a test for AC-CLI-015.6 (`branch_per_change: false` with a detached HEAD: `new add-login --json` creates the change, HEAD stays detached, `branch` and `stayedOn` null), tagged `@ac`; and the existing AC-CLI-006.8 test still passes as reworded (REQ-CLI-006); verify it passes on the current code
+- [x] 4.1 [test] Review R4: a test for AC-CLI-015.6 (`branch_per_change: false` with a detached HEAD: `new add-login --json` creates the change, HEAD stays detached, `branch` and `stayedOn` null), tagged `@ac`; and the existing AC-CLI-006.8 test still passes as reworded (REQ-CLI-006); verify it passes on the current code
