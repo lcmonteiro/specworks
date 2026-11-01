@@ -19,5 +19,5 @@
 
 ## 4. Review cycle 1
 
-- [ ] 4.1 [test] Review R1 and R2: tests for AC-PROJ-025.10 (the default config gets a `typecheck:` line under `commands:`, test and lint unchanged, comments kept) and AC-PROJ-025.11 (a context over the size limit refused naming it, file unchanged), tagged `@ac`; verify they pass on the current code
-- [ ] 4.2 [test] Review R3: tests for the restore when the edited file does not load (a 4-space `commands:` block, tagged `@ac AC-PROJ-025.9`), a context added to a config with no `context:` line (tagged `@ac AC-PROJ-025.6`) and an unreadable `--file` (config unchanged, tagged `@ac AC-CLI-013.2`); verify each asserts the config file unchanged on error
+- [x] 4.1 [test] Review R1 and R2: tests for AC-PROJ-025.10 (the default config gets a `typecheck:` line under `commands:`, test and lint unchanged, comments kept) and AC-PROJ-025.11 (a context over the size limit refused naming it, file unchanged), tagged `@ac`; verify they pass on the current code
+- [x] 4.2 [test] Review R3: tests for the restore when the edited file does not load (a 4-space `commands:` block, tagged `@ac AC-PROJ-025.9`), a context added to a config with no `context:` line (tagged `@ac AC-PROJ-025.6`) and an unreadable `--file` (config unchanged, tagged `@ac AC-CLI-013.2`); verify each asserts the config file unchanged on error
