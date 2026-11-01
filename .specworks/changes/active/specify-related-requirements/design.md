@@ -75,7 +75,7 @@ Messages: `empty search term`, `give at least one term`,
 
 ## Interfaces
 
-Proposed: waiting for the user's agreement
+Agreed with the user
 
 - `src/specworks/specs/capabilities.py`: `RequirementMatch` (new `@dataclass`,
   next to `CapabilityRef`): `capability: str` (the capability's ref,

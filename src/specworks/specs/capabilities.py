@@ -67,6 +67,18 @@ class CapabilityRef:
         return REQ_ID_RE.fullmatch(req_id) is not None and id_prefix(req_id) == self.prefix
 
 
+@dataclass
+class RequirementMatch:
+    """A living requirement that mentions a searched term (REQ-SPECS-016)."""
+
+    capability: str  # the capability's ref, ``billing:<name>`` in a module
+    id: str | None
+    title: str
+    path: str  # the living spec, relative to the workspace root
+    line: int  # 1-based number of the first matching line
+    text: str  # that line, stripped
+
+
 def capability_ref(module: Module, name: str) -> CapabilityRef:
     validate_capability_name(name)
     return CapabilityRef(module=module, name=name, capability=module.config.capabilities.get(name))
@@ -220,3 +232,12 @@ def describe(ws: Workspace, cap: CapabilityRef, with_scenarios: bool = True) -> 
 def workspace_capabilities(ws: Workspace) -> list[CapabilityRef]:
     return [capability_ref(m, name) for m in ws.modules() for name in m.config.capabilities]
 
+
+def find_requirements(ws: Workspace, terms: list[str]) -> list[RequirementMatch]:
+    """Every living requirement whose title, text or scenarios contain any of ``terms``, literal and ignoring case.
+
+    In capability order, then requirement order, each listed once with its first matching line; a capability
+    without a living spec is skipped. Raises ``ConfigError("empty search term")`` for a blank term.
+    Implements REQ-SPECS-016.
+    """
+    raise NotImplementedError

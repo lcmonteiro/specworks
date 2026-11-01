@@ -94,6 +94,16 @@ def spec_list(as_json: bool = JsonOpt) -> None:
     emit({"root": str(ws.root), "capabilities": caps}, as_json, text or "no capabilities")
 
 
+# Implements REQ-CLI-016 (the docstring is the command's help).
+@spec_app.command("find")
+def spec_find(
+    terms: list[str] = typer.Argument(None, help="Terms to look for (commands, flags, config keys, file names); literal, any case."),
+    as_json: bool = JsonOpt,
+) -> None:
+    """Every living requirement, in every module, that mentions any of the terms, with its path:line."""
+    raise NotImplementedError
+
+
 # @req REQ-CLI-008
 @app.command()
 def diagrams(
