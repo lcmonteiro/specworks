@@ -100,6 +100,18 @@ def test_ac_cli_014_5_a_path_that_is_a_file_is_refused(project):
     assert "auth" not in registered(project)
 
 
+# @ac AC-CLI-014.5
+def test_ac_cli_014_5_a_parent_of_the_path_that_is_a_file_is_refused(project):
+    (project / "src").write_bytes(b"not a folder\n")
+    before = (project / CONFIG).read_text(encoding="utf-8")
+    code, data = run_json("capability", "add", "auth", "--path", "src/auth", "--create")
+    assert code == 1, data
+    assert "src exists and is not a folder" in data["error"]
+    assert (project / "src").read_bytes() == b"not a folder\n"
+    assert (project / CONFIG).read_text(encoding="utf-8") == before
+    assert "auth" not in registered(project)
+
+
 # @ac AC-CLI-014.6
 def test_ac_cli_014_6_without_create_no_folder_is_created(project):
     result = runner.invoke(app, ["capability", "add", "auth", "--path", "src/auth"])
