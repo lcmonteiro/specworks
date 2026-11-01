@@ -68,7 +68,7 @@ Error message fragment (tests assert it): `exists and is not a folder`.
 
 ## Interfaces
 
-Proposed: waiting for the user's agreement
+Agreed with the user
 
 - `src/specworks/cli/project.py`: `capability_add` gains
   `create: bool = typer.Option(False, "--create", help="Create the code folder with an empty .gitkeep when it does not exist.")`

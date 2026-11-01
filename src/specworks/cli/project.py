@@ -315,9 +315,13 @@ def capability_add(
     module: str | None = typer.Option(None, "--module", "-m", help="Module that owns it (default: the current one)."),
     prefix: str = typer.Option("", "--prefix", help="Requirement ID prefix, e.g. AUTH (default: derived from the name)."),
     description: str = typer.Option("", "--description", help="One line on what it covers."),
+    create: bool = typer.Option(False, "--create", help="Create the code folder with an empty .gitkeep when it does not exist."),
     as_json: bool = JsonOpt,
 ) -> None:
-    """Register a capability in a module's config (needed before closing a change that creates it)."""
+    """Register a capability in a module's config (needed before closing a change that creates it).
+
+    With --create, also create its code folder with an empty .gitkeep. Implements REQ-CLI-014.
+    """
     ws = workspace(as_json)
     target = ws.module(module) if module is not None else ws.current
     id_prefix = capability_prefix(target.name, name, prefix)
@@ -331,6 +335,7 @@ def capability_add(
     add_capability_entry(target.root, name, path, prefix=prefix, description=description)
     ws = require_workspace(target.root)
     data = describe(ws, capability_ref(ws.module(target.name), name), with_scenarios=False)
+    data["created"] = None  # stub: --create is accepted but creates nothing yet; this becomes the .gitkeep path relative to the workspace root
     emit(data, as_json, f"registered {data['ref']} -> {data['codePath']} (REQ-{data['prefix']}-)")
 
 
