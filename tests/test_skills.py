@@ -921,3 +921,35 @@ def test_the_shared_committing_text_commits_with_specworks_commit():
     # The phases commit through the command, which stages only the files changed since the phase started.
     shared = resources.files("specworks").joinpath("skills", "_shared", "committing.md").read_text(encoding="utf-8")
     assert 'commit with specworks commit --change "<ref>"' in shared
+
+
+# --- the skills write the config with `specworks config set` ---------------------
+
+
+def raw_skill_file(path):
+    """A packaged skill file as written (no shared parts filled in), with its line wraps folded into spaces."""
+    return " ".join(resources.files("specworks").joinpath("skills", *path.split("/")).read_text(encoding="utf-8").split())
+
+
+CONFIG_SET_WORDING = [
+    ("specworks-test/SKILL.md", 'save it with `specworks config set commands.test "<command>"`'),
+    ("specworks-code/SKILL.md", 'save it with `specworks config set commands.test "<command>"`'),
+    ("specworks-adopt/SKILL.md", 'write each one with `specworks config set commands.<key> "<command>"`'),
+    ("specworks-adopt/SKILL.md", "write it with `specworks config set context --file -` (the text on standard input)"),
+    ("specworks-start/SKILL.md", "write it with `specworks config set context --file -` (the text on standard input)"),
+    ("specworks-start/SKILL.md", "add `--module \"<name>\"` for a module's own config"),
+    ("_shared/phase-subagents.md", '`specworks config set commands.test "<command>"`'),
+]
+CONFIG_SET_FILES = sorted({path for path, _ in CONFIG_SET_WORDING})
+
+
+@pytest.mark.parametrize("path, phrase", CONFIG_SET_WORDING)
+def test_the_skills_write_the_config_with_config_set(path, phrase):
+    # Hand-edited YAML loses the comments or breaks the file; `config set` edits it safely (REQ-CLI-013).
+    assert phrase in raw_skill_file(path)
+
+
+@pytest.mark.parametrize("path", CONFIG_SET_FILES)
+def test_the_skills_no_longer_write_commands_or_context_by_hand(path):
+    text = raw_skill_file(path)
+    assert "under `commands:`" not in text and "under `context:`" not in text
