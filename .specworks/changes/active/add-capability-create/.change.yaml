@@ -1,5 +1,5 @@
 name: add-capability-create
 created: '2026-11-01T13:35:01'
-phase: validate
+phase: close
 specified:
   REQ-CLI-014: 8b50bb04e23a
