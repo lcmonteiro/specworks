@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import re
 import shutil
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from importlib import resources
 from pathlib import Path
@@ -66,7 +67,7 @@ PROMPTS_DIR = ".github/prompts"
 
 
 class ToolError(SpecworksError):
-    """Raised for unknown tool ids."""
+    """Raised for unknown tool ids, or a skill that cannot be filled in."""
 
 
 def packaged_skills() -> list[str]:
@@ -75,16 +76,50 @@ def packaged_skills() -> list[str]:
 
 
 # Text several skills share lives once in skills/_shared/<name>.md; a skill marks where it
-# goes with a line ``<!-- specworks:include <name> -->``, filled in when the skill is read.
-INCLUDE_RE = re.compile(r"^<!-- specworks:include (?P<name>[a-z0-9-]+) -->\n", re.MULTILINE)
+# goes with a line ``<!-- specworks:include <name> key=value key2="two words" -->``, filled in
+# when the skill is read, each ``{{key}}`` of the shared file replaced by its value.
+INCLUDE_RE = re.compile(r'^<!-- specworks:include (?P<name>[a-z0-9-]+)(?P<params>(?: [a-z_]+=(?:"[^"]*"|[^\s"]+))*) -->\n', re.MULTILINE)
+
+PARAM_RE = re.compile(r' (?P<key>[a-z_]+)=(?:"(?P<quoted>[^"]*)"|(?P<bare>[^\s"]+))')
+PLACEHOLDER_RE = re.compile(r"\{\{(?P<key>\w+)\}\}")
 
 
-# @req REQ-INTEG-005
+# @req REQ-INTEG-007
+def fill_includes(text: str, skill: str, shared: Callable[[str], str]) -> str:
+    """``text`` (the SKILL.md of ``skill``) with each include line replaced by ``shared(name)``, its ``{{key}}`` filled in.
+
+    Raises ``ToolError`` naming the skill, the include and the key for a ``{{key}}`` left unfilled,
+    a key the shared file does not use, or a key given twice. Implements REQ-INTEG-007.
+    """
+    def fill(match: re.Match[str]) -> str:
+        name, values = match.group("name"), dict[str, str]()
+        for param in PARAM_RE.finditer(match.group("params")):
+            key, quoted = param.group("key"), param.group("quoted")
+            if key in values:
+                raise ToolError(f"skill {skill}: include {name} gives {key} twice")
+            values[key] = quoted if quoted is not None else param.group("bare")
+        body = shared(name)
+        used = {placeholder.group("key") for placeholder in PLACEHOLDER_RE.finditer(body)}
+        for key in values:
+            if key not in used:
+                raise ToolError(f"skill {skill}: include {name} does not use {key}")
+
+        def value(placeholder: re.Match[str]) -> str:
+            if placeholder.group("key") not in values:
+                raise ToolError(f"skill {skill}: include {name} leaves {placeholder.group(0)} unfilled")
+            return values[placeholder.group("key")]
+
+        return PLACEHOLDER_RE.sub(value, body)  # one pass: a value is never filled in again
+
+    return INCLUDE_RE.sub(fill, text)
+
+
+# @req REQ-INTEG-005, REQ-INTEG-007
 def read_skill(name: str) -> str:
     """A packaged skill's SKILL.md with its shared parts filled in."""
     skills = resources.files("specworks").joinpath("skills")
     text = skills.joinpath(name, "SKILL.md").read_text(encoding="utf-8")
-    return INCLUDE_RE.sub(lambda m: skills.joinpath("_shared", f"{m.group('name')}.md").read_text(encoding="utf-8"), text)
+    return fill_includes(text, name, lambda include: skills.joinpath("_shared", f"{include}.md").read_text(encoding="utf-8"))
 
 
 # @req REQ-INTEG-005
@@ -287,10 +322,14 @@ def skills_state(root: Path, saved: list[str] | None = None) -> SkillsState:
 
 # @req REQ-CLI-009
 def update_skills(root: Path, tools: list[Tool]) -> tuple[list[Path], list[Path]]:
-    """Write the skill files of ``tools`` that differ or are missing and remove the stale ones; return (updated, removed)."""
+    """Write the skill files of ``tools`` that differ or are missing and remove the stale ones; return (updated, removed).
+
+    Every skill is filled in before anything is removed or written, so a skill that cannot be filled in changes nothing.
+    """
+    expected = expected_skills(tools)  # @req REQ-INTEG-007
     removed = remove_stale_skills(root, tools)
     updated = []
-    for rel, text in expected_skills(tools).items():
+    for rel, text in expected.items():
         dest = root / rel
         if _differs(dest, text):
             dest.parent.mkdir(parents=True, exist_ok=True)

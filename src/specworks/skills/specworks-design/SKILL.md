@@ -139,13 +139,7 @@ it looks easy. When the gate passes, stop and suggest `/specworks-test`
    Fix every failing blocking check and re-run. Warnings: fix them or explain
    them.
 
-   **Back from review**: when `specworks cycle --change "<ref>" --json`
-   lists open findings whose `phase` is `design`, you carried out their
-   agreed proposal (the Decision); once the gate passes, record each one:
-   ```bash
-   specworks finding done R<n> --in design --change "<ref>" "<what changed>"
-   ```
-   It stays open: review checks it and closes it.
+<!-- specworks:include back-from-review phases="`design`" note="" in=design -->
 
 <!-- specworks:include committing -->
 

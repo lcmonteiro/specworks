@@ -42,6 +42,27 @@ written (they repeated each skill in Copilot's `/` menu). `auto` installs for
 the tools a project already uses, or for all of them when none is detected.
 (baseline-integrations, skill-frontmatter-multiline, dedupe-copilot-skills)
 
+### Includes take parameters, checked both ways
+
+An include line is `<!-- specworks:include <name> key=value key2="two words" -->`
+(`INCLUDE_RE`): a value is unquoted (no spaces or quotes) or quoted (any text
+but `"`, empty allowed). `fill_includes(text, skill, shared)` replaces each
+include with the shared file after replacing every `{{key}}` by its value; an
+include with no parameters and no `{{` is copied as it is. A `{{key}}` left
+unfilled, a key the shared file does not use, or a key given twice raises a
+`ToolError` naming the skill, the include and the key. So a rule that differs
+between skills only by a phase name or a sentence (`back-from-review.md`,
+`start-implement.md`) is written once, and a typo cannot install a skill with
+a raw placeholder. A value cannot hold a `"`; conditionals and loops in shared
+files were left out, to keep shared text plain Markdown. (share-skill-rules)
+
+### Every skill is filled in before anything is removed or written
+
+`write_skills` (`specworks skills`) and `update_skills` (`specworks update`)
+first fill in every skill (`expected_skills(tools)`), then remove stale ones,
+then write. A skill that fails to fill in therefore writes, changes and
+removes nothing on disk. (share-skill-rules)
+
 ### Each tool lists the folders it reads; the installer picks the fewest
 
 `Tool.reads` lists the skills folders a tool reads, its preferred one
@@ -101,7 +122,9 @@ of current skills touches nothing. (upgrade-project, dedupe-copilot-skills)
   `skill_folders(tools) -> list[(Tool, folder)]`,
   `install_skills(root, tools) -> list[Path]`,
   `remove_stale_skills(root, tools) -> list[Path]`, `RETIRED_NAMES`,
-  `packaged_skills()`, `read_skill(name)`, `expected_skills(tools) ->
+  `packaged_skills()`, `INCLUDE_RE`, `fill_includes(text, skill, shared) ->
+  str` (raises `ToolError`), `read_skill(name)` (fills in from the packaged
+  `_shared/`, raises `ToolError`), `expected_skills(tools) ->
   dict[str, str]`, `installed_tools(root)`, `skills_state(root, saved=None) ->
   SkillsState` (`state`: `current` | `outdated` | `none`, `files`:
   `SkillFile(path, reason)`), `update_skills(root, tools) -> (updated,
