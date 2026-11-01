@@ -7,9 +7,12 @@ import json
 import re
 from pathlib import Path
 
-from .config import CONFIG_FILE, WORKFLOW_DIR, Config, ConfigError, load_config, theme_id, theme_name
+from .config import COMMAND_KEYS, CONFIG_FILE, WORKFLOW_DIR, Config, ConfigError, load_config, theme_id, theme_name
 from .files import read_text
 from .validators import validate_capability_name, validate_module_name, validate_prefix, validate_relative
+
+SETTABLE_KEYS: tuple[str, ...] = ("context", *(f"commands.{key}" for key in COMMAND_KEYS))
+"""The keys `specworks config set` writes, in the order an error names them. Implements REQ-PROJ-025."""
 
 DEFAULT_CONFIG = """\
 specworks: 1
@@ -197,3 +200,13 @@ def save_tools(root: Path, ids: list[str]) -> None:
     if not ok:
         config_file.write_text(original, encoding="utf-8")
         raise ConfigError(f"could not save the tools in {WORKFLOW_DIR}/{CONFIG_FILE} automatically; set them by hand:\n{entry}")
+
+
+def set_config_value(root: Path, key: str, value: str) -> None:
+    """Set ``key`` (one of ``SETTABLE_KEYS``) to ``value`` in the config at ``root``, keeping the user's comments.
+
+    An empty ``value`` clears the key. The file is edited as text and reloaded; when it does not
+    load with just that key changed, it is restored. Raises ``ConfigError`` for an unknown key, a
+    context over ``MAX_CONTEXT_BYTES``, or an edit that does not load back. Implements REQ-PROJ-025.
+    """
+    raise NotImplementedError

@@ -105,7 +105,7 @@ Error messages (tests assert these fragments): `unknown config key`,
 
 ## Interfaces
 
-Proposed: waiting for the user's agreement
+Agreed with the user
 
 - `src/specworks/core/config_file.py`: `SETTABLE_KEYS: tuple[str, ...]` (new),
   `("context", "commands.test", "commands.lint", "commands.typecheck", "commands.build", "commands.format")`
