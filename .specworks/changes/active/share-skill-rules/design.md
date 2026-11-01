@@ -84,14 +84,14 @@ The test half asserts these exactly:
 
 ## Interfaces
 
-Proposed: waiting for the user's agreement
+Agreed with the user (option 1: fill in every skill before removing or writing any)
 
 - `src/specworks/tools/skills.py`: `INCLUDE_RE` (extended): the include line
   with optional parameters, groups `name` and `params` (REQ-INTEG-007)
 - `src/specworks/tools/skills.py`:
   `fill_includes(text: str, skill: str, shared: Callable[[str], str]) -> str`
   (new): `text` is a skill's SKILL.md, `skill` its name (for the errors),
-  `shared(name)` returns `_shared/<name>.md`; raises `ToolError` for an
+  `shared(name)` returns the text of the shared file `name`; raises `ToolError` for an
   unfilled `{{key}}`, an unused key or a key given twice, each message
   naming the skill, the include and the key (REQ-INTEG-007)
 - `src/specworks/tools/skills.py`: `read_skill(name: str) -> str`
