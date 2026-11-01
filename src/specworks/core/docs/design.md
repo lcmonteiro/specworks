@@ -8,7 +8,8 @@ builds on:
   `.specworks/config.yml` and loading it into a validated `Config` (capabilities, modules, globs,
   commands, diagram settings).
 - **Config file** (`config_file.py`): writing the default config, adding
-  module and capability entries, and saving the AI tools a project uses.
+  module and capability entries, saving the AI tools a project uses, and
+  setting `commands.<key>` and `context`.
 - **Workspace** (`workspace.py`): the top-level project and its modules, and
   what each module inherits.
 - **Changes** (`changes.py`): changes in flight and archived, and their phases
@@ -85,6 +86,29 @@ block list) or appends `tools: [a, b]`, then reloads; when the config does not
 load with those tools (e.g. a hand-edited one with two `tools:` keys), the file
 is restored and the error says to set `tools` by hand.
 (baseline-project, dedupe-copilot-skills)
+
+### `commands.<key>` and `context` are set through one checked writer
+
+`set_config_value` sets one of `SETTABLE_KEYS` (`context`, then
+`commands.<key>` for every `COMMAND_KEYS` key) in a module's config, so the
+skills never edit those keys by hand. An unknown key is refused before the
+file is read, listing the valid ones, and a context over `MAX_CONTEXT_BYTES`
+before it is written, with the message `load_config` gives. A command
+replaces its `  <key>:` line in the top-level `commands:` block, or goes
+after the block's last indented line, or a new block is appended; the value
+is written plain when YAML reads it back as the same string, JSON-quoted
+otherwise, and an empty value writes `  <key>:` (no command). The context
+replaces the `context:` entry with a `context: |` block (`|2` when the first
+line starts with a space), trailing newlines dropped, so it loads as the text
+plus one newline; an empty text writes `context: |` alone (loads as `""`).
+The edit stands only when the file loads and its parsed mapping equals the
+one before with just that key set; otherwise the original is written back
+and the error says to set it by hand. So a flow mapping
+(`commands: {test: pytest}`) or a block indented other than two spaces is
+refused and restored. A trailing comment on the replaced line is dropped: it
+is about the old value, and `init` writes none. A round-trip YAML library was
+rejected as a new dependency for two keys; other keys stay hand-edited or
+keep their own commands. (add-config-set)
 
 ### Tool IDs are known to core without importing the tools layer
 
@@ -201,7 +225,10 @@ where to configure one. (baseline-project, run-unknown-key)
 - `src/specworks/core/config_file.py`: `write_default_config(root, diagram_theme=None)`
   (writes `.specworks/config.yml`),
   `add_module_entry`, `add_capability_entry`, `save_tools(root, ids)` (raises
-  `ConfigError`, file restored).
+  `ConfigError`, file restored), `SETTABLE_KEYS`,
+  `set_config_value(root, key, value)` (an empty value clears the key; raises
+  `ConfigError` for an unknown key, a context over `MAX_CONTEXT_BYTES`, or an
+  edit that does not load back, file restored).
 - Config file: top-level `tools: [claude, copilot]`.
 - `src/specworks/core/changes.py`: `PHASES`, `HALVES`, `Change`, `create_change`,
   `load_change`, `list_changes`, `list_archived`, `archived_as`,
