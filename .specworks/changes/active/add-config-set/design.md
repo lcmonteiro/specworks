@@ -105,13 +105,26 @@ Error messages (tests assert these fragments): `unknown config key`,
 
 ## Interfaces
 
-- `src/specworks/core/config_file.py`: `SETTABLE_KEYS: tuple[str, ...]`;
-  `set_config_value(root: Path, key: str, value: str) -> None`, raising
-  `ConfigError` (REQ-PROJ-025).
+Proposed: waiting for the user's agreement
+
+- `src/specworks/core/config_file.py`: `SETTABLE_KEYS: tuple[str, ...]` (new),
+  `("context", "commands.test", "commands.lint", "commands.typecheck", "commands.build", "commands.format")`
+  (REQ-PROJ-025).
+- `src/specworks/core/config_file.py`: `set_config_value(root: Path, key: str, value: str) -> None` (new),
+  the config at `root` (a module root, like `add_capability_entry`); an empty
+  `value` clears the key; raises `ConfigError` (existing) for an unknown key,
+  a context over `MAX_CONTEXT_BYTES`, or an edit that does not load back
+  (file restored) (REQ-PROJ-025).
 - `src/specworks/cli/app.py`: `config_app = App(help="Set values in a module's config (.specworks/config.yml).")`
-  added as `config`.
+  (new), registered with `app.add_typer(config_app, name="config")`.
 - `src/specworks/cli/project.py`: `config_set(key: str, value: str | None, file: str | None, module: str | None, as_json: bool) -> None`
-  as `config set` (REQ-CLI-013).
+  (new) as `@config_app.command("set")`: argument `key`, optional argument
+  `value`, `--file` (`-` for standard input), `--module/-m`, `--json`;
+  output text `set <key> in <config path>`, JSON
+  `{"key", "value", "config", "module"}`; errors through `SpecworksError`
+  (`{"error": ...}`, exit 1) (REQ-CLI-013).
+
+No breaking change: existing functions and commands are untouched.
 
 ## Diagrams
 
