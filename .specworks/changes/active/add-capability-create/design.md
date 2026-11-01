@@ -68,9 +68,18 @@ Error message fragment (tests assert it): `exists and is not a folder`.
 
 ## Interfaces
 
+Proposed: waiting for the user's agreement
+
 - `src/specworks/cli/project.py`: `capability_add` gains
   `create: bool = typer.Option(False, "--create", help="Create the code folder with an empty .gitkeep when it does not exist.")`
-  (REQ-CLI-014); its JSON output gains `created: str | None`.
+  (REQ-CLI-014); its JSON output gains `created: str | None` (the
+  `.gitkeep` path relative to the workspace root, or `null`; present with or
+  without `--create`). Extended, not breaking: the option defaults to off and
+  existing callers only see the extra `created` key.
+- Errors: no new error type; a `--path` that exists as a file raises the
+  existing `ConfigError` with `<folder> exists and is not a folder; give
+  <name> another --path` (`{"error": ...}`, exit 1 under `--json`)
+  (REQ-CLI-014).
 
 ## Diagrams
 
