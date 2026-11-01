@@ -1,5 +1,5 @@
 name: share-skill-rules
 created: '2026-11-01T20:45:16'
-phase: specify
+phase: design
 specified:
-  REQ-INTEG-007: 9551d0192ade
+  REQ-INTEG-007: 28999d12c314

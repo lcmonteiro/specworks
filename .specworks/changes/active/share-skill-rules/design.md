@@ -63,10 +63,14 @@ REQ-INTEG-007.
   space) and `{{in}}` (`design`, `test`, `code, or implement for a finding
   routed to both halves`).
 - `_shared/start-implement.md`: from `specworks start implement --change`
-  to "themselves fail)." in test and code, with `{{other}}` (`code` in the
-  test skill, `test` in the code skill). The test skill keeps its extra
-  sentence ("Tests built on an undecided API test the wrong thing.") on the
-  line after the include, in its own text.
+  to "themselves fail)." in test and code, then `{{note}}` and a final
+  newline, as `back-from-review.md` ends. `{{other}}` is `code` in the test
+  skill and `test` in the code skill; `{{note}}` is the test skill's extra
+  sentence with its leading space
+  (`note=" Tests built on an undecided API test the wrong thing."`) and empty
+  in the code skill (`note=""`). Neither skill keeps an extra line after the
+  include, so the filled-in text does not depend on the shared file having
+  no final newline (review R2).
 
 The include line sits where the text was; values are quoted where they hold
 spaces or backticks. Not a requirement (skills have no capability); checked

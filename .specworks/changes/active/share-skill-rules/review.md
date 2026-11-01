@@ -12,9 +12,11 @@ reading the diff. `- [ ] R<n>` while open, `- [x] R<n>` once resolved. Write
   - **Proposal**: back to specify: name `specworks update` next to `specworks skills` in REQ-INTEG-007 and add AC-INTEG-007.8 (a packaged include fails, `specworks update` exits 1, no skill folder removed or changed), with its [test] task; the code already does it
   - **Decision**: back to specify: add specworks update to REQ-INTEG-007 with AC-INTEG-007.8 (a failing include during update changes nothing on disk) and its test
   - done in specify: REQ-INTEG-007 now covers specworks update (writes, changes and removes no skill on a failure); added AC-INTEG-007.8 and task 3.1
+  - done in design: no API change: update_skills keeps its signature and already fills in every skill before removing stale ones (design.md, Filling in); AC-INTEG-007.8 is reached through specworks update
 - [ ] R2 **quality** start-implement.md relies on having no trailing newline: the code skill keeps a blank line after the include and the test skill a line starting with a space (' Tests built on an undecided API...') to rebuild the original text; an editor or end-of-file fixer adding the newline silently changes both installed skills, and no test checks the repo's installed copies (src/specworks/skills/_shared/start-implement.md:10, src/specworks/skills/specworks-test/SKILL.md:48-49, src/specworks/skills/specworks-code/SKILL.md:38-39)
   - **Proposal**: back to design: give start-implement.md a `{{note}}` after 'themselves fail).' and a trailing newline, as back-from-review.md does; the test skill passes note=" Tests built on an undecided API test the wrong thing.", the code skill note="", and both drop the extra line; installed copies stay byte for byte the same
   - **Decision**: back to design: give start-implement.md a {{note}} placeholder and a trailing newline (test: note with its extra sentence, code: note=""), dropping the extra lines in both skills; installed copies unchanged byte for byte
+  - done in design: design.md (The shared files): start-implement.md ends with {{note}} and a final newline; test passes note with its extra sentence, code note="", no extra lines after the include; no API change
 
 ## Changed files without tags
 
