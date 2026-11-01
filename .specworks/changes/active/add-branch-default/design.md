@@ -75,6 +75,8 @@ Messages and text the tests assert, verbatim:
 
 ## Interfaces
 
+Proposed: waiting for the user's agreement
+
 - `src/specworks/core/config.py`: `Config.branch_per_change: bool = True`;
   `"branch_per_change"` in `CONFIG_KEYS` (REQ-PROJ-026).
 - `src/specworks/core/config_file.py`: `"branch_per_change"` in
@@ -83,7 +85,9 @@ Messages and text the tests assert, verbatim:
 - `src/specworks/core/git.py`: `current_branch(cwd: Path) -> str | None`
   (REQ-CLI-015).
 - `src/specworks/cli/changes.py`: `new(..., branch: bool | None = typer.Option(None, "--branch/--no-branch", ...))`;
-  JSON gains `stayedOn: str | None` (REQ-CLI-015).
+  JSON gains `stayedOn: str | None` (REQ-CLI-015). Extended, not breaking:
+  `--no-branch` keeps its spelling (the existing tests in `tests/test_cli.py`
+  pass it), and only the Python parameter `no_branch` becomes `branch`.
 
 ## Diagrams
 
