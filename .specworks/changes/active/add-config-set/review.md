@@ -9,11 +9,13 @@ Base: `origin/main`
   - **Decision**: back to specify: add AC-PROJ-025.10 (a command added to an existing commands: block) and its test
   - done in specify: added AC-PROJ-025.10 (a command added to the commands block) and task 4.1 for its test
   - done in design: no API change: the Decision 'Writing a command' already puts a new key after the commands block's last indented line, the path AC-PROJ-025.10 covers
+  - done in implement: no code change: set_config_value already adds a command after the commands block's last indented line; checked on a scratch init config (commands.typecheck added as one line, the rest unchanged)
 - [ ] R2 **spec-gap** REQ-PROJ-025 says an edit that would not load leaves the file unchanged with an error saying to set the key by hand; a context over MAX_CONTEXT_BYTES is refused before writing with `'context' is larger than 51200 bytes` instead (`src/specworks/core/config_file.py:221`), as design.md decides, and no criterion or test covers it
   - **Proposal**: back to specify: add to REQ-PROJ-025 that a context over the config's size limit is refused before writing, naming the limit, with a criterion AC-PROJ-025.11 (file unchanged), then its test
   - **Decision**: back to specify: add the context size limit (refused before writing) to REQ-PROJ-025 with AC-PROJ-025.11 and its test
   - done in specify: REQ-PROJ-025 now refuses a context over the size limit before writing, naming it; added AC-PROJ-025.11 and task 4.1 for its test
   - done in design: no API change: the Decision 'The keys' already refuses a context over MAX_CONTEXT_BYTES before writing, with load_config's message naming the limit (AC-PROJ-025.11)
+  - done in implement: no code change: set_config_value already refuses a context over MAX_CONTEXT_BYTES before writing, naming the limit; checked on a scratch config (refused, file unchanged)
 - [ ] R3 **test-gap** No test runs three error paths of REQ-PROJ-025/REQ-CLI-013: the restore when the edited file fails to load (`src/specworks/core/config_file.py:240`, e.g. a 4-space `commands:` block, which gets a 2-space line), a context added to a config with no `context:` (`config_file.py:291`), and an unreadable `--file` (`src/specworks/cli/project.py:357`, `cannot read <file>`, config unchanged)
   - **Proposal**: back to test: add these three tests in tests/test_config_set.py, asserting the config file is unchanged on each error; tag the restore test AC-PROJ-025.9 (an entry the text edit cannot change) and the context-added test AC-PROJ-025.6
   - **Decision**: back to test: add tests for the restore after a load failure, a context added to a config with no context: line, and an unreadable --file
@@ -24,6 +26,7 @@ Base: `origin/main`
   - **Proposal**: back to design: in The check after writing, say the expected context is an empty string when the text is empty (`context: |` alone loads as ""); no code change
   - **Decision**: back to design: fix the Decision 'The check after writing' to say an empty context is expected as an empty string, as the code does
   - done in design: fixed the Decision 'The check after writing': an empty context is expected as an empty string, as the code does; no API or code change
+  - done in implement: no code change: the code already expects an empty string for an empty context, as the fixed Decision says
 
 ## Changed files without tags
 
