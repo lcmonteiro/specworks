@@ -10,7 +10,8 @@ file SHALL be replaced by its value where the skill is filled in. An include
 without parameters SHALL be filled in with the shared file as it is. A
 `{{key}}` the include does not fill, or a key the shared file does not use,
 SHALL fail, naming the skill, the shared file and the key, and
-`specworks skills` SHALL then write no skill.
+`specworks skills` and `specworks update` SHALL then write, change and
+remove no skill.
 
 #### Scenario: AC-INTEG-007.1 A parameter filled in
 
@@ -52,3 +53,9 @@ SHALL fail, naming the skill, the shared file and the key, and
 
 - **WHEN** every packaged skill is filled in
 - **THEN** none fails and none has `{{` or an include line left
+
+#### Scenario: AC-INTEG-007.8 Nothing written by update on a failure
+
+- **GIVEN** installed skills, a stale `specworks-…` skill folder, and a packaged skill whose include fails to fill in
+- **WHEN** `specworks update` runs
+- **THEN** it fails with the error, and every file under the skills folders is unchanged, the stale folder included

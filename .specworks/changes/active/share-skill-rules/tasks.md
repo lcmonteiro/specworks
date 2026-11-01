@@ -10,3 +10,8 @@
 
 - [x] 2.1 [test] Wording tests in `tests/test_skills.py`: `specworks-design`, `specworks-test` and `specworks-code` contain `<!-- specworks:include back-from-review`, and `specworks-test` and `specworks-code` contain `<!-- specworks:include start-implement` (REQ-INTEG-007); verify they fail on the current skills
 - [x] 2.2 [code] Write `_shared/back-from-review.md` and `_shared/start-implement.md` and replace the passages in the three skills with includes as design.md decides (REQ-INTEG-007); verify `uv run specworks skills` changes no file under `.claude/skills/` (`git status --short .claude/skills` is empty)
+
+## 3. Review cycle 1
+
+- [ ] 3.1 [test] Review R1: a test for AC-INTEG-007.8 (`specworks update` with a failing packaged include and a stale `specworks-…` folder fails and leaves every skills file unchanged), tagged `@ac`; verify it passes on the current code and would fail if `update_skills` removed stale skills before filling in
+- [ ] 3.2 [code] Review R2: give `_shared/start-implement.md` a `{{note}}` placeholder and a final newline, pass `note` from `specworks-test` (its extra sentence) and `specworks-code` (empty), and drop the extra lines after both includes (REQ-INTEG-007); verify `uv run specworks skills` changes no file under `.claude/skills/`
