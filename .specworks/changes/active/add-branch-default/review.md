@@ -32,6 +32,7 @@ reading the diff. `- [ ] R<n>` while open, `- [x] R<n>` once resolved. Write
   - **Decision**: back to specify: limit REQ-CLI-006's detached-HEAD and existing-branch failures to creating the branch, add AC-CLI-015.6 for staying on a detached HEAD; the test half adds its test, no code change
   - done in specify: REQ-CLI-006 and AC-CLI-006.8 limit the detached-HEAD and existing-branch failures to creating the branch; added AC-CLI-015.6 and task 4.1
   - done in design: no API change: REQ-CLI-006 is reworded and AC-CLI-015.6 is reached through new's existing branch/stayedOn fields; design.md's Interfaces says so
+  - done in implement: code: no code change; new already stays on a detached HEAD with branch and stayedOn null (current_branch returns None) and refuses a detached HEAD only when it creates the branch (plan_branch), as reworded REQ-CLI-006 and AC-CLI-015.6 say
 
 ## Changed files without tags
 
