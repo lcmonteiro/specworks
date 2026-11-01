@@ -31,6 +31,7 @@ reading the diff. `- [ ] R<n>` while open, `- [x] R<n>` once resolved. Write
   - **Proposal**: back to specify: reword REQ-CLI-006 so the existing-branch and detached-HEAD failures apply when new creates the branch (staying on a detached HEAD creates the change, REQ-CLI-015), AC-CLI-006.8 likewise; add AC-CLI-015.6 (GIVEN branch_per_change false and a detached HEAD, WHEN new add-login --json runs, THEN the change is created, HEAD is still detached, and branch and stayedOn are null); then the test half adds its test. No code change
   - **Decision**: back to specify: limit REQ-CLI-006's detached-HEAD and existing-branch failures to creating the branch, add AC-CLI-015.6 for staying on a detached HEAD; the test half adds its test, no code change
   - done in specify: REQ-CLI-006 and AC-CLI-006.8 limit the detached-HEAD and existing-branch failures to creating the branch; added AC-CLI-015.6 and task 4.1
+  - done in design: no API change: REQ-CLI-006 is reworded and AC-CLI-015.6 is reached through new's existing branch/stayedOn fields; design.md's Interfaces says so
 
 ## Changed files without tags
 

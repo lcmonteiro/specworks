@@ -1,11 +1,9 @@
 name: add-branch-default
 created: '2026-11-01T14:44:53'
-phase: specify
+phase: design
 specified:
-  REQ-CLI-015: 4f61ad787bc2
-  REQ-CLI-006: e9b4ff397ae4
+  REQ-CLI-015: 2715a0bb3879
+  REQ-CLI-006: 4a7497fd1140
   REQ-CLI-013: 943ff9d5336b
   REQ-PROJ-026: 410aa422e1df
   REQ-PROJ-025: ed7269ed1611
-dirty:
-  .specworks/changes/active/add-branch-default/review.md: 04717170344dff0f179a912e03e112ccccc925b150a501bad3dddd2b011bf0ad

@@ -98,6 +98,11 @@ Agreed with the user
   `branch_per_change` it targets `ws.top` whatever `--module`, and its output
   (`key`, `value`, `config`, `module`) names the top level (REQ-CLI-013,
   review R2). No new interface for review R1: REQ-CLI-006 is reworded only.
+- No new interface for review R4: REQ-CLI-006's detached-HEAD and
+  existing-branch failures now apply only when `new` creates the branch, and
+  AC-CLI-015.6 (staying on a detached HEAD) is reached through the existing
+  `new(..., branch)` and its `branch` / `stayedOn` JSON fields, both null
+  there (`current_branch` returns `None`), as the code already does.
 
 ## Diagrams
 
