@@ -1,10 +1,10 @@
-"""Changes and their artifacts: new, status, phase, instructions and tasks."""
+"""Changes and their artifacts: new, status, phase, commit, instructions and tasks."""
 
 from __future__ import annotations
 
 import typer
 
-from ..core.changes import PHASES, ChangeError, ChangeNotFound, create_change, set_phase
+from ..core.changes import PHASES, ChangeError, ChangeNotFound, commit_phase, create_change, set_phase
 from ..core.git import GitError, branch_name, create_branch, plan_branch, require_repo
 from ..specs.merge import archive_change
 from ..specs.tasks import read_tasks, set_done
@@ -33,7 +33,7 @@ def new(
         except GitError:
             base = None
         plan = plan_branch(target.root, branch_name(target.qualify(name)), base)
-    change = create_change(target.config, name)
+    change = create_change(target.config, name, ws.root)
     if plan is not None:
         create_branch(target.root, plan)
     data = {**change_dict(ws, target, change), "branch": plan.name if plan else None, "startedFrom": plan.started_from if plan else None}
@@ -97,8 +97,46 @@ def phase(
         hint = f"specworks phase {old_to} --change {to}" if old_to is not None else f"specworks phase {to} --change <ref>"
         raise ChangeError(f"give the change with --change, like `specworks start` and `specworks gate`: {hint}")
     ws, mod, ch = require_change(change, as_json)
-    set_phase(ch, to)
+    set_phase(ch, to, ws.root)
     emit(change_dict(ws, mod, ch), as_json, f"{mod.qualify(ch.name)}: phase → {ch.phase}")
+
+
+# @req REQ-CLI-012
+@app.command()
+def commit(
+    change: str = ChangeOpt,
+    message: str | None = typer.Option(None, "--message", help="The commit subject (default: `<ref>: <phase>`)."),
+    trailer: list[str] | None = typer.Option(None, "--trailer", help="A trailer line, e.g. 'Co-Authored-By: A <a@x>'; repeat it for more, kept in order."),
+    as_json: bool = JsonOpt,
+) -> None:
+    """Commit the change's phase: its folder and the files changed since the phase started. Never pushes.
+
+    With no active change of that name, it commits the newest archived one (after `specworks close`), subject
+    `<ref>: close`. `--json` returns ref, commit (null when nothing was committed), subject, committed, leftOut and
+    alreadyDirty.
+    """
+    ws = workspace(as_json)
+    try:
+        mod, ch = resolve_change(ws, change)
+    except ChangeNotFound:
+        mod, ch = resolve_archived(ws, change)
+    ref = mod.qualify(ch.name)
+    result = commit_phase(ws.root, ref, ch, message, trailer or ())
+    data = {
+        "ref": ref,
+        "commit": result.commit,
+        "subject": result.subject,
+        "committed": result.committed,
+        "leftOut": result.left_out,
+        "alreadyDirty": result.already_dirty,
+    }
+    if result.commit is None:
+        lines = [f"nothing to commit for {ref}: no file changed since the phase started"]
+    else:
+        lines = [f"{result.commit} {result.subject}", *(f"  {p}" for p in result.committed)]
+    lines += [f"left out (unchanged since the phase started): {p}" for p in result.left_out]
+    lines += [f"already dirty when the phase started: {p}" for p in result.already_dirty]
+    emit(data, as_json, "\n".join(lines))
 
 
 # @req REQ-CLI-006

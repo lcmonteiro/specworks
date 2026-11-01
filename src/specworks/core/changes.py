@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
@@ -11,6 +12,7 @@ import yaml
 
 from .config import Config
 from .errors import SpecworksError
+from .git import GitError, commit, dirty_files
 from .validators import validate_kebab
 
 META_FILE = ".change.yaml"
@@ -45,6 +47,7 @@ class Change:
     skip_specs: bool = False
     abandoned: str = ""  # why it was archived without merging (specworks abandon)
     specified: dict[str, str] = field(default_factory=dict)  # requirement ID -> fingerprint when specify last passed
+    dirty: dict[str, str] = field(default_factory=dict)  # path -> SHA-256 hex or `deleted`, dirty when the phase started (REQ-PROJ-023)
 
     @property
     def order(self) -> tuple[str, str, str]:
@@ -59,11 +62,24 @@ class Change:
             data["abandoned"] = self.abandoned
         if self.specified:
             data["specified"] = dict(self.specified)
+        if self.dirty:
+            data["dirty"] = dict(sorted(self.dirty.items()))
         (self.path / META_FILE).write_text(yaml.safe_dump(data, sort_keys=False), encoding="utf-8")
 
 
+# @req REQ-PROJ-023
+def _record(root: Path) -> dict[str, str]:
+    """The dirty files to record when a phase starts; none outside a git repository, where the move still succeeds."""
+    try:
+        return dirty_files(root)
+    except GitError:
+        return {}
+
+
 # @req REQ-PROJ-010
-def create_change(cfg: Config, name: str) -> Change:
+# @req REQ-PROJ-023
+def create_change(cfg: Config, name: str, root: Path | None = None) -> Change:
+    """Create the change folder and its metadata; with `root` (the workspace root), record its dirty files (REQ-PROJ-023)."""
     validate_kebab(name, "change name", "add-user-auth")
     if name in (ARCHIVE_DIR, ACTIVE_DIR):
         raise ChangeError(f"'{name}' is reserved for the changes folders; pick another name")
@@ -75,8 +91,9 @@ def create_change(cfg: Config, name: str) -> Change:
     path = cfg.changes_path / name
     if path.exists():
         raise ChangeError(f"change '{name}' already exists at {path.relative_to(cfg.root)}")
+    dirty = _record(root) if root is not None else {}  # before the folder exists: it is the change's own
     path.mkdir(parents=True)
-    change = Change(name=name, path=path, created=datetime.now().isoformat(timespec="seconds"))
+    change = Change(name=name, path=path, created=datetime.now().isoformat(timespec="seconds"), dirty=dirty)
     change.save()
     return change
 
@@ -102,6 +119,7 @@ def _read_change(path: Path, name: str, where: str) -> Change:
         skip_specs=bool(meta.get("skip_specs", False)),
         abandoned=str(meta.get("abandoned") or ""),
         specified={str(k): str(v) for k, v in specified.items()} if isinstance(specified := meta.get("specified"), dict) else {},
+        dirty={str(k): str(v) for k, v in dirty.items()} if isinstance(dirty := meta.get("dirty"), dict) else {},  # REQ-PROJ-023
     )
 
 
@@ -148,7 +166,12 @@ def archived_as(cfg: Config, name: str) -> Change | None:
 
 
 # @req REQ-PROJ-011
-def set_phase(change: Change, phase: str) -> None:
+# @req REQ-PROJ-023
+def set_phase(change: Change, phase: str, root: Path | None = None) -> None:
+    """Move the change to `phase` and save it; with `root` (the workspace root), a new phase also records its dirty files.
+
+    Moving to the phase the change is already in keeps the record it has. Implements REQ-PROJ-023.
+    """
     if phase in HALVES:
         raise ChangeError(half_error(phase))
     if phase not in PHASES:
@@ -156,5 +179,46 @@ def set_phase(change: Change, phase: str) -> None:
     if phase == "done":
         # `done` means merged into the living specs and archived; only `specworks close` does that.
         raise ChangeError("a change becomes done only through `specworks close`, which merges its specs and archives it")
+    if root is not None and phase != change.phase:
+        change.dirty = _record(root)
     change.phase = phase
     change.save()
+
+
+@dataclass(frozen=True)
+class CommitResult:
+    """A phase commit (REQ-PROJ-024); paths are relative to the workspace root."""
+
+    commit: str | None  # the short hash, None when nothing was committed
+    subject: str
+    committed: list[str]
+    left_out: list[str]  # dirty, but unchanged since the phase started
+    already_dirty: list[str]  # committed, but already dirty when the phase started
+
+
+# @req REQ-PROJ-024
+def commit_phase(root: Path, ref: str, change: Change, subject: str | None = None, trailers: Sequence[str] = ()) -> CommitResult:
+    """Commit the change folder and every file dirty now that is not in its record or whose content differs.
+
+    `root` is the workspace root and `ref` the change's ref, for the default subject `<ref>: <phase>` (`<ref>: close`
+    for a change close has archived, phase `done`); the trailers follow a blank line, in order. Files of the change's
+    own folder (and, once archived, of its former active folder) are never reported as already dirty. Nothing to
+    commit returns `commit=None`. Raises `GitError` on a detached HEAD before staging anything. Never pushes.
+    Implements REQ-PROJ-024.
+    """
+    archived = change.phase == "done"
+    subject = subject if subject is not None else f"{ref}: {'close' if archived else change.phase}"
+    def rel(path: Path) -> str:
+        return path.resolve().relative_to(root.resolve()).as_posix() + "/"
+
+    folder = rel(change.path)
+    # An archived change's folder is <changes>/archive/<date>-<name>/; close removed <changes>/active/<name>/.
+    own = (folder, rel(change.path.parent.parent / ACTIVE_DIR / change.name)) if archived else (folder,)
+    now = dirty_files(root)
+    committed = [p for p, digest in now.items() if p.startswith(folder) or change.dirty.get(p) != digest]
+    left_out = [p for p in now if p not in committed]
+    if not committed:
+        return CommitResult(None, subject, [], left_out, [])
+    message = subject + ("\n\n" + "\n".join(trailers) if trailers else "") + "\n"
+    short = commit(root, committed, message)
+    return CommitResult(short, subject, committed, left_out, [p for p in committed if p in change.dirty and not p.startswith(own)])

@@ -915,3 +915,9 @@ def test_build_and_the_phase_subagents_write_decisions_with_finding_decide():
 @pytest.mark.parametrize("name", ["specworks-specify", "specworks-design", "specworks-test", "specworks-code"])
 def test_the_steps_record_their_part_with_finding_done(name):
     assert "specworks finding done" in read_skill(name)
+
+
+def test_the_shared_committing_text_commits_with_specworks_commit():
+    # The phases commit through the command, which stages only the files changed since the phase started.
+    shared = resources.files("specworks").joinpath("skills", "_shared", "committing.md").read_text(encoding="utf-8")
+    assert 'commit with specworks commit --change "<ref>"' in shared

@@ -1,0 +1,8 @@
+name: fix-commit-after-close
+created: '2026-11-01T03:09:41'
+phase: done
+specified:
+  REQ-CLI-012: 424dd7f6893a
+  REQ-PROJ-024: 07725cd4e09f
+dirty:
+  .specworks/changes/active/fix-commit-after-close/.change.yaml: 7d846a9e2daac4730014db9cda9bb009bb6bd89e43ad2a0afa80d6ff30f6ffdd
