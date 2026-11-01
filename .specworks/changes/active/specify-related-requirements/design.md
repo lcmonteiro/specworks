@@ -75,11 +75,24 @@ Messages: `empty search term`, `give at least one term`,
 
 ## Interfaces
 
-- `src/specworks/specs/capabilities.py`: `RequirementMatch` (dataclass) and
+Proposed: waiting for the user's agreement
+
+- `src/specworks/specs/capabilities.py`: `RequirementMatch` (new `@dataclass`,
+  next to `CapabilityRef`): `capability: str` (the capability's ref,
+  `billing:<name>` in a module), `id: str | None`, `title: str`, `path: str`
+  (relative to the workspace root), `line: int` (1-based), `text: str` (the
+  matching line, stripped); written in full (REQ-SPECS-016).
+- `src/specworks/specs/capabilities.py`: new
   `find_requirements(ws: Workspace, terms: list[str]) -> list[RequirementMatch]`,
-  raising `ConfigError` (REQ-SPECS-016).
-- `src/specworks/cli/specs.py`: `spec_find(terms: list[str] = typer.Argument(None), as_json: bool = JsonOpt) -> None`
-  as `spec find` (REQ-CLI-016).
+  raises `ConfigError("empty search term")` for a blank term (REQ-SPECS-016).
+- `src/specworks/cli/specs.py`: new `spec_find(terms: list[str] = typer.Argument(None, help=...), as_json: bool = JsonOpt) -> None`,
+  registered as `@spec_app.command("find")`; no term is `fail("give at least one term", as_json)`
+  (`{"error": ...}`, exit 1) (REQ-CLI-016).
+
+Nothing existing changes signature; no breaking change. The stubs' bodies
+raise `NotImplementedError` (the skill's idiom) rather than return `[]` as
+task 1.1 words it: an empty result would already pass AC-SPECS-016.5 and
+AC-CLI-016.3 on the stub.
 
 ## Diagrams
 
