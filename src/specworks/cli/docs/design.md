@@ -72,9 +72,12 @@ creating the change folder, then creates the folder and switches to the branch:
 a refusal leaves neither. `--no-branch` skips the branch but still needs the
 repo. `new` finds the base branch with `detect_base` and passes it to core, and
 reports `branch` and `startedFrom` (`--json`, both `null` without a branch).
-Commits and pushes stay in the skills, not in the CLI, except the merge
-commit `merge` makes when it joins a half's branch. (git-workflow,
-merge-halves-without-conflicts)
+Pushes stay in the skills. The CLI commits in two places: the merge commit
+`merge` makes when it joins a half's branch, and `commit`, which the skills
+use to commit each phase (what changed since the phase started, chosen by
+`commit_phase` in core) instead of building `git add` and `git commit` by
+hand. `new` and `phase` pass the workspace root so the change records its
+dirty files. (git-workflow, merge-halves-without-conflicts, commit-command)
 
 ### Findings are written through `finding`, not by hand
 
@@ -131,7 +134,8 @@ a second config format exists. (upgrade-project, dedupe-copilot-skills)
   `update`, `context`, `list`, `module add|list`, `capability add`, `new`, `status`,
   `abandon`, `phase`, `skip-specs`, `instructions`, `task list|done|undo`,
   `check`, `trace`, `spec show|list`, `diagrams`, `gate`, `start`, `review`,
-  `finding add|decide|done|close`, `cycle`, `merge`, `validate`, `close`, `run`.
+  `finding add|decide|done|close`, `cycle`, `merge`, `commit`, `validate`,
+  `close`, `run`.
 - `finding add TYPE TEXT --proposal TEXT`, `finding decide ID DECISION`,
   `finding done ID TEXT --in STEP`, `finding close ID TEXT`, each with
   `--change <ref> [--json]`: `--json` prints the change's fields plus
@@ -140,6 +144,14 @@ a second config format exists. (upgrade-project, dedupe-copilot-skills)
   `<id> <type> -> <phase> (open|done)` and the path.
 - `merge <branch> --change <ref> [--json]`: `--json` prints the change's
   fields plus `merged`, `branch` and `resolved` (workspace-relative paths).
+- `commit --change <ref> [--message TEXT] [--trailer TEXT]... [--json]`:
+  `--json` prints `ref`, `commit` (short hash or `null`), `subject`,
+  `committed`, `leftOut` and `alreadyDirty` (workspace-relative paths); text
+  prints `<hash> <subject>`, one line per committed file, then
+  `left out (unchanged since the phase started): <path>` and
+  `already dirty when the phase started: <path>` lines, or
+  `nothing to commit for <ref>: no file changed since the phase started`
+  (exit 0).
 
 ## Constraints
 

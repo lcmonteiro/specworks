@@ -132,6 +132,26 @@ than found in core, because `detect_base` lives in the workflow layer; a base of
 `origin/main` counts as `main`. Rolling back a created branch on error was
 rejected: more states to undo. (git-workflow)
 
+### A phase commits what changed since it started
+
+When a change is created or moves to another phase, `create_change` and
+`set_phase` (given the workspace root) record in the same `.change.yaml` save
+the workspace's dirty and untracked files as `dirty:` (path relative to the
+workspace root -> SHA-256 of the content, or `deleted`); moving to the phase
+the change is already in keeps the record. `dirty_files` reads `git status
+--porcelain=v1 -z --untracked-files=all`, strips `rev-parse --show-prefix` so
+paths are relative to a workspace below the git root, and records both paths
+of a rename. Outside a git repository the move or creation still succeeds with
+an empty record, while `dirty_files` itself raises `GitError`, since
+committing needs git. `commit_phase` commits the change folder and every file
+dirty now that is missing from the record or has another hash, lists the
+recorded, unchanged ones as left out and flags committed files that were
+already dirty. `commit` refuses a detached HEAD before staging, adds the
+existing paths and runs `git commit` with the paths and the message on stdin,
+so nothing else already staged goes in and no shell quoting is involved; it
+never pushes. A hidden git ref holding the snapshot was rejected, and a file
+edited before and during a phase is committed whole. (commit-command)
+
 ### Active and archived changes live in sibling folders
 
 `Config.changes_dir` and `changes_path` name `.specworks/changes/active`, and
@@ -173,12 +193,20 @@ where to configure one. (baseline-project, run-unknown-key)
   `ConfigError`, file restored).
 - Config file: top-level `tools: [claude, copilot]`.
 - `src/specworks/core/changes.py`: `PHASES`, `HALVES`, `Change`, `create_change`,
-  `load_change`, `list_changes`, `list_archived`, `archived_as`, `set_phase`.
+  `load_change`, `list_changes`, `list_archived`, `archived_as`,
+  `set_phase(change, phase, root=None)`, `create_change(cfg, name, root=None)`
+  (with `root`, both record `Change.dirty`), `CommitResult` (`commit`,
+  `subject`, `committed`, `left_out`, `already_dirty`),
+  `commit_phase(root, ref, change, subject=None, trailers=()) -> CommitResult`.
+- `.change.yaml`: `dirty:` (path -> SHA-256 hex or `deleted`), omitted when
+  empty.
 - `src/specworks/core/runner.py`: `run_command`, `cached_run`, `RunResult`.
 - `src/specworks/core/files.py`: `read_text(path, keep_newlines=False)`.
 - `src/specworks/core/git.py`: `git`, `git_text`, `GitError`, `GitMissing`,
   `require_repo(path)`, `branch_name(ref)`, `Branch` (`name`, `started_from`),
-  `plan_branch(cwd, name, base=None)`, `create_branch(cwd, branch)`.
+  `plan_branch(cwd, name, base=None)`, `create_branch(cwd, branch)`,
+  `dirty_files(root) -> dict[str, str]`,
+  `commit(root, paths, message) -> str` (the short hash).
 
 ## Constraints
 
