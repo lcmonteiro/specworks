@@ -64,15 +64,23 @@ default comma list. The answer goes through `parse_tools`. Without a terminal
 it uses `auto`, so scripts and agents are never blocked. A checklist widget was
 rejected: the question is one line of text. (dedupe-copilot-skills)
 
-### Git is a precondition; `new` branches
+### Git is a precondition; `new` branches unless told to stay
 
 `init` calls `require_repo` after parsing its options and before writing
-anything, so a folder outside a repository is left untouched. `new` checks
-everything that can refuse (repo, detached HEAD, existing branch) before
-creating the change folder, then creates the folder and switches to the branch:
-a refusal leaves neither. `--no-branch` skips the branch but still needs the
-repo. `new` finds the base branch with `detect_base` and passes it to core, and
-reports `branch` and `startedFrom` (`--json`, both `null` without a branch).
+anything, so a folder outside a repository is left untouched. `new` creates a
+branch when `--branch` is given, or when neither flag is given and the top
+level's `branch_per_change` is true (the default); `--no-branch`, or the
+setting false, stays on the current branch. `--branch/--no-branch` is one
+option defaulting to `None`, so `--no-branch` keeps its spelling. Before
+creating the change folder, `new` checks everything that can refuse: the repo
+always, and a detached HEAD or an existing branch only when it creates the
+branch; then it creates the folder and switches to the branch, so a refusal
+leaves neither. Staying needs the repo too, and works on a detached HEAD. `new`
+finds the base branch with `detect_base` and passes it to core, and reports
+`branch` and `startedFrom` (`--json`, both `null` without a branch) and
+`stayedOn` (the current branch, from `current_branch`, when it stays; `null`
+on a detached HEAD or when a branch was created; text adds `stayed on
+<branch>`).
 Pushes stay in the skills. The CLI commits in two places: the merge commit
 `merge` makes when it joins a half's branch, and `commit`, which the skills
 use to commit each phase (what changed since the phase started, chosen by
@@ -81,7 +89,8 @@ hand. `new` and `phase` pass the workspace root so the change records its
 dirty files. `commit` looks up the active change first and, only when there is
 none, the newest archived one in the same module, because close archives the
 change before the skills commit it; neither found is the unknown change error.
-(git-workflow, merge-halves-without-conflicts, commit-command, fix-commit-after-close)
+(git-workflow, merge-halves-without-conflicts, commit-command, fix-commit-after-close,
+add-branch-default)
 
 ### Findings are written through `finding`, not by hand
 
@@ -101,8 +110,11 @@ each prints the change, the finding as `specworks cycle` sees it plus
 the YAML. Exactly one of `<value>` and `--file` is taken (`-` reads standard
 input, so a multi-line context needs no shell quoting); both or neither is
 refused before anything is read or written. The target is `--module` when
-given, else the current module, as in `capability add`. `config get` was left
-out: `context` already prints the commands and context. (add-config-set)
+given, else the current module, as in `capability add`, except for
+`branch_per_change`: only the top level's value is read, so it is always
+written to the top level's config, and the output's `config` and `module`
+name the top level. `config get` was left out: `context` already prints the
+commands and context. (add-config-set, add-branch-default)
 
 ### `capability add --create` makes the code folder
 
@@ -157,8 +169,9 @@ a second config format exists. (upgrade-project, dedupe-copilot-skills)
   `resolve_change`, `resolve_archived`, `require_change`, `ToolsOpt`
   (`--tools`, default `None`: the saved choice).
 - `src/specworks/cli/project.py`: `is_terminal() -> bool`.
-- `new <name> [--module M] [--no-branch] [--json]`: `--json` adds `branch` and
-  `startedFrom`.
+- `new <name> [--module M] [--branch|--no-branch] [--json]`: `--json` adds
+  `branch`, `startedFrom` and `stayedOn`; text adds `stayed on <branch>`
+  when it stays on a named branch.
 - The commands as `specworks --help` lists them: `version`, `init`, `skills`,
   `update`, `context`, `list`, `module add|list`, `capability add`, `config set`, `new`, `status`,
   `abandon`, `phase`, `skip-specs`, `instructions`, `task list|done|undo`,
@@ -178,7 +191,7 @@ a second config format exists. (upgrade-project, dedupe-copilot-skills)
 - `config set <key> [<value>] [--file <path>] [--module/-m <name>] [--json]`
   (`--file -` for standard input): text `set <key> in <config path>`;
   `--json` prints `key`, `value`, `config` (workspace-relative) and `module`
-  (the module's label).
+  (the module's label; the top level for `branch_per_change`).
 - `merge <branch> --change <ref> [--json]`: `--json` prints the change's
   fields plus `merged`, `branch` and `resolved` (workspace-relative paths).
 - `commit --change <ref> [--message TEXT] [--trailer TEXT]... [--json]`

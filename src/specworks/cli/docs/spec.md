@@ -235,9 +235,11 @@ module `--module` names.
 
 `new` SHALL create a change in the module nearest the working directory, or in
 `--module`, and put it on its own branch: it creates and switches to the
-change's branch unless `--no-branch` is given, and it SHALL fail without
+change's branch unless `branch_per_change` or `--no-branch` says to stay
+(REQ-CLI-015), and it SHALL fail without
 creating the change, naming the reason, when the folder is not inside a git
-repository, the branch already exists, or HEAD is detached. `phase <phase>
+repository or, when it creates the branch, the branch already exists or HEAD
+is detached. `phase <phase>
 --change <ref>` SHALL move a change without checking gates, and SHALL refuse
 the old argument order with a hint. `abandon` SHALL archive a change without
 merging, and requires a reason. `skip-specs` SHALL mark a change as having no
@@ -280,7 +282,7 @@ behaviour change, and `--off` removes the mark.
 
 #### Scenario: AC-CLI-006.8 Nothing is left behind
 
-- **WHEN** `new` runs outside a git repository, with the change's branch already existing, or with a detached HEAD
+- **WHEN** `new` runs outside a git repository, or creates the change's branch while that branch already exists or HEAD is detached
 - **THEN** it fails naming the reason, and no change folder and no branch are created
 
 #### Scenario: AC-CLI-006.9 Not on the base branch
@@ -474,7 +476,8 @@ SHALL be an error (`{"error": …}` with exit 1 under `--json`).
 ### Requirement: REQ-CLI-013 config set
 
 `config set <key> [<value>]` SHALL set the key in the config of the current
-module, or of the module `--module` names, and print the key and the config's
+module, or of the module `--module` names (`branch_per_change` always in the
+top level's config, which is the only one read for it), and print the key and the config's
 path. The value SHALL come from the argument, or from the file `--file`
 names (`-` reads standard input); giving both, or neither, SHALL be refused
 before writing. An error SHALL leave the config unchanged.
@@ -504,6 +507,12 @@ before writing. An error SHALL leave the config unchanged.
 
 - **WHEN** `config set commands.unit pytest --json` runs
 - **THEN** it prints `{"error": ...}`, exits 1, and the config is unchanged
+
+#### Scenario: AC-CLI-013.6 The branch setting from inside a module
+
+- **GIVEN** module `billing`
+- **WHEN** `config set branch_per_change false --json` runs inside `billing`'s folder, or with `--module billing`
+- **THEN** the top level's config has `branch_per_change: false`, billing's config is unchanged, and the output names the top level's config
 
 ### Requirement: REQ-CLI-014 Creating a capability's code folder
 
@@ -549,3 +558,48 @@ folder or file SHALL be created.
 
 - **WHEN** `capability add auth --path src/auth` runs and `src/auth` does not exist
 - **THEN** the capability is registered and `src/auth` still does not exist
+
+### Requirement: REQ-CLI-015 Staying on the branch
+
+`new` SHALL create the change's branch when the workspace's
+`branch_per_change` is true and stay on the current branch when it is false;
+`--branch` SHALL create it and `--no-branch` SHALL stay, whatever the
+setting. When it stays, the output SHALL name the branch it stayed on (none
+with a detached HEAD), and `branch` SHALL be
+null.
+
+#### Scenario: AC-CLI-015.1 The setting is false
+
+- **GIVEN** `branch_per_change: false` and HEAD on `work`
+- **WHEN** `new add-login --json` runs
+- **THEN** HEAD is still on `work`, no branch `add-login` exists, and the output has `branch` null and `stayedOn` `work`
+
+#### Scenario: AC-CLI-015.2 branch overrides false
+
+- **GIVEN** `branch_per_change: false`
+- **WHEN** `new add-login --branch` runs
+- **THEN** the branch `add-login` is created and checked out
+
+#### Scenario: AC-CLI-015.3 no-branch overrides true
+
+- **GIVEN** no `branch_per_change` in the config
+- **WHEN** `new add-login --no-branch --json` runs
+- **THEN** HEAD is still on its branch, and the output has `branch` null and `stayedOn` naming it
+
+#### Scenario: AC-CLI-015.4 No setting, no flag
+
+- **GIVEN** no `branch_per_change` in the config
+- **WHEN** `new add-login --json` runs
+- **THEN** the branch `add-login` is created and checked out, and `stayedOn` is null
+
+#### Scenario: AC-CLI-015.5 The text output
+
+- **GIVEN** `branch_per_change: false` and HEAD on `work`
+- **WHEN** `new add-login` runs
+- **THEN** the output has a line `stayed on work`
+
+#### Scenario: AC-CLI-015.6 Staying on a detached HEAD
+
+- **GIVEN** `branch_per_change: false` and a detached HEAD
+- **WHEN** `new add-login --json` runs
+- **THEN** the change is created, HEAD is still detached, and the output has `branch` and `stayedOn` null
