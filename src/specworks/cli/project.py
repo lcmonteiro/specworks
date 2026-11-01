@@ -307,7 +307,7 @@ def module_list(as_json: bool = JsonOpt) -> None:
     emit(data, as_json, "\n".join(module_lines(ws)))
 
 
-# @req REQ-CLI-005
+# @req REQ-CLI-005, REQ-CLI-014
 @capability_app.command("add")
 def capability_add(
     name: str = typer.Argument(..., help="Capability name (kebab-case)."),
@@ -328,15 +328,24 @@ def capability_add(
     owner = ws.prefixes().get(id_prefix)
     if owner and owner != target.qualify(name):  # the same name is reported as "already exists" below
         raise ConfigError(f"the ID prefix {id_prefix} is already used by {owner}; choose another with --prefix")
-    folder = ws.docs_folder(target, validate_relative(path, f"capability '{name}' path"))  # as the config will store it
+    code_path = validate_relative(path, f"capability '{name}' path")
+    folder = ws.docs_folder(target, code_path)  # as the config will store it
     if (taken := ws.docs_folders().get(folder)) and taken != target.qualify(name):  # @req REQ-PROJ-016
         where = ws.rel(folder) if folder.is_relative_to(ws.root) else folder.as_posix()
         raise ConfigError(f"the docs folder {where} is already used by {taken}; give {name} its own --path")
+    code_folder = target.root / code_path
+    if create and code_folder.exists() and not code_folder.is_dir():  # refused before the config is written
+        raise ConfigError(f"{ws.rel(code_folder)} exists and is not a folder; give {name} another --path")
     add_capability_entry(target.root, name, path, prefix=prefix, description=description)
     ws = require_workspace(target.root)
     data = describe(ws, capability_ref(ws.module(target.name), name), with_scenarios=False)
-    data["created"] = None  # stub: --create is accepted but creates nothing yet; this becomes the .gitkeep path relative to the workspace root
-    emit(data, as_json, f"registered {data['ref']} -> {data['codePath']} (REQ-{data['prefix']}-)")
+    data["created"] = None
+    if create and not code_folder.exists():  # last, so a refusal above creates nothing; an existing folder is left as it is
+        code_folder.mkdir(parents=True, exist_ok=True)
+        (code_folder / ".gitkeep").write_text("", encoding="utf-8")
+        data["created"] = ws.rel(code_folder / ".gitkeep")
+    text = f"registered {data['ref']} -> {data['codePath']} (REQ-{data['prefix']}-)"
+    emit(data, as_json, text + (f"\ncreated {data['created']}" if data["created"] else ""))
 
 
 # @req REQ-CLI-013
