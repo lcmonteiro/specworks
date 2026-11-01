@@ -6,10 +6,10 @@ The project model, in `src/specworks/core`, is what every other capability
 builds on:
 - **Config** (`config.py`, `validators.py`): finding the project's
   `.specworks/config.yml` and loading it into a validated `Config` (capabilities, modules, globs,
-  commands, diagram settings).
+  commands, diagram settings, `branch_per_change`).
 - **Config file** (`config_file.py`): writing the default config, adding
   module and capability entries, saving the AI tools a project uses, and
-  setting `commands.<key>` and `context`.
+  setting `commands.<key>`, `context` and `branch_per_change`.
 - **Workspace** (`workspace.py`): the top-level project and its modules, and
   what each module inherits.
 - **Changes** (`changes.py`): changes in flight and archived, and their phases
@@ -108,7 +108,23 @@ and the error says to set it by hand. So a flow mapping
 refused and restored. A trailing comment on the replaced line is dropped: it
 is about the old value, and `init` writes none. A round-trip YAML library was
 rejected as a new dependency for two keys; other keys stay hand-edited or
-keep their own commands. (add-config-set)
+keep their own commands. `branch_per_change` is settable too: its value must
+be exactly `true` or `false` (refused before the file is read, an empty value
+included, since clearing would only mean the default `true`); an uncommented
+top-level `branch_per_change:` line is replaced, else the line is appended
+after a blank line, with the same reload check. (add-config-set,
+add-branch-default)
+
+### Branching per change is a top-level setting
+
+`branch_per_change` (default `true`) says whether `new` creates a branch for
+each change. A value that is not a YAML boolean is refused at load
+(`'branch_per_change' must be true or false`). Any module's config may carry
+it and still loads, but only the top level's value is read, as for
+`diagrams`: the branch belongs to the repository, not to a module.
+`DEFAULT_CONFIG` describes it in a commented-out `# branch_per_change: false`
+block after `docs_dir`, so a new project keeps the default. An environment
+variable and a different default were left out. (add-branch-default)
 
 ### Tool IDs are known to core without importing the tools layer
 
@@ -216,7 +232,8 @@ where to configure one. (baseline-project, run-unknown-key)
   `old_layout_error(path, module=None) -> ConfigError`,
   `load_config(root) -> Config`, `Config` (`dir`, `config_path`,
   `changes_dir`, `changes_path`, `archive_dir`, `archive_path`, `tools`:
-  the saved tool IDs or `None`), `TOOL_IDS`, `Capability`, `DiagramSettings`.
+  the saved tool IDs or `None`, `branch_per_change: bool = True`),
+  `CONFIG_KEYS`, `TOOL_IDS`, `Capability`, `DiagramSettings`.
 - `src/specworks/core/workspace.py`: `load_workspace(start=None) -> Workspace | None`,
   `require_workspace(start) -> Workspace`, `Workspace` (`modules`,
   `module(name)`, `split(ref)`, `context_chain`, `merged_context`, `commands`,
@@ -225,11 +242,14 @@ where to configure one. (baseline-project, run-unknown-key)
 - `src/specworks/core/config_file.py`: `write_default_config(root, diagram_theme=None)`
   (writes `.specworks/config.yml`),
   `add_module_entry`, `add_capability_entry`, `save_tools(root, ids)` (raises
-  `ConfigError`, file restored), `SETTABLE_KEYS`,
-  `set_config_value(root, key, value)` (an empty value clears the key; raises
-  `ConfigError` for an unknown key, a context over `MAX_CONTEXT_BYTES`, or an
-  edit that does not load back, file restored).
-- Config file: top-level `tools: [claude, copilot]`.
+  `ConfigError`, file restored), `SETTABLE_KEYS`
+  (`context`, `commands.<key>`..., `branch_per_change`),
+  `set_config_value(root, key, value)` (an empty value clears the key;
+  `branch_per_change` takes only `true` or `false`; raises `ConfigError` for
+  an unknown key, a context over `MAX_CONTEXT_BYTES`, a non-boolean
+  `branch_per_change`, or an edit that does not load back, file restored).
+- Config file: top-level `tools: [claude, copilot]` and
+  `branch_per_change: true|false` (only the top level's is read).
 - `src/specworks/core/changes.py`: `PHASES`, `HALVES`, `Change`, `create_change`,
   `load_change`, `list_changes`, `list_archived`, `archived_as`,
   `set_phase(change, phase, root=None)`, `create_change(cfg, name, root=None)`
@@ -244,6 +264,7 @@ where to configure one. (baseline-project, run-unknown-key)
 - `src/specworks/core/git.py`: `git`, `git_text`, `GitError`, `GitMissing`,
   `require_repo(path)`, `branch_name(ref)`, `Branch` (`name`, `started_from`),
   `plan_branch(cwd, name, base=None)`, `create_branch(cwd, branch)`,
+  `current_branch(cwd) -> str | None` (`None` on a detached HEAD),
   `dirty_files(root) -> dict[str, str]`,
   `commit(root, paths, message) -> str` (the short hash).
 

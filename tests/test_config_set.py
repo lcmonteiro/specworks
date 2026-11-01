@@ -6,7 +6,7 @@ from typer.testing import CliRunner
 from helpers import init_repo
 from specworks.cli import app
 from specworks.core.config import MAX_CONTEXT_BYTES, load_config
-from specworks.core.config_file import set_config_value
+from specworks.core.config_file import DEFAULT_CONFIG, set_config_value
 from specworks.core.errors import ConfigError
 
 runner = CliRunner()
@@ -210,6 +210,49 @@ def test_ac_proj_025_11_a_context_over_the_size_limit_is_refused(project):
     assert read(project) == before
 
 
+# @ac AC-PROJ-025.12
+def test_ac_proj_025_12_the_branch_setting(project):
+    set_config_value(project, "branch_per_change", "false")
+    text = read(project)
+    assert load_config(project).branch_per_change is False
+    assert len(entries(text, "branch_per_change")) == 1
+    with pytest.raises(ConfigError) as error:
+        set_config_value(project, "branch_per_change", "maybe")
+    assert "branch_per_change must be true or false" in str(error.value)
+    assert read(project) == text
+
+
+# --- branch_per_change ------------------------------------------------------
+
+
+# @ac AC-PROJ-026.1
+def test_ac_proj_026_1_the_default_is_true_and_the_default_config_names_it(project, tmp_path_factory):
+    bare = tmp_path_factory.mktemp("bare")
+    (bare / ".specworks").mkdir()
+    write(bare, "specworks: 1\n")
+    assert load_config(bare).branch_per_change is True
+    assert load_config(project).branch_per_change is True
+    assert "branch_per_change" in read(project)
+    assert "# branch_per_change: false" in DEFAULT_CONFIG
+    assert entries(read(project), "branch_per_change") == []  # described, not set
+
+
+# @ac AC-PROJ-026.2
+def test_ac_proj_026_2_set_to_false(tmp_path):
+    (tmp_path / ".specworks").mkdir()
+    write(tmp_path, "specworks: 1\nbranch_per_change: false\n")
+    assert load_config(tmp_path).branch_per_change is False
+
+
+# @ac AC-PROJ-026.3
+def test_ac_proj_026_3_a_value_that_is_not_true_or_false_is_refused(tmp_path):
+    (tmp_path / ".specworks").mkdir()
+    write(tmp_path, "specworks: 1\nbranch_per_change: sometimes\n")
+    with pytest.raises(ConfigError) as error:
+        load_config(tmp_path)
+    assert "'branch_per_change' must be true or false" in str(error.value)
+
+
 # --- specworks config set ---------------------------------------------------
 
 
@@ -268,6 +311,24 @@ def test_ac_cli_013_5_a_refused_key_under_json(project):
     assert code == 1 and "error" in data, data
     assert "unknown config key" in data["error"]
     assert read(project) == before
+
+
+# @ac AC-CLI-013.6
+@pytest.mark.parametrize("where", ["inside", "option"])
+def test_ac_cli_013_6_the_branch_setting_from_inside_a_module(project, monkeypatch, where):
+    assert invoke("module", "add", "services/billing").exit_code == 0
+    billing = project / "services/billing"
+    billing_before = read(billing)
+    if where == "inside":
+        monkeypatch.chdir(billing)
+        code, data = invoke_json("config", "set", "branch_per_change", "false")
+    else:
+        code, data = invoke_json("config", "set", "branch_per_change", "false", "--module", "billing")
+    assert code == 0, data
+    assert entries(read(project), "branch_per_change") == ["branch_per_change: false"]
+    assert load_config(project).branch_per_change is False
+    assert read(billing) == billing_before
+    assert data["config"] == CONFIG
 
 
 # @ac AC-CLI-013.2

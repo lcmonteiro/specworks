@@ -99,6 +99,17 @@ def create_branch(cwd: Path, branch: Branch) -> None:
     git(cwd, "checkout", "-b", branch.name)
 
 
+# @req REQ-CLI-015
+def current_branch(cwd: Path) -> str | None:
+    """The branch HEAD is on (`symbolic-ref --short HEAD`), `None` on a detached HEAD. Implements REQ-CLI-015."""
+    try:
+        return git_text(cwd, "symbolic-ref", "--short", "HEAD").strip()  # also works before the first commit
+    except GitMissing:
+        raise
+    except GitError:
+        return None
+
+
 DELETED = "deleted"  # the record's value for a dirty file that no longer exists (REQ-PROJ-023)
 DETACHED = "cannot commit on a detached HEAD; switch to a branch first"
 

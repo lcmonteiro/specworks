@@ -28,7 +28,7 @@ WORKFLOW_DIR = ".specworks"  # the fixed workflow folder of every project and mo
 CONFIG_FILE = "config.yml"  # the config's name inside WORKFLOW_DIR
 DEFAULT_DOCS_DIR = "docs"
 MAX_CONTEXT_BYTES = 50 * 1024
-CONFIG_KEYS = ("specworks", "context", "docs_dir", "capabilities", "modules", "test_globs", "source_globs", "commands", "diagrams", "tools")
+CONFIG_KEYS = ("specworks", "context", "docs_dir", "capabilities", "modules", "test_globs", "source_globs", "commands", "diagrams", "tools", "branch_per_change")
 CAPABILITY_KEYS = ("path", "prefix", "description")
 # The AI tool IDs `tools:` may list; the same keys, in the same order, as TOOLS in tools/skills.py (core never imports tools).
 TOOL_IDS: tuple[str, ...] = ("claude", "copilot")
@@ -157,6 +157,16 @@ def load_diagram_settings(raw: object) -> DiagramSettings:
     return settings
 
 
+# @req REQ-PROJ-026
+def load_branch_per_change(raw: object, present: bool) -> bool:
+    """Whether a new change gets its own branch: true when the key is absent, else its YAML boolean."""
+    if not present:
+        return True
+    if not isinstance(raw, bool):
+        raise ConfigError("'branch_per_change' must be true or false")
+    return raw
+
+
 @dataclass
 class Config:
     root: Path
@@ -170,6 +180,7 @@ class Config:
     commands: dict[str, str] = field(default_factory=dict)
     diagrams: DiagramSettings = field(default_factory=DiagramSettings)
     tools: list[str] | None = None  # the AI tools saved at the top level (TOOL_IDS); None when none is saved
+    branch_per_change: bool = True  # whether `new` creates a branch per change; only the top level's is read (REQ-PROJ-026)
 
     @property
     def config_path(self) -> Path:
@@ -249,7 +260,7 @@ def find_root(start: Path | None = None) -> Path | None:
     return None
 
 
-# @req REQ-PROJ-001, REQ-PROJ-002, REQ-PROJ-003, REQ-PROJ-004
+# @req REQ-PROJ-001, REQ-PROJ-002, REQ-PROJ-003, REQ-PROJ-004, REQ-PROJ-026
 def load_config(root: Path) -> Config:
     """Load ``root/.specworks/config.yml``."""
     path = root / WORKFLOW_DIR / CONFIG_FILE
@@ -314,4 +325,5 @@ def load_config(root: Path) -> Config:
         commands=load_commands(raw.get("commands")),
         diagrams=load_diagram_settings(raw.get("diagrams")),
         tools=load_tools(raw.get("tools"), "tools" in raw),
+        branch_per_change=load_branch_per_change(raw.get("branch_per_change"), "branch_per_change" in raw),
     )

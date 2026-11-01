@@ -732,14 +732,15 @@ detached HEAD before staging anything.
 - **WHEN** the phase is committed
 - **THEN** `.change.yaml` is committed and not reported as already dirty
 
-### Requirement: REQ-PROJ-025 Setting a command or the context
+### Requirement: REQ-PROJ-025 Setting a command, the context or the branch setting
 
 The system SHALL set `commands.<key>` (a key of `test`, `lint`, `typecheck`,
 `build`, `format`) or `context` in a project's config, editing it as text:
 the user's comments and the other entries SHALL be kept. A command SHALL be
 one line under `commands:`, replacing that key's line when there is one; the
 context SHALL be a block replacing the `context:` entry there. An empty value
-SHALL clear the key. Any other key SHALL be refused before writing, naming the
+SHALL clear the key. `branch_per_change` SHALL take `true` or `false` and be
+one top-level line, replacing the one there. Any other key SHALL be refused before writing, naming the
 keys it accepts. A context larger than the config's size limit SHALL be
 refused before writing, naming the limit. When the edit would not load with the new value and every
 other entry unchanged, the file SHALL be left unchanged and the error SHALL
@@ -807,3 +808,42 @@ say to set the key by hand.
 
 - **WHEN** `context` is set to a text larger than the config's size limit
 - **THEN** it is refused naming the limit, and the config file is unchanged
+
+#### Scenario: AC-PROJ-025.12 The branch setting
+
+- **GIVEN** the default config written by `init`
+- **WHEN** `branch_per_change` is set to `false`, then to `maybe`
+- **THEN** the config loads with `branch_per_change` false and one `branch_per_change:` line, and `maybe` is refused naming `true` and `false`, the file unchanged
+
+### Requirement: REQ-PROJ-026 The branch setting
+
+The config SHALL accept a top-level `branch_per_change`, `true` or `false`,
+saying whether a new change gets its own branch; it SHALL default to `true`
+when absent. Any other value SHALL be refused when the config loads, naming
+the key. The workspace SHALL use the top level's value; a module's own
+`branch_per_change` SHALL be ignored. The default config written by `init`
+SHALL describe the key without setting it.
+
+#### Scenario: AC-PROJ-026.1 The default
+
+- **GIVEN** a config with no `branch_per_change`, or the default config written by `init`
+- **WHEN** it loads
+- **THEN** `branch_per_change` is true, and the default config's text names `branch_per_change`
+
+#### Scenario: AC-PROJ-026.2 Set to false
+
+- **GIVEN** a config with `branch_per_change: false`
+- **WHEN** it loads
+- **THEN** `branch_per_change` is false
+
+#### Scenario: AC-PROJ-026.3 A value that is not true or false
+
+- **GIVEN** a config with `branch_per_change: sometimes`
+- **WHEN** it loads
+- **THEN** it is refused with an error naming `branch_per_change`
+
+#### Scenario: AC-PROJ-026.4 A module's own value
+
+- **GIVEN** a top level with `branch_per_change: false` and module `billing` with `branch_per_change: true`
+- **WHEN** the workspace's setting is read from inside `billing`
+- **THEN** it is false
