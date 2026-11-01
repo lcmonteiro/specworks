@@ -16,6 +16,7 @@ reading the diff. `- [ ] R<n>` while open, `- [x] R<n>` once resolved. Write
   - **Decision**: back to specify: REQ-CLI-013 always writes branch_per_change to the top level's config (whatever the current module or --module), with a new criterion
 - [ ] R3 **quality** config set's help does not list the new key: the KEY argument says 'context, or commands.<test|lint|typecheck|build|format>' and the docstring 'Set a command or the context' (src/specworks/cli/project.py:355 and :361)
   - **Proposal**: back to code: name branch_per_change (true|false) in the KEY help and the docstring
+  - **Decision**: back to code: name branch_per_change in config set's key help and docstring
 
 ## Changed files without tags
 
