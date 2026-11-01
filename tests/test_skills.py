@@ -1090,3 +1090,26 @@ def test_the_back_from_review_rule_is_shared(name):
 @pytest.mark.parametrize("name", ["specworks-test", "specworks-code"])
 def test_the_start_implement_rule_is_shared(name):
     assert "<!-- specworks:include start-implement" in raw_skill_file(f"{name}/SKILL.md")
+
+
+def test_specify_looks_up_the_related_requirements_after_listing_the_capabilities():
+    # Without the lookup a change can contradict a living requirement that names the same command or flag.
+    load = step(read_skill("specworks-specify"), 2)
+    assert 'specworks spec find "<term>" ... --json' in load
+    assert load.index("specworks spec list --json") < load.index('specworks spec find "<term>" ... --json')
+    assert "a MODIFIED block in the delta, or a one-line reason to leave it" in load
+    assert "`## Related requirements`" in load
+
+
+def test_specify_shows_the_related_requirements_when_it_confirms_the_criteria():
+    assert "the related requirements, each modified or left with its reason" in step(read_skill("specworks-specify"), 5)
+
+
+def test_the_proposal_template_has_related_requirements_after_capabilities():
+    template = read_template("proposal.md")
+    assert "## Related requirements" in template
+    assert template.index("## Capabilities") < template.index("## Related requirements")
+
+
+def test_the_proposal_instruction_asks_for_the_related_requirements():
+    assert "**Related requirements**" in load_artifacts()["proposal"].instruction
