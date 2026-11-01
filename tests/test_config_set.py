@@ -313,6 +313,24 @@ def test_ac_cli_013_5_a_refused_key_under_json(project):
     assert read(project) == before
 
 
+# @ac AC-CLI-013.6
+@pytest.mark.parametrize("where", ["inside", "option"])
+def test_ac_cli_013_6_the_branch_setting_from_inside_a_module(project, monkeypatch, where):
+    assert invoke("module", "add", "services/billing").exit_code == 0
+    billing = project / "services/billing"
+    billing_before = read(billing)
+    if where == "inside":
+        monkeypatch.chdir(billing)
+        code, data = invoke_json("config", "set", "branch_per_change", "false")
+    else:
+        code, data = invoke_json("config", "set", "branch_per_change", "false", "--module", "billing")
+    assert code == 0, data
+    assert entries(read(project), "branch_per_change") == ["branch_per_change: false"]
+    assert load_config(project).branch_per_change is False
+    assert read(billing) == billing_before
+    assert data["config"] == CONFIG
+
+
 # @ac AC-CLI-013.2
 def test_ac_cli_013_2_an_unreadable_file_is_refused(project):
     before = read(project)
