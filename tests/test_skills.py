@@ -1052,6 +1052,29 @@ def test_ac_integ_007_6_nothing_is_written_when_a_packaged_include_fails(tmp_pat
     assert installed_files(tmp_path) == before
 
 
+# @ac AC-INTEG-007.8
+def test_ac_integ_007_8_update_changes_nothing_when_a_packaged_include_fails(tmp_path, monkeypatch):
+    init(tmp_path, monkeypatch, "--tools", "claude")
+    stale = tmp_path / ".claude/skills/specworks-retired"  # a specworks skill this version does not ship: update would remove it
+    stale.mkdir()
+    (stale / "SKILL.md").write_text("old\n", encoding="utf-8")
+    (tmp_path / f".claude/skills/{SKILL}/SKILL.md").write_text("old\n", encoding="utf-8")  # outdated: update would rewrite it
+    before = installed_files(tmp_path)
+    real = skills_module.fill_includes
+
+    def failing(text, skill, shared):
+        if skill == "specworks-test":
+            raise ToolError(f"skill {skill}: include back-from-review leaves {{{{phase}}}} unfilled")
+        return real(text, skill, shared)
+
+    monkeypatch.setattr(skills_module, "fill_includes", failing)
+    result = runner.invoke(app, ["update"])
+    assert result.exit_code == 1, result.output
+    assert "leaves {{phase}} unfilled" in result.output
+    assert (stale / "SKILL.md").read_text(encoding="utf-8") == "old\n"
+    assert installed_files(tmp_path) == before
+
+
 # @ac AC-INTEG-007.7
 @pytest.mark.parametrize("name", packaged_skills())
 def test_ac_integ_007_7_every_packaged_skill_fills_in(name):
