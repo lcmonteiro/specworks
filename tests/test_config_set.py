@@ -5,7 +5,7 @@ from typer.testing import CliRunner
 
 from helpers import init_repo
 from specworks.cli import app
-from specworks.core.config import load_config
+from specworks.core.config import MAX_CONTEXT_BYTES, load_config
 from specworks.core.config_file import set_config_value
 from specworks.core.errors import ConfigError
 
@@ -151,6 +151,65 @@ def test_ac_proj_025_9_an_entry_the_text_edit_cannot_change(tmp_path):
     assert read(tmp_path) == before
 
 
+# @ac AC-PROJ-025.9
+def test_ac_proj_025_9_an_edit_that_does_not_load_is_restored(tmp_path):
+    # A 4-space `commands:` block gets a 2-space line, which does not load: the file is restored.
+    (tmp_path / ".specworks").mkdir()
+    write(tmp_path, "specworks: 1\n# the commands\ncommands:\n    test: pytest\n")
+    before = read(tmp_path)
+    with pytest.raises(ConfigError) as error:
+        set_config_value(tmp_path, "commands.lint", "ruff check .")
+    assert "set it by hand" in str(error.value) and "commands.lint" in str(error.value)
+    assert read(tmp_path) == before
+
+
+# @ac AC-PROJ-025.6
+def test_ac_proj_025_6_the_context_added_to_a_config_without_one(tmp_path):
+    (tmp_path / ".specworks").mkdir()
+    write(tmp_path, "specworks: 1\n# the docs folder\ndocs_dir: docs\ncommands:\n  test: pytest\n")
+    context = "Line one\nLine two\nLine three\n"
+    set_config_value(tmp_path, "context", context)
+    text = read(tmp_path)
+    config = load_config(tmp_path)
+    assert config.context == context
+    assert (config.docs_dir, config.commands) == ("docs", {"test": "pytest"})
+    assert "# the docs folder" in text
+    assert len([line for line in text.splitlines() if line.startswith("context:")]) == 1
+
+
+# @ac AC-PROJ-025.10
+def test_ac_proj_025_10_a_command_added_to_the_commands_block(project):
+    with_commands(project, "pytest", "ruff check .")
+    before = read(project)
+    set_config_value(project, "commands.typecheck", "uv run mypy")
+    text = read(project)
+    assert load_config(project).commands == {"test": "pytest", "lint": "ruff check .", "typecheck": "uv run mypy"}
+    assert len(entries(text, "typecheck")) == 1
+    assert len([line for line in text.splitlines() if line.startswith("commands:")]) == 1
+    assert comments(before) and all(line in text.splitlines() for line in comments(before))
+
+
+# @ac AC-PROJ-025.10
+def test_ac_proj_025_10_a_command_added_to_the_default_commands_block(project):
+    before = read(project)
+    set_config_value(project, "commands.typecheck", "uv run mypy")
+    text = read(project)
+    assert load_config(project).commands == {"typecheck": "uv run mypy"}  # test and lint stay empty, as init wrote them
+    assert len(entries(text, "test")) == 1 and len(entries(text, "lint")) == 1
+    assert len(entries(text, "typecheck")) == 1
+    assert len([line for line in text.splitlines() if line.startswith("commands:")]) == 1
+    assert all(line in text.splitlines() for line in comments(before))
+
+
+# @ac AC-PROJ-025.11
+def test_ac_proj_025_11_a_context_over_the_size_limit_is_refused(project):
+    before = read(project)
+    with pytest.raises(ConfigError) as error:
+        set_config_value(project, "context", "x" * (MAX_CONTEXT_BYTES + 1))
+    assert str(MAX_CONTEXT_BYTES) in str(error.value)
+    assert read(project) == before
+
+
 # --- specworks config set ---------------------------------------------------
 
 
@@ -208,4 +267,12 @@ def test_ac_cli_013_5_a_refused_key_under_json(project):
     code, data = invoke_json("config", "set", "commands.unit", "pytest")
     assert code == 1 and "error" in data, data
     assert "unknown config key" in data["error"]
+    assert read(project) == before
+
+
+# @ac AC-CLI-013.2
+def test_ac_cli_013_2_an_unreadable_file_is_refused(project):
+    before = read(project)
+    code, data = invoke_json("config", "set", "context", "--file", "missing.txt")
+    assert code == 1 and "cannot read missing.txt" in data["error"], data
     assert read(project) == before
