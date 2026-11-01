@@ -208,6 +208,60 @@ def test_new_names_the_branch_it_started_from_unless_it_is_the_base(committed):
     assert result.exit_code == 0 and "started from add-refunds" in result.output
 
 
+def stay_on_work(root):
+    """`branch_per_change: false` at the top level, with HEAD on a branch `work`."""
+    cfg = root / ".specworks/config.yml"
+    cfg.write_text(cfg.read_text(encoding="utf-8") + "branch_per_change: false\n", encoding="utf-8")
+    git(root, "checkout", "-q", "-b", "work")
+
+
+# @ac AC-CLI-015.1
+def test_ac_cli_015_1_the_setting_false_stays_on_the_branch(committed):
+    stay_on_work(committed)
+    code, data = run_json("new", "add-login")
+    assert code == 0, data
+    assert current_branch(committed) == "work" and "add-login" not in branch_names(committed)
+    assert data["branch"] is None and data["stayedOn"] == "work"
+    assert (committed / ".specworks/changes/active/add-login").is_dir()
+
+
+# @ac AC-CLI-015.2
+def test_ac_cli_015_2_branch_overrides_false(committed):
+    stay_on_work(committed)
+    result = runner.invoke(app, ["new", "add-login", "--branch"])
+    assert result.exit_code == 0, result.output
+    assert "add-login" in branch_names(committed) and current_branch(committed) == "add-login"
+    assert "stayed on" not in result.output
+
+
+# @ac AC-CLI-015.3
+def test_ac_cli_015_3_no_branch_overrides_the_default(committed):
+    git(committed, "checkout", "-q", "-b", "feature")
+    before = branch_names(committed)
+    code, data = run_json("new", "add-login", "--no-branch")
+    assert code == 0, data
+    assert current_branch(committed) == "feature" and branch_names(committed) == before
+    assert data["branch"] is None and data["stayedOn"] == "feature"
+
+
+# @ac AC-CLI-015.4
+def test_ac_cli_015_4_no_setting_and_no_flag_creates_the_branch(committed):
+    assert load_config(committed).branch_per_change is True
+    code, data = run_json("new", "add-login")
+    assert code == 0, data
+    assert current_branch(committed) == "add-login" and data["branch"] == "add-login"
+    assert "stayedOn" in data and data["stayedOn"] is None
+
+
+# @ac AC-CLI-015.5
+def test_ac_cli_015_5_the_text_output_names_the_branch_it_stayed_on(committed):
+    stay_on_work(committed)
+    result = runner.invoke(app, ["new", "add-login"])
+    assert result.exit_code == 0, result.output
+    assert "stayed on work" in result.output.splitlines()
+    assert current_branch(committed) == "work"
+
+
 # @ac AC-FLOW-002.1
 def test_instructions_for_refinement(project):
     run_json("new", "add-login", "--no-branch")

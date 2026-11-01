@@ -332,6 +332,17 @@ def test_a_new_capability_of_a_module_is_registered_with_module(workspace):
     assert any(i["message"].endswith("specworks capability add refunds --path <code path> --module billing") for i in data["issues"])
 
 
+# @ac AC-PROJ-026.4
+def test_ac_proj_026_4_a_modules_own_branch_setting_is_ignored(workspace, monkeypatch):
+    top, billing = workspace / ".specworks/config.yml", workspace / "services/billing/.specworks/config.yml"
+    top.write_text(top.read_text() + "branch_per_change: false\n")
+    billing.write_text(billing.read_text() + "branch_per_change: true\n")
+    monkeypatch.chdir(workspace / "services/billing")
+    ws = load_workspace()
+    assert ws is not None and ws.current.name == "billing"
+    assert ws.top.config.branch_per_change is False
+
+
 # @ac AC-PROJ-007.2
 def test_a_module_inherits_the_commands_it_does_not_set(workspace):
     top, billing = workspace / ".specworks/config.yml", workspace / "services/billing/.specworks/config.yml"
