@@ -17,9 +17,10 @@ because an include is copied verbatim.
   filling in the skill fail, naming the skill, the include and the key;
   `specworks skills` then writes nothing.
 - Includes without parameters are filled in as today.
-- New shared files `back-from-review.md`, `gate-fails.md` and
-  `test-command.md`; `specworks-design`, `specworks-test` and
-  `specworks-code` use them with parameters, keeping their current wording.
+- New shared files `back-from-review.md` (design, test, code) and
+  `start-implement.md` (starting implement and the gate-fail stop, test and
+  code); the skills use them with parameters, and every installed skill stays
+  byte for byte as it is today.
 
 ## Capabilities
 
@@ -34,7 +35,7 @@ because an include is copied verbatim.
 ## Impact
 
 - `src/specworks/tools/skills.py`: the include pattern and filling in.
-- `src/specworks/skills/_shared/` (three new files), the three skills, and
+- `src/specworks/skills/_shared/` (two new files), the three skills, and
   their installed copies.
 - Tests for the requirement; the existing wording tests stay green.
 
@@ -43,3 +44,5 @@ because an include is copied verbatim.
 - "Starting the phase" (the gates differ per phase) and "re-read from
   disk".
 - Specify's back-from-review steps, and the wording in adopt and start.
+- The missing-test-command step: test and code word it differently in
+  substance, not just by a parameter.
