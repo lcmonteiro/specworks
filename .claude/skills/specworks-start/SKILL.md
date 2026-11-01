@@ -18,7 +18,7 @@ Then the first change starts with `/specworks-refine`. A capability gets its
 spec from its first change, as ADDED requirements.
 
 **Boundary**: starting writes only the configs, a `.gitkeep` in each
-capability's code folder and (through `specworks skills`) the agent skills. No language
+capability's code folder (through `capability add --create`) and (through `specworks skills`) the agent skills. No language
 files: no manifest, sources or tests; the first change sets up the stack.
 
 **Running the CLI**: use `specworks <cmd>`. If it is not on PATH, use
@@ -159,12 +159,11 @@ next step the same way: the next skill (recommended), any alternative, and
 
    For each capability:
    ```bash
-   specworks capability add <name> --path <folder> [--module <m>] --description "<one line>"
+   specworks capability add <name> --path <folder> [--module <m>] --create --description "<one line>"
    ```
    `--path` is relative to the module's root; `--module` names the module
-   that owns it (omit it for the top level). `capability add` does not
-   create the folder: write an empty `.gitkeep` in each capability's code
-   folder (`<module path>/<folder>/.gitkeep`) so git keeps it.
+   that owns it (omit it for the top level). `--create` creates the code folder with an empty `.gitkeep` so git keeps it
+   (`<module path>/<folder>/.gitkeep`); a folder that already exists is left as it is.
 
    Write the context from the approved tree, for the top level and for a
    module whose stack differs: write it with `specworks config set context --file -` (the text on standard input).
@@ -201,9 +200,9 @@ next step the same way: the next skill (recommended), any alternative, and
 - No language files: no manifest, sources or tests, not even a test runner
   config; the first change sets up the stack.
 - Only the `specworks` commands shown here, which exist today: `context`,
-  `skills --tools`, `module add` and `capability add`; `init` is the user's,
+  `skills --tools`, `module add`, `capability add --create` and `config set`; `init` is the user's,
   before this skill.
-- Writes only the configs, the `.gitkeep` files and (through
+- Writes only the configs, the `.gitkeep` files (through `capability add --create`) and (through
   `specworks skills`) the agent skills; no commit.
 - Never edit the living docs (`<path>/<docs_dir>/`) by hand: a capability's
   first change writes them at close.

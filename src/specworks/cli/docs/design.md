@@ -104,6 +104,20 @@ refused before anything is read or written. The target is `--module` when
 given, else the current module, as in `capability add`. `config get` was left
 out: `context` already prints the commands and context. (add-config-set)
 
+### `capability add --create` makes the code folder
+
+With `--create`, `capability add` creates a missing code folder
+(`target.root / path`, relative to the owning module's root) with an empty
+`.gitkeep`, so the start skill no longer writes it by hand. Before the config
+is written, it refuses a folder, or any parent below the module root, that
+exists and is not a folder (`ConfigError`: `<path> exists and is not a
+folder; give <name> another --path`); the folder is created only after the
+capability is registered, so any refusal creates nothing. An existing folder
+is left as it is. The output always carries `created` (the `.gitkeep` path or
+`null`). Creating folders without the flag and a `scaffold` command were left
+out: adopt, close and done register folders that already exist.
+(add-capability-create)
+
 ### Modules are linked where the folder lives
 
 `module add <path>` and `init <path>` both link the folder in the config of the
@@ -157,6 +171,10 @@ a second config format exists. (upgrade-project, dedupe-copilot-skills)
   `finding` (`id`, `type`, `text`, `phase`, `doneIn` when set, `done`) and
   `path` (review.md, workspace-relative); text output is
   `<id> <type> -> <phase> (open|done)` and the path.
+- `capability add <name> --path <folder> [--module/-m <name>] [--prefix P]
+  [--description TEXT] [--create] [--json]`: `--json` adds `created` (the
+  `.gitkeep` path, workspace-relative, or `null`; present with or without
+  `--create`); text adds `created <path>` when one was created.
 - `config set <key> [<value>] [--file <path>] [--module/-m <name>] [--json]`
   (`--file -` for standard input): text `set <key> in <config path>`;
   `--json` prints `key`, `value`, `config` (workspace-relative) and `module`
