@@ -18,6 +18,10 @@
 
 - `<!-- ref -->`: <!-- which requirements change -->
 
+## Related requirements
+
+<!-- REQ-… modified, or REQ-… left: <reason>; None when spec find found none -->
+
 ## Impact
 
 <!-- Affected code, APIs, data, dependencies, systems -->

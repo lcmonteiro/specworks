@@ -73,6 +73,7 @@ artifacts:
         Each one gets a delta spec. A change with no behaviour change (pure
         refactor, tooling, docs) lists none and is marked with
         `specworks skip-specs --change <ref>` - never invent a requirement to pass validation.
+      - **Related requirements**: every living requirement that `specworks spec find` returns for the change's commands, flags, config keys and file names, as `REQ-… modified` or `REQ-… left: <reason>`; `None` when there is none.
       - **Impact**: code, APIs, data, dependencies and systems affected.
       - **Out of Scope**: what this change deliberately does not do.
 

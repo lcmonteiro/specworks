@@ -8,7 +8,7 @@ import typer
 from pyd2 import DARK_THEMES, THEMES
 
 from ..core.config import theme_name
-from ..specs.capabilities import describe, resolve_ref, workspace_capabilities
+from ..specs.capabilities import describe, find_requirements, resolve_ref, workspace_capabilities
 from ..specs.trace import Analysis, to_markdown, write_traceability
 from ..tools.diagrams import DiagramError, diagrams_in, find_d2, render, state
 from .app import app, spec_app
@@ -94,14 +94,19 @@ def spec_list(as_json: bool = JsonOpt) -> None:
     emit({"root": str(ws.root), "capabilities": caps}, as_json, text or "no capabilities")
 
 
-# Implements REQ-CLI-016 (the docstring is the command's help).
+# @req REQ-CLI-016
 @spec_app.command("find")
 def spec_find(
     terms: list[str] = typer.Argument(None, help="Terms to look for (commands, flags, config keys, file names); literal, any case."),
     as_json: bool = JsonOpt,
 ) -> None:
     """Every living requirement, in every module, that mentions any of the terms, with its path:line."""
-    raise NotImplementedError
+    if not terms:
+        fail("give at least one term", as_json)
+    ws = workspace(as_json)
+    matches = find_requirements(ws, terms)
+    text = "\n".join(f"{m.capability}  {m.id or '(no ID)'}  {m.title}  {m.path}:{m.line}" for m in matches)
+    emit({"terms": terms, "matches": [vars(m) for m in matches]}, as_json, text or f"no requirement mentions {', '.join(terms)}")
 
 
 # @req REQ-CLI-008

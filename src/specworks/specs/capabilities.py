@@ -26,7 +26,7 @@ from ..core.config import Capability, ConfigError
 from ..core.files import read_text
 from ..core.validators import validate_capability_name
 from ..core.workspace import Module, Workspace, capability_prefix
-from .specfile import REQ_ID_RE, SpecDoc, find_ids, id_prefix, parse_spec, requirement_number
+from .specfile import REQ_ID_RE, SpecDoc, blank_comments, find_ids, id_prefix, parse_spec, requirement_number
 
 SPECS_DIR = "specs"
 SPEC_FILE = "spec.md"
@@ -233,11 +233,28 @@ def workspace_capabilities(ws: Workspace) -> list[CapabilityRef]:
     return [capability_ref(m, name) for m in ws.modules() for name in m.config.capabilities]
 
 
+# @req REQ-SPECS-016
 def find_requirements(ws: Workspace, terms: list[str]) -> list[RequirementMatch]:
     """Every living requirement whose title, text or scenarios contain any of ``terms``, literal and ignoring case.
 
     In capability order, then requirement order, each listed once with its first matching line; a capability
     without a living spec is skipped. Raises ``ConfigError("empty search term")`` for a blank term.
-    Implements REQ-SPECS-016.
     """
-    raise NotImplementedError
+    if any(not t.strip() for t in terms):
+        raise ConfigError("empty search term")
+    needles = [t.casefold() for t in terms]
+    found: list[RequirementMatch] = []
+    for cap in workspace_capabilities(ws):
+        living = cap.living_spec()
+        if living is None or not living.is_file():
+            continue
+        text = read_text(living)
+        doc = parse_spec(text)
+        lines = blank_comments(text).splitlines()  # what parse_spec read: the same line numbers, without template hints
+        for req in doc.requirements:
+            for number in range(req.line, req.end + 1):
+                line = lines[number - 1]
+                if any(n in line.casefold() for n in needles):
+                    found.append(RequirementMatch(cap.ref, req.id, req.title, ws.rel(living), number, line.strip()))
+                    break
+    return found
