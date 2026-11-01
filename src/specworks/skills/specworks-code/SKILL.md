@@ -35,16 +35,8 @@ change's tests. When the code gate passes, stop and suggest
 1. **Pick the change and start implement once the API is agreed**
 
    - Pick the change (above), then:
-     ```bash
-     specworks start implement --change "<ref>"
-     ```
-     It runs the gates of the phases left behind (`gate design`, and
-     `gate specify` too if the change skips design) and moves the change to
-     implement only if they pass. When the change is already in implement
-     (the test half started it), it re-checks `gate design` only.
-   - If a gate fails, stop: show the failing checks and suggest
-     `/specworks-design <ref>` (or `/specworks-specify <ref>` when the specs
-     themselves fail).
+<!-- specworks:include start-implement other=test -->
+
    - `commands` in the context are this project's tools; `specworks run test`
      (and `run lint`, `run typecheck` when configured) runs them in the right
      folder. If `test` is not configured, find it and ask "Use `<command>` as
@@ -137,13 +129,7 @@ change's tests. When the code gate passes, stop and suggest
    of its own, a failing suite is a warning: those tests meet the code in
    review. Fix every failing blocking check and re-run.
 
-   **Back from review**: when `specworks cycle --change "<ref>" --json`
-   lists open findings whose `phase` is `code` or `implement`, you carried out their
-   agreed proposal (the Decision); once the gate passes, record each one:
-   ```bash
-   specworks finding done R<n> --in <code, or implement for a finding routed to both halves> --change "<ref>" "<what changed>"
-   ```
-   It stays open: review checks it and closes it.
+<!-- specworks:include back-from-review phases="`code` or `implement`" note="" in="<code, or implement for a finding routed to both halves>" -->
 
 <!-- specworks:include committing -->
 

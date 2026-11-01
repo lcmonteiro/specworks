@@ -45,16 +45,8 @@ other half's. When the test gate passes, stop and suggest `/specworks-code`
      stop: in a build, return `Result: blocked` (the worktree cannot hold
      design's stubs; back to `/specworks-build`).
    - Pick the change (above) and start implement:
-     ```bash
-     specworks start implement --change "<ref>"
-     ```
-     It runs the gates of the phases left behind (`gate design`, and
-     `gate specify` too if the change skips design) and moves the change to
-     implement only if they pass. When the change is already in implement
-     (the code half started it), it re-checks `gate design` only.
-   - If a gate fails, stop: show the failing checks and suggest
-     `/specworks-design <ref>` (or `/specworks-specify <ref>` when the specs
-     themselves fail). Tests built on an undecided API test the wrong thing.
+<!-- specworks:include start-implement other=code -->
+ Tests built on an undecided API test the wrong thing.
    - `commands.test` in the context is how this project runs its tests. If it
      is empty, find the test command from the repository (pyproject, package.json,
      go.mod, Cargo.toml, CMake, Makefile, CI config), and ask "Use `<command>` as
@@ -155,13 +147,7 @@ other half's. When the test gate passes, stop and suggest `/specworks-code`
    affect it. Fix every failing blocking check (an untested criterion, a tag
    with a wrong ID) and re-run. Warnings: fix them or explain them.
 
-   **Back from review**: when `specworks cycle --change "<ref>" --json`
-   lists open findings whose `phase` is `test`, you carried out their
-   agreed proposal (the Decision); once the gate passes, record each one (a finding routed to `implement` is recorded by the code half, so the two halves never write the same lines):
-   ```bash
-   specworks finding done R<n> --in test --change "<ref>" "<what changed>"
-   ```
-   It stays open: review checks it and closes it.
+<!-- specworks:include back-from-review phases="`test`" note=" (a finding routed to `implement` is recorded by the code half, so the two halves never write the same lines)" in=test -->
 
 <!-- specworks:include committing -->
 

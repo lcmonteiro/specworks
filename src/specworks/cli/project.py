@@ -16,7 +16,7 @@ from ..core.git import require_repo
 from ..core.validators import validate_relative
 from ..core.workspace import Module, Workspace, capability_prefix, load_module_config, load_workspace, require_workspace
 from ..specs.capabilities import capability_ref, describe
-from ..tools.skills import TOOLS, Tool, install_skills, parse_tools, remove_stale_skills, resolve_tools, skills_state, update_skills
+from ..tools.skills import TOOLS, Tool, expected_skills, install_skills, parse_tools, remove_stale_skills, resolve_tools, skills_state, update_skills
 from .app import app, capability_app, config_app, module_app
 from .output import AllOpt, JsonOpt, ToolsOpt, change_dict, changes_of, emit, fail, missing_dicts, module_dict, workspace
 
@@ -56,6 +56,7 @@ def chosen_tools(ws: Workspace, given: str | None) -> list[Tool]:
 def write_skills(ws: Workspace, tools: str | None) -> None:
     """Install the skills at the workspace root (shared by every module)."""
     selected = chosen_tools(ws, tools)
+    expected_skills(selected)  # fill in every skill first: one that cannot be filled in fails before anything is removed  @req REQ-INTEG-007
     for removed in remove_stale_skills(ws.root, selected):  # renamed or dropped by this version  @req REQ-INTEG-005
         typer.echo(f"removed {ws.rel(removed)}")
     for written in install_skills(ws.root, selected):
