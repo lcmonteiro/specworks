@@ -152,6 +152,17 @@ so nothing else already staged goes in and no shell quoting is involved; it
 never pushes. A hidden git ref holding the snapshot was rejected, and a file
 edited before and during a phase is committed whole. (commit-command)
 
+### An archived change commits as its close
+
+Close archives the change before the skills commit it, so `commit_phase` also
+takes a change in phase `done` (found with `archived_as`): its default subject
+is `<ref>: close`, and it commits the archive folder with the removal of the
+active one. Files of the change's own folder, and once archived of its former
+active folder, are committed but never flagged as already dirty: close's record
+names the active `.change.yaml`, which the archive then deletes. Committing an
+older archived change on purpose is out of scope; the newest one with the name
+is the one close just archived. (fix-commit-after-close)
+
 ### Active and archived changes live in sibling folders
 
 `Config.changes_dir` and `changes_path` name `.specworks/changes/active`, and
@@ -197,7 +208,8 @@ where to configure one. (baseline-project, run-unknown-key)
   `set_phase(change, phase, root=None)`, `create_change(cfg, name, root=None)`
   (with `root`, both record `Change.dirty`), `CommitResult` (`commit`,
   `subject`, `committed`, `left_out`, `already_dirty`),
-  `commit_phase(root, ref, change, subject=None, trailers=()) -> CommitResult`.
+  `commit_phase(root, ref, change, subject=None, trailers=()) -> CommitResult`
+  (an archived change, phase `done`, defaults to `<ref>: close`).
 - `.change.yaml`: `dirty:` (path -> SHA-256 hex or `deleted`), omitted when
   empty.
 - `src/specworks/core/runner.py`: `run_command`, `cached_run`, `RunResult`.

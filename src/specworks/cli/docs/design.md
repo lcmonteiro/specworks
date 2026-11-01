@@ -77,7 +77,10 @@ Pushes stay in the skills. The CLI commits in two places: the merge commit
 use to commit each phase (what changed since the phase started, chosen by
 `commit_phase` in core) instead of building `git add` and `git commit` by
 hand. `new` and `phase` pass the workspace root so the change records its
-dirty files. (git-workflow, merge-halves-without-conflicts, commit-command)
+dirty files. `commit` looks up the active change first and, only when there is
+none, the newest archived one in the same module, because close archives the
+change before the skills commit it; neither found is the unknown change error.
+(git-workflow, merge-halves-without-conflicts, commit-command, fix-commit-after-close)
 
 ### Findings are written through `finding`, not by hand
 
@@ -144,7 +147,8 @@ a second config format exists. (upgrade-project, dedupe-copilot-skills)
   `<id> <type> -> <phase> (open|done)` and the path.
 - `merge <branch> --change <ref> [--json]`: `--json` prints the change's
   fields plus `merged`, `branch` and `resolved` (workspace-relative paths).
-- `commit --change <ref> [--message TEXT] [--trailer TEXT]... [--json]`:
+- `commit --change <ref> [--message TEXT] [--trailer TEXT]... [--json]`
+  (the active change, else the newest archived one, subject `<ref>: close`):
   `--json` prints `ref`, `commit` (short hash or `null`), `subject`,
   `committed`, `leftOut` and `alreadyDirty` (workspace-relative paths); text
   prints `<hash> <subject>`, one line per committed file, then

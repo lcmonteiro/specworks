@@ -442,7 +442,8 @@ file.
 ### Requirement: REQ-CLI-012 commit
 
 `specworks commit --change <ref>` SHALL commit the change's phase
-(REQ-PROJ-024), with `--message` for the subject, `--trailer` (repeatable)
+(REQ-PROJ-024), the active change of that name or, when there is none, the
+newest archived one, with `--message` for the subject, `--trailer` (repeatable)
 for the trailers and `--json`. It SHALL print the commit's short hash and
 subject, the files committed, and the files left out, each relative to the
 workspace root; under `--json` it SHALL return them as `commit` (null when
@@ -462,4 +463,10 @@ SHALL be an error (`{"error": …}` with exit 1 under `--json`).
 #### Scenario: AC-CLI-012.3 An unknown change
 
 - **WHEN** `commit --change nope --json` runs
-- **THEN** it prints `{"error": …}` naming `nope` and exits 1
+- **THEN** it prints `{"error": …}` naming `nope` and exits 1, when `nope` is neither an active nor an archived change
+
+#### Scenario: AC-CLI-012.4 An archived change
+
+- **GIVEN** a change `add-login` that close has just archived
+- **WHEN** `commit --change add-login --json` runs
+- **THEN** it exits 0 and returns the commit with the subject `add-login: close`

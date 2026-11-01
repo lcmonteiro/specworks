@@ -685,7 +685,9 @@ and every dirty or untracked file that its record does not name or whose
 content differs from the record, and committing them with the subject
 `<ref>: <phase>` or a given one, then a blank line and the given trailers in
 order. It SHALL report the dirty files it left out and the committed files
-that were already dirty when the phase started. With nothing to stage, it
+outside the change's folder that were already dirty when the phase started.
+A change that close has archived SHALL be committed the same way, from its
+archive folder, with the default subject `<ref>: close`. With nothing to stage, it
 SHALL create no commit and say so. It SHALL never push, and SHALL refuse a
 detached HEAD before staging anything.
 
@@ -717,3 +719,15 @@ detached HEAD before staging anything.
 
 - **WHEN** the phase is committed on a detached HEAD
 - **THEN** it is refused, saying to switch to a branch, and nothing is staged
+
+#### Scenario: AC-PROJ-024.6 After close
+
+- **GIVEN** a change `add-login` that close has just archived
+- **WHEN** its phase is committed
+- **THEN** the commit holds its archive folder and the removal of its active folder, with the subject `add-login: close`
+
+#### Scenario: AC-PROJ-024.7 The change's own files are not flagged
+
+- **GIVEN** a change recorded when its `.change.yaml` was dirty, and `.change.yaml` changed again since
+- **WHEN** the phase is committed
+- **THEN** `.change.yaml` is committed and not reported as already dirty
