@@ -1,7 +1,9 @@
 name: commit-command
 created: '2026-10-31T15:50:14'
-phase: review
+phase: close
 specified:
   REQ-CLI-012: 14b03b3114b4
   REQ-PROJ-023: 807be212b8e0
   REQ-PROJ-024: f4f305a8be2a
+dirty:
+  .specworks/changes/active/commit-command/.change.yaml: 9a7c3686679ac4f6aa101741466e660da2e6fdce4e30aff4521641de4fd4e978
