@@ -7,9 +7,10 @@ import pytest
 import yaml
 from typer.testing import CliRunner
 
-from helpers import git, init_repo, on_a_branch, remove_repo
+from helpers import REF as CLOSED_REF
+from helpers import git, init_repo, make_planned_project, make_repo, on_a_branch, remove_repo
 from specworks.cli import app
-from specworks.core.changes import META_FILE, commit_phase, load_change, set_phase
+from specworks.core.changes import META_FILE, archived_as, commit_phase, load_change, set_phase
 from specworks.core.config import load_config
 from specworks.core.git import GitError, git_text
 
@@ -311,3 +312,75 @@ def test_the_command_returns_a_null_commit_when_nothing_changed(project):
 def test_the_command_refuses_an_unknown_change_naming_it(project):
     code, data = run_json("commit", "--change", "nope")
     assert code == 1 and "nope" in data["error"]
+
+
+@pytest.fixture
+def closed(tmp_path, monkeypatch):
+    """The planned project's change `add-password-reset`, reviewed and then closed with `specworks close`: archived, its active folder gone."""
+    root = make_repo(make_planned_project(tmp_path, monkeypatch), monkeypatch)
+    active = root / ".specworks/changes/active" / CLOSED_REF
+    (active / "review.md").write_text("# Review\n\n## Findings\n\nNone.\n", encoding="utf-8")
+    assert run_json("phase", "review", "--change", CLOSED_REF)[0] == 0
+    git(root, "add", "-A")
+    git(root, "commit", "-q", "-m", "review")  # the review phase is committed: what is dirty from here on is close's
+    code, data = run_json("close", "--change", CLOSED_REF, "--base", "main")
+    assert code == 0, data
+    assert not active.exists()
+    return root, data["archivedTo"]
+
+
+# @ac AC-CLI-012.3
+def test_the_command_refuses_a_ref_neither_active_nor_archived(closed):
+    root, _ = closed
+    before = head(root)
+    code, data = run_json("commit", "--change", "nope")
+    assert code == 1 and "nope" in data["error"]
+    assert head(root) == before
+
+
+# @ac AC-PROJ-024.6
+def test_a_closed_change_commits_its_archive_and_the_removal_of_its_active_folder(closed):
+    root, archived_to = closed
+    active = f".specworks/changes/active/{CLOSED_REF}"
+    tracked_before = set(git_text(root, "ls-files", "--", active).split())
+    assert f"{active}/{META_FILE}" in tracked_before
+    ch = archived_as(load_config(root), CLOSED_REF)
+    assert ch is not None and ch.phase == "done"
+    result = commit_phase(root, CLOSED_REF, ch)
+    assert result.subject == f"{CLOSED_REF}: close"
+    assert result.commit is not None and head(root).startswith(result.commit)
+    assert message(root) == f"{CLOSED_REF}: close"
+    in_head = set(git_text(root, "show", "--name-only", "--no-renames", "--format=", "HEAD").split())  # a move shows both paths
+    assert f"{archived_to}/{META_FILE}" in in_head and f"{archived_to}/proposal.md" in in_head
+    assert tracked_before <= in_head  # each file of the active folder is removed in this commit
+    assert git_text(root, "ls-files", "--", active).split() == []
+    assert not [line for line in dirty_now(root) if ".specworks/changes/" in line]
+
+
+# @ac AC-CLI-012.4
+def test_the_command_commits_a_change_that_close_has_just_archived(closed):
+    root, archived_to = closed
+    code, data = run_json("commit", "--change", CLOSED_REF)
+    assert code == 0, data
+    assert data["ref"] == CLOSED_REF and data["subject"] == f"{CLOSED_REF}: close"
+    assert isinstance(data["commit"], str) and head(root).startswith(data["commit"])
+    assert f"{archived_to}/{META_FILE}" in data["committed"]
+    assert f".specworks/changes/active/{CLOSED_REF}/{META_FILE}" in data["committed"]
+    for path in [*data["committed"], *data["leftOut"]]:
+        assert not path.startswith("/") and str(root) not in path and "\\" not in path
+    assert message(root) == f"{CLOSED_REF}: close"
+
+
+# @ac AC-PROJ-024.7
+def test_the_change_s_own_files_are_committed_and_not_flagged_as_already_dirty(project):
+    own = f"{CHANGE}/{META_FILE}"
+    ch = change(project)
+    ch.dirty = {own: sha(b"the record before the phase\n")}  # `.change.yaml` was dirty when the phase started
+    ch.save()
+    git(project, "add", "--", own)
+    git(project, "commit", "-q", "-m", "record")
+    set_phase(change(project), "design")  # `.change.yaml` changed again since
+    assert any(line.endswith(own) for line in dirty_now(project))
+    result = commit_phase(project, REF, change(project))
+    assert own in result.committed and own in files_in_head(project)
+    assert own not in result.already_dirty and result.already_dirty == []
