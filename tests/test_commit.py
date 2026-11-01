@@ -323,6 +323,9 @@ def closed(tmp_path, monkeypatch):
     assert run_json("phase", "review", "--change", CLOSED_REF)[0] == 0
     git(root, "add", "-A")
     git(root, "commit", "-q", "-m", "review")  # the review phase is committed: what is dirty from here on is close's
+    assert run_json("phase", "validate", "--change", CLOSED_REF)[0] == 0  # validate commits nothing: `.change.yaml` stays dirty
+    assert run_json("phase", "close", "--change", CLOSED_REF)[0] == 0  # as `specworks start close` does, close's record names it
+    assert f".specworks/changes/active/{CLOSED_REF}/{META_FILE}" in load_change(load_config(root), CLOSED_REF).dirty
     code, data = run_json("close", "--change", CLOSED_REF, "--base", "main")
     assert code == 0, data
     assert not active.exists()
@@ -354,6 +357,8 @@ def test_a_closed_change_commits_its_archive_and_the_removal_of_its_active_folde
     assert f"{archived_to}/{META_FILE}" in in_head and f"{archived_to}/proposal.md" in in_head
     assert tracked_before <= in_head  # each file of the active folder is removed in this commit
     assert git_text(root, "ls-files", "--", active).split() == []
+    assert f"{active}/{META_FILE}" in ch.dirty and f"{active}/{META_FILE}" in result.committed
+    assert result.already_dirty == []  # the former active folder is the change's own, though close's record names it
     assert not [line for line in dirty_now(root) if ".specworks/changes/" in line]
 
 
@@ -366,6 +371,7 @@ def test_the_command_commits_a_change_that_close_has_just_archived(closed):
     assert isinstance(data["commit"], str) and head(root).startswith(data["commit"])
     assert f"{archived_to}/{META_FILE}" in data["committed"]
     assert f".specworks/changes/active/{CLOSED_REF}/{META_FILE}" in data["committed"]
+    assert data["alreadyDirty"] == []  # dirty when close started, but the change's own
     for path in [*data["committed"], *data["leftOut"]]:
         assert not path.startswith("/") and str(root) not in path and "\\" not in path
     assert message(root) == f"{CLOSED_REF}: close"
