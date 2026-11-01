@@ -17,6 +17,7 @@ reading the diff. `- [ ] R<n>` while open, `- [x] R<n>` once resolved. Write
   - **Proposal**: back to design: give start-implement.md a `{{note}}` after 'themselves fail).' and a trailing newline, as back-from-review.md does; the test skill passes note=" Tests built on an undecided API test the wrong thing.", the code skill note="", and both drop the extra line; installed copies stay byte for byte the same
   - **Decision**: back to design: give start-implement.md a {{note}} placeholder and a trailing newline (test: note with its extra sentence, code: note=""), dropping the extra lines in both skills; installed copies unchanged byte for byte
   - done in design: design.md (The shared files): start-implement.md ends with {{note}} and a final newline; test passes note with its extra sentence, code note="", no extra lines after the include; no API change
+  - done in implement: start-implement.md ends with {{note}} and a final newline; specworks-test passes note=" Tests built on an undecided API test the wrong thing.", specworks-code note="", and neither keeps an extra line after the include; uv run specworks skills leaves .claude/skills/ unchanged
 
 ## Changed files without tags
 

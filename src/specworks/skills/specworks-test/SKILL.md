@@ -45,8 +45,7 @@ other half's. When the test gate passes, stop and suggest `/specworks-code`
      stop: in a build, return `Result: blocked` (the worktree cannot hold
      design's stubs; back to `/specworks-build`).
    - Pick the change (above) and start implement:
-<!-- specworks:include start-implement other=code -->
- Tests built on an undecided API test the wrong thing.
+<!-- specworks:include start-implement other=code note=" Tests built on an undecided API test the wrong thing." -->
    - `commands.test` in the context is how this project runs its tests. If it
      is empty, find the test command from the repository (pyproject, package.json,
      go.mod, Cargo.toml, CMake, Makefile, CI config), and ask "Use `<command>` as

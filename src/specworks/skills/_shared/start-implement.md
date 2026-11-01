@@ -7,4 +7,4 @@
      (the {{other}} half started it), it re-checks `gate design` only.
    - If a gate fails, stop: show the failing checks and suggest
      `/specworks-design <ref>` (or `/specworks-specify <ref>` when the specs
-     themselves fail).
+     themselves fail).{{note}}

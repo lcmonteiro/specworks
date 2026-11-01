@@ -35,8 +35,7 @@ change's tests. When the code gate passes, stop and suggest
 1. **Pick the change and start implement once the API is agreed**
 
    - Pick the change (above), then:
-<!-- specworks:include start-implement other=test -->
-
+<!-- specworks:include start-implement other=test note="" -->
    - `commands` in the context are this project's tools; `specworks run test`
      (and `run lint`, `run typecheck` when configured) runs them in the right
      folder. If `test` is not configured, find it and ask "Use `<command>` as
