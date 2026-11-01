@@ -10,6 +10,7 @@ reading the diff. `- [ ] R<n>` while open, `- [x] R<n>` once resolved. Write
 
 - [ ] R1 **code-gap** AC-SPECS-016.6 says a blank term is refused naming the term; find_requirements raises ConfigError("empty search term") without it (src/specworks/specs/capabilities.py:244), and the test only checks that phrase (tests/test_find_requirements.py:207), so it would pass either way (REQ-SPECS-016)
   - **Proposal**: back to implement: raise ConfigError(f"empty search term: {term!r}") for the first blank term (still containing the pinned 'empty search term'); the test asserts the repr for each parametrized case ("''", "' '")
+  - **Decision**: back to implement: raise ConfigError(f"empty search term: {term!r}") for the first blank term, and the AC-SPECS-016.6 test asserts the repr in each case
 
 ## Changed files without tags
 
