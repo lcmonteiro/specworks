@@ -140,8 +140,10 @@ use the reader's own rules (`FINDING_RE`, `TYPE_PHASE`, `BACK_RE`, `DONE_RE`,
 `FINDING_STEPS`), so they cannot write what the gate would refuse. A
 structured data file with review.md generated from it was rejected.
 (finding-commands)
-- A decision starts `back to <step>:` or `accepted:`; `accepted` ticks the
-  box. A new finding is expected to route where the reader routes it: the last
+- A decision starts `back to <step>:`, `back to design only:` or
+  `accepted:`; `accepted` ticks the box. `only` after any other step is
+  refused before any write (`DECISION_FORM` names the three forms).
+  (skip-halves-for-design-text) A new finding is expected to route where the reader routes it: the last
   `back to <step>:` in its text or proposal, else its type's step, so a
   proposal written in that form is not refused.
 - With an ID repeated, the writers act on the first block with it, as
@@ -165,6 +167,19 @@ halves and review, or design, both halves and review. A spec finding hands
 over to specify instead of starting a cycle. Re-running every phase after the
 earliest finding was replaced: a code finding no longer re-runs the tests.
 (baseline-workflow, parallel-test-code)
+- `back to design only:` sets the finding's `design_only`: once
+  `done in design:`, it goes to review instead of implement, and it adds no
+  half to the cycle. The halves join design only when a finding needs design
+  without `only`, needs implement, or names that half: only design-only
+  findings give `design, review`; design-only plus a code finding gives
+  `design, code, review`. It is agreed in the Decision, before the cycle
+  starts; detecting a text-only design change from git, or deciding it after
+  the design step, were rejected. `only` reads with the `back to` that carries
+  it, and the last route in the block wins, so a later plain `back to design:`
+  clears it. (skip-halves-for-design-text)
+- A route is read from any line of a finding's block, so a follow-up line
+  that quotes a route form routes the finding too. Accepted as specified; it
+  predates the design-only form. (skip-halves-for-design-text)
 
 ### Merging a half's branch resolves only tasks.md and the trace
 
@@ -200,7 +215,8 @@ which close raises. (merge-halves-without-conflicts)
 - `src/specworks/workflow/review.py`: `review_change(analysis, base)`,
   `changed_paths(ws, since)`, `deleted_paths(ws, since)`, `ChangedFile` (`kind`, `was`),
   `ReviewReport`, `parse_review(text)`, `read_review(change)`, `ReviewDoc`,
-  `Finding` (`phase` holds its step), `FINDING_STEPS`; the writers, each
+  `Finding` (`phase` holds its step; `design_only`, shown as
+  `"designOnly": true` by `to_dict()` when set), `FINDING_STEPS`; the writers, each
   returning the finding as `read_review` reads it after the write and raising
   `FindingError` with review.md unchanged:
   `add_finding(change, kind, text, proposal) -> Finding` (`kind` one of

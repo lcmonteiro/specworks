@@ -343,7 +343,9 @@ to the step of its type (`test-gap` to the test half, `code-gap`, `tag` and
 block, where a step is specify, design, implement (both halves), test, code
 or review. After a `done in <step>:` it SHALL route the finding to the step
 after that one: design after specify, implement after design, and review
-after implement, test or code. HTML comments and code fences SHALL be ignored.
+after implement, test or code, except that a finding whose Decision says
+`back to design only:` SHALL be routed to design, and after `done in design:`
+to review. HTML comments and code fences SHALL be ignored.
 A checkbox outside a finding's block (at the top level or indented, ticked or
 not), and an open finding with no known type or step, SHALL be reported as
 unreadable.
@@ -383,6 +385,11 @@ unreadable.
 
 - **WHEN** findings say `done in design:`, `done in test:` and `done in code:`
 - **THEN** the first is routed to implement and the other two to review
+
+#### Scenario: AC-FLOW-010.8 Design only
+
+- **WHEN** a finding's Decision says `back to design only:`, and later `done in design:` is added under it
+- **THEN** it is routed to design, and then to review instead of implement; a finding saying `back to design:` is routed to implement after `done in design:`, as before
 
 ### Requirement: REQ-FLOW-011 Gate review
 
@@ -442,8 +449,8 @@ incomplete because HEAD is on the base branch.
 
 After a review, the system SHALL say which steps the next build cycle runs,
 from the open findings: design when any finding needs design; both halves
-(test and code, in parallel) when design is in the cycle or a finding needs
-implement; otherwise only the halves the findings need; and review last. It
+(test and code, in parallel) when a finding needs design without `only` or
+needs implement; otherwise only the halves the findings need; and review last. It
 SHALL say the phase the cycle starts at: design when design is in the cycle,
 implement when a half is, review otherwise. A spec finding SHALL hand over to
 `/specworks-specify` instead of starting a cycle. A change with no review.md,
@@ -478,6 +485,11 @@ or no open finding, has no next cycle.
 
 - **WHEN** the open findings are a test finding and a code finding, or one finding says `back to implement:`
 - **THEN** the cycle starts at implement with the steps test, code, review
+
+#### Scenario: AC-FLOW-012.7 Design only
+
+- **WHEN** the only open findings say `back to design only:`, before or after their `done in design:`
+- **THEN** the cycle starts at design with the steps design, review before it, and at review with the step review after it; with a code finding as well, the steps are design, code, review; with a finding saying `back to design:` as well, they are design, test, code, review
 
 ### Requirement: REQ-FLOW-013 Validate
 
@@ -634,7 +646,7 @@ The system SHALL write a change's review findings as review.md text that
 REQ-FLOW-010 reads back: a new finding under `## Findings` with the next free
 ID, its type and its Proposal (creating review.md from its template when
 missing); a finding's Decision, replacing the one it has, which SHALL start
-with `back to <step>:` or `accepted:` and, when `accepted`, tick the finding;
+with `back to <step>:`, `back to design only:` or `accepted:` and, when `accepted`, tick the finding;
 a `done in <step>:` line; and a tick with what review confirmed. It SHALL add
 each line at the end of the finding's block and leave every other line of
 the file as it was. It SHALL refuse an unknown finding, type or step, an
@@ -667,7 +679,7 @@ edited text does not read back with the expected finding.
 
 #### Scenario: AC-FLOW-016.5 What is refused
 
-- **WHEN** a finding is added with an unknown type, a decision is neither `back to <step>:` nor `accepted:`, a step is unknown, the text is empty, or the finding is not in review.md
+- **WHEN** a finding is added with an unknown type, a decision is none of `back to <step>:`, `back to design only:` and `accepted:`, a step is unknown, the text is empty, or the finding is not in review.md
 - **THEN** it is refused naming the problem and review.md is unchanged
 
 #### Scenario: AC-FLOW-016.6 Other text is kept
@@ -675,3 +687,9 @@ edited text does not read back with the expected finding.
 - **GIVEN** a review.md with a hand-written finding using a `*` bullet and a bold ID, free text and HTML comments
 - **WHEN** a Decision is written to that finding
 - **THEN** only the new line is added: every other line, the comments included, is byte for byte as before
+
+#### Scenario: AC-FLOW-016.7 A design-only Decision
+
+- **GIVEN** an open finding R1 of type `design-gap`
+- **WHEN** its decision is `back to design only: reword Decisions > Matching`, and another finding's is `back to code only: rename x`
+- **THEN** R1 has that Decision and is routed to design; the second is refused naming the forms a decision can take, and review.md is unchanged
