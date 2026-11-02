@@ -78,6 +78,14 @@ next step the same way: the next skill (recommended), any alternative, and
    - `design`, `implement`, `review`: `/specworks-build <ref>`;
    - `validate`, `close`: `/specworks-done <ref>`.
 
+   A baseline change (`baseline-<capability>`, from `/specworks-adopt`) runs
+   its own design, implement and review inside `/specworks-baseline`, so it
+   does not follow the list above:
+   - in `specify`, `design` or `implement`, or in `review` before
+     `gate review` passes: `/specworks-baseline <capability>`;
+   - in `review` once `gate review` passes, and in `validate` or `close`:
+     `/specworks-done baseline-<capability>`.
+
    Several rows can apply at once (skills out of date and changes in
    flight): report each one, in table order, and recommend the first. To
    tell whether a repository has code, look at its files (Glob), not at the

@@ -12,9 +12,11 @@ reading the diff. `- [ ] R<n>` while open, `- [x] R<n>` once resolved. Write
   - **Proposal**: back to design: in that Decision, add the baseline case to the changes in flight: `baseline-<capability>` in specify, design, implement, or review before `gate review` passes: `/specworks-baseline <capability>`; in review once `gate review` passes, validate or close: `/specworks-done baseline-<capability>`; then the code half adds the same line to the skill (`/specworks-baseline` and `/specworks-done` are already pinned, so the test half has nothing new unless design pins more wording)
   - **Decision**: back to design: add a baseline case to the Decision "State from specworks context --json": a baseline-<capability> change goes to /specworks-baseline <capability> in specify, design or implement, or in review before gate review passes; once gate review passes, and in validate or close, to /specworks-done baseline-<capability>; then the code half writes the same in the skill
   - done in design: design.md Decision 'State from specworks context --json' gains the baseline case: /specworks-baseline <capability> in specify, design, implement or review before gate review passes; /specworks-done baseline-<capability> after; the code half writes it in the skill
+  - done in implement: code half: src/specworks/skills/specworks-onboard/SKILL.md step 1 adds the baseline case (/specworks-baseline <capability> before gate review passes, /specworks-done baseline-<capability> after); installed copy refreshed
 - [ ] R2 **quality** specworks-adopt's description triggers on a bare "onboard", so a user saying "onboard" may get adopt instead of the new specworks-onboard
   - **Proposal**: back to code: drop "onboard" from the quoted triggers in src/specworks/skills/specworks-adopt/SKILL.md's description, keep "onboard a codebase", and refresh the installed copies
   - **Decision**: back to code: drop "onboard" from the quoted triggers in specworks-adopt's description (keep "onboard a codebase") and refresh the installed copies with specworks skills
+  - done in code: dropped the bare "onboard" trigger from specworks-adopt's description (kept "onboard a codebase"); installed copies refreshed with specworks skills
 
 ## Changed files without tags
 
