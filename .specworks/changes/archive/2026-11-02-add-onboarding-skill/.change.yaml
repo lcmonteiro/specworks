@@ -1,0 +1,6 @@
+name: add-onboarding-skill
+created: '2026-11-02T00:46:06'
+phase: done
+skip_specs: true
+dirty:
+  .specworks/changes/active/add-onboarding-skill/.change.yaml: c7c56691f7d8d88366ee5cdac27082fefce95837b298a659d8c6cf735a9e8bc4
