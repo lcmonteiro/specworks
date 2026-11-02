@@ -74,6 +74,24 @@ capabilities and living docs (`<path>/docs/`), IDs and tags (`REQ-…`, `AC-…`
 findings to the phase that owns them, validate failures naming their phase),
 and the wiki pages (Concepts, Tutorial, Skills, CLI, Reference).
 
+### The skill picks no change
+
+Found in the code half: the existing test
+`test_skills_pick_the_change_by_one_shared_rule` in `tests/test_skills.py`
+requires every packaged skill except refine, adopt, baseline and start to
+include the shared `picking-the-change` paragraph, so it fails for
+`specworks-onboard`. That paragraph would contradict the first decision: on
+`"root": null` it asks "Run `specworks init` here? (yes/no)", while onboard
+gives the command and never runs it, and onboard reports every change in
+flight instead of picking one.
+
+Agreed with the user. Add `specworks-onboard` to the
+test's exclusion list (it picks no change, like start and adopt), as a new
+`[test]` task 1.3 for the test half; the skill keeps no
+`picking-the-change` include. Alternative: include the paragraph in the
+skill and leave the test unchanged; rejected, it would tell the read-only
+skill to run `specworks init`.
+
 ### Pinned wording
 
 The test half asserts these and the code half writes them, verbatim:

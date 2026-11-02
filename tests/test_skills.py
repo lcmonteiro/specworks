@@ -363,8 +363,8 @@ def test_baseline_no_longer_asks_for_a_new_branch():
     assert "preferably on a new branch" not in " ".join(read_skill("specworks-baseline").split())
 
 
-# refine, adopt and baseline create the change they work on (adopt and start none) instead of picking one.
-@pytest.mark.parametrize("name", [n for n in packaged_skills() if n not in ("specworks-refine", "specworks-adopt", "specworks-baseline", "specworks-start")])
+# refine, adopt and baseline create the change they work on (adopt and start none) instead of picking one; onboard reports every change and picks none.
+@pytest.mark.parametrize("name", [n for n in packaged_skills() if n not in ("specworks-refine", "specworks-adopt", "specworks-baseline", "specworks-start", "specworks-onboard")])
 def test_skills_pick_the_change_by_one_shared_rule(name):
     # "Select the change as the other phases do" pointed at no rule; the shared paragraph is that rule.
     text = read_skill(name)
