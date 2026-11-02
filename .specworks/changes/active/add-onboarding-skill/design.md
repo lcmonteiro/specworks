@@ -51,6 +51,18 @@ matters):
 - `design`, `implement`, `review`: `/specworks-build <ref>`;
 - `validate`, `close`: `/specworks-done <ref>`.
 
+A baseline change (`baseline-<capability>`, from `/specworks-adopt`) runs
+its own design, implement and review inside `/specworks-baseline`, so it
+does not follow the list above:
+- in `specify`, `design` or `implement`, or in `review` before
+  `gate review` passes: `/specworks-baseline <capability>`;
+- in `review` once `gate review` passes, and in `validate` or `close`:
+  `/specworks-done baseline-<capability>`.
+
+Found in review (R1): the list above alone sent a baseline change in
+design, implement or review to `/specworks-build`. No new pinned wording:
+`/specworks-baseline` and `/specworks-done` are already pinned.
+
 Several rows can apply at once (skills out of date and changes in flight):
 the skill reports each one and recommends the first.
 
