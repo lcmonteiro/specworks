@@ -75,6 +75,25 @@ writing, with the same message the loader gives. Serves: REQ-PROJ-025.
 
 ## Interfaces
 
+Agreed with the user
+
+Checked against the code: every entry extends the existing `core/config`,
+`core/runner` and `workflow/checks` conventions (`Capability.tests_path` mirrors
+`docs_path`; the new `command` arguments are keyword-only with a `None` default,
+so no existing caller breaks; nothing is **BREAKING**). The stubs follow the
+tasks: `Capability.tests_path` returns `root / self.path`, `scoped_command`
+returns the unfilled command, `run_scoped` raises `NotImplementedError`,
+`test_plan` returns a full-suite plan and `test_folders_exist` returns `None`,
+so the existing suite stays green. `testsPath` in `context` is behaviour only
+(task 4.2), with no stub. Tests reach `test_plan` and `test_folders_exist`
+through the CLI or `from specworks.workflow import checks`, never by importing
+those names into a test module (pytest would collect them as tests).
+
+In the stubs, `COMMAND_KEYS` keeps its five keys: adding `test_scoped` makes the
+config, `specworks run` and `config set` accept it (behaviour), and turns red the
+existing tests of AC-PROJ-003.4 and AC-PROJ-013.4 that list the old keys. The code
+half adds it (task 2.3), after `test`, as listed below.
+
 - `src/specworks/core/config.py`:
   - `COMMAND_KEYS = ("test", "test_scoped", "lint", "typecheck", "build", "format")`;
     `SCOPED_TEST_KEY = "test_scoped"`, `PATHS_PLACEHOLDER = "{paths}"`,

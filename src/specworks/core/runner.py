@@ -19,10 +19,11 @@ import json
 import os
 import subprocess
 import time
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
-from .config import COMMAND_KEYS
+from .config import COMMAND_KEYS, SCOPED_TEST_KEY
 from .errors import SpecworksError
 from .git import GitError, git, git_text
 from .workspace import Module, Workspace
@@ -52,8 +53,15 @@ class RunResult:
 
 
 # @req REQ-PROJ-013
-def run_command(ws: Workspace, module: Module, key: str, capture: bool = True) -> RunResult:
-    """Run ``commands.<key>`` (merged top level -> module) in the module's folder, through the shell."""
+def run_command(ws: Workspace, module: Module, key: str, capture: bool = True, *, command: str | None = None) -> RunResult:
+    """Run ``commands.<key>`` (merged top level -> module) in the module's folder, through the shell.
+
+    ``command``: an explicit command line to run under ``key`` instead of the configured one (the scoped
+    tests, their ``{paths}`` filled in); without one, key ``test_scoped`` is refused before anything runs.
+    Implements REQ-PROJ-013, REQ-PROJ-028.
+    """
+    if command is not None:
+        raise NotImplementedError("run_command(command=...)")
     if key not in COMMAND_KEYS:  # the config refuses any other key, so don't suggest adding it there
         raise CommandError(f"unknown command '{key}'; use one of {', '.join(COMMAND_KEYS)}")
     command = ws.commands(module).get(key)
@@ -123,11 +131,15 @@ def _load(cache: Path) -> dict:
 
 
 # @req REQ-PROJ-014
-def cached_run(ws: Workspace, module: Module, key: str, reuse: bool = True, capture: bool = True) -> RunResult:
+def cached_run(ws: Workspace, module: Module, key: str, reuse: bool = True, capture: bool = True, *, command: str | None = None) -> RunResult:
     """``run_command``, reusing the result of a run on an identical working tree when there is one.
 
     ``reuse=False`` always runs, and records the result for the next caller on this tree.
+    ``command``: an explicit command line to run under ``key`` (as ``run_command``); the reuse is keyed on it.
+    Implements REQ-PROJ-014, REQ-PROJ-028.
     """
+    if command is not None:
+        raise NotImplementedError("cached_run(command=...)")
     command = ws.commands(module).get(key, "")
     found = tree_fingerprint(ws, module, command) if command and os.environ.get("SPECWORKS_RUN_CACHE", "1") != "0" else None
     if found is None:
@@ -148,3 +160,20 @@ def cached_run(ws: Workspace, module: Module, key: str, reuse: bool = True, capt
     except OSError:
         pass  # a cache that cannot be written only costs a rerun
     return result
+
+
+def scoped_command(ws: Workspace, module: Module, folders: Sequence[Path]) -> str:
+    """The module's ``commands.test_scoped`` with every ``{paths}`` replaced by ``folders``.
+
+    Each folder is made relative to the module's folder (POSIX separators) and quoted for the
+    platform's shell, separated by spaces. Implements REQ-PROJ-028.
+    """
+    return ws.commands(module).get(SCOPED_TEST_KEY, "")  # stub: the code half fills {paths}
+
+
+def run_scoped(ws: Workspace, module: Module, folders: Sequence[Path], reuse: bool = True) -> RunResult:
+    """Run the module's scoped tests for ``folders`` (``scoped_command``) in its folder, through ``cached_run``.
+
+    A result is reused only for the same folders on an identical tree. Implements REQ-PROJ-028.
+    """
+    raise NotImplementedError("run_scoped")

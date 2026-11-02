@@ -10,6 +10,7 @@ from __future__ import annotations
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
 from functools import cached_property
+from pathlib import Path
 
 from ..core.changes import Change
 from ..core.runner import CommandError, cached_run
@@ -63,6 +64,11 @@ class GateContext:
     @cached_property
     def review(self) -> ReviewDoc:
         return read_review(self.change)
+
+    @cached_property
+    def test_plan(self) -> TestPlan:
+        """The tests the review gate runs (``test_plan``), computed once per run."""
+        return test_plan(self)
 
     def has_command(self, key: str) -> bool:
         return bool(self.ws.commands(self.module).get(key))
@@ -284,6 +290,33 @@ def not_blocking(ctx: GateContext, tests: Check, why: str, at: int = 1) -> Check
         tests.blocking = False
         tests.details.insert(at, f"not blocking: {why}")
     return tests
+
+
+@dataclass
+class TestPlan:
+    """What the review gate's test check runs.
+
+    ``full``: the whole suite (``commands.test``); otherwise ``runs``, one per module (in workspace order)
+    with its touched capabilities' test folders, sorted, for its ``commands.test_scoped``.
+    ``missing``: the touched test folders that do not exist, relative to the workspace root.
+    Implements REQ-FLOW-017.
+    """
+
+    full: bool
+    runs: list[tuple[Module, list[Path]]] = field(default_factory=list)
+    missing: list[str] = field(default_factory=list)
+
+
+def test_plan(ctx: GateContext) -> TestPlan:
+    """The touched capabilities' test runs, or the full suite (see ``TestPlan``). Implements REQ-FLOW-017."""
+    return TestPlan(full=True)  # stub: the code half works out the touched capabilities
+
+
+def test_folders_exist(ctx: GateContext) -> Check | None:
+    """A warning naming each touched test folder that does not exist (the full suite runs instead); ``None``
+    when none is missing or ``commands.test_scoped`` is not configured. Implements REQ-FLOW-017.
+    """
+    return None  # stub: the code half reports the plan's missing folders
 
 
 # @req REQ-FLOW-011

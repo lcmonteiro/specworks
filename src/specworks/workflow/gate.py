@@ -175,6 +175,7 @@ GATE_CHECKS: dict[str, list[CheckFn]] = {
         c.files_accounted,
         c.diff_base,
         c.modified_tests_changed,
+        c.test_folders_exist,
         c.review_tests_pass,
     ],
 }
