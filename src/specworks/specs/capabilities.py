@@ -238,10 +238,11 @@ def find_requirements(ws: Workspace, terms: list[str]) -> list[RequirementMatch]
     """Every living requirement whose title, text or scenarios contain any of ``terms``, literal and ignoring case.
 
     In capability order, then requirement order, each listed once with its first matching line; a capability
-    without a living spec is skipped. Raises ``ConfigError("empty search term")`` for a blank term.
+    without a living spec is skipped. Raises ``ConfigError("empty search term: <repr>")`` for the first blank term.
     """
-    if any(not t.strip() for t in terms):
-        raise ConfigError("empty search term")
+    blank = next((t for t in terms if not t.strip()), None)
+    if blank is not None:
+        raise ConfigError(f"empty search term: {blank!r}")
     needles = [t.casefold() for t in terms]
     found: list[RequirementMatch] = []
     for cap in workspace_capabilities(ws):
