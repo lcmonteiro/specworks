@@ -136,9 +136,9 @@ def test_open_findings_parsing():
 
 
 # @ac AC-FLOW-010.3
-def test_back_to_on_the_finding_line_counts():
+def test_back_to_on_the_finding_line_is_text():
     text = "- [ ] R1 **code-gap** reset returns None. **Decision**: back to design: return the token\n"
-    assert [f["phase"] for f in [f.to_dict() for f in parse_review(text).open]] == ["design"]
+    assert [f["phase"] for f in [f.to_dict() for f in parse_review(text).open]] == ["code"]
 
 
 # @ac AC-FLOW-010.3
