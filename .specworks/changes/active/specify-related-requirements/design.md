@@ -27,8 +27,9 @@ that range that contains any term is its match (the header counts, so a term
 in the title matches the header line). A requirement is listed once however
 many terms match. Capabilities come in `workspace_capabilities` order;
 requirements in file order. A capability whose living spec does not exist
-is skipped. A term that is empty after `strip()` raises `ConfigError`:
-`empty search term`. Serves: REQ-SPECS-016.
+is skipped. The first term that is empty after `strip()` raises
+`ConfigError(f"empty search term: {term!r}")`, naming the term (the pinned
+message `empty search term` stays). Serves: REQ-SPECS-016.
 
 ### The result
 
@@ -84,7 +85,7 @@ Agreed with the user
   matching line, stripped); written in full (REQ-SPECS-016).
 - `src/specworks/specs/capabilities.py`: new
   `find_requirements(ws: Workspace, terms: list[str]) -> list[RequirementMatch]`,
-  raises `ConfigError("empty search term")` for a blank term (REQ-SPECS-016).
+  raises `ConfigError(f"empty search term: {term!r}")` for the first blank term (REQ-SPECS-016).
 - `src/specworks/cli/specs.py`: new `spec_find(terms: list[str] = typer.Argument(None, help=...), as_json: bool = JsonOpt) -> None`,
   registered as `@spec_app.command("find")`; no term is `fail("give at least one term", as_json)`
   (`{"error": ...}`, exit 1) (REQ-CLI-016).
