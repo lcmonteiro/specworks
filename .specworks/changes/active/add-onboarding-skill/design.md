@@ -97,8 +97,8 @@ The test half asserts these and the code half writes them, verbatim:
 
 ## Interfaces
 
-None: no API change. The surface is the new skill file
-`src/specworks/skills/specworks-onboard/SKILL.md` and its pinned wording.
+None: no API change. The only surface is the new skill's text (the
+specworks-onboard SKILL.md that task 1.2 writes) and its pinned wording.
 
 ## Diagrams
 
