@@ -25,7 +25,7 @@ def counted(repo, tmp_path_factory):
 
 
 def gate_tests():
-    code, data = run_json("gate", "code", "--change", REF)
+    code, data = run_json("gate", "review", "--change", REF)  # the code gate does not run the tests
     return next(c for c in data["checks"] if c["name"] == TESTS)
 
 
@@ -157,7 +157,7 @@ def test_close_runs_the_commands_but_its_dry_run_reuses(counted):
 
 
 # @ac AC-FLOW-003.3
-@pytest.mark.parametrize("command", [["gate", "code"], ["validate", "--base", "main"]])
+@pytest.mark.parametrize("command", [["gate", "review"], ["validate", "--base", "main"]])
 def test_fresh_runs_the_commands_again(counted, command):
     repo, counter = counted
     gate_tests()
@@ -184,7 +184,7 @@ def test_an_untracked_file_name_that_is_not_utf8_is_fingerprinted(counted):
         (repo / os.fsdecode(b"src/auth/caf\xe9.py")).write_text("x = 1\n")
     except (OSError, UnicodeError):  # a file system that only takes UTF-8 names (macOS, Windows)
         pytest.skip("cannot create a file whose name is not UTF-8 here")
-    first, second = run_json("gate", "code", "--change", REF), run_json("gate", "code", "--change", REF)
+    first, second = run_json("gate", "review", "--change", REF), run_json("gate", "review", "--change", REF)
     assert "checks" in first[1] and "checks" in second[1], (first, second)  # no crash
     assert runs(counter) == 1 and "same code as the run at" in gate_tests()["details"][0]
 

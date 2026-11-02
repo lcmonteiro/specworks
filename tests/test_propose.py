@@ -571,7 +571,7 @@ NAMES_A_TEST_TASK = (
     "verify it with lint, typecheck or observable behaviour"
 )
 REQUIRES_THE_SUITE = (
-    "task {num} [code] requires the suite (specworks run test): the suite runs in gate implement after the merge; "
+    "task {num} [code] requires the suite (specworks run test): the suite runs in review after the merge; "
     "verify it with lint, typecheck or observable behaviour"
 )
 
