@@ -145,7 +145,7 @@ edited text does not read back with the expected finding.
 
 #### Scenario: AC-FLOW-016.5 What is refused
 
-- **WHEN** a finding is added with an unknown type, a decision is neither `back to <step>:` nor `accepted:`, a step is unknown, the text is empty, or the finding is not in review.md
+- **WHEN** a finding is added with an unknown type, a decision is none of `back to <step>:`, `back to design only:` and `accepted:`, a step is unknown, the text is empty, or the finding is not in review.md
 - **THEN** it is refused naming the problem and review.md is unchanged
 
 #### Scenario: AC-FLOW-016.6 Other text is kept

@@ -17,6 +17,7 @@ reading the diff. `- [ ] R<n>` while open, `- [x] R<n>` once resolved. Write
 - [ ] R3 **spec-gap** AC-FLOW-016.5's WHEN still says a decision is refused when it is 'neither back to <step>: nor accepted:', which literally covers 'back to design only:' and so contradicts AC-FLOW-016.7 and the REQ-FLOW-016 text (specs/workflow/spec.md, AC-FLOW-016.5); the code and its test follow 016.7
   - **Proposal**: back to specify: reword AC-FLOW-016.5's WHEN to 'a decision is not back to <step>:, back to design only: or accepted:' (MODIFIED REQ-FLOW-016, same IDs); no code or test change
   - **Decision**: back to specify: reword the WHEN of AC-FLOW-016.5 to name all three Decision forms (back to <step>:, back to design only:, accepted:) in the MODIFIED REQ-FLOW-016, same IDs; no code or test change
+  - done in specify: AC-FLOW-016.5's WHEN now names all three Decision forms (back to <step>:, back to design only:, accepted:) in the MODIFIED REQ-FLOW-016, same IDs; no code or test change
 
 ## Changed files without tags
 
