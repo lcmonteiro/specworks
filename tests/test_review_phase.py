@@ -7,6 +7,7 @@ import sys
 import pytest
 
 from helpers import REF, git, remove_repo, run_json, write_tests
+from specworks.workflow.review import parse_review
 
 FAIL = f'"{sys.executable}" -c "import sys; print(\'2 failed\'); sys.exit(3)"'
 
@@ -325,3 +326,22 @@ def test_a_loose_indented_checkbox_fails_the_review_gate_even_in_a_build(repo):
     code, data = run_json("gate", "review", "--change", REF, "--base", "main", "--allow-open")
     readable = checks(data)["every finding in review.md is readable (- [ ] R<n> ...)"]
     assert code == 1 and not readable["ok"] and readable["blocking"]
+
+
+# @ac AC-FLOW-010.8
+def test_a_design_only_finding_goes_to_design_then_to_review():
+    decided = "- [ ] R1 **design-gap** the Decisions say match by prefix\n  - **Decision**: back to design only: reword Decisions > Matching\n"
+    (before,) = parse_review(decided).open
+    assert (before.phase, before.design_only, before.routed) == ("design", True, True)
+    assert before.to_dict()["designOnly"] is True
+    (after,) = parse_review(decided + "  - done in design: reworded\n").open
+    assert (after.phase, after.done_in, after.design_only) == ("review", "design", True)
+
+
+# @ac AC-FLOW-010.8
+def test_a_plain_back_to_design_still_goes_to_implement_after_design():
+    decided = "- [ ] R1 **design-gap** reset returns None\n  - **Decision**: back to design: return the token\n"
+    (before,) = parse_review(decided).open
+    assert (before.phase, before.design_only) == ("design", False) and "designOnly" not in before.to_dict()
+    (after,) = parse_review(decided + "  - done in design: returns ResetToken\n").open
+    assert (after.phase, after.done_in, after.design_only) == ("implement", "design", False)

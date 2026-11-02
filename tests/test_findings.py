@@ -10,6 +10,7 @@ from specworks.cli.output import resolve_change
 from specworks.core.workspace import load_workspace
 from specworks.workflow.review import FindingError, add_finding, close_finding, decide_finding, mark_finding_done, read_review
 
+DECISION_FORM = "a decision starts with 'back to <step>:' (specify, design, implement, test or code), 'back to design only:' or 'accepted:'"
 REVIEW = f".specworks/changes/active/{REF}/review.md"
 TWO_FINDINGS = (
     f"# Review: {REF}\n\n"
@@ -137,11 +138,11 @@ def test_ac_flow_016_4_done_in_a_step_then_confirmed(repo):
         (lambda ch: add_finding(ch, "code-gap", "something", ""), None),
         (
             lambda ch: decide_finding(ch, "R1", "fix it later"),
-            "a decision starts with 'back to <step>:' (specify, design, implement, test or code) or 'accepted:'",
+            DECISION_FORM,
         ),
         (
             lambda ch: decide_finding(ch, "R1", "back to review: again"),
-            "a decision starts with 'back to <step>:' (specify, design, implement, test or code) or 'accepted:'",
+            DECISION_FORM,
         ),
         (lambda ch: mark_finding_done(ch, "R1", "deploy", "shipped it"), "deploy"),
         (lambda ch: mark_finding_done(ch, "R1", "code", ""), None),
@@ -175,6 +176,30 @@ def test_ac_flow_016_5_no_review_md_for_an_existing_id(project):
         close_finding(change_of(project), "R1", "x")
     assert "no finding R1 in " in str(refused.value)
     assert not review_path(project).exists()
+
+
+# @ac AC-FLOW-016.7
+def test_ac_flow_016_7_a_design_only_decision_is_written_and_routed_to_design(project):
+    write_review(project, f"# Review: {REF}\n\n## Findings\n\n- [ ] R1 **design-gap** the Decisions say match by prefix\n")
+    before = read(project)
+    decided = decide_finding(change_of(project), "R1", "back to design only: reword Decisions > Matching")
+    assert (decided.phase, decided.done, decided.design_only) == ("design", False, True)
+    assert added_lines(before, read(project)) == ["  - **Decision**: back to design only: reword Decisions > Matching"]
+    assert finding(project, "R1").phase == "design" and finding(project, "R1").design_only is True
+
+
+# @ac AC-FLOW-016.7
+def test_ac_flow_016_7_only_after_another_step_is_refused(project):
+    text = (
+        f"# Review: {REF}\n\n## Findings\n\n"
+        "- [ ] R1 **design-gap** the Decisions say match by prefix\n  - **Decision**: back to design only: reword Decisions > Matching\n"
+        "- [ ] R2 **quality** x is a vague name\n"
+    )
+    write_review(project, text)
+    with pytest.raises(FindingError) as refused:
+        decide_finding(change_of(project), "R2", "back to code only: rename x")
+    assert DECISION_FORM in str(refused.value)
+    assert read(project) == text
 
 
 HAND_WRITTEN = (
