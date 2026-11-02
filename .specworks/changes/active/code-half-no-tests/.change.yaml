@@ -1,7 +1,5 @@
 name: code-half-no-tests
 created: '2026-11-02T15:03:20'
-phase: design
+phase: implement
 specified:
   REQ-FLOW-008: 46f210a8465e
-dirty:
-  .specworks/changes/active/code-half-no-tests/review.md: 1167d0a97c0fb66cea29828d7b2e4a02d71d6f2e56213e089f85239e9365c3e4

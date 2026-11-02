@@ -48,12 +48,12 @@ design alone.
    specworks start review --change "<ref>"
    ```
    It runs implement's gate, `gate test` then `gate code`, and moves the
-   change to review only if both pass. Its test run costs nothing when the
-   code has not changed since the code gate: that result is reused (`same
-   code as the run at ...`). If `gate test` fails (open `[test]` tasks,
-   criteria without tests), stop and suggest `/specworks-test <ref>`; if
-   `gate code` fails (open `[code]` tasks, untagged requirements), suggest
-   `/specworks-code <ref>`. Reviewing unfinished work finds noise.
+   change to review only if both pass. Neither gate runs the suite: it
+   first runs in the next step, at `specworks run test`. If `gate test`
+   fails (open `[test]` tasks, criteria without tests), stop and suggest
+   `/specworks-test <ref>`; if `gate code` fails (open `[code]` tasks,
+   untagged requirements), suggest `/specworks-code <ref>`. Reviewing
+   unfinished work finds noise.
 
    Then run the suite: this is the first time the change's tests meet its
    code.

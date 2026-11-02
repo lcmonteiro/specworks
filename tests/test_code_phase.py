@@ -154,7 +154,7 @@ def test_ac_flow_008_4_no_build_typecheck_or_lint_command_passes_with_a_warning(
     code, data = run_json("gate", "code", "--change", REF)
     assert code == 0 and data["passed"] is True, data
     c = checks(data)
-    assert c[NO_COMMANDS]["ok"] is True and c[NO_COMMANDS]["blocking"] is False and c[NO_COMMANDS]["details"] == [NO_COMMANDS_WARNING]
+    assert c[NO_COMMANDS]["ok"] is False and c[NO_COMMANDS]["blocking"] is False and c[NO_COMMANDS]["details"] == [NO_COMMANDS_WARNING]
     assert not set(COMMAND_CHECKS.values()) & set(c)
 
 

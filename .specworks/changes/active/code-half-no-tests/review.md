@@ -15,9 +15,11 @@ reading the diff. `- [ ] R<n>` while open, `- [x] R<n>` once resolved. Write
 - [ ] R2 **test-gap** AC-FLOW-008.4 test asserts the warning check has ok True and fails against the code (tests/test_code_phase.py:157)
   - **Proposal**: back to test: assert the check has ok False and blocking False (a [warn] line) with the pinned detail, and that the gate passes
   - **Decision**: back to test: assert the no-command check has ok False and blocking False, the pinned detail, and that the gate passes
+  - done in test: tests/test_code_phase.py AC-FLOW-008.4: the no-command check is asserted ok False, blocking False, with the pinned detail, and the gate passes
 - [ ] R3 **test-gap** the walkthrough asserts 'same code as the run at' in the output of start review, but start review runs gate test and gate code, which no longer run the suite and here run no command (tests/test_walkthrough.py:197; REQ-FLOW-008, proposal)
   - **Proposal**: back to test: drop that assertion on start review and assert the reuse on the following gate review, which runs the suite after sw run test
   - **Decision**: back to test: in the walkthrough, assert the reused test run on the gate review that follows, not on start review
+  - done in test: tests/test_walkthrough.py: the reused test run ('same code as the run at') is asserted on gate review, no longer on start review
 - [ ] R4 **code-gap** the review skill still says start review's test run is reused from the code gate; start review no longer runs the suite (src/specworks/skills/specworks-review/SKILL.md:51; REQ-FLOW-008)
   - **Proposal**: back to code: say neither gate runs the suite and it first meets the code in the next step (specworks run test), then run uv run specworks skills
   - **Decision**: back to code: reword the review skill's step 1 (neither gate runs the suite; it first runs at specworks run test in review) and refresh the installed skills
