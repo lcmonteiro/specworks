@@ -15,6 +15,7 @@ reading the diff. `- [ ] R<n>` while open, `- [x] R<n>` once resolved. Write
   - confirmed in review: find_requirements raises ConfigError(f"empty search term: {term!r}") for the first blank term (src/specworks/specs/capabilities.py:243-245); the AC-SPECS-016.6 test asserts the exact message with the repr for '', ' ' and a blank second term (tests/test_find_requirements.py:203-207); spec find --json ' ' prints {"error": "empty search term: ' '"} and exits 1
 - [ ] R2 **design-gap** design.md still gives the blank-term error as ConfigError("empty search term") (Decisions > Matching, and Interfaces > find_requirements), while the code, as R1 agreed, raises ConfigError(f"empty search term: {term!r}") for the first blank term (src/specworks/specs/capabilities.py:245) (REQ-SPECS-016)
   - **Proposal**: back to design: in design.md, Matching and the find_requirements interface say it raises ConfigError(f"empty search term: {term!r}") for the first blank term; the pinned message 'empty search term' stays; no code or test change
+  - **Decision**: back to design: update Decisions > Matching and Interfaces > find_requirements in design.md to ConfigError(f"empty search term: {term!r}"); no code or test change
 
 ## Changed files without tags
 
