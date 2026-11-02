@@ -93,7 +93,7 @@ def test_run_unconfigured_command(project):
 def test_run_unknown_command_key(project):
     code, data = run_json("run", "frobnicate")
     assert code == 1 and "unknown command 'frobnicate'" in data["error"]
-    assert "test, lint, typecheck, build, format" in data["error"] and "commands:" not in data["error"]
+    assert "test, test_scoped, lint, typecheck, build, format" in data["error"] and "commands:" not in data["error"]
 
 
 # --- gate code ---------------------------------------------------------
