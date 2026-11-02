@@ -1,3 +1,7 @@
 name: skip-halves-for-design-text
 created: '2026-11-02T08:06:21'
-phase: specify
+phase: design
+specified:
+  REQ-FLOW-010: 0bb4e64db301
+  REQ-FLOW-012: 727565cfd2d9
+  REQ-FLOW-016: 5bedb0fccc4f

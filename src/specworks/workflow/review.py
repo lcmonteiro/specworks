@@ -241,11 +241,14 @@ class Finding:
     phase: str  # the step that resolves it, one of FINDING_STEPS (after ``done_in``, the next one)
     routed: bool = True  # False: neither a known type nor a "back to"/"done in" step, so ``phase`` is only a guess
     done_in: str = ""  # the step that carried out its proposal (``done in <step>:``), awaiting review
+    design_only: bool = False  # its Decision says ``back to design only:``: after design it goes to review (REQ-FLOW-010)
 
     def to_dict(self) -> dict:
-        data = {"id": self.id, "type": self.type, "text": self.text, "phase": self.phase}
+        data: dict = {"id": self.id, "type": self.type, "text": self.text, "phase": self.phase}
         if self.done_in:
             data["doneIn"] = self.done_in
+        if self.design_only:
+            data["designOnly"] = True
         return data
 
 

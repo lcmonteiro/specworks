@@ -2,7 +2,7 @@
 
 ## 1. Reading and writing a design-only finding
 
-- [ ] 1.1 Add `Finding.design_only` (default False) and its `designOnly` key in `Finding.to_dict()` in `src/specworks/workflow/review.py` (REQ-FLOW-010); verify it builds and the existing tests pass
+- [x] 1.1 Add `Finding.design_only` (default False) and its `designOnly` key in `Finding.to_dict()` in `src/specworks/workflow/review.py` (REQ-FLOW-010); verify it builds and the existing tests pass
 - [ ] 1.2 [test] Write failing tests for AC-FLOW-010.8 in `tests/test_review_phase.py`, tagged `@ac AC-FLOW-010.8`: routed to design, then to review after `done in design:`; plain `back to design:` still goes to implement; verify they fail for the right reason
 - [ ] 1.3 [test] Write failing tests for AC-FLOW-016.7 in `tests/test_findings.py`, tagged `@ac AC-FLOW-016.7`: the design-only Decision is written and routed to design; `back to code only:` is refused with the pinned `DECISION_FORM` and review.md is unchanged; verify they fail for the right reason
 - [ ] 1.4 [code] Read `back to design only:` and route it to review after `done in design:` (REQ-FLOW-010), and accept it in `DECISION_RE`/`DECISION_FORM` with the pinned wording (REQ-FLOW-016), tagged `@req`; verify with lint and `specworks finding decide` on a sample change

@@ -63,6 +63,8 @@ The test half asserts these and the code half writes them, verbatim:
 
 ## Interfaces
 
+Agreed with the user
+
 - `src/specworks/workflow/review.py`: `Finding.design_only: bool = False`
   (REQ-FLOW-010); `Finding.to_dict()` adds `"designOnly": true` when set, so
   `specworks cycle --json` and `specworks finding ... --json` show it
