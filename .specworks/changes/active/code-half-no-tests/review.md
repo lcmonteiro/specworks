@@ -23,6 +23,7 @@ reading the diff. `- [ ] R<n>` while open, `- [x] R<n>` once resolved. Write
 - [ ] R4 **code-gap** the review skill still says start review's test run is reused from the code gate; start review no longer runs the suite (src/specworks/skills/specworks-review/SKILL.md:51; REQ-FLOW-008)
   - **Proposal**: back to code: say neither gate runs the suite and it first meets the code in the next step (specworks run test), then run uv run specworks skills
   - **Decision**: back to code: reword the review skill's step 1 (neither gate runs the suite; it first runs at specworks run test in review) and refresh the installed skills
+  - done in code: review skill step 1: neither gate runs the suite; it first runs at specworks run test; installed skills refreshed
 
 ## Changed files without tags
 
