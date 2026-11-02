@@ -298,6 +298,20 @@ def test_ac_proj_028_1_the_folders_filled_in(tmp_path, monkeypatch):
 
 
 # @ac AC-PROJ-028.1
+def test_ac_proj_028_1_a_test_folder_that_links_outside_the_module_keeps_its_own_path(tmp_path, monkeypatch, tmp_path_factory):
+    new_project(tmp_path, monkeypatch, commands="commands:\n  test: uv run pytest\n  test_scoped: uv run pytest {paths}\n")
+    shared = tmp_path_factory.mktemp("shared") / "auth"
+    shared.mkdir()
+    (tmp_path / "tests").mkdir(exist_ok=True)
+    try:
+        (tmp_path / "tests/auth").symlink_to(shared, target_is_directory=True)
+    except OSError:  # Windows without the symlink privilege
+        pytest.skip("cannot create symlinks here")
+    ws = load_workspace(tmp_path)
+    assert scoped_command(ws, ws.top, [tmp_path / "tests/auth"]) == "uv run pytest tests/auth"
+
+
+# @ac AC-PROJ-028.1
 def test_ac_proj_028_1_the_scoped_run_reports_its_exit_code_and_output(tmp_path, monkeypatch, log):
     new_project(tmp_path, monkeypatch, commands=commands_block(log))
     write(tmp_path / "tests/my tests/test_x.py", "def test_x():\n    assert False\n")
