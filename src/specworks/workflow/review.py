@@ -203,7 +203,8 @@ def review_change(analysis: Analysis, base: str | None = None) -> ReviewReport:
 # Findings are checkboxes (``- [ ] R<n> **<type>** ...``, ``- [x]`` once resolved);
 # lines indented under one belong to it (its Decision). A Decision saying
 # ``back to <step>: <proposal>`` sends the finding to that step (specify, design,
-# implement, test or code); otherwise its type decides. A step that carried out the
+# implement, test or code), and ``back to design only:`` to design and then
+# straight to review; otherwise its type decides. A step that carried out the
 # proposal adds ``done in <step>: <what changed>``: the finding stays open until
 # review confirms it, but the work left is in the steps after that one. Untagged
 # changed files are accounted for under their own heading.
@@ -223,12 +224,30 @@ TYPE_PHASE = {
 FINDING_RE = re.compile(r"^\s*(?:[-*+]|\d+[.)])\s+\[(?P<mark>[ xX]?)\]\s+(?P<bold>\*\*)?(?P<id>R\d+)\b(?(bold)\*\*)(?P<text>.*)$")
 CHECKBOX_RE = re.compile(r"^\s*(?:[-*+]|\d+[.)])\s*\[[^\]]?\]")
 TYPE_RE = re.compile(r"\*\*([A-Za-z_-]+)\*\*")
-BACK_RE = re.compile(r"\bback to (?P<phase>specify|design|implement|test|code)\s*:", re.IGNORECASE)
+BACK_RE = re.compile(r"\bback to (?P<phase>specify|design|implement|test|code)(?P<only>\s+only)?\s*:", re.IGNORECASE)
 DONE_RE = re.compile(r"\bdone in (?P<phase>specify|design|implement|test|code)\s*:", re.IGNORECASE)
 # The steps a finding can be routed to, in workflow order: implement is both halves, test and code one each.
 FINDING_STEPS = ("specify", "design", "implement", "test", "code", "review")
 # The step a finding needs once a step carried out its proposal (``done in <step>:``).
 NEXT_STEP = {"specify": "design", "design": "implement", "implement": "review", "test": "review", "code": "review"}
+
+
+# @req REQ-FLOW-010
+def route(line: str) -> tuple[str, bool] | None:
+    """The step the first ``back to <step>:`` in ``line`` routes to, and whether it is ``back to design only:``;
+    None when it has none. ``only`` after any other step is not a route."""
+    for back in BACK_RE.finditer(line):
+        phase = back.group("phase").lower()
+        if not back.group("only") or phase == "design":
+            return phase, bool(back.group("only"))
+    return None
+
+
+# @req REQ-FLOW-010
+def next_step(done_in: str, design_only: bool = False) -> str:
+    """The step a finding needs once ``done_in`` carried out its proposal: review after design for a design-only finding."""
+    return "review" if design_only and done_in == "design" else NEXT_STEP[done_in]
+
 ACCOUNTED_SECTION = "changed files without tags"
 
 
@@ -308,13 +327,13 @@ def parse_review(text: str) -> ReviewDoc:
             current = None
         elif current is not None and line.strip() and not line.startswith((" ", "\t")):
             current = None  # back at the top level: the finding's block has ended
-        if current is not None and (back := BACK_RE.search(line)):
-            current.phase, current.routed = back.group("phase").lower(), True
+        if current is not None and (back := route(line)):
+            (current.phase, current.design_only), current.routed = back, True
         if current is not None and (carried := DONE_RE.search(line)):
             current.done_in, current.routed = carried.group("phase").lower(), True
     for finding in doc.findings:
         if finding.done_in:
-            finding.phase = NEXT_STEP[finding.done_in]
+            finding.phase = next_step(finding.done_in, finding.design_only)
         if not finding.done and not finding.routed:
             # The next build cycle starts from each open finding's phase, so it is never guessed.
             doc.problems.append(
@@ -340,8 +359,8 @@ def read_review(change: Change) -> ReviewDoc:
 
 # A Decision line under a finding, as written by hand (``- **Decision**: ...``) or by ``decide_finding``.
 DECISION_LINE_RE = re.compile(r"^(?P<indent>\s*)(?:[-*+]|\d+[.)])\s+\**Decision\**\s*:", re.IGNORECASE)
-DECISION_RE = re.compile(r"^(?:back to (?:specify|design|implement|test|code)|accepted)\s*:\s*\S", re.IGNORECASE)
-DECISION_FORM = "a decision starts with 'back to <step>:' (specify, design, implement, test or code) or 'accepted:'"
+DECISION_RE = re.compile(r"^(?:back to (?:specify|design|implement|test|code)|back to design\s+only|accepted)\s*:\s*\S", re.IGNORECASE)
+DECISION_FORM = "a decision starts with 'back to <step>:' (specify, design, implement, test or code), 'back to design only:' or 'accepted:'"
 LIST_ITEM_RE = re.compile(r"^\s*(?:[-*+]|\d+[.)])\s")
 CHECKBOX_MARK_RE = re.compile(r"\[[ xX]?\]")
 
@@ -444,8 +463,8 @@ def _tick(review: _Review, block: _Block) -> None:
 def _write(review: _Review, original: str, fid: str, expect: dict[str, object]) -> Finding:
     """Write the edited review.md only when ``fid`` reads back as ``expect`` and every other finding as before."""
     before, after = parse_review(original) if original else ReviewDoc(exists=False), parse_review(review.text)
-    others_before = [(f.id, f.done, f.type, f.text, f.phase, f.done_in) for f in before.findings if f.id != fid]
-    others_after = [(f.id, f.done, f.type, f.text, f.phase, f.done_in) for f in after.findings if f.id != fid]
+    others_before = [(f.id, f.done, f.type, f.text, f.phase, f.done_in, f.design_only) for f in before.findings if f.id != fid]
+    others_after = [(f.id, f.done, f.type, f.text, f.phase, f.done_in, f.design_only) for f in after.findings if f.id != fid]
     found = [f for f in after.findings if f.id == fid]
     problems = []
     if not found:
@@ -496,8 +515,9 @@ def add_finding(change: Change, kind: str, text: str, proposal: str) -> Finding:
         if not in_list:
             _insert(review, at, [""])
     # The step the reader gives: a 'back to <step>:' in its text or proposal (the last line with one) routes it.
-    routes = [back.group("phase").lower() for line in new if (back := BACK_RE.search(line))]
-    return _write(review, original, fid, {"done": False, "type": kind, "phase": routes[-1] if routes else TYPE_PHASE[kind]})
+    routes = [back for line in new if (back := route(line))]
+    phase, design_only = routes[-1] if routes else (TYPE_PHASE[kind], False)
+    return _write(review, original, fid, {"done": False, "type": kind, "phase": phase, "design_only": design_only})
 
 
 # @req REQ-FLOW-016
@@ -526,9 +546,10 @@ def decide_finding(change: Change, finding_id: str, decision: str) -> Finding:
         _tick(review, block)
         expect = {"done": True}
     else:
-        step = BACK_RE.match(decision)
+        step = route(decision)
         assert step is not None  # DECISION_RE checked the form
-        expect = {"done": current.done, "phase": NEXT_STEP[current.done_in] if current.done_in else step.group("phase").lower()}
+        phase, design_only = step
+        expect = {"done": current.done, "phase": next_step(current.done_in, design_only) if current.done_in else phase, "design_only": design_only}
     return _write(review, original, fid, expect)
 
 
@@ -548,7 +569,7 @@ def mark_finding_done(change: Change, finding_id: str, step: str, text: str) -> 
     fid, block = _find(review, finding_id)
     current = next(f for f in parse_review(original).findings if f.id == fid)
     _insert(review, block.end + 1, [f"{block.indent}  - done in {step}: {text}"])
-    return _write(review, original, fid, {"done": current.done, "done_in": step, "phase": NEXT_STEP[step]})
+    return _write(review, original, fid, {"done": current.done, "done_in": step, "phase": next_step(step, current.design_only)})
 
 
 # @req REQ-FLOW-016
