@@ -1,6 +1,6 @@
 name: capability-tests
 created: '2026-11-02T22:33:38'
-phase: review
+phase: validate
 specified:
   REQ-CLI-004: f88a89e5bf78
   REQ-PROJ-027: e709ad15ca8e
