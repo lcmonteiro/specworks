@@ -24,8 +24,9 @@ reading the diff. `- [ ] R<n>` while open, `- [x] R<n>` once resolved. Write
   - done in specify: AC-FLOW-016.5's WHEN now names all three Decision forms (back to <step>:, back to design only:, accepted:) in the MODIFIED REQ-FLOW-016, same IDs; no code or test change
   - done in design: nothing to change in design.md: Interfaces and Decisions > The Decision form already name the three forms and the refusal before any write; no API change
   - confirmed in review: confirmed: AC-FLOW-016.5's WHEN names back to <step>:, back to design only: and accepted:, matching AC-FLOW-016.7; design.md needed no change
-- [ ] R4 **quality** the design-only route is also read from prose that quotes it (REQ-FLOW-010, src/specworks/workflow/review.py:330: _route runs on every line of a finding's block, the last line with a route wins): R2's done-in-code line and R3's done-in-specify line quote the form, so 'specworks cycle --json' reads both as designOnly, and R3 (sent to specify, done in design) is routed to review instead of implement; the rule predates this change for a quoted plain route, but the new form is a literal string that reviews quote
+- [x] R4 **quality** the design-only route is also read from prose that quotes it (REQ-FLOW-010, src/specworks/workflow/review.py:330: _route runs on every line of a finding's block, the last line with a route wins): R2's done-in-code line and R3's done-in-specify line quote the form, so 'specworks cycle --json' reads both as designOnly, and R3 (sent to specify, done in design) is routed to review instead of implement; the rule predates this change for a quoted plain route, but the new form is a literal string that reviews quote
   - **Proposal**: accepted: the code follows REQ-FLOW-010 as specified (any route in the finding's own block); reading the route only from the Decision line would change REQ-FLOW-010 for every step, so it is a candidate for a new change
+  - **Decision**: accepted: the code follows REQ-FLOW-010 as written and a quoted plain route behaved the same before; the user chose to fix routing from quoted text in its own change, fix-route-quoted-forms, after this one
 
 ## Changed files without tags
 
