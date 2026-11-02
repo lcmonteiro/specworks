@@ -17,6 +17,7 @@ reading the diff. `- [ ] R<n>` while open, `- [x] R<n>` once resolved. Write
   - **Proposal**: back to design: in design.md, Matching and the find_requirements interface say it raises ConfigError(f"empty search term: {term!r}") for the first blank term; the pinned message 'empty search term' stays; no code or test change
   - **Decision**: back to design: update Decisions > Matching and Interfaces > find_requirements in design.md to ConfigError(f"empty search term: {term!r}"); no code or test change
   - done in design: design.md Decisions > Matching and Interfaces > find_requirements now give ConfigError(f"empty search term: {term!r}") for the first blank term; no code or test change
+  - done in code: nothing to do in code: find_requirements already raises ConfigError(f"empty search term: {term!r}") for the first blank term, as design.md now says (src/specworks/specs/capabilities.py:243-245)
 
 ## Changed files without tags
 
