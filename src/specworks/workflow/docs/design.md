@@ -150,9 +150,10 @@ structured data file with review.md generated from it was rejected.
 - A decision starts `back to <step>:`, `back to design only:` or
   `accepted:`; `accepted` ticks the box. `only` after any other step is
   refused before any write (`DECISION_FORM` names the three forms).
-  (skip-halves-for-design-text) A new finding is expected to route where the reader routes it: the last
-  `back to <step>:` in its text or proposal, else its type's step, so a
-  proposal written in that form is not refused.
+  (skip-halves-for-design-text) A new finding is expected to route where the reader routes it: the form
+  its Proposal line starts with, else its type's step, so a proposal written
+  in that form is not refused; a form only quoted in its text or Proposal
+  does not route it. (fix-route-quoted-forms)
 - With an ID repeated, the writers act on the first block with it, as
   `parse_review` does, and a refusal is a `FindingError`, never a traceback.
 - `close_finding` adds `confirmed in review: <text>`; the parser does not
@@ -184,9 +185,21 @@ earliest finding was replaced: a code finding no longer re-runs the tests.
   the design step, were rejected. `only` reads with the `back to` that carries
   it, and the last route in the block wins, so a later plain `back to design:`
   clears it. (skip-halves-for-design-text)
-- A route is read from any line of a finding's block, so a follow-up line
-  that quotes a route form routes the finding too. Accepted as specified; it
-  predates the design-only form. (skip-halves-for-design-text)
+- A route form (`back to <step>:`, `back to design only:`, `done in
+  <step>:`) counts only where it starts a line's text: after the line's
+  indentation, an optional bullet (`-`, `*`, `+`, `1.`, `1)`) and an optional
+  bold label with its colon, bold before or after the colon (`**Decision**:`,
+  `**Decision:**`). One rule (`LINE_STARTS`, read by `_route` and `_done_in`)
+  serves `parse_review` and every writer. Anything later on a line, and the
+  finding's own checkbox line, is text, so a form only quoted (in a finding's
+  text, a Proposal or a `confirmed in review:` line) no longer routes it.
+  Any bold label is accepted, not only Decision and Proposal, so a
+  hand-written `**Fix**: back to code:` keeps routing with one pattern; a
+  list of known labels, or one rule per line kind (`done in` has no label),
+  were rejected. A route written mid-line by hand stops routing: the finding
+  then routes by its type, or is unreadable without one, never silently
+  skipped. It replaced reading a route from anywhere in the block, which
+  made quoted forms set a finding design-only. (fix-route-quoted-forms)
 
 ### Merging a half's branch resolves only tasks.md and the trace
 
