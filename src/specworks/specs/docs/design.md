@@ -88,7 +88,8 @@ without markers is noticed. (parallel-test-code)
 The two halves run in parallel and the code half cannot see the test half's
 tests until the merge, so `check` warns, without failing, when a `[code]` task
 names the number of a `[test]` task of the same change, or the literal
-`specworks run test`; the suite runs in `gate implement` after the merge. A
+`specworks run test`; the suite runs in review after the merge
+(code-half-no-tests). A
 number counts only as a whole token (`1.1`, not `11.1` or `3.11`) and only
 when it is a real `[test]` task of the change, so version numbers and
 references to `[code]` or no-half tasks stay silent. The warning texts are

@@ -163,8 +163,8 @@ of <skills folder>/specworks-build/SKILL.md.
    `tasks.md` and regenerates `traceability.md`, and aborts the merge on any
    other conflict (a half worked outside its own files). If it fails, stop
    and report its error. After the merge, run
-   `specworks gate implement --change "<ref>"`; its suite may fail (the
-   tests meet the code in review), every other check must pass.
+   `specworks gate implement --change "<ref>"`: every check must pass; it
+   does not run the suite (the halves' tests meet the code in review).
 
    A question from one half does not stop the other: let it finish, ask the
    question, write the answer to disk and rerun only the half that asked.

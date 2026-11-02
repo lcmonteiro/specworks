@@ -7,7 +7,7 @@ import sys
 import pytest
 from typer.testing import CliRunner
 
-from helpers import REF, on_a_branch, run_json, write_tests
+from helpers import REF, run_json, write_tests
 from specworks.cli import app
 
 runner = CliRunner()
@@ -19,6 +19,11 @@ def set_test_command(root, command):
     cfg = root / ".specworks/config.yml"
     text = cfg.read_text()
     cfg.write_text(re.sub(r"(?m)^  test:.*$", lambda _: f"  test: {json.dumps(command)}", text, count=1))
+
+
+def set_command(key, command):
+    code, data = run_json("config", "set", f"commands.{key}", command)
+    assert code == 0, data
 
 
 def implement_everything(root):
@@ -45,7 +50,12 @@ def task_checks(data):
     return [c for c in data["checks"] if "task" in c["name"] and "done" in c["name"]]
 
 
-TESTS = "the test suite passes (commands.test)"
+BUILD = "the code builds (commands.build)"
+TYPECHECK = "typecheck passes (commands.typecheck)"
+LINT = "lint passes (commands.lint)"
+COMMAND_CHECKS = {"build": BUILD, "typecheck": TYPECHECK, "lint": LINT}
+NO_COMMANDS = "build, typecheck and lint"
+NO_COMMANDS_WARNING = "no build, typecheck or lint command configured: the tests run in review"
 
 
 # --- specworks run ----------------------------------------------------------
@@ -90,17 +100,21 @@ def test_run_unknown_command_key(project):
 
 
 # @ac AC-FLOW-008.1
-def test_implement_gate_passes_when_everything_is_done(project):
-    set_test_command(project, PASS)
+def test_ac_flow_008_1_code_gate_passes_and_shows_each_command_it_ran(project):
+    for key in COMMAND_CHECKS:
+        set_command(key, PASS)
     implement_everything(project)
     code, data = run_json("gate", "code", "--change", REF)
     assert code == 0 and data["passed"] is True, data
-    assert checks(data)["the test suite passes (commands.test)"]["details"][0].startswith("$ ")
+    c = checks(data)
+    for name in COMMAND_CHECKS.values():
+        assert c[name]["ok"] is True and c[name]["details"][0].startswith("$ ") and "all green" in c[name]["details"][0], c[name]
+    assert NO_COMMANDS not in c
 
 
 # @ac AC-FLOW-008.2
 def test_implement_gate_lists_what_is_missing(project):
-    set_test_command(project, PASS)
+    set_command("build", PASS)
     write_tests(project, "AC-AUTH-003.1", "AC-AUTH-003.2", "AC-AUTH-002.1")
     (project / "src/auth/reset.py").write_text("# @req REQ-AUTH-003\n")  # specworks: ignore-tags
     code, data = run_json("gate", "code", "--change", REF)
@@ -112,82 +126,76 @@ def test_implement_gate_lists_what_is_missing(project):
 
 
 # @ac AC-FLOW-008.3
-def test_implement_gate_fails_when_tests_fail(project):
-    set_test_command(project, FAIL)
-    implement_code_only(project)  # no @ac test of the change: the failure is not its own tests being red
+@pytest.mark.parametrize("failing", ["build", "typecheck", "lint"])
+def test_ac_flow_008_3_a_failing_command_fails_the_gate_with_its_output(project, failing):
+    for key in COMMAND_CHECKS:
+        set_command(key, FAIL if key == failing else PASS)
+    implement_everything(project)  # the change's own @ac tests do not soften a failing command
     code, data = run_json("gate", "code", "--change", REF)
-    assert code == 1
-    tests = checks(data)["the test suite passes (commands.test)"]
-    assert tests["ok"] is False and "2 failed" in tests["details"]
-
-
-# @ac AC-FLOW-008.3
-def test_code_gate_fails_when_only_source_files_changed(project, monkeypatch):
-    set_test_command(project, FAIL)
-    on_a_branch(project, monkeypatch)
-    implement_code_only(project)  # changed source files, but no @ac test and no changed test file
-    code, data = run_json("gate", "code", "--change", REF)
-    tests = checks(data)[TESTS]
-    assert code == 1 and tests["ok"] is False and tests["blocking"] is True and "2 failed" in tests["details"]
-
-
-# @ac AC-FLOW-008.8
-def test_a_skip_specs_change_with_changed_test_files_only_warns(project, monkeypatch):
-    run_json("new", "tidy-up", "--no-branch")
-    run_json("skip-specs", "--change", "tidy-up")
-    tidy_up = project / ".specworks/changes/active/tidy-up"
-    (tidy_up / "proposal.md").write_text("# P\n\n## Why\n\nTidy.\n\n## What Changes\n\nTidy.\n\n## Capabilities\n\nNone.\n")
-    (tidy_up / "tasks.md").write_text("# Tasks\n\n## 1. Tidy\n\n- [x] 1.1 [test] Test the session\n- [x] 1.2 [code] Tidy the session\n")
-    set_test_command(project, FAIL)
-    on_a_branch(project, monkeypatch)
-    (project / "tests").mkdir()
-    (project / "tests/test_session.py").write_text("def test_session():\n    assert False\n")  # the test half's work, without a tag
-    code, data = run_json("gate", "code", "--change", "tidy-up")
-    tests = checks(data)[TESTS]
-    assert code == 0 and data["passed"] is True, [c["name"] for c in data["checks"] if c["blocking"] and not c["ok"]]
-    assert tests["ok"] is False and tests["blocking"] is False and "2 failed" in tests["details"]
-    assert any("changed test files" in d for d in tests["details"])
+    assert code == 1 and data["passed"] is False
+    c = checks(data)
+    failed = c[COMMAND_CHECKS[failing]]
+    assert failed["ok"] is False and failed["blocking"] is True and "2 failed" in failed["details"], failed
+    assert all(c[COMMAND_CHECKS[key]]["ok"] for key in COMMAND_CHECKS if key != failing)
 
 
 # @ac AC-FLOW-008.6
 def test_code_gate_does_not_need_a_test_for_every_criterion(project):
-    set_test_command(project, PASS)
+    set_command("build", PASS)
     implement_code_only(project)
     code, data = run_json("gate", "code", "--change", REF)
     assert code == 0 and data["passed"] is True, data
     assert not any("acceptance criterion has a test" in c["name"] for c in data["checks"])
 
 
-# @ac AC-FLOW-008.7
-def test_code_gate_only_warns_when_the_change_s_own_tests_fail(project):
-    set_test_command(project, FAIL)
-    implement_everything(project)  # the change's @ac tests meet the code in review
-    code, data = run_json("gate", "code", "--change", REF)
-    tests = checks(data)[TESTS]
-    assert code == 0 and data["passed"] is True, data
-    assert tests["ok"] is False and tests["blocking"] is False and "2 failed" in tests["details"]
-    assert any("@ac tests" in d for d in tests["details"])
-
-
 # @ac AC-FLOW-008.4
-def test_implement_gate_needs_a_test_command(project):
+def test_ac_flow_008_4_no_build_typecheck_or_lint_command_passes_with_a_warning(project):
     implement_everything(project)
     code, data = run_json("gate", "code", "--change", REF)
-    assert code == 1 and "no 'test' command configured" in checks(data)["the test suite passes (commands.test)"]["details"][0]
+    assert code == 0 and data["passed"] is True, data
+    c = checks(data)
+    assert c[NO_COMMANDS]["ok"] is False and c[NO_COMMANDS]["blocking"] is False and c[NO_COMMANDS]["details"] == [NO_COMMANDS_WARNING]
+    assert not set(COMMAND_CHECKS.values()) & set(c)
+
+
+# @ac AC-FLOW-008.9
+@pytest.mark.parametrize("test_command", [FAIL, None])
+def test_ac_flow_008_9_the_code_gate_does_not_run_the_test_command(project, test_command):
+    if test_command:
+        set_test_command(project, test_command)
+    set_command("build", PASS)
+    implement_code_only(project)  # no @ac test of the change: a red suite would have blocked before
+    code, data = run_json("gate", "code", "--change", REF)
+    assert code == 0 and data["passed"] is True, data
+    assert not any("commands.test" in c["name"] or "test suite" in c["name"] for c in data["checks"])
+    assert not any("2 failed" in d or "'test' command" in d for c in data["checks"] for d in c["details"])
+
+
+# @ac AC-FLOW-008.10
+def test_ac_flow_008_10_only_the_configured_typecheck_runs(project):
+    set_test_command(project, FAIL)
+    set_command("typecheck", PASS)
+    implement_everything(project)
+    code, data = run_json("gate", "code", "--change", REF)
+    assert code == 0 and data["passed"] is True, data
+    names = [c["name"] for c in data["checks"]]
+    assert TYPECHECK in names and checks(data)[TYPECHECK]["details"][0].startswith("$ ")
+    assert BUILD not in names and LINT not in names and NO_COMMANDS not in names
 
 
 # @ac AC-FLOW-003.2
-def test_no_run_turns_the_test_check_into_a_warning(project):
+def test_no_run_turns_the_command_checks_into_warnings(project):
+    set_command("build", PASS)
     implement_everything(project)
     code, data = run_json("gate", "code", "--change", REF, "--no-run")
     assert code == 0
-    tests = checks(data)["the test suite passes (commands.test)"]
-    assert tests["blocking"] is False and "not run" in tests["details"][0]
+    build = checks(data)[BUILD]
+    assert build["blocking"] is False and "not run" in build["details"][0]
 
 
 # @ac AC-FLOW-008.5
 def test_removed_requirement_still_tagged_blocks_implement(project):
-    set_test_command(project, PASS)
+    set_command("build", PASS)
     implement_everything(project)
     delta = project / ".specworks/changes/active" / REF / "specs/user-auth/spec.md"
     delta.write_text(
@@ -204,7 +212,7 @@ def test_removed_requirement_still_tagged_blocks_implement(project):
 # @ac AC-FLOW-008.5
 def test_criteria_of_a_removed_requirement_still_tested_block_implement(project):
     # Its code is gone, but a test of its criterion would point to an unknown ID after close.
-    set_test_command(project, PASS)
+    set_command("build", PASS)
     implement_everything(project)
     delta = project / ".specworks/changes/active" / REF / "specs/user-auth/spec.md"
     delta.write_text(
@@ -227,7 +235,7 @@ def test_criterion_a_modified_requirement_drops_must_lose_its_tests(project):
     # The living REQ-AUTH-002 has AC-AUTH-002.2; the change's MODIFIED block keeps only .1.
     living = project / "src/auth/docs/spec.md"
     living.write_text(living.read_text() + "\n#### Scenario: AC-AUTH-002.2 Unlock by email\n- **WHEN** the user follows the email link\n- **THEN** the account is unlocked\n")
-    set_test_command(project, PASS)
+    set_command("build", PASS)
     implement_everything(project)
     (project / "tests/test_unlock.py").write_text("# @ac AC-AUTH-002.2\ndef test_unlock(): ...\n")  # specworks: ignore-tags
     code, data = run_json("gate", "test", "--change", REF)
@@ -262,6 +270,6 @@ def test_tag_scan_follows_a_symlink_to_a_file_outside_the_workspace(project, tmp
 
 # @ac AC-FLOW-008.3
 def test_a_command_writing_bytes_that_are_not_text_does_not_crash_the_gate(project):
-    set_test_command(project, f'"{sys.executable}" -c "import sys; sys.stdout.buffer.write(bytes([0xff, 0xfe, 10])); sys.exit(1)"')
+    set_command("build", f'"{sys.executable}" -c "import sys; sys.stdout.buffer.write(bytes([0xff, 0xfe, 10])); sys.exit(1)"')
     code, data = run_json("gate", "code", "--change", REF)
-    assert code == 1 and not checks(data)["the test suite passes (commands.test)"]["ok"]
+    assert code == 1 and not checks(data)[BUILD]["ok"]

@@ -190,13 +190,14 @@ def test_walkthrough(tmp_path, monkeypatch):
     (tmp_path / "src/textkit/slug.py").write_text(CODE, encoding="utf-8")
     sw("task", "done", "1.3", "--change", REF)
     sw("gate", "code", "--change", REF)
+    sw("run", "test", "--change", REF)
 
     # review: no drift candidates; one finding from reading the code, accepted.
-    started = sw("start", "review", "--change", REF)
-    assert "same code as the run at" in started  # gate code's run is reused
+    sw("start", "review", "--change", REF)
     assert "0 drift candidates" in sw("review", "--change", REF, "--base", "main")
     (tmp_path / C / "review.md").write_text(REVIEW, encoding="utf-8")
-    sw("gate", "review", "--change", REF, "--base", "main")
+    reviewed = sw("gate", "review", "--change", REF, "--base", "main")
+    assert "same code as the run at" in reviewed  # the suite's run is reused
 
     # validate and close.
     sw("phase", "validate", "--change", REF)

@@ -254,7 +254,7 @@ def command_check(ctx: GateContext, key: str, name: str, optional: bool = False)
     return Check(name, result.ok, details if result.ok else details + result.tail())
 
 
-# @req REQ-FLOW-008
+# @req REQ-FLOW-011
 def tests_pass(ctx: GateContext) -> Check:
     return command_check(ctx, "test", "the test suite passes (commands.test)")
 
@@ -265,7 +265,7 @@ def has_own_ac_tests(ctx: GateContext) -> bool:
     return any(t.kind == "ac" and t.is_test and t.id in ids for t in ctx.analysis.tags)
 
 
-# @req REQ-FLOW-006, REQ-FLOW-008
+# @req REQ-FLOW-006
 def own_tests(ctx: GateContext) -> str | None:
     """Why the change has tests of its own (its ``@ac`` tests, or test files changed since it started), or ``None``.
 
@@ -286,15 +286,6 @@ def not_blocking(ctx: GateContext, tests: Check, why: str, at: int = 1) -> Check
     return tests
 
 
-# @req REQ-FLOW-008
-def code_tests_pass(ctx: GateContext) -> Check:
-    """The code gate's ``tests_pass``: a warning while the change has tests of its own (they meet the code in review)."""
-    tests = tests_pass(ctx)
-    if tests.ok or not (why := own_tests(ctx)):  # the changed files are only computed for a red suite
-        return tests
-    return not_blocking(ctx, tests, f"{why}, which meet the code in review")
-
-
 # @req REQ-FLOW-011
 def review_tests_pass(ctx: GateContext) -> Check:
     """The review gate's ``tests_pass``: a warning under ``--allow-open`` while review.md has an open finding."""
@@ -306,3 +297,20 @@ def review_tests_pass(ctx: GateContext) -> Check:
 
 def optional_command(key: str, name: str) -> CheckFn:
     return lambda ctx: command_check(ctx, key, name, optional=True)
+
+
+CODE_COMMANDS = ("build", "typecheck", "lint")
+
+
+# @req REQ-FLOW-008
+def code_command(key: str, name: str) -> CheckFn:
+    """The code gate's run of ``commands.<key>`` (blocking when it fails), or ``None`` when it is not configured."""
+    return lambda ctx: command_check(ctx, key, name) if ctx.has_command(key) else None
+
+
+# @req REQ-FLOW-008
+def no_code_commands(ctx: GateContext) -> Check | None:
+    """The code gate's warning when none of build, typecheck and lint is configured (the tests run in review), else ``None``."""
+    if any(ctx.has_command(key) for key in CODE_COMMANDS):
+        return None
+    return Check("build, typecheck and lint", False, ["no build, typecheck or lint command configured: the tests run in review"], blocking=False)
