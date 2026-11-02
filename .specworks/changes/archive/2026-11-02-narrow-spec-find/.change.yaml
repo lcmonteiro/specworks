@@ -1,0 +1,8 @@
+name: narrow-spec-find
+created: '2026-11-02T20:36:56'
+phase: done
+specified:
+  REQ-CLI-016: 3960c98eb903
+  REQ-SPECS-016: 952332af3dcb
+dirty:
+  .specworks/changes/active/narrow-spec-find/.change.yaml: d5dcdd0116e396eab2efe08b6931bc9c7fc48c75d00c6bf25e68980cb9502085

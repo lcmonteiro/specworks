@@ -125,6 +125,10 @@ proposal's `## Related requirements` as modified or left with a reason. No
 term is refused with `give at least one term`; no match is not an error: the
 text output says `no requirement mentions <terms>` and `--json` gives an empty
 `matches`. (specify-related-requirements)
+After the matches, each broad term (more than half of the living requirements
+searched, from `search_requirements`) gets a warning line naming it, and
+`--json` lists it under `broad`; the matches are still listed and it exits 0,
+since a broad term can still be the right one. (narrow-spec-find)
 
 ### `capability add --create` makes the code folder
 
@@ -204,9 +208,11 @@ a second config format exists. (upgrade-project, dedupe-copilot-skills)
   (the module's label; the top level for `branch_per_change`).
 - `spec find <term>... [--json]`: text prints one line per match,
   `<capability>  <ID>  <title>  <path>:<line>`, or
-  `no requirement mentions <terms joined by ", ">`; `--json` prints
-  `{"terms": [...], "matches": [{"capability", "id", "title", "path",
-  "line", "text"}]}` (REQ-CLI-016).
+  `no requirement mentions <terms joined by ", ">`, then per broad term
+  `warning: '<term>' matches <n> of <m> requirements; try a narrower term`;
+  `--json` prints `{"terms": [...], "matches": [{"capability", "id", "title",
+  "path", "line", "text"}], "broad": [{"term", "matches", "of"}]}` (`broad`
+  empty when no term is broad) (REQ-CLI-016).
 - `merge <branch> --change <ref> [--json]`: `--json` prints the change's
   fields plus `merged`, `branch` and `resolved` (workspace-relative paths).
 - `commit --change <ref> [--message TEXT] [--trailer TEXT]... [--json]`
