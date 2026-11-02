@@ -3,6 +3,7 @@ import re
 import shlex
 import shutil
 from importlib import resources
+from pathlib import Path
 
 import pytest
 import typer.main
@@ -362,8 +363,8 @@ def test_baseline_no_longer_asks_for_a_new_branch():
     assert "preferably on a new branch" not in " ".join(read_skill("specworks-baseline").split())
 
 
-# refine, adopt and baseline create the change they work on (adopt and start none) instead of picking one.
-@pytest.mark.parametrize("name", [n for n in packaged_skills() if n not in ("specworks-refine", "specworks-adopt", "specworks-baseline", "specworks-start")])
+# refine, adopt and baseline create the change they work on (adopt and start none) instead of picking one; onboard reports every change and picks none.
+@pytest.mark.parametrize("name", [n for n in packaged_skills() if n not in ("specworks-refine", "specworks-adopt", "specworks-baseline", "specworks-start", "specworks-onboard")])
 def test_skills_pick_the_change_by_one_shared_rule(name):
     # "Select the change as the other phases do" pointed at no rule; the shared paragraph is that rule.
     text = read_skill(name)
@@ -453,6 +454,63 @@ def test_start_ends_by_handing_over_to_refine():
     steps = flat(read_skill("specworks-start").split("## Guardrails", 1)[0])
     assert "1. /specworks-refine <first change> (recommended)" in steps
     assert "stop here" in steps.lower()
+
+
+ONBOARD = "specworks-onboard"
+ONBOARD_TOOLS = f"Bash(specworks:*), Bash(uv run specworks:*), Bash({UVX}:*), Read, Grep, Glob"
+ONBOARD_LINE = "New to specworks? Run **`/specworks-onboard`**: it tells you where your project stands and what to run next, and answers your questions."
+
+
+def raw_skill(name):
+    """A packaged skill's SKILL.md as written, its include lines not filled in."""
+    return resources.files("specworks").joinpath("skills", name, "SKILL.md").read_text(encoding="utf-8")
+
+
+def test_onboard_is_a_packaged_skill_for_first_time_users():
+    # The description decides when an agent loads it: a first-time user asks "how do I get started", not for a phase.
+    meta = raw_skill(ONBOARD).split("---\n")[1]
+    assert f"name: {ONBOARD}\n" in meta
+    description = flat(meta.split("description:", 1)[1].split("allowed-tools:", 1)[0])
+    for phrase in ("first time", "getting started", '"onboard"', '"specworks onboard"'):
+        assert phrase in description, phrase
+
+
+def test_onboard_is_read_only_by_its_allowed_tools():
+    # The skill diagnoses and explains; with no Write, Edit or git it cannot change the project.
+    allowed = re.search(r"^allowed-tools: (.*)$", raw_skill(ONBOARD), re.MULTILINE).group(1).strip()
+    assert allowed == ONBOARD_TOOLS
+    tools = {tool.strip() for tool in allowed.split(",")}
+    assert "Write" not in tools and "Edit" not in tools
+    assert "This skill never changes files" in flat(read_skill(ONBOARD))
+
+
+def test_onboard_uses_the_shared_cli_and_closing_question_text():
+    text = raw_skill(ONBOARD)
+    assert "<!-- specworks:include running-cli -->\n" in text
+    assert "<!-- specworks:include asking-the-user -->\n" in text
+
+
+def test_onboard_names_the_next_step_for_every_project_state():
+    # The state table drifts when a skill is added; every next step it names is pinned.
+    text = flat(read_skill(ONBOARD))
+    assert "specworks context --json" in text
+    for next_step in ("specworks init", "specworks update", "/specworks-start", "/specworks-adopt", "/specworks-baseline",
+                  "/specworks-refine", "/specworks-specify", "/specworks-build", "/specworks-done"):
+        assert next_step in text, next_step
+
+
+def test_onboard_answers_from_the_cli_first_and_links_the_wiki():
+    text = flat(read_skill(ONBOARD))
+    assert "the CLI wins" in text
+    assert "https://github.com/lcmonteiro/specworks/wiki" in text
+
+
+def test_the_readme_quick_start_points_new_users_to_onboard():
+    # Just before step 1: the first thing a new user reads after `specworks init`.
+    readme = (Path(__file__).parents[1] / "README.md").read_text(encoding="utf-8")
+    quick_start = readme.split("## Quick start", 1)[1].split("\n## ", 1)[0]
+    before_step_1, _, _ = quick_start.partition("\n1. ")
+    assert ONBOARD_LINE in flat(before_step_1)
 
 
 def test_adopt_baseline_and_close_chain_through_every_capability():

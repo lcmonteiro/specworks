@@ -60,6 +60,8 @@ specworks init   # writes .specworks/config.yml, .specworks/changes/active/ and 
 
 Then, in your agent:
 
+New to specworks? Run **`/specworks-onboard`**: it tells you where your project stands and what to run next, and answers your questions.
+
 1. **`/specworks-start`** in a repository with no code yet: it recommends
    the tooling, proposes the structure (one project or several modules, with their
    capabilities and code folders) and creates it once you approve the tree. Or
