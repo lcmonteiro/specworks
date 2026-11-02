@@ -75,9 +75,10 @@ Agreed with the user
   (new; a check that runs `commands.<key>` through `command_check`, blocking
   when it fails, or returns `None` when it is not configured) (REQ-FLOW-008)
 - `src/specworks/workflow/checks.py`: `no_code_commands(ctx: GateContext) -> Check | None`
-  (new; a passing, non-blocking `Check` named `build, typecheck and lint`
-  with the detail `no build, typecheck or lint command configured: the tests
-  run in review` when none of the three is configured, else `None`)
+  (new; a non-blocking warning `Check` (`ok` False, `blocking` False, shown
+  as `[warn]`; the gate still passes) named `build, typecheck and lint` with
+  the detail `no build, typecheck or lint command configured: the tests run
+  in review` when none of the three is configured, else `None`)
   (REQ-FLOW-008)
 - `src/specworks/workflow/checks.py`: `code_tests_pass` (removed in the code
   half; it has no other caller) (REQ-FLOW-008)
