@@ -114,7 +114,7 @@ def test_module_list_shows_tree(workspace):
     assert data["modules"][0]["current"] is True
 
 
-# @ac AC-PROJ-004.2, AC-PROJ-006.1, AC-PROJ-007.1
+# @ac AC-PROJ-004.2, AC-PROJ-006.1, AC-PROJ-007.1, AC-CLI-004.1
 def test_context_inside_module_inherits_and_sees_whole_workspace(workspace, monkeypatch):
     monkeypatch.chdir(workspace / "services/billing/tax")
     code, data = run_json("context")
@@ -130,6 +130,7 @@ def test_context_inside_module_inherits_and_sees_whole_workspace(workspace, monk
             "path": "services/billing/src/invoices",
             "description": "",
             "docsPath": "services/billing/src/invoices/docs",
+            "testsPath": "services/billing/tests/invoices",
             "hasSpec": False,
             "prefix": "BILLING-INVOICES",
             "deltaPath": "specs/billing/invoices/spec.md",

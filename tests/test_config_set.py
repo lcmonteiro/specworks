@@ -222,6 +222,18 @@ def test_ac_proj_025_12_the_branch_setting(project):
     assert read(project) == text
 
 
+# @ac AC-PROJ-025.13
+def test_ac_proj_025_13_the_scoped_test_command(project):
+    set_config_value(project, "commands.test_scoped", "uv run pytest {paths}")
+    text = read(project)
+    assert load_config(project).commands["test_scoped"] == "uv run pytest {paths}"
+    assert len(entries(text, "test_scoped")) == 1
+    with pytest.raises(ConfigError) as error:
+        set_config_value(project, "commands.test_scoped", "uv run pytest")
+    assert "{paths}" in str(error.value)
+    assert read(project) == text
+
+
 # --- branch_per_change ------------------------------------------------------
 
 
