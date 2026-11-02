@@ -6,7 +6,8 @@ Specs and traceability, in `src/specworks/specs`:
 - **Spec files** (`specfile.py`): parsing delta and living specs into
   requirements and criteria, and what makes a living spec broken.
 - **Capabilities** (`capabilities.py`): a capability as the specs see it: its
-  reference, ID prefix, delta path, living spec and next free ID.
+  reference, ID prefix, delta path, living spec and next free ID, and the
+  search over every capability's living requirements.
 - **Check** (`check.py`): `specworks check` on a change's proposal, delta
   specs, tasks and diagrams.
 - **Tasks** (`tasks.py`): reading tasks.md, each task's half, and ticking tasks.
@@ -104,6 +105,20 @@ per-requirement rules, requirement body), called in the original order so issue
 order is unchanged. Alternative: a `DeltaChecker` class, rejected as more
 structure than the shared state needs. (refactor-check-delta)
 
+### Finding living requirements is a literal search
+
+`find_requirements` searches every capability's living spec, in every module,
+for terms compared with `casefold()` as plain substrings, so the same terms
+always give the same matches. A requirement's block runs from its header line
+to its last line; the first line in it that holds any term is its match (a
+term in the title matches the header line), and a requirement is listed once
+however many terms match. Capabilities come in `workspace_capabilities` order,
+requirements in file order, and a capability with no living spec is skipped.
+The first blank term is refused, naming it. Deltas of active changes are not
+searched. Fuzzy and regular-expression matching were rejected: the specify
+skill needs a repeatable result to decide, per match, to modify the
+requirement or leave it with a reason. (specify-related-requirements)
+
 ### Close is all or nothing
 
 Close computes every living spec and index first, checks the archive folder,
@@ -117,7 +132,11 @@ was. (baseline-specs)
   `find_ids`, `table_cell(text)`.
 - `src/specworks/specs/capabilities.py`: `CapabilityRef`, `resolve_ref(ws, ref)`,
   `resolve_delta`, `next_id(ws, cap)`, `describe(ws, cap)`, `retired_ids`,
-  `modified_since`.
+  `modified_since`; `find_requirements(ws, terms) -> list[RequirementMatch]`,
+  raising `ConfigError(f"empty search term: {term!r}")` for the first blank
+  term (REQ-SPECS-016); `RequirementMatch` (`capability`: the capability's
+  ref, `id: str | None`, `title`, `path`: relative to the workspace root,
+  `line`: 1-based, `text`: the matching line, stripped).
 - `src/specworks/specs/check.py`: `check_change(ws, change) -> (ChangeSpecs, [Issue])`,
   `collect`, `other_deltas`, `Issue` (`level`: `"error"` or `"warning"`;
   `Issue.error(file, line, message)`, `Issue.warning(file, line, message)`).

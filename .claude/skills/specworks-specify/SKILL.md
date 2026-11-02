@@ -102,6 +102,17 @@ next step the same way: the next skill (recommended), any alternative, and
    specworks spec list --json              # every capability of the workspace
    ```
 
+   Then find the living requirements that already describe what the change
+   touches, in every capability and module, with the change's terms (its
+   commands, flags, config keys and file names):
+   ```bash
+   specworks spec find "<term>" ... --json
+   ```
+   Decide for each match: a MODIFIED block in the delta, or a one-line reason to leave it.
+   Record every match in the proposal under `## Related requirements`, as
+   `REQ-… modified` or `REQ-… left: <reason>` (`None` when there is none), so
+   no older requirement is left to contradict the delta.
+
    Ask the user about anything that would change scope, observable behaviour,
    compatibility or acceptance criteria, each question with its options and
    the one you recommend. Decide small details yourself and
@@ -151,7 +162,9 @@ next step the same way: the next skill (recommended), any alternative, and
    user-auth   REQ-AUTH-002 Lockout (MODIFIED)      AC-AUTH-002.1 Third failure
    ```
 
-   plus any assumption you made. Say that design and tasks are built on
+   Under the table, list the related requirements, each modified or left with its reason
+   (from the proposal's `## Related requirements`), plus any assumption you
+   made. Say that design and tasks are built on
    them, and ask: "Are these the right requirements and acceptance
    criteria? (yes/no)". **Stop and wait.**
    Apply the user's corrections, re-run `specworks check`, and continue only
