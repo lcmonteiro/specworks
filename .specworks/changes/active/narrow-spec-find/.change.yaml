@@ -1,6 +1,6 @@
 name: narrow-spec-find
 created: '2026-11-02T20:36:56'
-phase: implement
+phase: review
 specified:
   REQ-CLI-016: 3960c98eb903
   REQ-SPECS-016: 952332af3dcb
