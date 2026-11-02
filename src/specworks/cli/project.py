@@ -208,6 +208,7 @@ def context(as_json: bool = JsonOpt, all_modules: bool = AllOpt) -> None:
                 "path": ws.rel(mod.root / cap.path),
                 "description": cap.description,
                 "docsPath": ws.rel(docs),
+                "testsPath": ws.rel(cap.tests_path(mod.root, mod.config.tests_dir)),  # whether or not it exists
                 "hasSpec": (docs / "spec.md").is_file(),
                 "prefix": ref.prefix,
                 "deltaPath": ref.delta_path,
