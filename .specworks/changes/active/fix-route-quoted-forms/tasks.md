@@ -2,7 +2,7 @@
 
 ## 1. Reading a route at the start of a line
 
-- [ ] 1.1 Confirm no stub is needed: the change touches only private helpers in `src/specworks/workflow/review.py` (design.md Interfaces: None) (REQ-FLOW-010); verify `specworks run lint` passes and the existing tests pass
+- [x] 1.1 Confirm no stub is needed: the change touches only private helpers in `src/specworks/workflow/review.py` (design.md Interfaces: None) (REQ-FLOW-010); verify `specworks run lint` passes and the existing tests pass
 - [ ] 1.2 [test] Write failing tests for AC-FLOW-010.9 in `tests/test_review_phase.py`, tagged `@ac AC-FLOW-010.9`: the finding that quotes `'back to design only:'` on its own line, starts its Proposal with `back to code:` and quotes `done in test:` under `confirmed in review:` is routed to code, not design-only, with no `done in` step; the same finding with no Proposal is routed to code by its type; verify they fail for the right reason
 - [ ] 1.3 [code] Read `back to <step>:`, `back to design only:` and `done in <step>:` only where they start a line's text (after indentation, an optional bullet and an optional bold label), never on the finding's own line, in `parse_review` (REQ-FLOW-010), tagged `@req REQ-FLOW-010`; verify with lint and `specworks cycle` on a sample review.md that quotes a form
 
