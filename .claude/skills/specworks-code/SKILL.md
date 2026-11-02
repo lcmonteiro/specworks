@@ -9,8 +9,8 @@ the specs and the design, and nothing more. The test half
 (`/specworks-test`) writes this change's tests from the same specs and
 design; you do not read them, so the two are independent readings of the
 spec, and review is where they meet. Every requirement ends up with code
-tagged `@req <REQ-ID>`, every `[code]` task ticked, and the existing tests
-still green.
+tagged `@req <REQ-ID>`, every `[code]` task ticked, and the configured
+build, typecheck and lint clean.
 
 It is the code half of the fourth phase of `refine → specify → design → implement (test | code) → review → validate → close`.
 In `/specworks-build` it runs in the main checkout, in parallel with the
@@ -116,16 +116,10 @@ next step the same way: the next skill (recommended), any alternative, and
    5. For REMOVED requirements, delete their code and its `@req` tags (their
       tests are the test half's).
    6. Run the task's own checks when it is done (the verification it names:
-      lint, typecheck or observable behaviour), then the suite:
-      ```bash
-      specworks run test --change "<ref>"
-      ```
-      Existing tests must stay green (step 4, Run the project's checks, fixes
-      what fails). This change's own `@ac` tests may fail (or not exist
-      yet): do not read them to make them pass; review compares them with
-      the code. In a build the test half may be changing existing tests at
-      the same time; the suite meets them in `gate implement` after the
-      merge.
+      lint, typecheck or observable behaviour). Do not run the test suite:
+      this change's own `@ac` tests may fail (or not exist yet), and the
+      test half may be changing existing tests at the same time; the suite
+      meets the code in review. Do not read those tests to make them pass.
    7. Tick a [code] task when its own checks pass; the suite is not one of them:
       ```bash
       specworks task done <N.M> --change "<ref>"
@@ -144,13 +138,13 @@ next step the same way: the next skill (recommended), any alternative, and
 4. **Run the project's checks**
 
    ```bash
-   specworks run test --change "<ref>"
-   specworks run lint --change "<ref>"        # if configured
+   specworks run build --change "<ref>"       # if configured
    specworks run typecheck --change "<ref>"   # if configured
+   specworks run lint --change "<ref>"        # if configured
    ```
 
-   Fix what fails in the existing tests, lint and typecheck. Never skip,
-   disable or loosen tests to get green.
+   Fix what fails in the build, typecheck and lint. Never skip or loosen a
+   check to get green. The test suite is not run here: it runs in review.
 
 5. **Gate and trace**
 
@@ -162,10 +156,11 @@ next step the same way: the next skill (recommended), any alternative, and
    The code gate checks only this half: the specs are still valid, every
    `[code]` task is ticked, every requirement has `@req` code, no tag points
    to an unknown ID, removed requirements and criteria are gone, and the
-   test suite passes (it runs `commands.test`). Open `[test]` tasks and
-   criteria without tests do not affect it. While the change has `@ac` tests
-   of its own, a failing suite is a warning: those tests meet the code in
-   review. Fix every failing blocking check and re-run.
+   configured build, typecheck and lint commands pass (with none of them
+   configured, it passes with a warning). It does not run the test command:
+   the tests meet the code in review. Open `[test]` tasks and criteria
+   without tests do not affect it. Fix every failing blocking check and
+   re-run.
 
    **Back from review**: when `specworks cycle --change "<ref>" --json`
    lists open findings whose `phase` is `code` or `implement`, you carried out their
@@ -193,7 +188,8 @@ artifact is written), and before the closing question, commit with specworks com
 6. **Report and stop**
 
    Summarize: tasks done, files changed per capability, where each
-   requirement is implemented (from the trace), test results, any decision
+   requirement is implemented (from the trace), the build, typecheck and
+   lint results, any decision
    or deviation recorded in design.md, and any test changed with the user's
    agreement. End with:
    ```

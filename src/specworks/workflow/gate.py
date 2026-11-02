@@ -156,7 +156,10 @@ GATE_CHECKS: dict[str, list[CheckFn]] = {
         c.reqs_have_code,
         c.no_unknown_tags,
         c.removed_gone,
-        c.code_tests_pass,
+        c.code_command("build", "the code builds (commands.build)"),
+        c.code_command("typecheck", "typecheck passes (commands.typecheck)"),
+        c.code_command("lint", "lint passes (commands.lint)"),
+        c.no_code_commands,
     ],
     "review": [
         c.specs_valid,

@@ -403,7 +403,7 @@ def _check_code_tasks_wait(tasks: list[Task], file: str, issues: list[Issue]) ->
                 )))
         if SUITE_COMMAND in task.text:
             issues.append(Issue.warning(file, task.line, (
-                f"task {task.num} [code] requires the suite ({SUITE_COMMAND}): the suite runs in gate implement after the merge; {VERIFY_ALONE}"
+                f"task {task.num} [code] requires the suite ({SUITE_COMMAND}): the suite runs in review after the merge; {VERIFY_ALONE}"
             )))
 
 
