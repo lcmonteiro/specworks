@@ -225,6 +225,17 @@ def test_ac_flow_016_6_other_text_is_kept_byte_for_byte(project):
     assert "<!-- a note in the block -->" in read(project) and "<!-- guidance\nover two lines -->" in read(project)
 
 
+# @ac AC-FLOW-016.8
+def test_ac_flow_016_8_a_finding_that_quotes_a_form_routes_by_the_line_start(project):
+    write_review(project, f"# Review: {REF}\n\n## Findings\n\n")
+    first = add_finding(change_of(project), "quality", "list 'back to design only:' in the help", "add it after 'back to <step>:'")
+    assert (first.id, first.phase, first.design_only, first.done_in) == ("R1", "code", False, "")
+    second = add_finding(change_of(project), "quality", "the reader skips a quoted form", "back to test: assert 'done in code:' is read")
+    assert (second.id, second.phase, second.design_only, second.done_in) == ("R2", "test", False, "")
+    read_back = [(f.id, f.phase, f.design_only, f.done_in) for f in read_review(change_of(project)).open]
+    assert read_back == [("R1", "code", False, ""), ("R2", "test", False, "")]
+
+
 # --- specworks finding ---------------------------------------------------------
 
 
