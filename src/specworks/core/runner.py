@@ -177,9 +177,17 @@ def scoped_command(ws: Workspace, module: Module, folders: Sequence[Path]) -> st
     Each folder is made relative to the module's folder (POSIX separators) and quoted for the
     platform's shell, separated by spaces. Implements REQ-PROJ-028.
     """
-    base = module.root.resolve()
-    paths = " ".join(_quote(folder.resolve().relative_to(base).as_posix()) for folder in folders)
+    paths = " ".join(_quote(_relative_to_module(module, folder)) for folder in folders)
     return ws.commands(module).get(SCOPED_TEST_KEY, "").replace(PATHS_PLACEHOLDER, paths)
+
+
+def _relative_to_module(module: Module, folder: Path) -> str:
+    """``folder`` relative to the module's folder, POSIX separators, without resolving symlinks (a symlinked
+    test folder keeps its own path in the module), falling back to ``os.path.relpath`` when it is not under it."""
+    try:
+        return folder.relative_to(module.root).as_posix()
+    except ValueError:
+        return Path(os.path.relpath(folder, module.root)).as_posix()
 
 
 # @req REQ-PROJ-028
