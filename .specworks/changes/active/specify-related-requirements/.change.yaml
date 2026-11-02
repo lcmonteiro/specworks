@@ -1,6 +1,6 @@
 name: specify-related-requirements
 created: '2026-11-01T23:25:31'
-phase: design
+phase: implement
 specified:
   REQ-CLI-016: 6e8534e761e3
   REQ-SPECS-016: 128bbb28df9a
