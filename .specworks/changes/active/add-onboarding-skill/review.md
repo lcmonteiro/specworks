@@ -1,0 +1,20 @@
+# Review: add-onboarding-skill
+
+Base: `origin/main`
+
+## Findings
+
+<!-- One line per drift between code, spec and design (API), from `specworks review` and from
+reading the diff. `- [ ] R<n>` while open, `- [x] R<n>` once resolved. Write
+"None." when there are no findings. -->
+
+- [ ] R1 **design-gap** The Decision "State from `specworks context --json`" picks the next skill for a change in flight from its phase alone, so a `baseline-<capability>` change (from `/specworks-adopt`) in design, implement or review is sent to `/specworks-build <ref>`; a baseline only adds tags and runs its own design, implement and review in `/specworks-baseline`, which then hands it to `/specworks-done baseline-<capability>`, so a brownfield user is pointed to the wrong skill (design.md "State from `specworks context --json`"; `src/specworks/skills/specworks-onboard/SKILL.md:58`)
+  - **Proposal**: back to design: in that Decision, add the baseline case to the changes in flight: `baseline-<capability>` in specify, design, implement, or review before `gate review` passes: `/specworks-baseline <capability>`; in review once `gate review` passes, validate or close: `/specworks-done baseline-<capability>`; then the code half adds the same line to the skill (`/specworks-baseline` and `/specworks-done` are already pinned, so the test half has nothing new unless design pins more wording)
+
+## Changed files without tags
+
+None: `specworks review` lists no untracedSource or untracedTests (the change is `skip-specs`; the skill, README and installed copy are not scanned, and `tests/test_skills.py` carries existing `@ac` tags).
+
+## Summary
+
+The suite passes (874 tests) and the skill, README line, wording tests and installed copy match design.md and its pinned wording. One finding: R1 (design-gap), the per-phase next step sends a baseline change to `/specworks-build`; proposed back to design, then the code half. No spec, API or code changed in review.
