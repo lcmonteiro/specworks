@@ -1,3 +1,5 @@
 name: code-half-no-tests
 created: '2026-11-02T15:03:20'
-phase: specify
+phase: design
+specified:
+  REQ-FLOW-008: 46f210a8465e

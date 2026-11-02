@@ -69,15 +69,32 @@ changes.
 
 ## Interfaces
 
+Agreed with the user
+
 - `src/specworks/workflow/checks.py`: `code_command(key: str, name: str) -> CheckFn`
-  (a check that runs `commands.<key>`, or `None` when it is not configured)
-  and `no_code_commands(ctx: GateContext) -> Check | None` (the warning
-  when none of build, typecheck and lint is configured, else `None`)
-  (REQ-FLOW-008). `code_tests_pass` is removed.
-- `src/specworks/workflow/gate.py`: `GATE_CHECKS["code"]` lists
-  `code_command("build", ...)`, `code_command("typecheck", ...)`,
-  `code_command("lint", ...)` and `no_code_commands` in place of
-  `code_tests_pass` (REQ-FLOW-008).
+  (new; a check that runs `commands.<key>` through `command_check`, blocking
+  when it fails, or returns `None` when it is not configured) (REQ-FLOW-008)
+- `src/specworks/workflow/checks.py`: `no_code_commands(ctx: GateContext) -> Check | None`
+  (new; a passing, non-blocking `Check` named `build, typecheck and lint`
+  with the detail `no build, typecheck or lint command configured: the tests
+  run in review` when none of the three is configured, else `None`)
+  (REQ-FLOW-008)
+- `src/specworks/workflow/checks.py`: `code_tests_pass` (removed in the code
+  half; it has no other caller) (REQ-FLOW-008)
+- `src/specworks/workflow/gate.py`: `GATE_CHECKS["code"]` (extended; the code
+  half replaces `c.code_tests_pass` with
+  `c.code_command("build", "the code builds (commands.build)")`,
+  `c.code_command("typecheck", "typecheck passes (commands.typecheck)")`,
+  `c.code_command("lint", "lint passes (commands.lint)")` and
+  `c.no_code_commands`, in that order) (REQ-FLOW-008)
+
+No CLI command, option or JSON shape changes: `gate code --json` keeps its
+check list shape, only its entries differ. **BREAKING** (workflow, in
+proposal.md): a red suite no longer stops `gate code`.
+
+Stubs: the two new functions are added to `src/specworks/workflow/checks.py`
+raising `NotImplementedError`; `GATE_CHECKS["code"]` keeps `code_tests_pass`
+until the code half wires them in, so the existing suite stays green.
 
 ## Diagrams
 

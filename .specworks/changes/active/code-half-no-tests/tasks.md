@@ -2,7 +2,7 @@
 
 ## 1. The code gate runs build, typecheck and lint
 
-- [ ] 1.1 Add `code_command(key, name)` and `no_code_commands(ctx)` as stubs in `src/specworks/workflow/checks.py` (REQ-FLOW-008); verify `uv run mypy` passes and the existing tests pass
+- [x] 1.1 Add `code_command(key, name)` and `no_code_commands(ctx)` as stubs in `src/specworks/workflow/checks.py` (REQ-FLOW-008); verify `uv run mypy` passes and the existing tests pass
 - [ ] 1.2 [test] Rewrite the code gate tests in `tests/test_code_phase.py` for AC-FLOW-008.1, AC-FLOW-008.3 and AC-FLOW-008.4 (build, typecheck and lint commands instead of the test command; the warning when none is configured), tagged `@ac`; verify they fail on the stubs
 - [ ] 1.3 [test] Write failing tests for AC-FLOW-008.9 (a failing or missing test command does not affect the gate) and AC-FLOW-008.10 (only typecheck configured: only it runs), tagged `@ac`; keep AC-FLOW-008.2, AC-FLOW-008.5 and AC-FLOW-008.6 passing with a passing build command; verify they fail on the stubs
 - [ ] 1.4 [test] Delete the tests of the dropped AC-FLOW-008.7 and AC-FLOW-008.8 (REQ-FLOW-008), and update any other test that relied on `gate code` or `gate implement` running the test command; verify `specworks trace` shows no tag to them

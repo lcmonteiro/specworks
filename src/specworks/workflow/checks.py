@@ -306,3 +306,13 @@ def review_tests_pass(ctx: GateContext) -> Check:
 
 def optional_command(key: str, name: str) -> CheckFn:
     return lambda ctx: command_check(ctx, key, name, optional=True)
+
+
+def code_command(key: str, name: str) -> CheckFn:
+    """The code gate's run of ``commands.<key>`` (blocking when it fails), or ``None`` when it is not configured. Implements REQ-FLOW-008."""
+    raise NotImplementedError
+
+
+def no_code_commands(ctx: GateContext) -> Check | None:
+    """The code gate's warning when none of build, typecheck and lint is configured (the tests run in review), else ``None``. Implements REQ-FLOW-008."""
+    raise NotImplementedError
