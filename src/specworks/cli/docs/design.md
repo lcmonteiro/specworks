@@ -116,6 +116,16 @@ written to the top level's config, and the output's `config` and `module`
 name the top level. `config get` was left out: `context` already prints the
 commands and context. (add-config-set, add-branch-default)
 
+### `spec find` is the specify skill's search
+
+`spec find <term>...` wraps `find_requirements` in specs, so the specify skill
+finds the living requirements a change touches (its commands, flags, config
+keys and file names) before writing the delta, and records each one in the
+proposal's `## Related requirements` as modified or left with a reason. No
+term is refused with `give at least one term`; no match is not an error: the
+text output says `no requirement mentions <terms>` and `--json` gives an empty
+`matches`. (specify-related-requirements)
+
 ### `capability add --create` makes the code folder
 
 With `--create`, `capability add` creates a missing code folder
@@ -175,7 +185,7 @@ a second config format exists. (upgrade-project, dedupe-copilot-skills)
 - The commands as `specworks --help` lists them: `version`, `init`, `skills`,
   `update`, `context`, `list`, `module add|list`, `capability add`, `config set`, `new`, `status`,
   `abandon`, `phase`, `skip-specs`, `instructions`, `task list|done|undo`,
-  `check`, `trace`, `spec show|list`, `diagrams`, `gate`, `start`, `review`,
+  `check`, `trace`, `spec show|list|find`, `diagrams`, `gate`, `start`, `review`,
   `finding add|decide|done|close`, `cycle`, `merge`, `commit`, `validate`,
   `close`, `run`.
 - `finding add TYPE TEXT --proposal TEXT`, `finding decide ID DECISION`,
@@ -192,6 +202,11 @@ a second config format exists. (upgrade-project, dedupe-copilot-skills)
   (`--file -` for standard input): text `set <key> in <config path>`;
   `--json` prints `key`, `value`, `config` (workspace-relative) and `module`
   (the module's label; the top level for `branch_per_change`).
+- `spec find <term>... [--json]`: text prints one line per match,
+  `<capability>  <ID>  <title>  <path>:<line>`, or
+  `no requirement mentions <terms joined by ", ">`; `--json` prints
+  `{"terms": [...], "matches": [{"capability", "id", "title", "path",
+  "line", "text"}]}` (REQ-CLI-016).
 - `merge <branch> --change <ref> [--json]`: `--json` prints the change's
   fields plus `merged`, `branch` and `resolved` (workspace-relative paths).
 - `commit --change <ref> [--message TEXT] [--trailer TEXT]... [--json]`
