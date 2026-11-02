@@ -236,32 +236,31 @@ test files and about removed requirements or criteria still tagged.
 The code gate SHALL check the code half of implement: it SHALL require every
 `[code]` task done, `@req` code for every requirement, no unknown tags, no
 tags left to removed requirements or to criteria a MODIFIED block drops, and
-a configured test command whose run passes. It SHALL NOT require an `@ac`
-test for every criterion. While the change has tests of its own (its `@ac`
-tests, or test files changed since it started, as in the design gate), a
-failing run SHALL be a warning instead of blocking: those tests meet the code
-in review.
+a passing run of each of the build, typecheck and lint commands that is
+configured. It SHALL NOT run the test command, and SHALL NOT require an
+`@ac` test for every criterion: the tests meet the code in review. When none
+of the build, typecheck and lint commands is configured, the gate SHALL pass
+that check with a warning saying so and that the tests run in review.
 
 #### Scenario: AC-FLOW-008.1 Everything done
 
-- **WHEN** every `[code]` task is ticked, every requirement has `@req` code and the tests pass
-- **THEN** the gate passes and shows the command it ran
+- **WHEN** every `[code]` task is ticked, every requirement has `@req` code and the configured build, typecheck and lint commands pass
+- **THEN** the gate passes and shows each command it ran
 
 #### Scenario: AC-FLOW-008.2 What is missing
 
 - **WHEN** a requirement has no `@req` code and `[code]` tasks are open
 - **THEN** the gate fails listing the requirement and the open `[code]` tasks; open `[test]` tasks are not listed
 
-#### Scenario: AC-FLOW-008.3 Failing tests
+#### Scenario: AC-FLOW-008.3 A failing build, typecheck or lint
 
-- **GIVEN** a change with no tests of its own (no `@ac` tests and no changed test files)
-- **WHEN** the test command fails (even with output that is not text)
-- **THEN** the gate fails with the command's output
+- **WHEN** the configured build, typecheck or lint command fails (even with output that is not text)
+- **THEN** the gate fails with that command's output
 
-#### Scenario: AC-FLOW-008.4 No test command
+#### Scenario: AC-FLOW-008.4 No build, typecheck or lint command
 
-- **WHEN** no test command is configured
-- **THEN** the gate fails with `no 'test' command configured`
+- **WHEN** none of the build, typecheck and lint commands is configured
+- **THEN** the gate passes with the warning `no build, typecheck or lint command configured: the tests run in review`
 
 #### Scenario: AC-FLOW-008.5 Removed and dropped
 
@@ -273,17 +272,17 @@ in review.
 - **WHEN** some criteria have no `@ac` test and everything else passes
 - **THEN** the code gate passes
 
-#### Scenario: AC-FLOW-008.7 The change's own tests fail
+#### Scenario: AC-FLOW-008.9 The tests are not run
 
-- **GIVEN** a change with `@ac` tests of its own
-- **WHEN** the test command fails
-- **THEN** the gate passes with a warning showing the command's output
+- **GIVEN** a configured test command that fails, or no test command at all
+- **WHEN** the code gate runs and everything else passes
+- **THEN** it passes, and its result names no test command
 
-#### Scenario: AC-FLOW-008.8 A skip-specs change whose halves disagree
+#### Scenario: AC-FLOW-008.10 Only the configured commands
 
-- **GIVEN** a change marked skip-specs, in a git repository where a test file changed since the change started
-- **WHEN** the test command fails
-- **THEN** the gate passes with a warning saying the change has changed test files, so `start review` can move the change on
+- **GIVEN** a project that configures only a typecheck command
+- **WHEN** the code gate runs
+- **THEN** it runs the typecheck command alone and shows no build or lint check
 
 ### Requirement: REQ-FLOW-009 Drift report
 

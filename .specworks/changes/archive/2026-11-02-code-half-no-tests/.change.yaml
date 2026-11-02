@@ -1,0 +1,7 @@
+name: code-half-no-tests
+created: '2026-11-02T15:03:20'
+phase: done
+specified:
+  REQ-FLOW-008: 46f210a8465e
+dirty:
+  .specworks/changes/active/code-half-no-tests/.change.yaml: 98eaf631987b0b77f955f98bf893b0fa0098d3f6d14feb6e3b3f89fcdba7c3ca
