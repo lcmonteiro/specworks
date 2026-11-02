@@ -76,15 +76,16 @@ old `dir` key, with an error naming the problem.
 The system SHALL reject a config whose values have the wrong shape, with an
 error naming the setting: paths that leave the project, globs that are not a
 list of `*`/`?`/`**` patterns, a context that is not text or is larger than
-51200 bytes, commands that are not a mapping of test, lint, typecheck, build or
-format to a command string, diagram settings that are not a known theme, a
+51200 bytes, commands that are not a mapping of test, test_scoped, lint,
+typecheck, build or format to a command string, a `test_scoped` command
+without the `{paths}` placeholder, diagram settings that are not a known theme, a
 known layout (elk or dagre), a true/false sketch and a non-negative pad, and
 `tools` that is not a non-empty list of known tool IDs or is set in a module's
 config.
 
 #### Scenario: AC-PROJ-003.1 Paths stay inside the project
 
-- **WHEN** `docs_dir`, a capability path or a module path is absolute, contains `..` or is not a non-empty string
+- **WHEN** `docs_dir`, `tests_dir`, a capability path, a capability's `tests` or a module path is absolute, contains `..` or is not a non-empty string
 - **THEN** loading (or adding the entry) fails saying it must be a relative folder inside the project
 
 #### Scenario: AC-PROJ-003.2 Globs
@@ -117,11 +118,16 @@ config.
 - **WHEN** a module's config sets `tools`
 - **THEN** loading fails saying `tools` is set in the top level's config
 
+#### Scenario: AC-PROJ-003.8 A scoped test command without its placeholder
+
+- **WHEN** `commands.test_scoped` is `uv run pytest`, with no `{paths}`
+- **THEN** loading fails naming `commands.test_scoped` and saying it must hold `{paths}`; `uv run pytest {paths}` loads
+
 ### Requirement: REQ-PROJ-004 Capabilities in the config
 
 The system SHALL read each capability as a kebab-case name with a code path,
 given either as `name: path` or as a mapping with `path`, an optional
-`prefix` and an optional `description`, and SHALL derive its requirement ID
+`prefix`, an optional `description` and an optional `tests` (its test folder), and SHALL derive its requirement ID
 prefix, when none is given, from its module path and name in upper case.
 
 #### Scenario: AC-PROJ-004.1 Name and path only
@@ -363,8 +369,9 @@ cannot be read.
 The system SHALL run a configured command (`commands.<key>`, merged from the
 top level down to the module) through the shell in the module's folder, and
 report its exit code and output. A key that is not a command key (`test`,
-`lint`, `typecheck`, `build`, `format`) SHALL be an error listing the valid
-keys. A command key that is not configured SHALL be an error saying where to
+`test_scoped`, `lint`, `typecheck`, `build`, `format`) SHALL be an error listing the valid
+keys. Running `test_scoped` directly SHALL be an error saying the review gate
+fills its `{paths}`, without running anything. A command key that is not configured SHALL be an error saying where to
 add it, with an example for that key.
 
 #### Scenario: AC-PROJ-013.1 Exit code and output
@@ -385,7 +392,13 @@ add it, with an example for that key.
 #### Scenario: AC-PROJ-013.4 Not a command key
 
 - **WHEN** a key that is not a command key, such as `frobnicate`, is run
-- **THEN** it fails with `unknown command 'frobnicate'` listing `test, lint, typecheck, build, format`, and doesn't suggest adding it to the config
+- **THEN** it fails with `unknown command 'frobnicate'` listing `test, test_scoped, lint, typecheck, build, format`, and doesn't suggest adding it to the config
+
+#### Scenario: AC-PROJ-013.5 The scoped test command run directly
+
+- **GIVEN** `commands.test_scoped` is `uv run pytest {paths}`
+- **WHEN** `specworks run test_scoped` runs
+- **THEN** it fails saying the review gate fills `{paths}` (and to run `test` for the whole suite), and no command runs
 
 ### Requirement: REQ-PROJ-014 Reusing command results
 
@@ -734,7 +747,7 @@ detached HEAD before staging anything.
 
 ### Requirement: REQ-PROJ-025 Setting a command, the context or the branch setting
 
-The system SHALL set `commands.<key>` (a key of `test`, `lint`, `typecheck`,
+The system SHALL set `commands.<key>` (a key of `test`, `test_scoped`, `lint`, `typecheck`,
 `build`, `format`) or `context` in a project's config, editing it as text:
 the user's comments and the other entries SHALL be kept. A command SHALL be
 one line under `commands:`, replacing that key's line when there is one; the
@@ -742,7 +755,8 @@ context SHALL be a block replacing the `context:` entry there. An empty value
 SHALL clear the key. `branch_per_change` SHALL take `true` or `false` and be
 one top-level line, replacing the one there. Any other key SHALL be refused before writing, naming the
 keys it accepts. A context larger than the config's size limit SHALL be
-refused before writing, naming the limit. When the edit would not load with the new value and every
+refused before writing, naming the limit. A `test_scoped` command without `{paths}` SHALL be
+refused before writing, saying it must hold `{paths}`. When the edit would not load with the new value and every
 other entry unchanged, the file SHALL be left unchanged and the error SHALL
 say to set the key by hand.
 
@@ -815,6 +829,12 @@ say to set the key by hand.
 - **WHEN** `branch_per_change` is set to `false`, then to `maybe`
 - **THEN** the config loads with `branch_per_change` false and one `branch_per_change:` line, and `maybe` is refused naming `true` and `false`, the file unchanged
 
+#### Scenario: AC-PROJ-025.13 The scoped test command
+
+- **GIVEN** the default config written by `init`
+- **WHEN** `commands.test_scoped` is set to `uv run pytest {paths}`, then to `uv run pytest`
+- **THEN** the config loads with that scoped test command and one `test_scoped:` line, and `uv run pytest` is refused saying it must hold `{paths}`, the file unchanged
+
 ### Requirement: REQ-PROJ-026 The branch setting
 
 The config SHALL accept a top-level `branch_per_change`, `true` or `false`,
@@ -847,3 +867,61 @@ SHALL describe the key without setting it.
 - **GIVEN** a top level with `branch_per_change: false` and module `billing` with `branch_per_change: true`
 - **WHEN** the workspace's setting is read from inside `billing`
 - **THEN** it is false
+
+### Requirement: REQ-PROJ-027 A capability's test folder
+
+The system SHALL give each capability a test folder: the capability's `tests`
+when set, otherwise `<tests_dir>/<capability name>`, where `tests_dir` is a
+setting of the capability's own module (default `tests`); either is relative
+to that module's folder. A capability's test folder SHALL be known whether or
+not the folder exists.
+
+#### Scenario: AC-PROJ-027.1 The default test folder
+
+- **GIVEN** a config with no `tests_dir` and a capability `auth` with no `tests`
+- **WHEN** the workspace is loaded
+- **THEN** the test folder of `auth` is `tests/auth`
+
+#### Scenario: AC-PROJ-027.2 The module's tests_dir
+
+- **GIVEN** a config with `tests_dir: test` and a capability `auth`
+- **WHEN** the workspace is loaded
+- **THEN** the test folder of `auth` is `test/auth`
+
+#### Scenario: AC-PROJ-027.3 A capability's own tests folder
+
+- **GIVEN** a capability `auth` with `tests: src/auth`
+- **WHEN** the workspace is loaded
+- **THEN** its test folder is `src/auth`, whatever `tests_dir` is
+
+#### Scenario: AC-PROJ-027.4 Inside a module
+
+- **GIVEN** module `billing` at `services/billing` with `tests_dir: spec` and a capability `invoices`, and a top level with `tests_dir: tests`
+- **WHEN** the workspace is loaded
+- **THEN** the test folder of `billing:invoices` is `services/billing/spec/invoices`
+
+### Requirement: REQ-PROJ-028 Running the scoped tests
+
+The system SHALL run a module's `test_scoped` command for a list of test
+folders by replacing every `{paths}` in it with those folders, relative to the
+module's folder, each quoted for the shell and separated by spaces, then
+running it as a command of that module (in its folder, its result reused on an
+identical tree like any command's). A result SHALL be reused only for the same
+folders.
+
+#### Scenario: AC-PROJ-028.1 The folders filled in
+
+- **GIVEN** `commands.test_scoped` is `uv run pytest {paths}`
+- **WHEN** it runs for `tests/auth` and `tests/my tests`
+- **THEN** the command run is `uv run pytest tests/auth 'tests/my tests'` (quoted for the platform's shell), in the module's folder, and its exit code and output are reported
+
+#### Scenario: AC-PROJ-028.2 In a module
+
+- **GIVEN** module `billing` at `services/billing` with `tests_dir: spec` and `commands.test_scoped` set
+- **WHEN** it runs for the test folder of `billing:invoices`
+- **THEN** it runs in `services/billing` with `spec/invoices` (relative to the module), not the workspace path
+
+#### Scenario: AC-PROJ-028.3 Reused only for the same folders
+
+- **WHEN** the scoped tests run for `tests/auth` and then, on the same tree, for `tests/auth` and `tests/billing`
+- **THEN** the second run is real; running again for `tests/auth` and `tests/billing` reuses it

@@ -183,6 +183,8 @@ a second config format exists. (upgrade-project, dedupe-copilot-skills)
   `resolve_change`, `resolve_archived`, `require_change`, `ToolsOpt`
   (`--tools`, default `None`: the saved choice).
 - `src/specworks/cli/project.py`: `is_terminal() -> bool`.
+- `context --json`: each capability entry holds `docsPath` and `testsPath`
+  (its test folder), both workspace-relative.
 - `new <name> [--module M] [--branch|--no-branch] [--json]`: `--json` adds
   `branch`, `startedFrom` and `stayedOn`; text adds `stayed on <branch>`
   when it stays on a named branch.
