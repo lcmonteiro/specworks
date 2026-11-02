@@ -232,15 +232,37 @@ FINDING_STEPS = ("specify", "design", "implement", "test", "code", "review")
 NEXT_STEP = {"specify": "design", "design": "implement", "implement": "review", "test": "review", "code": "review"}
 
 
+# Where a line's text starts: after its indentation and an optional bullet, or after a bold label there too
+# (``**Decision**:``, ``**Decision:**``, ``**Fix**``). A route form counts only there (REQ-FLOW-010).
+_BULLET = r"^\s*(?:(?:[-*+]|\d+[.)])\s+)?"
+LINE_STARTS = (re.compile(_BULLET), re.compile(_BULLET + r"\*\*[A-Za-z][\w' -]*(?:\*\*\s*:?|\s*:\*\*)\s*"))
+
+
+# @req REQ-FLOW-010
+def _line_start(line: str, form: re.Pattern[str]) -> re.Match[str] | None:
+    """``form`` where ``line``'s text starts (after the bullet, or after a bold label), else None: later on the line it is text."""
+    for start in LINE_STARTS:
+        if (prefix := start.match(line)) and (found := form.match(line, prefix.end())):
+            return found
+    return None
+
+
 # @req REQ-FLOW-010
 def _route(line: str) -> tuple[str, bool] | None:
-    """The step the first ``back to <step>:`` in ``line`` routes to, and whether it is ``back to design only:``;
+    """The step a ``back to <step>:`` starting ``line``'s text routes to, and whether it is ``back to design only:``;
     None when it has none. ``only`` after any other step is not a route."""
-    for back in BACK_RE.finditer(line):
-        phase = back.group("phase").lower()
-        if not back.group("only") or phase == "design":
-            return phase, bool(back.group("only"))
-    return None
+    back = _line_start(line, BACK_RE)
+    if back is None:
+        return None
+    phase = back.group("phase").lower()
+    return (phase, bool(back.group("only"))) if not back.group("only") or phase == "design" else None
+
+
+# @req REQ-FLOW-010
+def _done_in(line: str) -> str | None:
+    """The step of a ``done in <step>:`` starting ``line``'s text, else None."""
+    carried = _line_start(line, DONE_RE)
+    return carried.group("phase").lower() if carried else None
 
 
 # @req REQ-FLOW-010
@@ -321,7 +343,8 @@ def parse_review(text: str) -> ReviewDoc:
                 routed=kind in TYPE_PHASE,
             )
             doc.findings.append(current)
-        elif CHECKBOX_RE.match(line) and (current is None or not line.startswith((" ", "\t"))):
+            continue  # the finding's own line is text: a form it quotes never routes it
+        if CHECKBOX_RE.match(line) and (current is None or not line.startswith((" ", "\t"))):
             # Indented under a finding, it is part of that finding (a sub-step); anywhere else it could hide open work.
             doc.problems.append(f"line {number}: {line.strip()!r} is not a finding; write it as '- [ ] R<n> **<type>** ...'")
             current = None
@@ -329,8 +352,8 @@ def parse_review(text: str) -> ReviewDoc:
             current = None  # back at the top level: the finding's block has ended
         if current is not None and (back := _route(line)):
             (current.phase, current.design_only), current.routed = back, True
-        if current is not None and (carried := DONE_RE.search(line)):
-            current.done_in, current.routed = carried.group("phase").lower(), True
+        if current is not None and (carried := _done_in(line)):
+            current.done_in, current.routed = carried, True
     for finding in doc.findings:
         if finding.done_in:
             finding.phase = _next_step(finding.done_in, finding.design_only)
@@ -514,9 +537,8 @@ def add_finding(change: Change, kind: str, text: str, proposal: str) -> Finding:
         _insert(review, at, new + ([""] if at < len(review.lines) and review.lines[at].strip() else []))
         if not in_list:
             _insert(review, at, [""])
-    # The step the reader gives: a 'back to <step>:' in its text or proposal (the last line with one) routes it.
-    routes = [back for line in new if (back := _route(line))]
-    phase, design_only = routes[-1] if routes else (TYPE_PHASE[kind], False)
+    # The step the reader gives: the form its Proposal line starts with, else its type; a form quoted in its text is text.
+    phase, design_only = _route(new[1]) or (TYPE_PHASE[kind], False)
     return _write(review, original, fid, {"done": False, "type": kind, "phase": phase, "design_only": design_only})
 
 
@@ -546,7 +568,7 @@ def decide_finding(change: Change, finding_id: str, decision: str) -> Finding:
         _tick(review, block)
         expect = {"done": True}
     else:
-        step = _route(decision)
+        step = _route(line)  # read as parse_review reads the Decision line
         assert step is not None  # DECISION_RE checked the form
         phase, design_only = step
         expect = {"done": current.done, "phase": _next_step(current.done_in, design_only) if current.done_in else phase, "design_only": design_only}

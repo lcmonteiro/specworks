@@ -340,7 +340,11 @@ first bold word that is a known type, in any case). It SHALL route the finding
 to the step of its type (`test-gap` to the test half, `code-gap`, `tag` and
 `quality` to the code half), or to the step of a `back to <step>:` in its own
 block, where a step is specify, design, implement (both halves), test, code
-or review. After a `done in <step>:` it SHALL route the finding to the step
+or review. A `back to <step>:`, `back to design only:` or `done in <step>:`
+SHALL count only where it starts a line's text, after the line's indentation,
+an optional bullet and an optional bold label (such as `**Decision**:` or
+`**Proposal**:`); later on a line, and on the finding's own line, it is text.
+After a `done in <step>:` it SHALL route the finding to the step
 after that one: design after specify, implement after design, and review
 after implement, test or code, except that a finding whose Decision says
 `back to design only:` SHALL be routed to design, and after `done in design:`
@@ -389,6 +393,12 @@ unreadable.
 
 - **WHEN** a finding's Decision says `back to design only:`, and later `done in design:` is added under it
 - **THEN** it is routed to design, and then to review instead of implement; a finding saying `back to design:` is routed to implement after `done in design:`, as before
+
+#### Scenario: AC-FLOW-010.9 A quoted form
+
+- **GIVEN** a `quality` finding whose own line quotes `'back to design only:'`, whose Proposal is `back to code: name 'back to design only:' in the help`, and whose `confirmed in review:` line quotes `done in test:`
+- **WHEN** it is read
+- **THEN** it is routed to code, not design-only, and has no `done in` step; a finding of the same type with no Proposal is routed to code by its type
 
 ### Requirement: REQ-FLOW-011 Gate review
 
@@ -650,7 +660,9 @@ a `done in <step>:` line; and a tick with what review confirmed. It SHALL add
 each line at the end of the finding's block and leave every other line of
 the file as it was. It SHALL refuse an unknown finding, type or step, an
 empty text, and a decision in another form, and SHALL write nothing when the
-edited text does not read back with the expected finding.
+edited text does not read back with the expected finding. A form quoted
+in a finding's text or Proposal SHALL route it only as REQ-FLOW-010 reads it:
+by the form a line starts with, else by the finding's type.
 
 #### Scenario: AC-FLOW-016.1 A new finding
 
@@ -692,3 +704,9 @@ edited text does not read back with the expected finding.
 - **GIVEN** an open finding R1 of type `design-gap`
 - **WHEN** its decision is `back to design only: reword Decisions > Matching`, and another finding's is `back to code only: rename x`
 - **THEN** R1 has that Decision and is routed to design; the second is refused naming the forms a decision can take, and review.md is unchanged
+
+#### Scenario: AC-FLOW-016.8 Adding a finding that quotes a form
+
+- **GIVEN** a review.md with no findings
+- **WHEN** a `quality` finding is added with the text `list 'back to design only:' in the help` and the proposal `add it after 'back to <step>:'`, and a second one with the proposal `back to test: assert 'done in code:' is read`
+- **THEN** both are added; the first is routed to code by its type and is not design-only, and the second is routed to test

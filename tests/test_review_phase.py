@@ -345,3 +345,21 @@ def test_a_plain_back_to_design_still_goes_to_implement_after_design():
     assert (before.phase, before.design_only) == ("design", False) and "designOnly" not in before.to_dict()
     (after,) = parse_review(decided + "  - done in design: returns ResetToken\n").open
     assert (after.phase, after.done_in, after.design_only) == ("implement", "design", False)
+
+
+QUOTED_FORM = "- [ ] R1 **quality** the help never names 'back to design only:'\n"
+QUOTED_PROPOSAL = "  - **Proposal**: back to code: name 'back to design only:' in the help\n"
+QUOTED_CONFIRMED = "  - confirmed in review: the help also reads 'done in test:'\n"
+
+
+# @ac AC-FLOW-010.9
+def test_ac_flow_010_9_a_quoted_form_routes_by_the_form_a_line_starts_with():
+    (quoted,) = parse_review(QUOTED_FORM + QUOTED_PROPOSAL + QUOTED_CONFIRMED).open
+    assert (quoted.phase, quoted.routed, quoted.design_only, quoted.done_in) == ("code", True, False, "")
+    assert "designOnly" not in quoted.to_dict() and "doneIn" not in quoted.to_dict()
+
+
+# @ac AC-FLOW-010.9
+def test_ac_flow_010_9_a_quoted_form_with_no_proposal_routes_by_its_type():
+    (quoted,) = parse_review(QUOTED_FORM + QUOTED_CONFIRMED).open
+    assert (quoted.phase, quoted.routed, quoted.design_only, quoted.done_in) == ("code", True, False, "")
