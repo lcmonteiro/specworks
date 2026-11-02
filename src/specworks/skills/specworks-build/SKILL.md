@@ -1,6 +1,6 @@
 ---
 name: specworks-build
-description: Build a specified change end to end in cycles of design → implement → review, running each phase's own skill, with implement's test and code halves in parallel (the test half in its own git worktree); after each review with findings, ask whether to start a new cycle that runs only the steps the findings need (code findings → code half, review; test findings → test half, review; both, or back to implement → both halves, review; design/API findings → design, both halves, review). Use when a specworks change has been specified and the user wants to build it in one go, or says "build the change", "run the build cycle", "design test code review" or "specworks build".
+description: Build a specified change end to end in cycles of design → implement → review, running each phase's own skill, with implement's test and code halves in parallel (the test half in its own git worktree); after each review with findings, ask whether to start a new cycle that runs only the steps the findings need (code findings → code half, review; test findings → test half, review; both, or back to implement → both halves, review; design/API findings → design, both halves, review; `back to design only:` → design, review). Use when a specworks change has been specified and the user wants to build it in one go, or says "build the change", "run the build cycle", "design test code review" or "specworks build".
 allowed-tools: Bash(specworks:*), Bash(uv run specworks:*), Bash(uvx --from git+https://github.com/lcmonteiro/specworks specworks:*), Bash(git diff:*), Bash(git log:*), Bash(git status:*), Read, Grep, Glob, Write, Edit, Agent
 ---
 
@@ -185,9 +185,12 @@ of <skills folder>/specworks-build/SKILL.md.
    (`code-gap`, `tag`, `quality`) → code, review; test findings (`test-gap`)
    → test, review; both kinds, or `back to implement:` → test and code in
    parallel, review; design/API findings → design, test and code in
-   parallel, review. A `back to <step>: ...` in a finding's Decision
-   overrides its type, and a `done in <step>: ...` line moves it on to the
-   next step (design → implement; implement, test or code → review).
+   parallel, review; `back to design only:` → design, review (no half, no
+   worktree; with code or test findings as well, only their halves join). A
+   `back to <step>: ...` in a finding's Decision overrides its type, and a
+   `done in <step>: ...` line moves it on to the next step (design →
+   implement, or review for `back to design only:`; implement, test or code →
+   review).
 
    After the third cycle, say how many cycles have run and what keeps coming
    back before asking again: repeated findings usually mean the spec or the

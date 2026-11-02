@@ -25,9 +25,11 @@ agreed with the user. When the gate passes, stop and suggest
 
 **Inside `/specworks-build`**: do not apply fixes here. Record every finding
 that needs work as open, with the agreed proposal as `back to
-<specify|design|implement|test|code>: ...`; the build runs the steps those
-findings need next (`specworks cycle --change "<ref>"`): only the code half,
-only the test half, both halves (`implement`), or design and then both.
+<specify|design|implement|test|code>: ...`, or `back to design only: ...`
+when the design fix needs no test or code change; the build runs the steps
+those findings need next (`specworks cycle --change "<ref>"`): only the code
+half, only the test half, both halves (`implement`), design and then both, or
+design alone.
 
 **Running the CLI**: use `specworks <cmd>`. If it is not on PATH, use
 `uv run specworks <cmd>` (inside the specworks repo) or
@@ -186,6 +188,9 @@ next step the same way: the next skill (recommended), any alternative, and
    specworks finding decide R<n> --change "<ref>" "back to <step>: <proposal>"   # or "accepted: <reason>", which ticks it
    specworks finding close R<n> --change "<ref>" "<what was fixed or confirmed>"
    ```
+   Propose `back to design only: <proposal>` when the design fix needs no test
+   or code change (design.md text only): the next cycle runs design, then
+   review, with no implement half.
    A finding fixed here is added, then closed with what changed; one sent
    back stays open with its Decision. Follow `template` and `instruction`
    for the rest: every file from `untracedSource` / `untracedTests` under

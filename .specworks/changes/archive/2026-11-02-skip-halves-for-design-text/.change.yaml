@@ -1,0 +1,9 @@
+name: skip-halves-for-design-text
+created: '2026-11-02T08:06:21'
+phase: done
+specified:
+  REQ-FLOW-010: 0bb4e64db301
+  REQ-FLOW-012: 727565cfd2d9
+  REQ-FLOW-016: d667bd0f54a8
+dirty:
+  .specworks/changes/active/skip-halves-for-design-text/.change.yaml: ad4f7dd321b4a432cd17c0f2fb81322926eb18d61af4882ed8d88e68ad0da272

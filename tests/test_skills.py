@@ -294,6 +294,17 @@ def test_build_gates_the_review_itself_after_the_decisions():
     assert "decided `accepted`" not in text
 
 
+def test_review_proposes_a_design_only_decision_for_a_design_text_fix():
+    # Without it every design finding sends both halves round again, though a reworded Decision changes no test or code.
+    text = " ".join(read_skill("specworks-review").split())
+    assert "back to design only:" in text and "when the design fix needs no test or code change" in text
+
+
+def test_build_runs_design_then_review_for_a_design_only_finding():
+    text = " ".join(read_skill("specworks-build").split())
+    assert "`back to design only:` → design, review" in text
+
+
 def test_build_review_proposes_every_finding_before_the_user_decides():
     # The user's decisions reach the next review subagent only through review.md.
     text = read_skill("specworks-build")

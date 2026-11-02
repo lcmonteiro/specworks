@@ -177,7 +177,7 @@ def finding_add(
 @finding_app.command("decide")
 def finding_decide(
     finding_id: str = typer.Argument(..., metavar="ID", help="The finding's ID, e.g. R1."),
-    decision: str = typer.Argument(..., help="'back to <step>: ...' (specify, design, implement, test or code) or 'accepted: ...'."),
+    decision: str = typer.Argument(..., help="'back to <step>: ...' (specify, design, implement, test or code), 'back to design only: ...' (design, then review) or 'accepted: ...'."),
     change: str = ChangeOpt,
     as_json: bool = JsonOpt,
 ) -> None:

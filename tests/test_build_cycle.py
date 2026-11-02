@@ -101,6 +101,27 @@ def test_a_finding_done_in_a_phase_needs_the_phases_after_it(project, done_in, s
     assert data["startAt"] == start and data["phases"] == phases
 
 
+DESIGN_ONLY = "- [ ] R1 **design-gap** the Decisions say match by prefix\n  - **Decision**: back to design only: reword Decisions > Matching"
+
+
+# @ac AC-FLOW-012.7
+@pytest.mark.parametrize(
+    "others, start, phases",
+    [
+        ("", "design", ["design", "review"]),
+        ("  - done in design: reworded", "review", ["review"]),
+        ("- [ ] R2 **code-gap** reset ignores case\n  - **Decision**: back to code: lower-case it", "design", ["design", "code", "review"]),
+        ("- [ ] R2 **code-gap** reset returns None\n  - **Decision**: back to design: return the token", "design", ["design", "test", "code", "review"]),
+    ],
+    ids=["alone", "after-done-in-design", "with-a-code-finding", "with-a-plain-back-to-design"],
+)
+def test_a_design_only_finding_skips_the_halves(project, others, start, phases):
+    write_review(project, DESIGN_ONLY + ("\n" + others if others else ""))
+    data = cycle()
+    assert data["startAt"] == start and data["phases"] == phases and data["handOver"] is None
+    assert data["open"][0]["designOnly"] is True
+
+
 # @ac AC-FLOW-010.3
 def test_open_findings_parsing():
     text = (
