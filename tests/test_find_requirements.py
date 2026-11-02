@@ -200,11 +200,11 @@ def test_ac_specs_016_5_no_match_is_empty(project):
 
 
 # @ac AC-SPECS-016.6
-@pytest.mark.parametrize("terms", [[""], ["   "], ["--no-branch", ""]])
-def test_ac_specs_016_6_an_empty_term_is_refused(project, terms):
+@pytest.mark.parametrize(("terms", "named"), [([""], "''"), (["   "], "'   '"), (["--no-branch", ""], "''")])
+def test_ac_specs_016_6_an_empty_term_is_refused_naming_it(project, terms, named):
     with pytest.raises(ConfigError) as error:
         find(project, terms)
-    assert "empty search term" in str(error.value)
+    assert str(error.value) == f"empty search term: {named}"
 
 
 SET_001 = "The system SHALL write a value with `config set <key> <value>`."
