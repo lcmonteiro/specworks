@@ -79,6 +79,24 @@ class RequirementMatch:
     text: str  # that line, stripped
 
 
+@dataclass
+class BroadTerm:
+    """A searched term that matches more than half of the living requirements searched (REQ-SPECS-016)."""
+
+    term: str  # as given
+    matches: int  # requirements it matched
+    of: int  # living requirements searched
+
+
+@dataclass
+class RequirementSearch:
+    """The result of searching the living requirements by term (REQ-SPECS-016)."""
+
+    matches: list[RequirementMatch]
+    broad: list[BroadTerm]  # in the order of the terms
+    searched: int  # living requirements searched
+
+
 def capability_ref(module: Module, name: str) -> CapabilityRef:
     validate_capability_name(name)
     return CapabilityRef(module=module, name=name, capability=module.config.capabilities.get(name))
@@ -233,17 +251,25 @@ def workspace_capabilities(ws: Workspace) -> list[CapabilityRef]:
     return [capability_ref(m, name) for m in ws.modules() for name in m.config.capabilities]
 
 
-# @req REQ-SPECS-016
-def find_requirements(ws: Workspace, terms: list[str]) -> list[RequirementMatch]:
-    """Every living requirement whose title, text or scenarios contain any of ``terms``, literal and ignoring case.
+# The spec's markup at the start of a line, left out before comparing: the headings' keywords and a step's bold label.
+_MARKUP_RE = re.compile(r"^\s*(?:###\s+Requirement:|####\s+Scenario:|(?:[-*]\s+)?\*\*(?:GIVEN|WHEN|THEN|AND)\*\*)", re.IGNORECASE)
 
-    In capability order, then requirement order, each listed once with its first matching line; a capability
-    without a living spec is skipped. Raises ``ConfigError("empty search term: <repr>")`` for the first blank term.
+
+# @req REQ-SPECS-016
+def search_requirements(ws: Workspace, terms: list[str]) -> RequirementSearch:
+    """Search the living requirements for ``terms``, leaving the spec's markup out, and report the broad terms.
+
+    Implements REQ-SPECS-016. Every living requirement whose title, text or scenarios contain any of ``terms``,
+    literal and ignoring case, in capability order, then requirement order, each listed once with its first matching
+    line; a capability without a living spec is skipped. A term is broad when it matches more than half of the living
+    requirements searched. Raises ``ConfigError("empty search term: <repr>")`` for the first blank term.
     """
     blank = next((t for t in terms if not t.strip()), None)
     if blank is not None:
         raise ConfigError(f"empty search term: {blank!r}")
     needles = [t.casefold() for t in terms]
+    counts = [0] * len(terms)
+    searched = 0
     found: list[RequirementMatch] = []
     for cap in workspace_capabilities(ws):
         living = cap.living_spec()
@@ -253,9 +279,24 @@ def find_requirements(ws: Workspace, terms: list[str]) -> list[RequirementMatch]
         doc = parse_spec(text)
         lines = blank_comments(text).splitlines()  # what parse_spec read: the same line numbers, without template hints
         for req in doc.requirements:
+            searched += 1
+            hit = [False] * len(terms)
+            first: RequirementMatch | None = None
             for number in range(req.line, req.end + 1):
                 line = lines[number - 1]
-                if any(n in line.casefold() for n in needles):
-                    found.append(RequirementMatch(cap.ref, req.id, req.title, ws.rel(living), number, line.strip()))
-                    break
-    return found
+                words = _MARKUP_RE.sub("", line, count=1).casefold()
+                matched = [n in words for n in needles]
+                if first is None and any(matched):
+                    first = RequirementMatch(cap.ref, req.id, req.title, ws.rel(living), number, line.strip())
+                hit = [h or m for h, m in zip(hit, matched, strict=True)]
+            if first is not None:
+                found.append(first)
+            counts = [c + h for c, h in zip(counts, hit, strict=True)]
+    broad = [BroadTerm(t, c, searched) for t, c in zip(terms, counts, strict=True) if c * 2 > searched]
+    return RequirementSearch(found, broad, searched)
+
+
+# @req REQ-SPECS-016
+def find_requirements(ws: Workspace, terms: list[str]) -> list[RequirementMatch]:
+    """The matches of ``search_requirements``: every living requirement that mentions any of ``terms``, markup left out."""
+    return search_requirements(ws, terms).matches

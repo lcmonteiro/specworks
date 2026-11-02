@@ -120,6 +120,21 @@ searched. Fuzzy and regular-expression matching were rejected: the specify
 skill needs a repeatable result to decide, per match, to modify the
 requirement or leave it with a reason. (specify-related-requirements)
 
+### The markup does not match, and broad terms are reported
+
+Before comparing, a private pattern drops the markup every requirement has, at
+the start of a line only: `### Requirement:` and `#### Scenario:` (keeping the
+ID and title after them) and a step's bullet with its bold `GIVEN`, `WHEN`,
+`THEN` or `AND` (any case, keeping the step's text). So `requirement`,
+`scenario`, `when` and `then` no longer match every requirement, while a bold
+label quoted inside a line still matches; the reported `text` stays the whole
+stripped line. In the same scan each term counts the requirements it matches
+(once per requirement, even when another term found its first matching line);
+a term is broad when `count * 2 > searched` (none when nothing is searched),
+with a fixed threshold. Matching `parse_spec`'s fields was rejected for the
+line numbers it would have to carry; whole-word matching, ranking and a
+configurable threshold were left out. (narrow-spec-find)
+
 ### Close is all or nothing
 
 Close computes every living spec and index first, checks the archive folder,
@@ -133,9 +148,13 @@ was. (baseline-specs)
   `find_ids`, `table_cell(text)`.
 - `src/specworks/specs/capabilities.py`: `CapabilityRef`, `resolve_ref(ws, ref)`,
   `resolve_delta`, `next_id(ws, cap)`, `describe(ws, cap)`, `retired_ids`,
-  `modified_since`; `find_requirements(ws, terms) -> list[RequirementMatch]`,
+  `modified_since`; `search_requirements(ws, terms) -> RequirementSearch`,
   raising `ConfigError(f"empty search term: {term!r}")` for the first blank
-  term (REQ-SPECS-016); `RequirementMatch` (`capability`: the capability's
+  term (REQ-SPECS-016); `RequirementSearch` (`matches: list[RequirementMatch]`,
+  `broad: list[BroadTerm]` in the order of the terms, `searched`: living
+  requirements searched); `BroadTerm` (`term` as given, `matches`, `of`);
+  `find_requirements(ws, terms) -> list[RequirementMatch]`, the search's
+  `matches`; `RequirementMatch` (`capability`: the capability's
   ref, `id: str | None`, `title`, `path`: relative to the workspace root,
   `line`: 1-based, `text`: the matching line, stripped).
 - `src/specworks/specs/check.py`: `check_change(ws, change) -> (ChangeSpecs, [Issue])`,
