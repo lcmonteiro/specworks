@@ -18,6 +18,7 @@ reading the diff. `- [ ] R<n>` while open, `- [x] R<n>` once resolved. Write
   - **Proposal**: back to specify: reword AC-FLOW-016.5's WHEN to 'a decision is not back to <step>:, back to design only: or accepted:' (MODIFIED REQ-FLOW-016, same IDs); no code or test change
   - **Decision**: back to specify: reword the WHEN of AC-FLOW-016.5 to name all three Decision forms (back to <step>:, back to design only:, accepted:) in the MODIFIED REQ-FLOW-016, same IDs; no code or test change
   - done in specify: AC-FLOW-016.5's WHEN now names all three Decision forms (back to <step>:, back to design only:, accepted:) in the MODIFIED REQ-FLOW-016, same IDs; no code or test change
+  - done in design: nothing to change in design.md: Interfaces and Decisions > The Decision form already name the three forms and the refusal before any write; no API change
 
 ## Changed files without tags
 
