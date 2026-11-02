@@ -79,6 +79,24 @@ class RequirementMatch:
     text: str  # that line, stripped
 
 
+@dataclass
+class BroadTerm:
+    """A searched term that matches more than half of the living requirements searched (REQ-SPECS-016)."""
+
+    term: str  # as given
+    matches: int  # requirements it matched
+    of: int  # living requirements searched
+
+
+@dataclass
+class RequirementSearch:
+    """The result of searching the living requirements by term (REQ-SPECS-016)."""
+
+    matches: list[RequirementMatch]
+    broad: list[BroadTerm]  # in the order of the terms
+    searched: int  # living requirements searched
+
+
 def capability_ref(module: Module, name: str) -> CapabilityRef:
     validate_capability_name(name)
     return CapabilityRef(module=module, name=name, capability=module.config.capabilities.get(name))
@@ -231,6 +249,16 @@ def describe(ws: Workspace, cap: CapabilityRef, with_scenarios: bool = True) -> 
 
 def workspace_capabilities(ws: Workspace) -> list[CapabilityRef]:
     return [capability_ref(m, name) for m in ws.modules() for name in m.config.capabilities]
+
+
+def search_requirements(ws: Workspace, terms: list[str]) -> RequirementSearch:
+    """Search the living requirements for ``terms``, leaving the spec's markup out, and report the broad terms.
+
+    Implements REQ-SPECS-016. The matches are those of ``find_requirements``; a term is broad when it matches more
+    than half of the living requirements searched. Raises ``ConfigError("empty search term: <repr>")`` for the first
+    blank term.
+    """
+    raise NotImplementedError
 
 
 # @req REQ-SPECS-016

@@ -49,6 +49,8 @@ when no term is broad. With no match at all, the text is still
 
 ## Interfaces
 
+Agreed with the user
+
 - `src/specworks/specs/capabilities.py`: `search_requirements(ws, terms) -> RequirementSearch`
   (REQ-SPECS-016), raising `ConfigError(f"empty search term: {term!r}")` for
   the first blank term, as `find_requirements` does.
@@ -57,9 +59,13 @@ when no term is broad. With no match at all, the text is still
   of the terms), `searched: int` (living requirements searched).
 - `src/specworks/specs/capabilities.py`: `BroadTerm` dataclass: `term: str`
   (as given), `matches: int`, `of: int`.
-- `find_requirements(ws, terms) -> list[RequirementMatch]` stays, returning
-  `search_requirements(ws, terms).matches`.
-- `spec find --json`: adds `broad: [{"term", "matches", "of"}]` (REQ-CLI-016).
+- `src/specworks/specs/capabilities.py`: `find_requirements(ws, terms) -> list[RequirementMatch]`
+  (extended, not breaking): same signature, now returns
+  `search_requirements(ws, terms).matches`, so the markup no longer matches.
+- `src/specworks/cli/specs.py`: `spec find` (extended, not breaking): same
+  arguments; prints `warning: '<term>' matches <n> of <m> requirements; try a
+  narrower term` per broad term, and `--json` adds
+  `broad: [{"term", "matches", "of"}]`, existing keys unchanged (REQ-CLI-016).
 
 ## Diagrams
 

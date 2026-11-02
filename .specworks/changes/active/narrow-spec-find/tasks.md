@@ -2,7 +2,7 @@
 
 ## 1. Searching without the markup
 
-- [ ] 1.1 Add `search_requirements`, `RequirementSearch` and `BroadTerm` to `src/specworks/specs/capabilities.py` as stubs, `find_requirements` unchanged (REQ-SPECS-016); verify `specworks run lint` and the existing tests pass
+- [x] 1.1 Add `search_requirements`, `RequirementSearch` and `BroadTerm` to `src/specworks/specs/capabilities.py` as stubs, `find_requirements` unchanged (REQ-SPECS-016); verify `specworks run lint` and the existing tests pass
 - [ ] 1.2 [test] Write failing tests for AC-SPECS-016.7 in `tests/test_find_requirements.py`, tagged `@ac AC-SPECS-016.7`: `requirement` and `scenario` find nothing, `when` finds only the requirement whose text says it, at that line; an ID and a scenario title still find theirs; verify they fail for the right reason
 - [ ] 1.3 [test] Write failing tests for AC-SPECS-016.8 in `tests/test_find_requirements.py`, tagged `@ac AC-SPECS-016.8`: with three requirements, `token` (2 of 3) is broad with its counts and `expired` (1 of 3) is not, and all three are listed; verify they fail for the right reason
 - [ ] 1.4 [code] Implement `search_requirements`: remove the markup at the start of each line before comparing, count each term's requirements in the same scan, report broad terms, and make `find_requirements` return its matches (REQ-SPECS-016), tagged `@req REQ-SPECS-016`; verify with lint and `specworks spec find requirement when` on this repo
