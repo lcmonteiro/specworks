@@ -233,7 +233,7 @@ NEXT_STEP = {"specify": "design", "design": "implement", "implement": "review", 
 
 
 # @req REQ-FLOW-010
-def route(line: str) -> tuple[str, bool] | None:
+def _route(line: str) -> tuple[str, bool] | None:
     """The step the first ``back to <step>:`` in ``line`` routes to, and whether it is ``back to design only:``;
     None when it has none. ``only`` after any other step is not a route."""
     for back in BACK_RE.finditer(line):
@@ -244,7 +244,7 @@ def route(line: str) -> tuple[str, bool] | None:
 
 
 # @req REQ-FLOW-010
-def next_step(done_in: str, design_only: bool = False) -> str:
+def _next_step(done_in: str, design_only: bool = False) -> str:
     """The step a finding needs once ``done_in`` carried out its proposal: review after design for a design-only finding."""
     return "review" if design_only and done_in == "design" else NEXT_STEP[done_in]
 
@@ -327,13 +327,13 @@ def parse_review(text: str) -> ReviewDoc:
             current = None
         elif current is not None and line.strip() and not line.startswith((" ", "\t")):
             current = None  # back at the top level: the finding's block has ended
-        if current is not None and (back := route(line)):
+        if current is not None and (back := _route(line)):
             (current.phase, current.design_only), current.routed = back, True
         if current is not None and (carried := DONE_RE.search(line)):
             current.done_in, current.routed = carried.group("phase").lower(), True
     for finding in doc.findings:
         if finding.done_in:
-            finding.phase = next_step(finding.done_in, finding.design_only)
+            finding.phase = _next_step(finding.done_in, finding.design_only)
         if not finding.done and not finding.routed:
             # The next build cycle starts from each open finding's phase, so it is never guessed.
             doc.problems.append(
@@ -515,14 +515,14 @@ def add_finding(change: Change, kind: str, text: str, proposal: str) -> Finding:
         if not in_list:
             _insert(review, at, [""])
     # The step the reader gives: a 'back to <step>:' in its text or proposal (the last line with one) routes it.
-    routes = [back for line in new if (back := route(line))]
+    routes = [back for line in new if (back := _route(line))]
     phase, design_only = routes[-1] if routes else (TYPE_PHASE[kind], False)
     return _write(review, original, fid, {"done": False, "type": kind, "phase": phase, "design_only": design_only})
 
 
 # @req REQ-FLOW-016
 def decide_finding(change: Change, finding_id: str, decision: str) -> Finding:
-    """Write the finding's Decision (``back to <step>: ...`` or ``accepted: ...``), replacing the one it has;
+    """Write the finding's Decision (``back to <step>: ...``, ``back to design only: ...`` or ``accepted: ...``), replacing the one it has;
     ``accepted`` ticks it. The finding as ``read_review`` reads it after.
 
     Implements REQ-FLOW-016.
@@ -546,10 +546,10 @@ def decide_finding(change: Change, finding_id: str, decision: str) -> Finding:
         _tick(review, block)
         expect = {"done": True}
     else:
-        step = route(decision)
+        step = _route(decision)
         assert step is not None  # DECISION_RE checked the form
         phase, design_only = step
-        expect = {"done": current.done, "phase": next_step(current.done_in, design_only) if current.done_in else phase, "design_only": design_only}
+        expect = {"done": current.done, "phase": _next_step(current.done_in, design_only) if current.done_in else phase, "design_only": design_only}
     return _write(review, original, fid, expect)
 
 
@@ -569,7 +569,7 @@ def mark_finding_done(change: Change, finding_id: str, step: str, text: str) -> 
     fid, block = _find(review, finding_id)
     current = next(f for f in parse_review(original).findings if f.id == fid)
     _insert(review, block.end + 1, [f"{block.indent}  - done in {step}: {text}"])
-    return _write(review, original, fid, {"done": current.done, "done_in": step, "phase": next_step(step, current.design_only)})
+    return _write(review, original, fid, {"done": current.done, "done_in": step, "phase": _next_step(step, current.design_only)})
 
 
 # @req REQ-FLOW-016

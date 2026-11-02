@@ -265,8 +265,10 @@ artifacts:
       (only with the user's agreement). A finding sent back to an earlier
       step stays open (`- [ ]`) with `back to <step>: <the agreed proposal>`
       until the change returns to review and it is done; a step is specify,
-      design, implement (both halves), test or code (one half). The step
-      that carries out the proposal adds `done in <step>: <what changed>`
+      design, implement (both halves), test or code (one half), and
+      `back to design only: <the agreed proposal>` sends it to design and
+      then straight to review, when the design fix needs no test or code
+      change. The step that carries out the proposal adds `done in <step>: <what changed>`
       under it (the box stays open until review confirms). `specworks cycle`
       reads these to pick the steps of the next build cycle: the step a
       finding needs, or the one after its `done in`.
