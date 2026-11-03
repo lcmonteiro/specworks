@@ -1,6 +1,6 @@
 name: add-langfuse-monitoring
 created: '2026-11-03T12:11:57'
-phase: implement
+phase: review
 specified:
   REQ-CLI-017: 589819a4e78f
   REQ-CLI-018: 77c6a701090d
