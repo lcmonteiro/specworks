@@ -24,6 +24,7 @@ reading the diff. `- [ ] R<n>` while open, `- [x] R<n>` once resolved. Write
   - done in specify: AC-CLI-017.3's WHEN now runs finding add code-gap (REQ-CLI-017 wording only)
   - done in design: no API change: the finding type is a value passed to finding add, the agreed interfaces and stubs stay as they are
   - done in test: no test change: tests/cli/test_telemetry.py AC-CLI-017.3 already runs finding add code-gap "secret text" --proposal "other text", matching the criterion
+  - done in code: no code change: finding add already accepts the code-gap type and REQ-CLI-017 telemetry records no finding text (src/specworks/cli/telemetry.py)
 
 ## Changed files without tags
 
