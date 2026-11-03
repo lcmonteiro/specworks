@@ -14,7 +14,7 @@ from specworks.core.events import record_event, session_id, trace_id
 from specworks.specs.merge import archive_change
 from support.config_set import CONFIG, entries, invoke, make_project, read
 from support.langfuse import event_lines, opt_in
-from support.modules import make_workspace
+from support.modules import make_workspace, run_json
 
 REF = "add-login"
 
@@ -77,9 +77,8 @@ def test_ac_proj_003_10_telemetry_in_a_module(tmp_path, monkeypatch):
     make_workspace(tmp_path, monkeypatch)
     billing = tmp_path / "services/billing"
     opt_in(billing)
-    with pytest.raises(ConfigError) as error:
-        load_config(billing)
-    assert "telemetry" in str(error.value) and "top level" in str(error.value)
+    code, data = run_json("context")
+    assert code == 1 and "'telemetry'" in data["error"] and "top level" in data["error"], data
 
 
 # --- set_config_value (REQ-PROJ-032, REQ-PROJ-025) -----------------------------
@@ -149,8 +148,8 @@ def test_ac_proj_030_1_an_event_recorded(project):
 
 # @ac AC-PROJ-030.2
 def test_ac_proj_030_2_kept_out_of_git(project):
-    opt_in(project)
     change = add_change(project)
+    opt_in(project)
     assert not (change.path / ".gitignore").exists()
     record_event(change, enabled(project), "gate", passed=True)
     ignore = (change.path / ".gitignore").read_text(encoding="utf-8").splitlines()
@@ -171,8 +170,8 @@ def test_ac_proj_030_3_telemetry_off(project, block):
 
 # @ac AC-PROJ-030.4
 def test_ac_proj_030_4_a_log_that_cannot_be_written(project):
-    opt_in(project)
     change = add_change(project)
+    opt_in(project)
     (change.path / "events.jsonl").mkdir()
     (change.path / "events.jsonl" / "keep").write_text("x", encoding="utf-8")
     record_event(change, enabled(project), "gate", passed=True)
@@ -184,8 +183,8 @@ def test_ac_proj_030_4_a_log_that_cannot_be_written(project):
 # @ac AC-PROJ-030.5
 @pytest.mark.parametrize("abandoned", ["", "not needed"], ids=["closed", "abandoned"])
 def test_ac_proj_030_5_the_log_moves_with_the_change(project, abandoned):
-    opt_in(project)
     change = add_change(project)
+    opt_in(project)
     record_event(change, enabled(project), "gate", passed=False)
     record_event(change, enabled(project), "commit", sha="abc1234")
     log = (change.path / "events.jsonl").read_bytes()

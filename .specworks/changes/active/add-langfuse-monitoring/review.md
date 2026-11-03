@@ -10,8 +10,12 @@ reading the diff. `- [ ] R<n>` while open, `- [x] R<n>` once resolved. Write
 
 - [ ] R1 **test-gap** AC-PROJ-003.10: tests/project/test_telemetry.py test_ac_proj_003_10_telemetry_in_a_module (~line 76) calls load_config on billing's folder, which only reads that file and never refuses; the refusal is in load_module_config (src/specworks/core/workspace.py:195), as designed and as for 'tools' (AC-PROJ-003.7). The test fails with DID NOT RAISE.
   - **Proposal**: back to test: load the workspace (run_json('context') or load_workspace) and assert the error names 'telemetry' and the top level, like tests/project/test_modules.py:23 for AC-PROJ-003.7
+  - **Decision**: back to test: load the workspace (as tests/project/test_modules.py does for AC-PROJ-003.7) instead of load_config on billing's config
+  - done in test: test_ac_proj_003_10 now loads the workspace via run_json('context') and asserts the error names 'telemetry' and the top level, like AC-PROJ-003.7
 - [ ] R2 **test-gap** AC-PROJ-030.2, AC-PROJ-030.4, AC-PROJ-030.5: tests/project/test_telemetry.py sets up with opt_in then add_change, and 'new' itself records a 'new' event (REQ-CLI-017), so events.jsonl and .gitignore exist before the test acts: 030.2 finds .gitignore already there, 030.4 cannot mkdir events.jsonl (FileExistsError), 030.5 sees ['new','gate','commit'] instead of ['gate','commit']. The code is right.
   - **Proposal**: back to test: create the change before opting in (add_change, then opt_in), or remove events.jsonl and .gitignore after new, so each test starts from a change folder with no log
+  - **Decision**: back to test: create the change before opting in, so new does not pre-create events.jsonl and .gitignore
+  - done in test: tests for AC-PROJ-030.2, 030.4, 030.5 create the change before opt_in, so new does not pre-create events.jsonl and .gitignore
 
 ## Changed files without tags
 
