@@ -20,6 +20,7 @@ reading the diff. `- [ ] R<n>` while open, `- [x] R<n>` once resolved. Write
   - confirmed in review: tests for AC-PROJ-030.2, 030.4, 030.5 create the change before opt_in, so the log and .gitignore start absent; all pass (992 passed)
 - [ ] R3 **spec-gap** AC-CLI-017.3 (specs/cli/spec.md:35): the WHEN runs 'finding add code "secret text" ...', but 'code' is not a finding type (spec-gap, design-gap, test-gap, code-gap, tag, quality), so that command would be refused; tests/cli/test_telemetry.py:126 uses 'code-gap' and the code is right
   - **Proposal**: back to specify: MODIFIED AC-CLI-017.3 so its WHEN reads 'finding add code-gap "secret text" --proposal "other text"'; no test or code change
+  - **Decision**: back to specify: change AC-CLI-017.3's step to finding add code-gap "secret text" --proposal "other text"
 
 ## Changed files without tags
 
