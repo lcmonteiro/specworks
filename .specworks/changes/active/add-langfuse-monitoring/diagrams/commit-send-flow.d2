@@ -1,0 +1,18 @@
+shape: sequence_diagram
+
+skill: Skill
+cli: specworks commit
+core: project (commit_phase, events)
+lf: integrations.langfuse
+server: Langfuse
+
+skill -> cli: "commit --change <ref>"
+cli -> core: commit the phase (events.jsonl is git-ignored)
+cli -> core: "record commit event"
+cli -> lf: send unsent events
+lf -> core: read lines after events.sent
+lf -> server: "batch of up to 100 (trace + spans)"
+server -> lf: 2xx, or error / no answer in 5 s
+lf -> core: add sent count to events.sent (2xx only)
+lf -> cli: "sent, queued, reason"
+cli -> skill: commit hash + telemetry line (exit code unchanged)

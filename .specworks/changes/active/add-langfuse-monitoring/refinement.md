@@ -49,8 +49,9 @@ this data.
 ## Constraints
 
 - [hard] Keys never go in `.specworks/config.yml` or any committed file, and are
-  never printed; they come from `LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY`
-  (and `LANGFUSE_HOST`).
+  never printed; they come from `SPECWORKS_LANGFUSE_PUBLIC_KEY`,
+  `SPECWORKS_LANGFUSE_SECRET_KEY` (and `SPECWORKS_LANGFUSE_HOST`), not the
+  plain `LANGFUSE_*` names a project may use for its own Langfuse.
 - [hard] Sending happens only when the project opted in (a non-secret
   `telemetry:` block in config.yml) and keys are set.
 - [hard] Off by default; an unreachable Langfuse never fails a command.
