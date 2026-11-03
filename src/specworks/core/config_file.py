@@ -14,6 +14,7 @@ from .config import (
     CONFIG_FILE,
     MAX_CONTEXT_BYTES,
     SCOPED_TEST_KEY,
+    TELEMETRY_KEYS,
     WORKFLOW_DIR,
     Config,
     ConfigError,
@@ -25,7 +26,7 @@ from .config import (
 from .files import read_text
 from .validators import validate_capability_name, validate_module_name, validate_prefix, validate_relative
 
-SETTABLE_KEYS: tuple[str, ...] = ("context", *(f"commands.{key}" for key in COMMAND_KEYS), "branch_per_change")
+SETTABLE_KEYS: tuple[str, ...] = ("context", *(f"commands.{key}" for key in COMMAND_KEYS), "branch_per_change", *(f"telemetry.{key}" for key in TELEMETRY_KEYS))
 """The keys `specworks config set` writes, in the order an error names them. Implements REQ-PROJ-025."""
 
 # @req REQ-PROJ-026, REQ-PROJ-027
@@ -243,6 +244,8 @@ def set_config_value(root: Path, key: str, value: str) -> None:
     """
     if key not in SETTABLE_KEYS:
         raise ConfigError(f"unknown config key '{key}'; use one of: {', '.join(SETTABLE_KEYS)}")
+    if key.startswith("telemetry."):
+        raise NotImplementedError  # telemetry.langfuse and telemetry.host (REQ-PROJ-032)
     expected: object
     if key == "branch_per_change":
         if value not in ("true", "false"):

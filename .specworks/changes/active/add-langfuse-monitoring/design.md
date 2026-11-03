@@ -107,12 +107,25 @@ REQ-PROJ-025, REQ-PROJ-032, REQ-CLI-013.
 
 ## Interfaces
 
+Agreed with the user
+
+Changes from the plan written at specify, after reading the code:
+- `Config.telemetry` is `TelemetryConfig | None` (None when the block is
+  absent) and `load_telemetry` takes `present`, like `tools` / `load_tools`,
+  so `load_module_config` can refuse a module's block (AC-PROJ-003.10).
+  Callers read `ws.top.config.telemetry or TelemetryConfig()`.
+- `telemetry_app` is declared in `src/specworks/cli/app.py` with the other
+  command groups (as `finding_app`, `config_app`); `push` registers on it in
+  `src/specworks/cli/telemetry.py`, imported from `src/specworks/cli/__init__.py`.
+  Declaring it in `src/specworks/cli/telemetry.py` would make
+  `src/specworks/cli/app.py` import a command module, which imports it back.
+
 - `src/specworks/core/config.py`:
   - `TELEMETRY_KEYS = ("langfuse", "host")`; `"telemetry"` added to `CONFIG_KEYS`.
   - `@dataclass class TelemetryConfig: langfuse: bool = False; host: str = ""` (REQ-PROJ-003)
-  - `load_telemetry(raw: object) -> TelemetryConfig`, raising `ConfigError` (REQ-PROJ-003)
-  - `Config.telemetry: TelemetryConfig` (default `TelemetryConfig()`)
-- `src/specworks/core/workspace.py`: a module's config with `telemetry` is refused, naming the top level's config (REQ-PROJ-003)
+  - `load_telemetry(raw: object, present: bool) -> TelemetryConfig | None`, raising `ConfigError` naming `telemetry` or `telemetry.<key>` (REQ-PROJ-003)
+  - `Config.telemetry: TelemetryConfig | None = None`, set by `load_config` (REQ-PROJ-003)
+- `src/specworks/core/workspace.py`: `load_module_config` refuses a module's config with `telemetry`, naming the top level's config (REQ-PROJ-003)
 - `src/specworks/core/config_file.py`:
   - `SETTABLE_KEYS` gains `telemetry.langfuse`, `telemetry.host` (REQ-PROJ-025, REQ-PROJ-032)
   - `set_config_value(root, key, value)`: unchanged signature, handles them (REQ-PROJ-032)
@@ -127,15 +140,16 @@ REQ-PROJ-025, REQ-PROJ-032, REQ-CLI-013.
   - `DEFAULT_HOST = "https://cloud.langfuse.com"`, `TIMEOUT = 5.0`, `BATCH_SIZE = 100`
   - `ENV_PUBLIC_KEY = "SPECWORKS_LANGFUSE_PUBLIC_KEY"`, `ENV_SECRET_KEY = "SPECWORKS_LANGFUSE_SECRET_KEY"`, `ENV_HOST = "SPECWORKS_LANGFUSE_HOST"`
   - `@dataclass(frozen=True) class LangfuseSettings: state: Literal["on", "keys missing", "off"]; host: str; missing: tuple[str, ...]` plus keys held with `repr=False` (REQ-INTEG-008)
-  - `langfuse_settings(config: TelemetryConfig, env: Mapping[str, str] | None = None) -> LangfuseSettings` (REQ-INTEG-008)
+  - `langfuse_settings(config: TelemetryConfig | None, env: Mapping[str, str] | None = None) -> LangfuseSettings`; `env` defaults to `os.environ` (REQ-INTEG-008)
   - `@dataclass(frozen=True) class SendResult: sent: int; queued: int; reason: str | None` (REQ-INTEG-009)
   - `send_events(change: Change, settings: LangfuseSettings, trace: str, session: str, module_label: str) -> SendResult`: never raises for network or server failures (REQ-INTEG-009)
-- `src/specworks/cli/telemetry.py` (new):
+- `src/specworks/cli/app.py`: `telemetry_app = App(...)`, added as `telemetry` (REQ-CLI-018)
+- `src/specworks/cli/telemetry.py` (new, imported from `src/specworks/cli/__init__.py`):
   - `record(ws: Workspace, module: Module, change: Change, event: str, started: float, **fields: object) -> None` (REQ-CLI-017)
   - `telemetry_state(ws: Workspace) -> dict`: `{"state", "host"}` for `context` (REQ-CLI-004)
   - `telemetry_ids(module: Module, change: Change) -> dict`: `{"traceId", "sessionId"}` for `status` (REQ-CLI-019)
-  - `send_after_commit(ws, module, change) -> dict | None`: the `telemetry` value of `commit --json` (REQ-CLI-012)
-  - `telemetry_app` with `push --change <ref> [--json]` (REQ-CLI-018), registered in `src/specworks/cli/app.py` as `telemetry`
+  - `send_after_commit(ws: Workspace, module: Module, change: Change) -> dict | None`: the `telemetry` value of `commit --json` (REQ-CLI-012)
+  - `push(change: str = ChangeOpt, as_json: bool = JsonOpt) -> None` on `telemetry_app`: `specworks telemetry push --change <ref> [--json]` (REQ-CLI-018)
 - `src/specworks/cli/changes.py`, `src/specworks/cli/workflow.py`: `new`, `phase`, `abandon`, `commit`, `start`, `gate`, `run`, `finding *`, `cycle`, `validate`, `close` call `record(...)` (REQ-CLI-017); `commit` adds `telemetry` (REQ-CLI-012); `status` adds `telemetry` IDs (REQ-CLI-019)
 - `src/specworks/cli/project.py`: `context` adds `telemetry` (REQ-CLI-004); `config set` writes `telemetry.*` to the top level's config (REQ-CLI-013)
 

@@ -1,3 +1,17 @@
 name: add-langfuse-monitoring
 created: '2026-11-03T12:11:57'
-phase: specify
+phase: design
+specified:
+  REQ-CLI-017: 589819a4e78f
+  REQ-CLI-018: 77c6a701090d
+  REQ-CLI-019: 98533bfebc72
+  REQ-CLI-004: 021ef7ecb488
+  REQ-CLI-012: 66504b7854d3
+  REQ-CLI-013: facd4ca6170d
+  REQ-INTEG-008: 1a1685fb1ff3
+  REQ-INTEG-009: f17bd003d2ba
+  REQ-PROJ-030: 7f643a79d8e4
+  REQ-PROJ-031: 9b896b83abe1
+  REQ-PROJ-032: 821866718d84
+  REQ-PROJ-003: da256dd41a0a
+  REQ-PROJ-025: 452b79030621

@@ -29,11 +29,14 @@ CONFIG_FILE = "config.yml"  # the config's name inside WORKFLOW_DIR
 DEFAULT_DOCS_DIR = "docs"
 DEFAULT_TESTS_DIR = "tests"  # a module's default folder of capability test folders (<tests_dir>/<capability>)
 MAX_CONTEXT_BYTES = 50 * 1024
-CONFIG_KEYS = ("specworks", "context", "docs_dir", "tests_dir", "capabilities", "modules", "test_globs", "source_globs", "commands", "diagrams", "tools", "branch_per_change")
+CONFIG_KEYS = (
+    "specworks", "context", "docs_dir", "tests_dir", "capabilities", "modules", "test_globs", "source_globs", "commands", "diagrams", "tools", "branch_per_change", "telemetry",
+)
 CAPABILITY_KEYS = ("path", "prefix", "description", "tests")
 # The AI tool IDs `tools:` may list; the same keys, in the same order, as TOOLS in tools/skills.py (core never imports tools).
 TOOL_IDS: tuple[str, ...] = ("claude", "copilot")
 DIAGRAM_KEYS = ("theme", "dark_theme", "layout", "sketch", "pad")
+TELEMETRY_KEYS = ("langfuse", "host")
 
 
 @dataclass
@@ -189,6 +192,24 @@ def load_branch_per_change(raw: object, present: bool) -> bool:
 
 
 @dataclass
+class TelemetryConfig:
+    """The top level's ``telemetry:`` block: whether events are recorded and sent to Langfuse, and its host. Implements REQ-PROJ-003."""
+
+    langfuse: bool = False
+    host: str = ""  # empty: SPECWORKS_LANGFUSE_HOST or the default host (REQ-INTEG-008)
+
+
+def load_telemetry(raw: object, present: bool) -> TelemetryConfig | None:
+    """The ``telemetry:`` block; None when the key is absent.
+
+    Raises ``ConfigError`` naming ``telemetry`` or ``telemetry.<key>``. Implements REQ-PROJ-003.
+    """
+    if not present:
+        return None
+    raise NotImplementedError
+
+
+@dataclass
 class Config:
     root: Path
     context: str = ""
@@ -203,6 +224,7 @@ class Config:
     diagrams: DiagramSettings = field(default_factory=DiagramSettings)
     tools: list[str] | None = None  # the AI tools saved at the top level (TOOL_IDS); None when none is saved
     branch_per_change: bool = True  # whether `new` creates a branch per change; only the top level's is read (REQ-PROJ-026)
+    telemetry: TelemetryConfig | None = None  # the top level's telemetry block; None when absent (REQ-PROJ-003)
 
     @property
     def config_path(self) -> Path:
@@ -351,4 +373,5 @@ def load_config(root: Path) -> Config:
         diagrams=load_diagram_settings(raw.get("diagrams")),
         tools=load_tools(raw.get("tools"), "tools" in raw),
         branch_per_change=load_branch_per_change(raw.get("branch_per_change"), "branch_per_change" in raw),
+        telemetry=load_telemetry(raw.get("telemetry"), "telemetry" in raw),
     )
