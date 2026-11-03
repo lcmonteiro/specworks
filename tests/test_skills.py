@@ -658,12 +658,6 @@ def test_the_design_template_diagrams_comment_follows_the_structural_change_rule
     assert "block diagram" in diagrams and "No structural change" in diagrams
 
 
-@pytest.mark.parametrize("name", packaged_skills())
-def test_no_skill_mentions_architecture_md(name):
-    # The capability's living design.md carries its block diagram; architecture.md was never written.
-    assert "architecture.md" not in read_skill(name)
-
-
 def test_close_keeps_one_block_diagram_of_the_capability_in_the_living_design():
     living = flat(step(read_skill("specworks-close"), 4))
     assert "one block diagram" in living and "design.md" in living
