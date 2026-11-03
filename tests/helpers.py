@@ -11,7 +11,7 @@ import sys
 import pytest
 from typer.testing import CliRunner
 
-from samples import DELTA, LIVING, PROPOSAL, TASKS
+from samples import ARCHITECTURE, DELTA, LIVING, PROPOSAL, TASKS
 from specworks.cli import app
 
 runner = CliRunner()
@@ -94,6 +94,8 @@ def make_repo(project, monkeypatch):
     cfg = project / ".specworks/config.yml"
     cfg.write_text(re.sub(r"(?m)^  test:.*$", lambda _: f"  test: {json.dumps(PASS)}", cfg.read_text(), count=1))
     (project / "src/auth/session.py").write_text("def session(): ...\n")
+    (project / "docs").mkdir()
+    (project / "docs/architecture.md").write_text(ARCHITECTURE, encoding="utf-8")  # close needs the module's architecture
     git(project, "add", "-A")
     git(project, "commit", "-q", "-m", "baseline")
     git(project, "checkout", "-q", "-b", "feature")

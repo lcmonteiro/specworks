@@ -491,3 +491,46 @@ def test_an_old_module_names_the_module_and_the_move(workspace):
     assert "module 'billing'" in error and "spec.yml" in error
     assert "move spec.yml to .specworks/config.yml and spec/ to .specworks/" in error
     assert (billing / "spec.yml").is_file() and not (billing / ".specworks").exists()  # nothing moved
+
+
+# --- a module's docs folder and its architecture (REQ-PROJ-029) ----------------------
+
+
+# @ac AC-PROJ-029.1
+def test_ac_proj_029_1_the_top_levels_docs_folder_is_docs(workspace):
+    ws = load_workspace(workspace)
+    assert ws.rel(ws.top.docs_path) == "docs" and ws.rel(ws.top.architecture_path) == "docs/architecture.md"
+    assert not (workspace / "docs").exists()  # the paths hold whether or not the folder is there
+
+
+# @ac AC-PROJ-029.2
+def test_ac_proj_029_2_a_module_uses_its_own_docs_dir(workspace):
+    config = workspace / "services/billing/.specworks/config.yml"
+    text = config.read_text(encoding="utf-8")
+    assert "docs_dir: docs\n" in text
+    config.write_text(text.replace("docs_dir: docs\n", "docs_dir: doc\n"), encoding="utf-8")
+    ws = load_workspace(workspace)
+    billing = ws.module("billing")
+    assert ws.rel(billing.docs_path) == "services/billing/doc"
+    assert ws.rel(billing.architecture_path) == "services/billing/doc/architecture.md"
+
+
+# @ac AC-PROJ-029.3
+def test_ac_proj_029_3_a_capability_on_the_modules_folder_shares_its_docs_folder(workspace):
+    set_capabilities(workspace / ".specworks/config.yml", "  core:\n    path: .\n")
+    code, data = run_json("context")
+    assert code == 0, data
+    assert {c["name"]: c["docsPath"] for c in data["capabilities"]}["core"] == "docs"
+    ws = load_workspace(workspace)
+    assert ws.rel(ws.top.docs_path) == "docs"
+
+
+# @ac AC-CLI-004.6
+def test_ac_cli_004_6_context_shows_each_modules_docs_folder(workspace):
+    (workspace / "docs").mkdir()
+    (workspace / "docs/architecture.md").write_text("# Architecture\n", encoding="utf-8")
+    code, data = run_json("context")
+    assert code == 0, data
+    modules = {m["name"]: m for m in data["modules"]}
+    assert (modules["(top)"]["docsPath"], modules["(top)"]["hasArchitecture"]) == ("docs", True)
+    assert (modules["billing"]["docsPath"], modules["billing"]["hasArchitecture"]) == ("services/billing/docs", False)

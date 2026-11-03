@@ -133,6 +133,26 @@ Base: `main`
 None.
 """
 
+ARCHITECTURE = """\
+# Architecture
+
+## Overview
+
+textkit: small text helpers.
+
+## Capabilities and how they interact
+
+- `slugify`: turns titles into URL slugs; no other capability yet.
+
+## Architectural decisions
+
+None yet.
+
+## Glossary
+
+- **Slug**: the lower-case, hyphenated form of a title used in URLs.
+"""
+
 
 def sw(*args, ok=True):
     result = runner.invoke(app, list(args))
@@ -202,6 +222,8 @@ def test_walkthrough(tmp_path, monkeypatch):
     # validate and close.
     sw("phase", "validate", "--change", REF)
     assert "PASS" in sw("validate", "--change", REF, "--base", "main")
+    (tmp_path / "docs").mkdir()  # the close skill writes the module's architecture before `specworks close`
+    (tmp_path / "docs/architecture.md").write_text(ARCHITECTURE, encoding="utf-8")
     assert "(new): ADDED REQ-SLUG-001" in sw("close", "--change", REF, "--base", "main", "--dry-run")
     closed = sw("close", "--change", REF, "--base", "main")
     assert f"archived -> .specworks/changes/archive/{date.today().isoformat()}-{REF}" in closed
