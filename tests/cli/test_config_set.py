@@ -98,6 +98,21 @@ def test_ac_cli_013_6_the_branch_setting_from_inside_a_module(project, monkeypat
     assert data["config"] == CONFIG
 
 
+# @ac AC-CLI-013.7
+def test_ac_cli_013_7_telemetry_from_inside_a_module(project, monkeypatch):
+    assert invoke("module", "add", "services/billing").exit_code == 0
+    billing = project / "services/billing"
+    billing_before = read(billing)
+    monkeypatch.chdir(billing)
+    code, data = invoke_json("config", "set", "telemetry.langfuse", "true")
+    assert code == 0, data
+    assert entries(read(project), "langfuse") == ["  langfuse: true"]
+    telemetry = load_config(project).telemetry
+    assert telemetry is not None and telemetry.langfuse is True
+    assert read(billing) == billing_before
+    assert data["config"] == CONFIG
+
+
 # @ac AC-CLI-013.2
 def test_ac_cli_013_2_an_unreadable_file_is_refused(project):
     before = read(project)
