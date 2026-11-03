@@ -1,8 +1,8 @@
 name: add-langfuse-monitoring
 created: '2026-11-03T12:11:57'
-phase: specify
+phase: design
 specified:
-  REQ-CLI-017: 589819a4e78f
+  REQ-CLI-017: ee19aeab48bc
   REQ-CLI-018: 77c6a701090d
   REQ-CLI-019: 98533bfebc72
   REQ-CLI-004: 021ef7ecb488
@@ -15,5 +15,3 @@ specified:
   REQ-PROJ-032: 821866718d84
   REQ-PROJ-003: da256dd41a0a
   REQ-PROJ-025: 452b79030621
-dirty:
-  .specworks/changes/active/add-langfuse-monitoring/specs/cli/spec.md: a2291adfa4ec280051fd611f7c3e27f4a7f3fbe391e1511682a0cd93cf68b92f

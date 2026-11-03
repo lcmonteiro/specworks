@@ -22,6 +22,7 @@ reading the diff. `- [ ] R<n>` while open, `- [x] R<n>` once resolved. Write
   - **Proposal**: back to specify: MODIFIED AC-CLI-017.3 so its WHEN reads 'finding add code-gap "secret text" --proposal "other text"'; no test or code change
   - **Decision**: back to specify: change AC-CLI-017.3's step to finding add code-gap "secret text" --proposal "other text"
   - done in specify: AC-CLI-017.3's WHEN now runs finding add code-gap (REQ-CLI-017 wording only)
+  - done in design: no API change: the finding type is a value passed to finding add, the agreed interfaces and stubs stay as they are
 
 ## Changed files without tags
 
