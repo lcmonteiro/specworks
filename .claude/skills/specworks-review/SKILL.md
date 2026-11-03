@@ -97,6 +97,8 @@ next step the same way: the next skill (recommended), any alternative, and
    say), or the **spec** (`spec-gap`: the criterion is ambiguous, and the
    two halves read it differently).
 
+Read the module's `<docsPath>/architecture.md` first (`docsPath` of the module in `specworks context`); when there is none yet, go on without it.
+
 2. **Collect the drift candidates**
 
    ```bash

@@ -71,6 +71,8 @@ next step the same way: the next skill (recommended), any alternative, and
      specworks phase specify --change "<ref>"
      ```
 
+Read the module's `<docsPath>/architecture.md` first (`docsPath` of the module in `specworks context`); when there is none yet, go on without it.
+
 2. **Load what exists**
 
    ```bash

@@ -68,6 +68,8 @@ next step the same way: the next skill (recommended), any alternative, and
    If it fails, stop: show the failing checks and suggest
    `/specworks-specify <ref>` to finish the plan.
 
+Read the module's `<docsPath>/architecture.md` first (`docsPath` of the module in `specworks context`); when there is none yet, go on without it.
+
 2. **Load the plan and the code it touches**
 
    Re-read from disk:

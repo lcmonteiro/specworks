@@ -78,6 +78,8 @@ next step the same way: the next skill (recommended), any alternative, and
      2. start a new change.
    - Every path in the output is relative to `root`, the workspace root.
 
+Read the module's `<docsPath>/architecture.md` first (`docsPath` of the module in `specworks context`); when there is none yet, go on without it.
+
 2. **Select or create the change**
 
    - If the user named an existing change, use it.

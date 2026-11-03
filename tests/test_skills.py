@@ -658,12 +658,6 @@ def test_the_design_template_diagrams_comment_follows_the_structural_change_rule
     assert "block diagram" in diagrams and "No structural change" in diagrams
 
 
-@pytest.mark.parametrize("name", packaged_skills())
-def test_no_skill_mentions_architecture_md(name):
-    # The capability's living design.md carries its block diagram; architecture.md was never written.
-    assert "architecture.md" not in read_skill(name)
-
-
 def test_close_keeps_one_block_diagram_of_the_capability_in_the_living_design():
     living = flat(step(read_skill("specworks-close"), 4))
     assert "one block diagram" in living and "design.md" in living
@@ -1182,3 +1176,41 @@ def test_the_proposal_template_has_related_requirements_after_capabilities():
 
 def test_the_proposal_instruction_asks_for_the_related_requirements():
     assert "**Related requirements**" in load_artifacts()["proposal"].instruction
+
+
+# --- the skills write and read the module's architecture (project-docs) -------------------
+
+ARCHITECTURE_WORDING = [
+    "`<docsPath>/architecture.md`",
+    "`<docsPath>/diagrams/architecture-blocks.d2`",
+    "## Overview",
+    "## Capabilities and how they interact",
+    "## Architectural decisions",
+    "## Glossary",
+    "Keep it to about 150 lines: merge or drop entries rather than grow it.",
+    "Update it when the change adds or removes a capability, changes what flows between capabilities, adds a decision that spans capabilities, or adds a term; otherwise leave it as it is.",
+    "When it is missing, write it now, before `specworks close`.",
+]
+READING_ARCHITECTURE_WORDING = (
+    "Read the module's `<docsPath>/architecture.md` first (`docsPath` of the module in `specworks context`); when there is none yet, go on without it."
+)
+
+
+@pytest.mark.parametrize("phrase", ARCHITECTURE_WORDING)
+def test_the_shared_architecture_text_has_the_structure_and_the_rules(phrase):
+    # Close writes the module's architecture from this text; adopt and start set it up from it.
+    assert phrase in raw_skill_file("_shared/architecture.md")
+
+
+def test_the_shared_reading_text_reads_the_architecture_first():
+    assert READING_ARCHITECTURE_WORDING in raw_skill_file("_shared/reading-architecture.md")
+
+
+@pytest.mark.parametrize("name", ["specworks-close", "specworks-adopt", "specworks-start"])
+def test_the_skills_that_write_the_architecture_include_its_shared_text(name):
+    assert "<!-- specworks:include architecture -->\n" in raw_skill(name)
+
+
+@pytest.mark.parametrize("name", ["specworks-refine", "specworks-specify", "specworks-design", "specworks-review", "specworks-onboard"])
+def test_the_skills_that_read_the_architecture_include_the_reading_text(name):
+    assert "<!-- specworks:include reading-architecture -->\n" in raw_skill(name)

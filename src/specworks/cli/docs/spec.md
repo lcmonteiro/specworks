@@ -149,7 +149,8 @@ without asking otherwise; the tools it installs SHALL be saved in the config.
 ### Requirement: REQ-CLI-004 Overview commands
 
 `context` SHALL show the workspace: root, current module, inherited context,
-commands, modules (and missing ones), every capability with its docs path,
+commands, modules (and missing ones) each with its docs folder (`docsPath`)
+and whether it holds `architecture.md` (`hasArchitecture`), every capability with its docs path,
 test folder (`testsPath`), prefix and delta path, the changes, and the skills state (`skills`: `current`,
 `outdated` with its files, or `none`). When the skills are outdated, it SHALL
 also show the hint `skills out of date: run specworks update`. `list` SHALL
@@ -183,6 +184,12 @@ marked.
 - **GIVEN** installed skills where one skill file was edited
 - **WHEN** `context` runs, with and without `--json`
 - **THEN** the JSON has `skills` with state `outdated` and that file, and the text output shows `skills out of date: run specworks update`; with current skills, the JSON state is `current` and there is no hint
+
+#### Scenario: AC-CLI-004.6 Each module's docs folder
+
+- **GIVEN** a top level with `docs/architecture.md` and module `billing` at `services/billing` without one
+- **WHEN** `context --json` runs
+- **THEN** the `(top)` entry of `modules` has `docsPath` `docs` and `hasArchitecture` true, and `billing`'s has `docsPath` `services/billing/docs` and `hasArchitecture` false
 
 ### Requirement: REQ-CLI-005 Registering modules and capabilities
 
@@ -294,7 +301,10 @@ behaviour change, and `--off` removes the mark.
 
 `close` SHALL run validate first and refuse a change that doesn't pass, naming
 the phases to go back to. With `--dry-run` it SHALL show the merge plan and
-write nothing. `--no-run` SHALL be accepted only with `--dry-run`, because the
+write nothing. When the change's module has no `architecture.md` in its docs
+folder, `close` SHALL refuse before running validate, naming the missing file
+and writing nothing, and `--dry-run` SHALL show the plan with that file named
+as missing. `--no-run` SHALL be accepted only with `--dry-run`, because the
 real close runs the project's commands before writing.
 
 #### Scenario: AC-CLI-007.1 Dry run
@@ -311,6 +321,12 @@ real close runs the project's commands before writing.
 
 - **WHEN** the change doesn't pass validate
 - **THEN** close fails with `does not pass validate` and `goBackTo`, and the change stays active
+
+#### Scenario: AC-CLI-007.4 No architecture
+
+- **GIVEN** a change whose module has no `docs/architecture.md`
+- **WHEN** `close` runs, then `close --dry-run`
+- **THEN** close fails naming `docs/architecture.md`, writes nothing and runs no command, and the change stays active; the dry run shows the merge plan and names `docs/architecture.md` as missing
 
 ### Requirement: REQ-CLI-008 diagrams
 

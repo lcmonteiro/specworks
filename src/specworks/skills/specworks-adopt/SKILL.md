@@ -155,6 +155,11 @@ through `init`, the agent skills).
    specworks spec list
    ```
 
+   Then write the first architecture of the top level (and of each module),
+   from the code you mapped: what you read, not what you guess. The baselines'
+   closes keep it current.
+<!-- specworks:include architecture -->
+
 7. **Report and stop**
 
    Summarize: the config file, the commands and whether each passes, the
@@ -192,4 +197,5 @@ through `init`, the agent skills).
 - Capability names and prefixes are checked with the CLI (`spec list`),
   never assumed.
 - Never edit the living docs (`<path>/<docs_dir>/`) by hand: `close` writes
-  them.
+  them. The first architecture (step 6) is the one exception; after it, close
+  keeps it.

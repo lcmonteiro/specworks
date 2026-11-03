@@ -25,6 +25,7 @@ from .config import Capability, Config, ConfigError, find_config, find_root, loa
 from .errors import SpecworksError
 
 SEP = ":"
+ARCHITECTURE_FILE = "architecture.md"  # a module's architecture, in its docs folder
 
 
 # @req REQ-PROJ-004
@@ -46,6 +47,18 @@ class Module:
     @property
     def root(self) -> Path:
         return self.config.root
+
+    # @req REQ-PROJ-029
+    @property
+    def docs_path(self) -> Path:
+        """The module's docs folder, ``<root>/<docs_dir>``, shared with a capability on ``.``."""
+        return self.root / self.config.docs_dir
+
+    # @req REQ-PROJ-029
+    @property
+    def architecture_path(self) -> Path:
+        """The module's architecture, ``<docs folder>/architecture.md``."""
+        return self.docs_path / ARCHITECTURE_FILE
 
     @property
     def label(self) -> str:

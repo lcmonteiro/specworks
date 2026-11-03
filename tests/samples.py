@@ -1,4 +1,4 @@
-"""Sample planning text shared by the tests: a living spec, a delta, a proposal and tasks for user-auth."""
+"""Sample planning text shared by the tests: a living spec, a delta, a proposal and tasks for user-auth, and the project's architecture."""
 
 LIVING = """\
 # user-auth
@@ -79,4 +79,24 @@ TASKS = """\
 ## 2. Lockout
 
 - [x] 2.1 [code] Lower the lockout threshold (REQ-AUTH-002); verify AC-AUTH-002.1 test passes
+"""
+
+ARCHITECTURE = """\
+# Architecture
+
+## Overview
+
+An auth service.
+
+## Capabilities and how they interact
+
+- `user-auth`: login, lockout and password reset.
+
+## Architectural decisions
+
+None yet.
+
+## Glossary
+
+- **Lockout**: an account refused after too many failed attempts.
 """

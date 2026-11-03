@@ -58,6 +58,8 @@ When refinement is done, stop and suggest `/specworks-specify`.
      2. start a new change.
    - Every path in the output is relative to `root`, the workspace root.
 
+<!-- specworks:include reading-architecture -->
+
 2. **Select or create the change**
 
    - If the user named an existing change, use it.

@@ -76,6 +76,22 @@ will store it, so its error names the capability that owns the prefix or
 folder. Sharing a folder on purpose (one docs file per capability) was rejected
 as unasked-for. (baseline-project, unique-capability-paths)
 
+### The docs folder belongs to the module too
+
+Every module, the top level included, has a docs folder, `Module.docs_path`
+(`root / config.docs_dir`), holding its architecture
+(`Module.architecture_path`, `<docs folder>/architecture.md`) and its
+`diagrams/` (`architecture-blocks.d2`). No new config key: `docs_dir` already
+names every capability's docs folder. A capability on `.` is accepted when the
+config is loaded (`validate_relative(..., allow_dot=True)` for capability
+paths only) and shares the module's docs folder: its files (`spec.md`,
+`requirements.md`, `design.md`, `diagrams/<cap>-blocks.d2`) and the
+architecture's do not overlap, so the unique-docs-folder rule is not relaxed
+between capabilities. Module paths, `docs_dir`, `tests_dir` and a
+capability's `tests:` still refuse `.`; `capability add --path .` is not
+supported yet. A separate key for the architecture's folder was rejected.
+(project-docs)
+
 ### A capability's test folder is derived, never required
 
 A module's `tests_dir` (default `tests`) gives each capability the test folder
@@ -269,7 +285,8 @@ where to configure one. (baseline-project, run-unknown-key)
 - `src/specworks/core/workspace.py`: `load_workspace(start=None) -> Workspace | None`,
   `require_workspace(start) -> Workspace`, `Workspace` (`modules`,
   `module(name)`, `split(ref)`, `context_chain`, `merged_context`, `commands`,
-  `owner(path)`, `capabilities`, `prefixes`, `docs_folder(module, path)`, `docs_folders`), `Module`,
+  `owner(path)`, `capabilities`, `prefixes`, `docs_folder(module, path)`, `docs_folders`), `Module`
+  (`docs_path`, `architecture_path`), `ARCHITECTURE_FILE` (`architecture.md`),
   `capability_prefix(module_name, name, prefix="")`.
 - `src/specworks/core/config_file.py`: `write_default_config(root, diagram_theme=None)`
   (writes `.specworks/config.yml`),

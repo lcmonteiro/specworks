@@ -96,6 +96,11 @@ here; if something is wrong, go back to the phase that owns it.
    Create the files if they do not exist yet. Keep them short and current;
    they are what the next refinement reads.
 
+   Then the module's architecture, as below (`docsPath` of the change's
+   module in `specworks context --json`); `specworks close` refuses a change
+   whose module has none, and its dry run (step 3) names it under `missing`:
+<!-- specworks:include architecture -->
+
 5. **Merge and archive**
 
    ```bash

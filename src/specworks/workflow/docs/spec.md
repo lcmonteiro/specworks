@@ -508,7 +508,9 @@ verdict when no blocking check fails. Open tasks SHALL be checked by kind,
 each kind naming its own phase skill: `[test]` tasks the test skill, `[code]`
 tasks the code skill, and tasks with neither marker the design skill. It SHALL
 run the test command (lint and typecheck when configured) and check that
-diagram SVGs are up to date. It SHALL write nothing. Not having gone through
+diagram SVGs are up to date. It SHALL warn, without blocking, about each
+diagram in the change's module's docs folder (`docs/diagrams/`) with no SVG or
+an outdated one. It SHALL write nothing. Not having gone through
 review is a warning. `gate validate` SHALL apply the same checks.
 
 #### Scenario: AC-FLOW-013.1 A finished change
@@ -550,6 +552,12 @@ review is a warning. `gate validate` SHALL apply the same checks.
 
 - **WHEN** a `[test]` task, a `[code]` task and a task with no marker are open
 - **THEN** each kind fails its own completeness check listing only its open tasks, naming `/specworks-test`, `/specworks-code` and `/specworks-design`; `goBackTo` lists all three
+
+#### Scenario: AC-FLOW-013.9 Outdated architecture diagram
+
+- **GIVEN** a module whose `docs/diagrams/architecture-blocks.d2` has no SVG, or an outdated one
+- **WHEN** a change of that module is validated
+- **THEN** a non-blocking warning names the SVG, and the verdict does not change; with the SVG up to date, or no `docs/diagrams/`, there is no such warning
 
 ### Requirement: REQ-FLOW-014 Starting a phase
 
