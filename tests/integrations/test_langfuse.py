@@ -125,7 +125,7 @@ def test_ac_integ_009_3_no_answer(tmp_path):
         started = time.monotonic()
         result = send(change, host.url)
         elapsed = time.monotonic() - started
-    assert elapsed < 10, elapsed
+    assert elapsed < 7, elapsed
     assert (result.sent, result.queued) == (0, 2)
     assert "timed out" in (result.reason or "").lower() or "timeout" in (result.reason or "").lower(), result.reason
     assert sent_count(change) == 1

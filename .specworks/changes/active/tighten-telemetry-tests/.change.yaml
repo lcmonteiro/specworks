@@ -1,6 +1,6 @@
 name: tighten-telemetry-tests
 created: '2026-11-03T16:51:12'
-phase: design
+phase: implement
 specified:
   REQ-CLI-019: eca7fa6f3015
   REQ-INTEG-009: 8da7baf1243c

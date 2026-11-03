@@ -1,6 +1,7 @@
 """Telemetry in the CLI: the events commands record, `telemetry push`, and telemetry in `commit`, `context` and `status`."""
 
 import json
+import re
 import subprocess
 
 import pytest
@@ -12,6 +13,7 @@ from specworks.cli import app
 from support.commit import REF, run_json
 from support.commit import make_project as make_commit_project
 from support.langfuse import PUBLIC_KEY, SECRET_KEY, Server, clear_env, event_lines, opt_in, set_keys
+from support.modules import make_workspace
 
 runner = CliRunner()
 ACTIVE = ".specworks/changes/active"
@@ -278,3 +280,20 @@ def test_ac_cli_019_1_the_ids(tmp_path, monkeypatch):
     assert before["telemetry"]["sessionId"] == after["telemetry"]["sessionId"] == "add-login"
     assert before["telemetry"]["traceId"] == after["telemetry"]["traceId"]
     assert len(before["telemetry"]["traceId"]) == 32
+
+
+# @ac AC-CLI-019.2
+def test_ac_cli_019_2_a_change_in_a_module(tmp_path, monkeypatch):
+    root = make_workspace(tmp_path, monkeypatch)
+    assert run_json("new", "cleanup", "--no-branch")[0] == 0
+    assert run_json("new", "cleanup", "--module", "billing", "--no-branch")[0] == 0
+    for meta in (root / ".specworks/changes/active/cleanup/.change.yaml", root / "services/billing/.specworks/changes/active/cleanup/.change.yaml"):
+        text = meta.read_text(encoding="utf-8")
+        meta.write_text(re.sub(r"(?m)^created: .*$", "created: '2026-11-03T10:00:00'", text), encoding="utf-8")  # created at the same time
+    code, module = run_json("status", "--change", "billing:cleanup")
+    assert code == 0, module
+    code, top = run_json("status", "--change", "cleanup")
+    assert code == 0, top
+    assert module["telemetry"]["sessionId"] == "billing:cleanup"
+    assert top["telemetry"]["sessionId"] == "cleanup"
+    assert module["telemetry"]["traceId"] != top["telemetry"]["traceId"]
