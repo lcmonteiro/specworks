@@ -1,79 +1,13 @@
 """Finding living requirements by term: `find_requirements` and `spec find`."""
 
-import json
-
 import pytest
-from typer.testing import CliRunner
 
 from helpers import init_repo
 from specworks.cli import app
 from specworks.core.errors import ConfigError
 from specworks.core.workspace import load_workspace
 from specworks.specs.capabilities import BroadTerm, find_requirements, search_requirements
-
-runner = CliRunner()
-
-AUTH = """\
-# user-auth
-
-## Purpose
-
-Lets users prove who they are.
-
-## Requirements
-
-### Requirement: REQ-AUTH-001 Password login
-The system SHALL let a user log in with email and password.
-
-#### Scenario: AC-AUTH-001.1 Valid password
-- **WHEN** a user submits a correct password
-- **THEN** a session is created
-
-### Requirement: REQ-AUTH-002 A branch per change
-The system SHALL create a branch per change unless `--no-branch` is given.
-
-#### Scenario: AC-AUTH-002.1 Without a branch
-- **WHEN** a change is created with `--no-branch`
-- **THEN** it stays on the current branch
-
-### Requirement: REQ-AUTH-003 Reset link
-The system SHALL email a reset link.
-
-#### Scenario: AC-AUTH-003.1 Expired link
-- **WHEN** a link older than 30 minutes is opened
-- **THEN** the user is told it expired
-"""
-
-SETTINGS = """\
-# settings
-
-## Purpose
-
-The project's settings.
-
-## Requirements
-
-### Requirement: REQ-SET-001 Setting a value
-The system SHALL write a value with `config set <key> <value>`.
-
-#### Scenario: AC-SET-001.1 A known key
-- **WHEN** a known key is set
-- **THEN** the config holds the value
-
-### Requirement: REQ-SET-002 Reading a value
-The system SHALL print a value with `config get <key>`.
-
-#### Scenario: AC-SET-002.1 A known key
-- **WHEN** a known key is read
-- **THEN** its value is printed
-
-### Requirement: REQ-SET-003 Module settings
-The system SHALL write a module's value with `config set --module <name>`.
-
-#### Scenario: AC-SET-003.1 In a module
-- **WHEN** a key is set for a module
-- **THEN** the module's config holds the value
-"""
+from support.find_requirements import AUTH, TOKEN_002, TOKENS, add_capabilities, line_of, make_project, make_tokens_project, runner
 
 INVOICES = """\
 # invoices
@@ -93,37 +27,9 @@ The system SHALL send an invoice on the first day of each month.
 """
 
 
-def line_of(spec, text):
-    """The 1-based number of the line of ``spec`` that is exactly ``text``."""
-    return spec.splitlines().index(text) + 1
-
-
-def run_json(*args):
-    result = runner.invoke(app, [*args, "--json"])
-    try:
-        return result.exit_code, json.loads(result.output)
-    except json.JSONDecodeError:
-        pytest.fail(result.output)
-
-
-def add_capabilities(config, entries):
-    config.write_text(config.read_text(encoding="utf-8").replace("capabilities: {}", "capabilities:\n" + entries), encoding="utf-8")
-
-
 @pytest.fixture
 def project(tmp_path, monkeypatch):
-    """user-auth and settings with living specs, and audit-log with none yet."""
-    monkeypatch.chdir(tmp_path)
-    init_repo(tmp_path)
-    assert runner.invoke(app, ["init", "--no-skills"]).exit_code == 0
-    add_capabilities(
-        tmp_path / ".specworks/config.yml",
-        "  user-auth:\n    path: src/auth\n    prefix: AUTH\n  settings:\n    path: src/settings\n    prefix: SET\n  audit-log:\n    path: src/audit\n    prefix: AUDIT\n",
-    )
-    for folder, spec in (("src/auth", AUTH), ("src/settings", SETTINGS)):
-        (tmp_path / folder / "docs").mkdir(parents=True)
-        (tmp_path / folder / "docs/spec.md").write_text(spec, encoding="utf-8")
-    return tmp_path
+    return make_project(tmp_path, monkeypatch)
 
 
 def find(root, terms):
@@ -207,78 +113,6 @@ def test_ac_specs_016_6_an_empty_term_is_refused_naming_it(project, terms, named
     assert str(error.value) == f"empty search term: {named}"
 
 
-SET_001 = "The system SHALL write a value with `config set <key> <value>`."
-SET_003 = "The system SHALL write a module's value with `config set --module <name>`."
-
-
-def config_set_lines():
-    return [
-        f"settings  REQ-SET-001  Setting a value  src/settings/docs/spec.md:{line_of(SETTINGS, SET_001)}",
-        f"settings  REQ-SET-003  Module settings  src/settings/docs/spec.md:{line_of(SETTINGS, SET_003)}",
-    ]
-
-
-# @ac AC-CLI-016.1
-def test_ac_cli_016_1_matches_print_one_line_each(project):
-    result = runner.invoke(app, ["spec", "find", "config set"])
-    assert result.exit_code == 0, result.output
-    assert result.output.splitlines() == config_set_lines()
-
-
-# @ac AC-CLI-016.2
-def test_ac_cli_016_2_matches_as_json_with_paths_relative_to_the_workspace_root(project, monkeypatch):
-    monkeypatch.chdir(project / "src")  # paths are the workspace root's, not the current folder's
-    code, data = run_json("spec", "find", "config set")
-    assert code == 0, data
-    assert data["terms"] == ["config set"]
-    assert data["matches"] == [
-        {
-            "capability": "settings",
-            "id": "REQ-SET-001",
-            "title": "Setting a value",
-            "path": "src/settings/docs/spec.md",
-            "line": line_of(SETTINGS, SET_001),
-            "text": SET_001,
-        },
-        {
-            "capability": "settings",
-            "id": "REQ-SET-003",
-            "title": "Module settings",
-            "path": "src/settings/docs/spec.md",
-            "line": line_of(SETTINGS, SET_003),
-            "text": SET_003,
-        },
-    ]
-
-
-# @ac AC-CLI-016.3
-def test_ac_cli_016_3_no_match_prints_a_line_and_exits_0(project):
-    result = runner.invoke(app, ["spec", "find", "nothing-like-this"])
-    assert result.exit_code == 0, result.output
-    assert result.output.strip() == "no requirement mentions nothing-like-this"
-
-
-# @ac AC-CLI-016.3
-def test_ac_cli_016_3_no_match_lists_every_term(project):
-    result = runner.invoke(app, ["spec", "find", "nothing-like-this", "nor-this"])
-    assert result.exit_code == 0, result.output
-    assert result.output.strip() == "no requirement mentions nothing-like-this, nor-this"
-
-
-# @ac AC-CLI-016.3
-def test_ac_cli_016_3_no_match_as_json_has_empty_matches(project):
-    code, data = run_json("spec", "find", "nothing-like-this")
-    assert code == 0, data
-    assert data == {"terms": ["nothing-like-this"], "matches": [], "broad": []}
-
-
-# @ac AC-CLI-016.4
-def test_ac_cli_016_4_no_term_is_refused(project):
-    code, data = run_json("spec", "find")
-    assert code == 1
-    assert set(data) == {"error"} and "give at least one term" in data["error"]
-
-
 MARKUP = """\
 # user-auth
 
@@ -359,51 +193,9 @@ def test_ac_specs_016_7_an_id_and_a_scenario_title_still_match(markup_project):
     assert by_step.text == "- **WHEN** a link older than 30 minutes is opened"
 
 
-TOKENS = """\
-# sessions
-
-## Purpose
-
-Keeps users signed in.
-
-## Requirements
-
-### Requirement: REQ-SES-001 Signing in
-The system SHALL issue a token at login.
-
-#### Scenario: AC-SES-001.1 At login
-- **WHEN** a user logs in
-- **THEN** a token is returned
-
-### Requirement: REQ-SES-002 Staying signed in
-The system SHALL refresh a token before it lapses.
-
-#### Scenario: AC-SES-002.1 Before it lapses
-- **WHEN** a token is close to lapsing
-- **THEN** a new one is returned
-
-### Requirement: REQ-SES-003 Signing out
-The system SHALL end the session once it has expired.
-
-#### Scenario: AC-SES-003.1 Expired session
-- **WHEN** the session has expired
-- **THEN** the user must log in again
-"""
-
-TOKEN_001 = "The system SHALL issue a token at login."
-TOKEN_002 = "The system SHALL refresh a token before it lapses."
-
-
 @pytest.fixture
 def tokens_project(tmp_path, monkeypatch):
-    """sessions with three living requirements: two mention `token` (each on several lines), one `expired`."""
-    monkeypatch.chdir(tmp_path)
-    init_repo(tmp_path)
-    assert runner.invoke(app, ["init", "--no-skills"]).exit_code == 0
-    add_capabilities(tmp_path / ".specworks/config.yml", "  sessions:\n    path: src/sessions\n    prefix: SES\n")
-    (tmp_path / "src/sessions/docs").mkdir(parents=True)
-    (tmp_path / "src/sessions/docs/spec.md").write_text(TOKENS, encoding="utf-8")
-    return tmp_path
+    return make_tokens_project(tmp_path, monkeypatch)
 
 
 # @ac AC-SPECS-016.8
@@ -430,36 +222,3 @@ def test_ac_specs_016_8_no_term_is_broad_when_no_requirement_is_searched(project
     (project / "src/settings/docs/spec.md").unlink()
     result = search(project, ["token"])
     assert (result.matches, result.broad, result.searched) == ([], [], 0)
-
-
-TOKEN_WARNING = "warning: 'token' matches 2 of 3 requirements; try a narrower term"
-
-
-# @ac AC-CLI-016.5
-def test_ac_cli_016_5_a_broad_term_prints_the_matches_and_a_warning(tokens_project):
-    result = runner.invoke(app, ["spec", "find", "token"])
-    assert result.exit_code == 0, result.output
-    lines = result.output.splitlines()
-    assert lines[:2] == [
-        f"sessions  REQ-SES-001  Signing in  src/sessions/docs/spec.md:{line_of(TOKENS, TOKEN_001)}",
-        f"sessions  REQ-SES-002  Staying signed in  src/sessions/docs/spec.md:{line_of(TOKENS, TOKEN_002)}",
-    ]
-    assert lines[2:] == [TOKEN_WARNING]
-
-
-# @ac AC-CLI-016.5
-def test_ac_cli_016_5_a_broad_term_is_listed_in_broad_as_json(tokens_project):
-    code, data = run_json("spec", "find", "token", "expired")
-    assert code == 0, data
-    assert [m["id"] for m in data["matches"]] == ["REQ-SES-001", "REQ-SES-002", "REQ-SES-003"]
-    assert data["broad"] == [{"term": "token", "matches": 2, "of": 3}]
-
-
-# @ac AC-CLI-016.5
-def test_ac_cli_016_5_a_narrow_term_has_no_warning_and_an_empty_broad(tokens_project):
-    result = runner.invoke(app, ["spec", "find", "expired"])
-    assert result.exit_code == 0, result.output
-    assert result.output.splitlines() == [f"sessions  REQ-SES-003  Signing out  src/sessions/docs/spec.md:{line_of(TOKENS, 'The system SHALL end the session once it has expired.')}"]
-    code, data = run_json("spec", "find", "expired")
-    assert code == 0, data
-    assert data["broad"] == []

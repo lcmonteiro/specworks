@@ -8,7 +8,8 @@ specworks: 1
 context: |
   specworks itself: a Python 3.11+ CLI (typer, managed with uv) plus the agent
   skills it installs. Code in src/specworks (cli, core, workflow, tools; skills/
-  and templates/ are packaged data). Tests in tests/ (pytest). Lint with ruff,
+  and templates/ are packaged data). Tests in tests/<capability>/ (pytest);
+  untagged and cross-cutting tests stay directly in tests/. Lint with ruff,
   typecheck with mypy; CI fails under 95% branch coverage. Documentation lives
   in the GitHub wiki, not in this repo.
 
@@ -69,6 +70,7 @@ source_globs: ["src/**/*.py"]
 #   lint: uv run ruff check .
 commands:
   test: uv run pytest
+  test_scoped: uv run pytest {paths}
   lint: uv run ruff check src tests && uv run mypy
 
 # Design diagrams are written in D2 (https://d2lang.com) and rendered to SVG

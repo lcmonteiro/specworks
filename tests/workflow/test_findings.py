@@ -4,41 +4,11 @@ import difflib
 
 import pytest
 
-from helpers import REF, run_json, runner
-from specworks.cli import app
-from specworks.cli.output import resolve_change
-from specworks.core.workspace import load_workspace
+from helpers import REF, run_json
 from specworks.workflow.review import FindingError, add_finding, close_finding, decide_finding, mark_finding_done, read_review
+from support.findings import TWO_FINDINGS, change_of, read, review_path, write_review
 
 DECISION_FORM = "a decision starts with 'back to <step>:' (specify, design, implement, test or code), 'back to design only:' or 'accepted:'"
-REVIEW = f".specworks/changes/active/{REF}/review.md"
-TWO_FINDINGS = (
-    f"# Review: {REF}\n\n"
-    "## Findings\n\n"
-    "- [ ] R1 **code-gap** reset ignores case\n"
-    "  - **Decision**: back to code: lower-case the email\n"
-    "- [x] R2 **tag** missing tag on reset.py\n"
-    "  - **Decision**: code fixed\n\n"
-    "## Changed files without tags\n\n"
-    "- `README.md`: docs\n"
-)
-
-
-def change_of(root):
-    ws = load_workspace(root)
-    return resolve_change(ws, REF)[1]
-
-
-def review_path(root):
-    return root / REVIEW
-
-
-def write_review(root, text):
-    review_path(root).write_text(text, encoding="utf-8")
-
-
-def read(root):
-    return review_path(root).read_text(encoding="utf-8")
 
 
 def added_lines(old, new):
@@ -234,40 +204,3 @@ def test_ac_flow_016_8_a_finding_that_quotes_a_form_routes_by_the_line_start(pro
     assert (second.id, second.phase, second.design_only, second.done_in) == ("R2", "test", False, "")
     read_back = [(f.id, f.phase, f.design_only, f.done_in) for f in read_review(change_of(project)).open]
     assert read_back == [("R1", "code", False, ""), ("R2", "test", False, "")]
-
-
-# --- specworks finding ---------------------------------------------------------
-
-
-# @ac AC-CLI-011.1
-def test_ac_cli_011_1_the_four_commands(project):
-    steps = [
-        (["finding", "add", "test-gap", "AC-AUTH-003.2 only checks the status", "--proposal", "assert the message"], "test", False),
-        (["finding", "decide", "R1", "back to design: return the token"], "design", False),
-        (["finding", "done", "R1", "returned ResetToken", "--in", "design"], "implement", False),
-        (["finding", "close", "R1", "the token is returned and tested"], "implement", True),
-    ]
-    for args, phase, done in steps:
-        code, data = run_json(*args, "--change", REF)
-        assert code == 0, data
-        assert data["path"] == REVIEW
-        got = data["finding"]
-        assert got["id"] == "R1" and got["done"] is done, got
-        assert got["phase"] == phase, got
-    assert data["finding"]["doneIn"] == "design"
-    assert [(f.id, f.done) for f in read_review(change_of(project)).findings] == [("R1", True)]
-
-
-# @ac AC-CLI-011.1
-def test_ac_cli_011_1_text_output(project):
-    result = runner.invoke(app, ["finding", "add", "code-gap", "reset ignores case", "--proposal", "lower-case it", "--change", REF])
-    assert result.exit_code == 0, result.output
-    assert "R1 code-gap -> code (open)" in result.output and REVIEW in result.output
-
-
-# @ac AC-CLI-011.2
-def test_ac_cli_011_2_a_refusal_is_an_error(project):
-    write_review(project, TWO_FINDINGS)
-    code, data = run_json("finding", "decide", "R9", "accepted: x", "--change", REF)
-    assert code == 1 and "R9" in data["error"], data
-    assert read(project) == TWO_FINDINGS
