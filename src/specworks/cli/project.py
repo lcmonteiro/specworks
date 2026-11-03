@@ -19,6 +19,7 @@ from ..specs.capabilities import capability_ref, describe
 from ..tools.skills import TOOLS, Tool, expected_skills, install_skills, parse_tools, remove_stale_skills, resolve_tools, skills_state, update_skills
 from .app import app, capability_app, config_app, module_app
 from .output import AllOpt, JsonOpt, ToolsOpt, change_dict, changes_of, emit, fail, missing_dicts, module_dict, workspace
+from .telemetry import telemetry_state
 
 
 def default_module_name(path: Path) -> str:
@@ -229,6 +230,7 @@ def context(as_json: bool = JsonOpt, all_modules: bool = AllOpt) -> None:
         "capabilities": capabilities,
         "changes": [change_dict(ws, m, c) for m, c in changes],
         "skills": {"state": skills.state, "files": [{"path": f.path, "reason": f.reason} for f in skills.files]},
+        "telemetry": (telemetry := telemetry_state(ws)),
     }
     lines = [f"root:    {ws.root}", f"module:  {ws.current.label}", "modules:", *module_lines(ws, "  ")]
     lines += ["capabilities:"] + ([f"  {c['name']:<24} {c['path']}" for c in capabilities] or ["  (none)"])
@@ -237,6 +239,7 @@ def context(as_json: bool = JsonOpt, all_modules: bool = AllOpt) -> None:
         lines += [f"skills:  outdated ({len(skills.files)} files)", "skills out of date: run specworks update"]
     else:
         lines += [f"skills:  {skills.state}"]
+    lines += [f"telemetry: {telemetry['state']} ({telemetry['host']})"]
     emit(data, as_json, "\n".join(lines))
 
 
@@ -354,20 +357,23 @@ def capability_add(
 # @req REQ-CLI-013
 @config_app.command("set")
 def config_set(
-    key: str = typer.Argument(..., help="context, commands.<test|lint|typecheck|build|format>, or branch_per_change (true|false, always in the top level's config)."),
+    key: str = typer.Argument(
+        ...,
+        help="context, commands.<test|lint|typecheck|build|format>, or branch_per_change (true|false) and telemetry.<langfuse|host> (always in the top level's config).",
+    ),
     value: str | None = typer.Argument(None, help="The value (empty clears the key); or use --file."),
     file: str | None = typer.Option(None, "--file", help="Read the value from this file (- for standard input)."),
     module: str | None = typer.Option(None, "--module", "-m", help="Module whose config to set (default: the current one)."),
     as_json: bool = JsonOpt,
 ) -> None:
-    """Set a command or the context in a module's config, or branch_per_change in the top level's, keeping its comments. Implements REQ-CLI-013."""
+    """Set a command or the context in a module's config, or branch_per_change or telemetry in the top level's, keeping its comments. Implements REQ-CLI-013."""
     if value is not None and file is not None:
         fail("give the value as an argument or with --file, not both", as_json)
     if value is None and file is None:
         fail("give a value, or --file <path> (- for standard input)", as_json)
     ws = workspace(as_json)
     target = ws.module(module) if module is not None else ws.current
-    if key == "branch_per_change":  # only the top level's value is read (REQ-PROJ-026), so it is written there whatever the module
+    if key == "branch_per_change" or key.startswith("telemetry."):  # only the top level's value is read (REQ-PROJ-026, REQ-PROJ-003), so it is written there whatever the module
         target = ws.top
     if file is None:
         text = value or ""

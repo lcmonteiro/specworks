@@ -1,0 +1,47 @@
+# Review: add-langfuse-monitoring
+
+Base: `origin/main`
+
+## Findings
+
+<!-- One line per drift between code, spec and design (API), from `specworks review` and from
+reading the diff. `- [ ] R<n>` while open, `- [x] R<n>` once resolved. Write
+"None." when there are no findings. -->
+
+- [x] R1 **test-gap** AC-PROJ-003.10: tests/project/test_telemetry.py test_ac_proj_003_10_telemetry_in_a_module (~line 76) calls load_config on billing's folder, which only reads that file and never refuses; the refusal is in load_module_config (src/specworks/core/workspace.py:195), as designed and as for 'tools' (AC-PROJ-003.7). The test fails with DID NOT RAISE.
+  - **Proposal**: back to test: load the workspace (run_json('context') or load_workspace) and assert the error names 'telemetry' and the top level, like tests/project/test_modules.py:23 for AC-PROJ-003.7
+  - **Decision**: back to test: load the workspace (as tests/project/test_modules.py does for AC-PROJ-003.7) instead of load_config on billing's config
+  - done in test: test_ac_proj_003_10 now loads the workspace via run_json('context') and asserts the error names 'telemetry' and the top level, like AC-PROJ-003.7
+  - confirmed in review: test_ac_proj_003_10 now runs 'context' on the workspace and asserts exit 1 with an error naming 'telemetry' and the top level; passes
+- [x] R2 **test-gap** AC-PROJ-030.2, AC-PROJ-030.4, AC-PROJ-030.5: tests/project/test_telemetry.py sets up with opt_in then add_change, and 'new' itself records a 'new' event (REQ-CLI-017), so events.jsonl and .gitignore exist before the test acts: 030.2 finds .gitignore already there, 030.4 cannot mkdir events.jsonl (FileExistsError), 030.5 sees ['new','gate','commit'] instead of ['gate','commit']. The code is right.
+  - **Proposal**: back to test: create the change before opting in (add_change, then opt_in), or remove events.jsonl and .gitignore after new, so each test starts from a change folder with no log
+  - **Decision**: back to test: create the change before opting in, so new does not pre-create events.jsonl and .gitignore
+  - done in test: tests for AC-PROJ-030.2, 030.4, 030.5 create the change before opt_in, so new does not pre-create events.jsonl and .gitignore
+  - confirmed in review: tests for AC-PROJ-030.2, 030.4, 030.5 create the change before opt_in, so the log and .gitignore start absent; all pass (992 passed)
+- [x] R3 **spec-gap** AC-CLI-017.3 (specs/cli/spec.md:35): the WHEN runs 'finding add code "secret text" ...', but 'code' is not a finding type (spec-gap, design-gap, test-gap, code-gap, tag, quality), so that command would be refused; tests/cli/test_telemetry.py:126 uses 'code-gap' and the code is right
+  - **Proposal**: back to specify: MODIFIED AC-CLI-017.3 so its WHEN reads 'finding add code-gap "secret text" --proposal "other text"'; no test or code change
+  - **Decision**: back to specify: change AC-CLI-017.3's step to finding add code-gap "secret text" --proposal "other text"
+  - done in specify: AC-CLI-017.3's WHEN now runs finding add code-gap (REQ-CLI-017 wording only)
+  - done in design: no API change: the finding type is a value passed to finding add, the agreed interfaces and stubs stay as they are
+  - done in test: no test change: tests/cli/test_telemetry.py AC-CLI-017.3 already runs finding add code-gap "secret text" --proposal "other text", matching the criterion
+  - done in code: no code change: finding add already accepts the code-gap type and REQ-CLI-017 telemetry records no finding text (src/specworks/cli/telemetry.py)
+  - confirmed in review: AC-CLI-017.3's WHEN now runs finding add code-gap, matching tests/cli/test_telemetry.py test_ac_cli_017_3; no test or code change needed; 992 tests pass
+
+## Changed files without tags
+
+<!-- Every file `specworks review` lists under untracedSource/untracedTests,
+with why it needs no tag (config, refactor, helper of REQ-...) or the
+finding that covers it. -->
+
+The base `origin/main` does not hold the previous change, test-folders-per-capability (closed and committed on this branch, not pushed yet), so the diff lists its test moves. Its own review covered them.
+
+- `tests/support/langfuse.py`: test helper for this change (fake Langfuse server, `opt_in`, `event_lines`), used by the tests tagged AC-PROJ-030.*, AC-INTEG-008.*, AC-INTEG-009.*, AC-CLI-012.5-7, AC-CLI-017.*, AC-CLI-018.*
+- `tests/support/archive.py`, `tests/support/capability_tests.py`, `tests/support/cli.py`, `tests/support/close_phase.py`, `tests/support/code_phase.py`, `tests/support/commit.py`, `tests/support/config_set.py`, `tests/support/design_phase.py`, `tests/support/diagrams.py`, `tests/support/find_requirements.py`, `tests/support/findings.py`, `tests/support/merge.py`, `tests/support/modules.py`, `tests/support/propose.py`, `tests/support/run_cache.py`, `tests/support/skills.py`: shared test helpers from test-folders-per-capability (outside this change's diff since b7f8118)
+- `tests/test_archive.py`, `tests/test_cli.py`, `tests/test_close_phase.py`, `tests/test_code_phase.py`, `tests/test_design_phase.py`, `tests/test_diagrams.py`, `tests/test_modules.py`, `tests/test_propose.py`, `tests/test_run_cache.py`, `tests/test_skills.py`, `tests/test_test_phase.py`: untagged tests left at the top by test-folders-per-capability (skill wording, walkthrough-style checks); not part of this change
+- `tests/test_capability_tests.py` (deleted): split into the capability folders by test-folders-per-capability
+
+## Summary
+
+<!-- Two or three lines: what was found, what changed in code, specs and design, and anything sent back to an earlier phase. -->
+
+The code matches the specs and the design. Each listed command records its event with only its own fields, and the log is kept git-ignored. Settings and keys are read only from the `SPECWORKS_LANGFUSE_*` variables, and no key appears in any reason. Events are sent in batches of 100, with `events.sent` keeping count. Push and commit both report on sending, `status` shows the IDs, and `config set telemetry.*` works. Cycle 1 sent two test-gaps back to test (R1, R2); cycle 2 fixed them in `tests/project/test_telemetry.py` and they are closed: 992 tests pass. Cycle 2 found one spec-gap (R3): AC-CLI-017.3 runs `finding add code`, which is not a finding type; it is proposed back to specify to read `code-gap`, as the test already does. No change to code or design is proposed. Cycle 3 confirmed the spec now reads `finding add code-gap`, matching the test, and closed R3 with no test or code change: 992 tests pass.

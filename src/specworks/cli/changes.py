@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import time
+
 import typer
 
 from ..core.changes import PHASES, ChangeError, ChangeNotFound, commit_phase, create_change, set_phase
@@ -12,6 +14,7 @@ from ..workflow.artifacts import artifact_states, half_progress, instructions
 from ..workflow.review import detect_base
 from .app import app, task_app
 from .output import ChangeOpt, JsonOpt, change_dict, emit, require_change, resolve_archived, resolve_change, workspace
+from .telemetry import record, send_after_commit, telemetry_ids
 
 
 # @req REQ-CLI-006
@@ -27,6 +30,7 @@ def new(
 ) -> None:
     """Create a new change folder (phase: refine) in the current module, on its own branch unless branch_per_change is false."""
     ws = workspace(as_json)
+    started = time.monotonic()
     target = ws.module(module) if module is not None else ws.current
     require_repo(target.root)
     plan = None
@@ -52,10 +56,12 @@ def new(
             lines.append(f"started from {plan.started_from}, not the base branch")
     if stayed_on is not None:
         lines.append(f"stayed on {stayed_on}")
+    record(ws, target, change, "new", started)
     emit(data, as_json, "\n".join(lines))
 
 
 # @req REQ-CLI-002
+# @req REQ-CLI-019
 @app.command()
 def status(change: str = ChangeOpt, as_json: bool = JsonOpt) -> None:
     """Phase and artifact states (done / ready / blocked) of a change, active or archived."""
@@ -65,7 +71,7 @@ def status(change: str = ChangeOpt, as_json: bool = JsonOpt) -> None:
     except ChangeNotFound:
         mod, ch = resolve_archived(ws, change)
     states = artifact_states(ch)
-    data = {**change_dict(ws, mod, ch), "phases": list(PHASES), "artifacts": states}
+    data = {**change_dict(ws, mod, ch), "phases": list(PHASES), "artifacts": states, "telemetry": telemetry_ids(mod, ch)}
     head = f"{mod.qualify(ch.name)} (phase: {ch.phase})"
     if (halves := half_progress(ch)) is not None:
         data["halves"] = halves
@@ -86,10 +92,12 @@ def abandon(
 ) -> None:
     """Archive a change without merging its specs: it will not be built. Its name stays taken."""
     ws, mod, ch = require_change(change, as_json)
+    started = time.monotonic()
     if not reason.strip():
         raise ChangeError("say why with --reason (e.g. --reason 'replaced by add-deadlines')")
     phase = ch.phase
     ch.path = archive_change(ch, mod.config.archive_path, abandoned=reason.strip())
+    record(ws, mod, ch, "abandon", started)  # into the archived folder; never the reason
     emit(change_dict(ws, mod, ch), as_json, f"{mod.qualify(ch.name)}: abandoned in phase {phase}, archived at {ws.rel(ch.path)}")
 
 
@@ -107,7 +115,10 @@ def phase(
         hint = f"specworks phase {old_to} --change {to}" if old_to is not None else f"specworks phase {to} --change <ref>"
         raise ChangeError(f"give the change with --change, like `specworks start` and `specworks gate`: {hint}")
     ws, mod, ch = require_change(change, as_json)
+    started = time.monotonic()
+    before = ch.phase
     set_phase(ch, to, ws.root)
+    record(ws, mod, ch, "phase", started, **{"from": before, "to": ch.phase})
     emit(change_dict(ws, mod, ch), as_json, f"{mod.qualify(ch.name)}: phase → {ch.phase}")
 
 
@@ -130,8 +141,11 @@ def commit(
         mod, ch = resolve_change(ws, change)
     except ChangeNotFound:
         mod, ch = resolve_archived(ws, change)
+    started = time.monotonic()
     ref = mod.qualify(ch.name)
     result = commit_phase(ws.root, ref, ch, message, trailer or ())
+    record(ws, mod, ch, "commit", started, committed=len(result.committed), made=result.commit is not None)
+    sent = send_after_commit(ws, mod, ch)  # never changes the exit code
     data = {
         "ref": ref,
         "commit": result.commit,
@@ -139,6 +153,7 @@ def commit(
         "committed": result.committed,
         "leftOut": result.left_out,
         "alreadyDirty": result.already_dirty,
+        "telemetry": sent,
     }
     if result.commit is None:
         lines = [f"nothing to commit for {ref}: no file changed since the phase started"]
@@ -146,6 +161,11 @@ def commit(
         lines = [f"{result.commit} {result.subject}", *(f"  {p}" for p in result.committed)]
     lines += [f"left out (unchanged since the phase started): {p}" for p in result.left_out]
     lines += [f"already dirty when the phase started: {p}" for p in result.already_dirty]
+    if sent is not None:
+        if sent["queued"]:
+            lines.append(f"telemetry: events not sent ({sent['reason']}); {sent['queued']} queued, send them with `specworks telemetry push --change {ref}`")
+        else:
+            lines.append(f"telemetry: sent {sent['sent']} event(s)")
     emit(data, as_json, "\n".join(lines))
 
 

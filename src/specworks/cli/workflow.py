@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import time
 from collections.abc import Callable
 from pathlib import Path
 
@@ -21,6 +22,7 @@ from ..workflow.review import REVIEW_FILE, Finding, FindingError, add_finding, c
 from ..workflow.validate import GROUPS, summary, validate_change
 from .app import app, finding_app
 from .output import ChangeOpt, FreshOpt, JsonOpt, change_dict, emit, fail, require_change, workspace
+from .telemetry import record
 
 
 @app.command()
@@ -37,8 +39,10 @@ def gate(
 ) -> None:
     """Check whether a change has finished a phase (exit 1 if a blocking check fails)."""
     ws, mod, ch = require_change(change, as_json)
+    started = time.monotonic()
     ok, checks = run_gate(GateContext(ws, mod, ch, run_tests=not no_run, base=base, allow_open=allow_open, reuse_runs=not fresh), phase)
     data = {**change_dict(ws, mod, ch), "gate": phase, "passed": ok, "checks": [c.to_dict() for c in checks]}
+    record(ws, mod, ch, "gate", started, gate=phase, passed=ok, failed=[c.name for c in checks if c.blocking and not c.ok])
     emit(data, as_json, "\n".join(_check_lines(checks) + [f"gate {phase}: {'passed' if ok else 'NOT passed'}"]))
     if not ok:
         raise typer.Exit(1)
@@ -67,6 +71,7 @@ def start(
     phase (or re-entering it) needs the gate of the phase just before it.
     """
     ws, mod, ch = require_change(change, as_json)
+    began = time.monotonic()
     before = ch.phase
     started, gates = start_phase(GateContext(ws, mod, ch, run_tests=not no_run, base=base, reuse_runs=not fresh), phase)
     data = {
@@ -80,6 +85,7 @@ def start(
         lines += [f"gate {g}:"] + _check_lines(checks)
     ref = mod.qualify(ch.name)
     lines.append(f"{ref}: phase {before} → {phase}" if started else f"{ref}: stays in {before}; gate {gates[-1][0]} NOT passed")
+    record(ws, mod, ch, "start", began, to=phase, started=started)
     emit(data, as_json, "\n".join(lines))
     if not started:
         raise typer.Exit(1)
@@ -118,6 +124,7 @@ def cycle(
 ) -> None:
     """After a review: the steps the next build cycle runs (design, test, code, review) and where it starts, from review.md's open findings."""
     ws, mod, ch = require_change(change, as_json)
+    started = time.monotonic()
     result = next_cycle(ch)
     data = {**change_dict(ws, mod, ch), **result}
     if not result["reviewed"]:
@@ -130,6 +137,7 @@ def cycle(
             lines.append(f"a spec finding: stop the build and run {result['handOver']} {mod.qualify(ch.name)}")
         else:
             lines.append(f"next cycle: {' -> '.join(result['phases'])}")
+    record(ws, mod, ch, "cycle", started, phases=list(result["phases"]), open=len(result["open"]))
     emit(data, as_json, "\n".join(lines))
 
 
@@ -170,7 +178,7 @@ def finding_add(
 
     Implements REQ-CLI-011.
     """
-    _write_finding(change, as_json, lambda ch: add_finding(ch, kind, text, proposal))
+    _write_finding(change, as_json, "add", lambda ch: add_finding(ch, kind, text, proposal))
 
 
 # @req REQ-CLI-011
@@ -185,7 +193,7 @@ def finding_decide(
 
     Implements REQ-CLI-011.
     """
-    _write_finding(change, as_json, lambda ch: decide_finding(ch, finding_id, decision))
+    _write_finding(change, as_json, "decide", lambda ch: decide_finding(ch, finding_id, decision))
 
 
 # @req REQ-CLI-011
@@ -201,7 +209,7 @@ def finding_done(
 
     Implements REQ-CLI-011.
     """
-    _write_finding(change, as_json, lambda ch: mark_finding_done(ch, finding_id, step, text))
+    _write_finding(change, as_json, "done", lambda ch: mark_finding_done(ch, finding_id, step, text))
 
 
 # @req REQ-CLI-011
@@ -216,13 +224,14 @@ def finding_close(
 
     Implements REQ-CLI-011.
     """
-    _write_finding(change, as_json, lambda ch: close_finding(ch, finding_id, text))
+    _write_finding(change, as_json, "close", lambda ch: close_finding(ch, finding_id, text))
 
 
 # @req REQ-CLI-011
-def _write_finding(ref: str, as_json: bool, write: Callable[[Change], Finding]) -> None:
+def _write_finding(ref: str, as_json: bool, action: str, write: Callable[[Change], Finding]) -> None:
     """Run one of review.md's writers on the change and print the finding as `specworks cycle` reads it, with review.md's path."""
     ws, mod, ch = require_change(ref, as_json)
+    started = time.monotonic()
     path = ch.path / REVIEW_FILE
     try:
         finding = write(ch)
@@ -230,6 +239,7 @@ def _write_finding(ref: str, as_json: bool, write: Callable[[Change], Finding]) 
         raise FindingError(str(exc).replace(str(path), ws.rel(path))) from None
     rel = ws.rel(path)
     data = {**change_dict(ws, mod, ch), "finding": {**finding.to_dict(), "done": finding.done}, "path": rel}
+    record(ws, mod, ch, "finding", started, action=action, id=finding.id, type=finding.type, step=finding.phase)  # never the finding's text
     emit(data, as_json, f"{finding.id} {finding.type or '?'} -> {finding.phase} ({'done' if finding.done else 'open'})\n{rel}")
 
 
@@ -250,8 +260,10 @@ def validate_cmd(
 ) -> None:
     """Final read-only check before close (validate phase): completeness, correctness, coherence (exit 1 on FAIL)."""
     ws, mod, ch = require_change(change, as_json)
+    started = time.monotonic()
     checks = validate_change(GateContext(ws, mod, ch, run_tests=not no_run, base=base, reuse_runs=not fresh))
     result = summary(checks)
+    record(ws, mod, ch, "validate", started, verdict=result["verdict"], critical=result["critical"], warnings=result["warnings"])
     data = {**change_dict(ws, mod, ch), **result, "checks": [c.to_dict() for c in checks]}
     lines = []
     for group in GROUPS:
@@ -281,6 +293,7 @@ def close(
     if no_run and not dry_run:
         fail("--no-run only goes with --dry-run: the real close runs test, lint and typecheck before writing anything", as_json)
     ws, mod, ch = require_change(change, as_json)
+    started = time.monotonic()
     ref = mod.qualify(ch.name)
     # The architecture is checked first: a missing file fails fast, before the project's commands run.
     missing = [] if mod.architecture_path.is_file() else [ws.rel(mod.architecture_path)]
@@ -309,6 +322,8 @@ def close(
         data["archivedTo"] = ws.rel(target)
         data["phase"] = "done"
         lines.append(f"archived -> {data['archivedTo']}")
+        ch.path = target  # the event goes into the archived folder; the commit that follows sends it
+        record(ws, mod, ch, "close", started, merged=len(merges))
     emit(data, as_json, "\n".join(lines))
 
 
@@ -319,12 +334,16 @@ def run(
     as_json: bool = JsonOpt,
 ) -> None:
     """Run one of the project's configured commands in the right module folder (exit code passes through)."""
+    ch = None
     if change:
-        ws, mod, _ = require_change(change, as_json)
+        ws, mod, ch = require_change(change, as_json)
     else:
         ws = workspace(as_json)
         mod = ws.current
+    started = time.monotonic()
     result = cached_run(ws, mod, key, reuse=False, capture=as_json)
+    if ch is not None:
+        record(ws, mod, ch, "run", started, key=key, exitCode=result.exit_code)
     if as_json:
         typer.echo(
             json.dumps(

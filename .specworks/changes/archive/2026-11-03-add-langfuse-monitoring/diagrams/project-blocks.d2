@@ -1,0 +1,27 @@
+direction: right
+
+project: project (src/specworks/core) {
+  config: config.py {
+    tooltip: "Config.telemetry: TelemetryConfig(langfuse, host); refused in a module"
+  }
+  config_file: config_file.py {
+    tooltip: "config set telemetry.langfuse / telemetry.host"
+  }
+  events: events.py (new) {
+    tooltip: "record_event, read_unsent, mark_sent, trace_id, session_id"
+  }
+  changes: changes.py {
+    tooltip: "Change: path, name, created"
+  }
+  log: "<change>/events.jsonl + events.sent + .gitignore" {
+    shape: page
+  }
+
+  config_file -> config: reloads to check
+  events -> changes: change folder, created
+  events -> log: appends, reads, counts sent
+}
+
+callers: cli and integrations
+callers -> project.config: telemetry settings
+callers -> project.events: record, unsent, mark sent, trace ID

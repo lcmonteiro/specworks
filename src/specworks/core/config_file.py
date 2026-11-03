@@ -14,10 +14,12 @@ from .config import (
     CONFIG_FILE,
     MAX_CONTEXT_BYTES,
     SCOPED_TEST_KEY,
+    TELEMETRY_KEYS,
     WORKFLOW_DIR,
     Config,
     ConfigError,
     check_scoped_command,
+    check_telemetry_host,
     load_config,
     theme_id,
     theme_name,
@@ -25,7 +27,7 @@ from .config import (
 from .files import read_text
 from .validators import validate_capability_name, validate_module_name, validate_prefix, validate_relative
 
-SETTABLE_KEYS: tuple[str, ...] = ("context", *(f"commands.{key}" for key in COMMAND_KEYS), "branch_per_change")
+SETTABLE_KEYS: tuple[str, ...] = ("context", *(f"commands.{key}" for key in COMMAND_KEYS), "branch_per_change", *(f"telemetry.{key}" for key in TELEMETRY_KEYS))
 """The keys `specworks config set` writes, in the order an error names them. Implements REQ-PROJ-025."""
 
 # @req REQ-PROJ-026, REQ-PROJ-027
@@ -239,10 +241,15 @@ def set_config_value(root: Path, key: str, value: str) -> None:
     An empty ``value`` clears the key (``branch_per_change`` takes only ``true`` or ``false``). The file is
     edited as text and reloaded; when it does not load with just that key changed, it is restored. Raises
     ``ConfigError`` for an unknown key, a context over ``MAX_CONTEXT_BYTES``, a ``branch_per_change`` that is
-    not ``true`` or ``false``, a ``test_scoped`` without ``{paths}``, or an edit that does not load back. Implements REQ-PROJ-025.
+    not ``true`` or ``false``, a ``test_scoped`` without ``{paths}``, a ``telemetry.langfuse`` that is not ``true`` or
+    ``false``, a ``telemetry.host`` that is not an http(s) URL, or an edit that does not load back. Implements REQ-PROJ-025, REQ-PROJ-032.
     """
     if key not in SETTABLE_KEYS:
         raise ConfigError(f"unknown config key '{key}'; use one of: {', '.join(SETTABLE_KEYS)}")
+    if key == "telemetry.langfuse" and value not in ("true", "false"):
+        raise ConfigError("telemetry.langfuse must be true or false")
+    if key == "telemetry.host":
+        check_telemetry_host(value)  # refused before writing, with the loader's message
     expected: object
     if key == "branch_per_change":
         if value not in ("true", "false"):
@@ -266,9 +273,10 @@ def set_config_value(root: Path, key: str, value: str) -> None:
         _set_top_line(lines, key, value)
     else:
         field, name = key.split(".")
-        _set_command(lines, name, value)
-        commands = before.get(field)
-        expected = {**(commands if isinstance(commands, dict) else {}), name: value or None}
+        _set_block_line(lines, field, name, value, literal=key == "telemetry.langfuse")
+        block = before.get(field)
+        written: object = value == "true" if key == "telemetry.langfuse" else value or None
+        expected = {**(block if isinstance(block, dict) else {}), name: written}
     config_file.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
     try:
@@ -291,20 +299,25 @@ def _block_end(lines: list[str], start: int) -> int:
     return end
 
 
-# @req REQ-PROJ-025
-def _set_command(lines: list[str], name: str, value: str) -> None:
-    """Write ``name: value`` as one line of the ``commands:`` block, replacing that key's line or adding one."""
+# @req REQ-PROJ-025, REQ-PROJ-032
+def _set_block_line(lines: list[str], block: str, name: str, value: str, literal: bool = False) -> None:
+    """Write ``name: value`` as one line of the ``block:`` mapping (``commands``, ``telemetry``), replacing that key's line or adding one.
+
+    ``literal`` writes ``value`` as YAML (``true``); otherwise it is written so that it loads back as that text.
+    """
     entry = f"{name}:"
-    if value:
+    if literal:
+        entry += f" {value}"
+    elif value:
         try:
             plain = yaml.safe_load(f"{name}: {value}") == {name: value}
         except yaml.YAMLError:
             plain = False
         entry += f" {value}" if plain else f" {json.dumps(value, ensure_ascii=False)}"
-    header = re.compile(r"^commands:\s*(\{\s*\})?\s*(#.*)?$")
+    header = re.compile(rf"^{re.escape(block)}:\s*(\{{\s*\}})?\s*(#.*)?$")
     for i, line in enumerate(lines):
         if match := header.match(line):
-            lines[i] = f"commands: {match[2]}" if match[2] else "commands:"
+            lines[i] = f"{block}: {match[2]}" if match[2] else f"{block}:"
             end = _block_end(lines, i)
             for j in range(i + 1, end):
                 if found := re.match(rf"^([ \t]+){re.escape(name)}:(\s|$)", lines[j]):
@@ -312,7 +325,7 @@ def _set_command(lines: list[str], name: str, value: str) -> None:
                     return
             lines.insert(end, f"  {entry}")
             return
-    lines += ["", "commands:", f"  {entry}"]
+    lines += ["", f"{block}:", f"  {entry}"]
 
 
 # @req REQ-PROJ-025

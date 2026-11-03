@@ -10,10 +10,10 @@ specs: specs {
   tooltip: "src/specworks/specs: spec files, checks, tasks, trace, merge at close"
 }
 integrations: integrations {
-  tooltip: "src/specworks/tools: D2 diagrams, installing skills"
+  tooltip: "src/specworks/tools: D2 diagrams, installing skills, Langfuse"
 }
 project: project {
-  tooltip: "src/specworks/core: config, workspace, changes, runner, git"
+  tooltip: "src/specworks/core: config, workspace, changes, event log, runner, git"
 }
 skills: skills and templates (packaged data) {
   shape: page
@@ -21,13 +21,13 @@ skills: skills and templates (packaged data) {
 
 cli -> workflow: gates, review, validate
 cli -> specs: check, trace, spec, close merge
-cli -> integrations: diagrams, skills
-cli -> project: context, config, changes
+cli -> integrations: diagrams, skills, send events
+cli -> project: context, config, changes, record events
 workflow -> specs: specs, tags, trace
 workflow -> project: changes, commands
 workflow -> integrations: diagram state
 specs -> project: capabilities, files
 specs -> integrations: diagram checks
-integrations -> project: config, tool IDs
+integrations -> project: config, tool IDs, event log
 integrations -> skills: installs
 workflow -> skills: templates, schema

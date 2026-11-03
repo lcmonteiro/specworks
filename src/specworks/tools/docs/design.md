@@ -8,6 +8,10 @@ specworks' integrations with outside tools, in `src/specworks/tools`:
   tells whether an SVG is still current.
 - **Skills** (`skills.py`): the packaged agent skills (`src/specworks/skills`)
   installed for Claude Code and GitHub Copilot.
+- **Langfuse** (`langfuse.py`): the telemetry settings from the config and the
+  environment, and sending a change's unsent events to Langfuse.
+
+![integrations](diagrams/integrations-blocks.svg)
 
 ## Decisions
 
@@ -110,6 +114,31 @@ Hashes kept in a manifest were also rejected: they add one more file and miss
 hand edits. `update_skills` writes only the files that differ, so an update
 of current skills touches nothing. (upgrade-project, dedupe-copilot-skills)
 
+### Telemetry settings are computed once, keys only from the environment
+
+`langfuse_settings(config, env)` returns the state (`on`, `keys missing`,
+`off`), the host and the keys. Keys come only from
+`SPECWORKS_LANGFUSE_PUBLIC_KEY` and `SPECWORKS_LANGFUSE_SECRET_KEY`;
+`SPECWORKS_LANGFUSE_HOST` overrides `telemetry.host`, and with neither the
+host is `https://cloud.langfuse.com`. The plain `LANGFUSE_*` variables are
+never read, so a project's own Langfuse keys never receive specworks data.
+Only `send_events` uses the keys; `LangfuseSettings`' repr leaves them out
+and no error string is built from them. (add-langfuse-monitoring)
+
+### Each event is a span with a stable ID
+
+`send_events` posts `{"batch": [...]}` to `<host>/api/public/ingestion` with
+basic auth, stdlib `urllib` only, a 5 s timeout, up to 100 events per batch:
+one `trace-create` (ID, name and `sessionId` = ref, metadata `module`), then
+one `span-create` per line (`name` = event, `endTime` = `at`, `startTime` =
+`at - ms`, metadata = the other fields), so Langfuse shows durations. A span's
+ID is `<trace ID>-<line number>`, so a batch sent again after a lost answer
+updates the same spans. Any 2xx counts as accepted and adds the batch's size
+to `events.sent`; sending stops at the first failed batch, so one slow host
+costs one timeout. It never raises for network or server failures: the reason
+is built from the status code, or the exception type and the URL's host.
+(add-langfuse-monitoring)
+
 ## Interfaces
 
 - `src/specworks/tools/diagrams.py`: `Diagram`, `diagrams_in(folder)`,
@@ -129,6 +158,12 @@ of current skills touches nothing. (upgrade-project, dedupe-copilot-skills)
   SkillsState` (`state`: `current` | `outdated` | `none`, `files`:
   `SkillFile(path, reason)`), `update_skills(root, tools) -> (updated,
   removed)`.
+- `src/specworks/tools/langfuse.py`: `DEFAULT_HOST`, `TIMEOUT` (5.0),
+  `BATCH_SIZE` (100), `ENV_PUBLIC_KEY`, `ENV_SECRET_KEY`, `ENV_HOST`,
+  `LangfuseSettings` (`state`, `host`, `missing`; keys with `repr=False`),
+  `langfuse_settings(config, env=None) -> LangfuseSettings`, `SendResult`
+  (`sent`, `queued`, `reason`),
+  `send_events(change, settings, trace, session, module_label) -> SendResult`.
 
 ## Constraints
 
@@ -138,3 +173,5 @@ of current skills touches nothing. (upgrade-project, dedupe-copilot-skills)
   saved `tools:` list lives only in the top-level config.
 - Only `specworks-…` names (and retired ones) are ever removed; a user's own
   skills and prompt files are never touched.
+- The only outbound HTTP is to the configured Langfuse host, only when
+  telemetry is on and both keys are set. Keys are never written or printed.

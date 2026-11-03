@@ -16,6 +16,8 @@ builds on:
   (`refine, specify, design, implement, review, validate, close, done`).
 - **Runner** (`runner.py`): running the project's own commands and reusing
   their results, including the scoped test command filled with test folders.
+- **Events** (`events.py`): a change's git-ignored telemetry log
+  (`events.jsonl`, `events.sent`) and its trace and session IDs.
 - **Helpers** (`files.py`, `git.py`, `errors.py`): reading project files,
   running git, and the user-facing error types.
 
@@ -163,6 +165,39 @@ keys in the same order. `tools` belongs to the top level only: a module's
 config that sets it is refused when the workspace loads the module, since
 skills are installed once, at the root. (dedupe-copilot-skills)
 
+### Telemetry is a small top-level block
+
+`telemetry: {langfuse: bool, host: str}` loads into `TelemetryConfig`
+(`Config.telemetry` is `None` when the block is absent; callers read
+`ws.top.config.telemetry or TelemetryConfig()`), with `host` checked to start
+with `http://` or `https://`. A module's config that sets it is refused in
+`load_module_config`, next to `tools`, naming the top level's config.
+`config set` handles `telemetry.langfuse` and `telemetry.host` with the same
+one-line block edit as `commands.<key>`, always in the top level's config.
+(add-langfuse-monitoring)
+
+### A change's event log lives in its folder, git-ignored there
+
+`record_event` appends one JSON line (`at` in UTC, `event`, then the fields)
+to `events.jsonl` in the change folder with one `write` in append mode, and
+writes a `.gitignore` naming `events.jsonl` and `events.sent` with the first
+event, so no project needs its own ignore rule and the log moves with the
+folder at archive. It does nothing when telemetry is off and never raises.
+`events.sent` holds a count of lines already sent, not IDs: the log is
+append-only, so `read_unsent` returns the lines after it (each with its line
+number), and a line that does not parse is skipped but still counted, so one
+bad line never blocks the queue. A log under `.git/` and a committed log were
+rejected (out of sight; dirties the folder on every command). The run cache's
+fingerprint excludes `.specworks/`, so the log never stops a result being
+reused. (add-langfuse-monitoring)
+
+### A change's trace ID is stable
+
+`trace_id` is the first 32 hex characters of
+`sha256("<module label>\n<name>\n<created>")`, valid as a Langfuse and W3C
+trace ID; `session_id` is the change's ref. So a resend updates the same trace
+and agent telemetry can later be joined to it. (add-langfuse-monitoring)
+
 ### Command results are reused on an identical tree
 
 The fingerprint covers the command, the folder, `HEAD`, the diff, and the
@@ -298,7 +333,20 @@ where to configure one. (baseline-project, run-unknown-key)
   an unknown key, a context over `MAX_CONTEXT_BYTES`, a non-boolean
   `branch_per_change`, or an edit that does not load back, file restored).
 - Config file: top-level `tools: [claude, copilot]` and
-  `branch_per_change: true|false` (only the top level's is read).
+  `branch_per_change: true|false` (only the top level's is read), and
+  `telemetry: {langfuse: true|false, host: <http(s) URL>}` (top level only).
+- `src/specworks/core/config.py`: `TELEMETRY_KEYS`, `TelemetryConfig`
+  (`langfuse: bool = False`, `host: str = ""`),
+  `load_telemetry(raw, present) -> TelemetryConfig | None` (raises
+  `ConfigError`), `Config.telemetry`; `SETTABLE_KEYS` also holds
+  `telemetry.langfuse` and `telemetry.host`.
+- `src/specworks/core/events.py`: `EVENTS_FILE` (`events.jsonl`), `SENT_FILE`
+  (`events.sent`), `IGNORE_FILE` (`.gitignore`),
+  `record_event(change, enabled, event, **fields)` (never raises),
+  `read_unsent(change) -> (sent, events)`, `mark_sent(change, count)`,
+  `trace_id(module_label, change) -> str`, `session_id(ref) -> str`.
+
+![project](diagrams/project-blocks.svg)
 - `src/specworks/core/changes.py`: `PHASES`, `HALVES`, `Change`, `create_change`,
   `load_change`, `list_changes`, `list_archived`, `archived_as`,
   `set_phase(change, phase, root=None)`, `create_change(cfg, name, root=None)`

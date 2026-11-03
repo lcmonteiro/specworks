@@ -1,0 +1,25 @@
+direction: right
+
+integrations: integrations (src/specworks/tools) {
+  diagrams: diagrams.py
+  skills: skills.py
+  langfuse: langfuse.py {
+    tooltip: "langfuse_settings, send_events"
+  }
+}
+
+project: project {
+  config: TelemetryConfig
+  events: events.py
+}
+env: "SPECWORKS_LANGFUSE_* environment" {
+  shape: page
+}
+server: Langfuse {
+  shape: cloud
+}
+
+integrations.langfuse -> project.config: opt-in, host
+integrations.langfuse -> env: keys, host override
+integrations.langfuse -> project.events: unsent events, mark sent, trace ID
+integrations.langfuse -> server: "POST /api/public/ingestion (basic auth, 5 s timeout)"
