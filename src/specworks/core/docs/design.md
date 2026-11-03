@@ -6,7 +6,7 @@ The project model, in `src/specworks/core`, is what every other capability
 builds on:
 - **Config** (`config.py`, `validators.py`): finding the project's
   `.specworks/config.yml` and loading it into a validated `Config` (capabilities, modules, globs,
-  commands, diagram settings, `branch_per_change`).
+  commands, diagram settings, `branch_per_change`, `tests_dir`).
 - **Config file** (`config_file.py`): writing the default config, adding
   module and capability entries, saving the AI tools a project uses, and
   setting `commands.<key>`, `context` and `branch_per_change`.
@@ -15,7 +15,7 @@ builds on:
 - **Changes** (`changes.py`): changes in flight and archived, and their phases
   (`refine, specify, design, implement, review, validate, close, done`).
 - **Runner** (`runner.py`): running the project's own commands and reusing
-  their results.
+  their results, including the scoped test command filled with test folders.
 - **Helpers** (`files.py`, `git.py`, `errors.py`): reading project files,
   running git, and the user-facing error types.
 
@@ -76,6 +76,17 @@ will store it, so its error names the capability that owns the prefix or
 folder. Sharing a folder on purpose (one docs file per capability) was rejected
 as unasked-for. (baseline-project, unique-capability-paths)
 
+### A capability's test folder is derived, never required
+
+A module's `tests_dir` (default `tests`) gives each capability the test folder
+`<module root>/<tests_dir>/<name>`; a capability's own `tests:` overrides it
+(`Capability.tests_path(root, tests_dir)`, mirroring `docs_path`). A
+capability new in a change, with no `Capability` yet, uses the default. Both
+values are checked like `docs_dir` and a capability path: relative, inside the
+project. Test folders may be shared or nested, unlike docs folders: a shared
+folder only runs the same tests twice. The folder only scopes which tests the
+review gate runs; tag scanning still uses `test_globs`. (capability-tests)
+
 ### Config edits keep comments
 
 Entries are added by editing the config as text, never by dumping YAML. The
@@ -108,7 +119,9 @@ and the error says to set it by hand. So a flow mapping
 refused and restored. A trailing comment on the replaced line is dropped: it
 is about the old value, and `init` writes none. A round-trip YAML library was
 rejected as a new dependency for two keys; other keys stay hand-edited or
-keep their own commands. `branch_per_change` is settable too: its value must
+keep their own commands. A non-empty `commands.test_scoped` without
+`{paths}` is refused before writing, with the message `load_config` gives.
+`branch_per_change` is settable too: its value must
 be exactly `true` or `false` (refused before the file is read, an empty value
 included, since clearing would only mean the default `true`); an uncommented
 top-level `branch_per_change:` line is replaced, else the line is appended
@@ -146,6 +159,21 @@ read: whenever the fingerprint can't see the whole tree, the command runs for
 real rather than risk a stale result. Untracked names count as the raw bytes
 git reports, so a name that isn't UTF-8 is fingerprinted like any other.
 (baseline-project, run-reuse-unreadable-files)
+
+### The scoped test command is filled with folders, then reused like any command
+
+`commands.test_scoped` holds a `{paths}` placeholder (refused at load
+without one). `scoped_command` makes each folder relative to the module's
+folder without resolving it (so a symlinked test folder keeps its own path),
+writes it with POSIX separators, quotes it (`shlex.quote`;
+`subprocess.list2cmdline` on Windows, whose shell has no single quotes),
+joins them with spaces and replaces every `{paths}`. `run_scoped` passes the
+filled command to `cached_run` through its keyword-only `command` argument, so
+the cache key is the filled command: the same folders reuse, other folders
+run. `run_command` refuses key `test_scoped` without an explicit command, so
+`specworks run test_scoped` fails: only the review gate knows the folders. A
+separate cache for scoped runs was rejected as a second copy of the reuse
+rules. (capability-tests)
 
 ### `test` and `code` are the halves of `implement`, not phases
 
@@ -233,7 +261,11 @@ where to configure one. (baseline-project, run-unknown-key)
   `load_config(root) -> Config`, `Config` (`dir`, `config_path`,
   `changes_dir`, `changes_path`, `archive_dir`, `archive_path`, `tools`:
   the saved tool IDs or `None`, `branch_per_change: bool = True`),
-  `CONFIG_KEYS`, `TOOL_IDS`, `Capability`, `DiagramSettings`.
+  `CONFIG_KEYS`, `TOOL_IDS`, `Capability` (`tests`,
+  `tests_path(root, tests_dir) -> Path`), `DiagramSettings`, `Config.tests_dir`,
+  `COMMAND_KEYS` (`test`, `test_scoped`, `lint`, `typecheck`, `build`,
+  `format`), `SCOPED_TEST_KEY`, `PATHS_PLACEHOLDER` (`{paths}`),
+  `DEFAULT_TESTS_DIR` (`tests`).
 - `src/specworks/core/workspace.py`: `load_workspace(start=None) -> Workspace | None`,
   `require_workspace(start) -> Workspace`, `Workspace` (`modules`,
   `module(name)`, `split(ref)`, `context_chain`, `merged_context`, `commands`,
@@ -259,7 +291,12 @@ where to configure one. (baseline-project, run-unknown-key)
   (an archived change, phase `done`, defaults to `<ref>: close`).
 - `.change.yaml`: `dirty:` (path -> SHA-256 hex or `deleted`), omitted when
   empty.
-- `src/specworks/core/runner.py`: `run_command`, `cached_run`, `RunResult`.
+- `src/specworks/core/runner.py`: `run_command`, `cached_run` (both with a
+  keyword-only `command: str | None` to run under `key`), `RunResult`,
+  `scoped_command(ws, module, folders) -> str`,
+  `run_scoped(ws, module, folders, reuse=True) -> RunResult`.
+- Config file: module-level `tests_dir: <folder>`, a capability's optional
+  `tests: <folder>`, and `commands.test_scoped` with `{paths}`.
 - `src/specworks/core/files.py`: `read_text(path, keep_newlines=False)`.
 - `src/specworks/core/git.py`: `git`, `git_text`, `GitError`, `GitMissing`,
   `require_repo(path)`, `branch_name(ref)`, `Branch` (`name`, `started_from`),

@@ -406,9 +406,9 @@ The review gate SHALL require review.md with no open finding (with
 `--allow-open`, open findings are a warning), every changed file without tags
 and every deleted source or test file named as a whole path under "Changed
 files without tags", `@req` code for every requirement, an `@ac` test for
-every criterion, no unknown tags, no tags left to removed requirements, and a
-passing test suite. With `--allow-open` and at least one open finding, a
-failing suite SHALL be a warning instead of blocking: the findings carry it to
+every criterion, no unknown tags, no tags left to removed requirements, and passing
+tests: the tests REQ-FLOW-017 picks. With `--allow-open` and at least one open finding,
+failing tests SHALL be a warning instead of blocking: the findings carry it to
 the next cycle. It SHALL warn about each MODIFIED requirement whose behaviour
 changed while none of its tests changed, and about a diff that may be
 incomplete because HEAD is on the base branch.
@@ -710,3 +710,64 @@ by the form a line starts with, else by the finding's type.
 - **GIVEN** a review.md with no findings
 - **WHEN** a `quality` finding is added with the text `list 'back to design only:' in the help` and the proposal `add it after 'back to <step>:'`, and a second one with the proposal `back to test: assert 'done in code:' is read`
 - **THEN** both are added; the first is routed to code by its type and is not design-only, and the second is routed to test
+
+### Requirement: REQ-FLOW-017 The review gate's tests
+
+The review gate SHALL run only the tests of the capabilities the change
+touched: those with a delta spec in the change, and those with a changed file
+(as `specworks review` reports them) under the capability's code path or test
+folder, in any module. It SHALL run each touched capability's module's
+`test_scoped` command once, for that module's touched test folders, and pass
+only when every run passes, naming the folders it ran. It SHALL run the full
+suite (`commands.test`) instead when a touched capability's module has no
+`test_scoped` command, when the change touches no capability, or when a touched
+capability's test folder does not exist, the last with a warning naming each
+missing folder. Validate SHALL keep running the full suite.
+
+#### Scenario: AC-FLOW-017.1 Only the touched capability's tests
+
+- **GIVEN** `commands.test_scoped` set, capabilities `auth` and `billing` with test folders `tests/auth` and `tests/billing`, and a change with a delta spec for `auth` and no changed file under `billing`
+- **WHEN** the review gate runs
+- **THEN** it runs `test_scoped` for `tests/auth` only, its check names `tests/auth`, and a failing test in `tests/billing` does not fail it
+
+#### Scenario: AC-FLOW-017.2 A changed file touches its capability
+
+- **GIVEN** `commands.test_scoped` set and a change with a delta spec for `auth` only
+- **WHEN** the change also changes a file under `billing`'s code path, or under `tests/billing`
+- **THEN** the review gate runs `test_scoped` for `tests/auth` and `tests/billing`
+
+#### Scenario: AC-FLOW-017.3 No scoped test command
+
+- **GIVEN** a project with `commands.test` and no `commands.test_scoped`
+- **WHEN** the review gate runs
+- **THEN** it runs the full suite as before, with no warning about test folders
+
+#### Scenario: AC-FLOW-017.4 A touched capability without a test folder
+
+- **GIVEN** `commands.test_scoped` set, and a change that touches `auth` and `billing`, where `tests/auth` does not exist
+- **WHEN** the review gate runs
+- **THEN** it runs the full suite (`commands.test`) and warns, without blocking, that `tests/auth` does not exist
+
+#### Scenario: AC-FLOW-017.5 No capability touched
+
+- **GIVEN** `commands.test_scoped` set and a change whose only changed files are outside every capability's code path and test folder (an integration test in `tests/`, a README), with no delta spec
+- **WHEN** the review gate runs
+- **THEN** it runs the full suite
+
+#### Scenario: AC-FLOW-017.6 Failing scoped tests
+
+- **GIVEN** `commands.test_scoped` set and a failing test in a touched capability's folder
+- **WHEN** the review gate runs
+- **THEN** it fails on that run; with `--allow-open` and an open finding in review.md, the failure is a warning
+
+#### Scenario: AC-FLOW-017.7 A touched capability in another module
+
+- **GIVEN** module `billing` at `services/billing` with its own `test_scoped`, and a top-level change with a delta spec for `billing:invoices` and one for top-level `auth`
+- **WHEN** the review gate runs
+- **THEN** it runs billing's `test_scoped` in `services/billing` for its `invoices` folder and the top level's for `tests/auth`, and passes only when both pass
+
+#### Scenario: AC-FLOW-017.8 Validate runs everything
+
+- **GIVEN** `commands.test_scoped` set and a change that touches `auth` only
+- **WHEN** `specworks validate` runs
+- **THEN** it runs the full suite (`commands.test`), and a failing test in `tests/billing` fails it

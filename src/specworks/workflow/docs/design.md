@@ -90,7 +90,8 @@ False) says the tests run in review, and the gate passes. One combined check
 was rejected (one failure would hide the others' output), and so was
 `optional_command` (an "ok, not configured" line per missing command). So
 `gate implement` and `start review` run no suite; the tests first meet the
-code in review, whose gate runs the whole suite and blocks on it, except as a
+code in review, whose gate runs the tests (the touched capabilities' ones when
+`commands.test_scoped` is set) and blocks on them, except as a
 warning under `--allow-open` while review.md has an open finding. A broken
 existing test is no longer caught before review. (code-half-no-tests)
 
@@ -108,7 +109,27 @@ changed; a second, lighter `git diff` in the gates was rejected. Without git
 none are known and the suite blocks. The rule is read only for a red suite,
 so a green one costs no diff. Test edits unrelated to the change also relax
 the gate; that is accepted, since the review gate still blocks on the
-whole suite. (fix-no-own-tests-gate)
+tests and validate on the whole suite. (fix-no-own-tests-gate)
+
+### The review gate runs only the touched capabilities' tests
+
+One plan, `test_plan(ctx)` (cached as `ctx.test_plan`, a `TestPlan` of
+`full`, `runs` and `missing`), decides what the review gate runs, so the test
+check and the missing-folder warning agree. A capability is touched when the
+change has a delta for it or a changed file (any kind, deleted included) lies
+under its code path or test folder; nested capabilities can both be touched.
+The plan falls back to the full suite (`commands.test`) when nothing is
+touched, when a touched capability's module has no `test_scoped`, or when a
+touched test folder does not exist; otherwise it runs `test_scoped` once per
+module with that module's touched folders, sorted, modules in workspace order.
+`review_tests_pass` runs the plan as one check, named
+`the touched capabilities' tests pass (commands.test_scoped)` for a scoped run,
+its details holding each run's command line and, on a failure, its output
+tail; `--no-run` and the `--allow-open` warning behave as for the full suite.
+`test_folders_exist`, a warning listed before it, names the missing folders
+(workspace-relative), and is `None` when none is missing or `test_scoped` is
+not configured. Validate and the design gate still run the full suite, so a
+test a scoped run misses still blocks before close. (capability-tests)
 
 ### Specs are fingerprinted when they are agreed
 
@@ -226,6 +247,7 @@ which close raises. (merge-halves-without-conflicts)
 - `src/specworks/workflow/checks.py`: `Check`, `GateContext`, `passed(checks)`,
   `run_checks(ctx, checks)`, and the check functions (including
   `half_tasks_done(half)`, `unmarked_tasks_done`, `review_tests_pass`,
+  `TestPlan`, `test_plan(ctx) -> TestPlan`, `test_folders_exist(ctx)`,
   `code_command(key, name) -> CheckFn` (runs `commands.<key>`, blocking on
   failure, `None` when not configured), `no_code_commands(ctx)` (the `[warn]`
   named `build, typecheck and lint` when none is configured)), and
@@ -233,7 +255,8 @@ which close raises. (merge-halves-without-conflicts)
   None; used by the design gate's `existing_tests_pass`).
 - `src/specworks/workflow/gate.py`: `GATE_CHECKS` (`code`: specs, code tasks, tags,
   then `code_command` for build, typecheck and lint, then
-  `no_code_commands`), `GATES` (with `test`, `code` and `implement`), `run_gate(ctx, phase)`, `gates_to_start(current, phase)`,
+  `no_code_commands`; `review`: `test_folders_exist` before
+  `review_tests_pass`), `GATES` (with `test`, `code` and `implement`), `run_gate(ctx, phase)`, `gates_to_start(current, phase)`,
   `start_phase(ctx, phase)`.
 - `src/specworks/workflow/review.py`: `review_change(analysis, base)`,
   `changed_paths(ws, since)`, `deleted_paths(ws, since)`, `ChangedFile` (`kind`, `was`),

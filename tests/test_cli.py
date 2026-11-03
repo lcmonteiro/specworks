@@ -309,6 +309,7 @@ def test_context_lists_capabilities_with_docs_path(project):
     assert code == 0
     assert data["context"] == "Python 3.12 service"
     assert data["capabilities"][0]["docsPath"] == "src/auth/docs"
+    assert data["capabilities"][0]["testsPath"] == "tests/user-auth" and not (project / "tests/user-auth").exists()
     assert data["capabilities"][0]["hasSpec"] is False
 
 
@@ -464,6 +465,8 @@ def test_old_dir_key_is_rejected(project):
         ("docs_dir: ../../outside", "'docs_dir' must be a relative folder inside the project"),
         ("docs_dir: /etc", "'docs_dir' must be a relative folder inside the project"),
         ("docs_dir: 3", "'docs_dir' must be a non-empty folder name"),
+        ("tests_dir: ../../outside", "'tests_dir' must be a relative folder inside the project"),
+        ("tests_dir: /etc", "'tests_dir' must be a relative folder inside the project"),
         ("capabilities:\n  user-auth:\n    path: null", "capability 'user-auth' needs a 'path'"),
         ("capabilities:\n  user-auth:\n    path: src/auth\n    prefx: AUTH", "capability 'user-auth' has unknown keys: prefx"),
         ("capabilites: {}", "unknown keys: capabilites"),
@@ -588,7 +591,7 @@ def test_diagram_pad_must_be_a_non_negative_number(project, pad):
         ("specworks: 1\ncontext: [\n", "cannot read"),
         ("specworks: 1\ncontext: [a, b]\n", "'context' must be a string"),
         (f"specworks: 1\ncontext: {'x' * (50 * 1024 + 1)}\n", "'context' is larger than 51200 bytes"),
-        ("specworks: 1\ncommands: [uv run pytest]\n", "'commands' must be a mapping of test, lint, typecheck, build, format"),
+        ("specworks: 1\ncommands: [uv run pytest]\n", "'commands' must be a mapping of test, test_scoped, lint, typecheck, build, format"),
         ("specworks: 1\ncommands:\n  test: [uv, run, pytest]\n", "'commands.test' must be a shell command string"),
         ("specworks: 1\nmodules: [billing]\n", "'modules' must be a mapping of name: path"),
         ("specworks: 1\ndiagrams:\n  theme: true\n", "'diagrams.theme': unknown theme True"),

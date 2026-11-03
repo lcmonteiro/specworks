@@ -10,9 +10,11 @@ from __future__ import annotations
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
 from functools import cached_property
+from pathlib import Path
 
 from ..core.changes import Change
-from ..core.runner import CommandError, cached_run
+from ..core.config import SCOPED_TEST_KEY
+from ..core.runner import CommandError, cached_run, run_scoped
 from ..core.workspace import Module, Workspace
 from ..specs.tasks import TASKS_FILE
 from ..specs.trace import Analysis
@@ -63,6 +65,11 @@ class GateContext:
     @cached_property
     def review(self) -> ReviewDoc:
         return read_review(self.change)
+
+    @cached_property
+    def test_plan(self) -> TestPlan:
+        """The tests the review gate runs (``test_plan``), computed once per run."""
+        return test_plan(self)
 
     def has_command(self, key: str) -> bool:
         return bool(self.ws.commands(self.module).get(key))
@@ -278,21 +285,110 @@ def own_tests(ctx: GateContext) -> str | None:
     return None
 
 
-def not_blocking(ctx: GateContext, tests: Check, why: str, at: int = 1) -> Check:
-    """A failing run of the suite (not a missing command) as a warning, saying why at ``at`` in the details (after the command line)."""
-    if ctx.run_tests and ctx.has_command("test") and not tests.ok:
+def not_blocking(ctx: GateContext, tests: Check, why: str, at: int = 1, configured: bool | None = None) -> Check:
+    """A failing run of the suite (not a missing command) as a warning, saying why at ``at`` in the details (after the command line).
+
+    ``configured``: whether the command that ran is configured; by default, whether ``commands.test`` is.
+    """
+    if ctx.run_tests and (ctx.has_command("test") if configured is None else configured) and not tests.ok:
         tests.blocking = False
         tests.details.insert(at, f"not blocking: {why}")
     return tests
 
 
-# @req REQ-FLOW-011
+@dataclass
+class TestPlan:
+    """What the review gate's test check runs.
+
+    ``full``: the whole suite (``commands.test``); otherwise ``runs``, one per module (in workspace order)
+    with its touched capabilities' test folders, sorted, for its ``commands.test_scoped``.
+    ``missing``: the touched test folders that do not exist, relative to the workspace root.
+    Implements REQ-FLOW-017.
+    """
+
+    full: bool
+    runs: list[tuple[Module, list[Path]]] = field(default_factory=list)
+    missing: list[str] = field(default_factory=list)
+
+
+# @req REQ-FLOW-017
+def test_plan(ctx: GateContext) -> TestPlan:
+    """The touched capabilities' test runs, or the full suite (see ``TestPlan``). Implements REQ-FLOW-017.
+
+    Touched: every delta's capability, and every capability whose code path or test folder holds a
+    changed file (deleted ones included; without git, only the deltas count).
+    """
+    ws = ctx.ws
+    touched: dict[tuple[str, str], tuple[Module, Path]] = {}
+    for delta in ctx.analysis.specs.deltas:
+        module, cap = delta.cap.module, delta.cap.capability
+        folder = cap.tests_path(module.root, module.config.tests_dir) if cap else module.root / module.config.tests_dir / delta.cap.name
+        touched[(module.name, delta.cap.name)] = (module, folder)
+    changed = [(ws.root / f.path).resolve() for f in ctx.report.changed or []]
+    for module, cap in ws.capabilities():
+        folder = cap.tests_path(module.root, module.config.tests_dir)
+        owned = ((module.root / cap.path).resolve(), folder.resolve())
+        if any(path.is_relative_to(base) for path in changed for base in owned):
+            touched.setdefault((module.name, cap.name), (module, folder))
+    if not touched or any(not ws.commands(module).get(SCOPED_TEST_KEY) for module, _ in touched.values()):
+        return TestPlan(full=True)
+    missing = sorted({ws.rel(folder) for _, folder in touched.values() if not folder.is_dir()})
+    if missing:
+        return TestPlan(full=True, missing=missing)
+    runs = []
+    for module in ws.modules():
+        folders = sorted({folder for m, folder in touched.values() if m is module})
+        if folders:
+            runs.append((module, folders))
+    return TestPlan(full=False, runs=runs)
+
+
+# @req REQ-FLOW-017
+def test_folders_exist(ctx: GateContext) -> Check | None:
+    """A warning naming each touched test folder that does not exist (the full suite runs instead); ``None``
+    when none is missing or ``commands.test_scoped`` is not configured. Implements REQ-FLOW-017.
+    """
+    missing = ctx.test_plan.missing  # only computed when every touched capability's module has test_scoped
+    if not missing:
+        return None
+    details = [f"{folder} does not exist" for folder in missing] + ["the full suite (commands.test) runs instead"]
+    return Check("the touched capabilities' test folders exist", False, details, blocking=False)
+
+
+SCOPED_TESTS = f"the touched capabilities' tests pass (commands.{SCOPED_TEST_KEY})"
+
+
+# @req REQ-FLOW-017
+def scoped_tests_pass(ctx: GateContext, plan: TestPlan) -> Check:
+    """One run of ``commands.test_scoped`` per module of ``plan``, passing only when every run passes."""
+    if not ctx.run_tests:
+        return Check(SCOPED_TESTS, False, ["not run (--no-run); `specworks gate review` runs them"], blocking=False)
+    details: list[str] = []
+    ok = True
+    for module, folders in plan.runs:
+        try:
+            ran = f"{SCOPED_TEST_KEY} {module.label} {[str(f) for f in folders]}"
+            result = run_scoped(ctx.ws, module, folders, reuse=ctx.reuse_runs or ran in ctx.ran)
+            ctx.ran.add(ran)
+        except CommandError as exc:
+            return Check(SCOPED_TESTS, False, [str(exc)])
+        reused = f", same code as the run at {result.cached_at}" if result.cached_at else ""
+        details.append(f"$ {result.command}  (in {result.cwd}, exit {result.exit_code}{reused})")
+        if not result.ok:
+            ok = False
+            details += result.tail()
+    return Check(SCOPED_TESTS, ok, details)
+
+
+# @req REQ-FLOW-011, REQ-FLOW-017
 def review_tests_pass(ctx: GateContext) -> Check:
-    """The review gate's ``tests_pass``: a warning under ``--allow-open`` while review.md has an open finding."""
-    tests = tests_pass(ctx)
+    """The review gate's tests (``test_plan``): a warning under ``--allow-open`` while review.md has an open finding."""
+    plan = ctx.test_plan
+    tests = tests_pass(ctx) if plan.full else scoped_tests_pass(ctx, plan)
     if not (ctx.allow_open and ctx.review.open):
         return tests
-    return not_blocking(ctx, tests, "review.md has open findings, which the next cycle carries")
+    # A scoped plan exists only when every touched module has test_scoped configured.
+    return not_blocking(ctx, tests, "review.md has open findings, which the next cycle carries", configured=None if plan.full else True)
 
 
 def optional_command(key: str, name: str) -> CheckFn:

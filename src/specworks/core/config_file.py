@@ -9,14 +9,26 @@ from pathlib import Path
 
 import yaml
 
-from .config import COMMAND_KEYS, CONFIG_FILE, MAX_CONTEXT_BYTES, WORKFLOW_DIR, Config, ConfigError, load_config, theme_id, theme_name
+from .config import (
+    COMMAND_KEYS,
+    CONFIG_FILE,
+    MAX_CONTEXT_BYTES,
+    SCOPED_TEST_KEY,
+    WORKFLOW_DIR,
+    Config,
+    ConfigError,
+    check_scoped_command,
+    load_config,
+    theme_id,
+    theme_name,
+)
 from .files import read_text
 from .validators import validate_capability_name, validate_module_name, validate_prefix, validate_relative
 
 SETTABLE_KEYS: tuple[str, ...] = ("context", *(f"commands.{key}" for key in COMMAND_KEYS), "branch_per_change")
 """The keys `specworks config set` writes, in the order an error names them. Implements REQ-PROJ-025."""
 
-# @req REQ-PROJ-026
+# @req REQ-PROJ-026, REQ-PROJ-027
 DEFAULT_CONFIG = """\
 specworks: 1
 # specworks configuration. It always lives in .specworks/config.yml, and
@@ -30,6 +42,12 @@ context: |
 # Name of the folder, inside each capability's code path, that holds its
 # living docs (spec.md, requirements.md, design.md and its diagrams).
 docs_dir: docs
+
+# Name of the folder, inside this project's folder, that holds a test folder
+# per capability (<tests_dir>/<capability>/); a capability's own `tests:`
+# overrides it. The review gate runs only the touched capabilities' folders
+# with commands.test_scoped.
+# tests_dir: tests
 
 # Whether `specworks new` creates and switches to a branch for each change
 # (true, the default). Set it to false to stay on the current branch, e.g.
@@ -45,6 +63,7 @@ docs_dir: docs
 #     path: src/auth
 #     description: Login, sessions and password reset
 #     prefix: AUTH          # optional: REQ-AUTH-001 instead of REQ-USER-AUTH-001
+#     tests: src/auth/tests # optional: its test folder instead of <tests_dir>/user-auth
 capabilities: {}
 
 # Modules: sub-projects with their own config (their own .specworks/config.yml),
@@ -67,6 +86,9 @@ source_globs: []
 # A module's commands override the top level's, key by key.
 #   test: uv run pytest            # or: npm test, go test ./..., cargo test, ctest
 #   lint: uv run ruff check .
+# test_scoped runs only the test folders of the capabilities a change touches,
+# in the review gate ({paths} is replaced by them); validate runs test.
+#   test_scoped: uv run pytest {paths}
 commands:
   test:
   lint:
@@ -217,7 +239,7 @@ def set_config_value(root: Path, key: str, value: str) -> None:
     An empty ``value`` clears the key (``branch_per_change`` takes only ``true`` or ``false``). The file is
     edited as text and reloaded; when it does not load with just that key changed, it is restored. Raises
     ``ConfigError`` for an unknown key, a context over ``MAX_CONTEXT_BYTES``, a ``branch_per_change`` that is
-    not ``true`` or ``false``, or an edit that does not load back. Implements REQ-PROJ-025.
+    not ``true`` or ``false``, a ``test_scoped`` without ``{paths}``, or an edit that does not load back. Implements REQ-PROJ-025.
     """
     if key not in SETTABLE_KEYS:
         raise ConfigError(f"unknown config key '{key}'; use one of: {', '.join(SETTABLE_KEYS)}")
@@ -231,6 +253,8 @@ def set_config_value(root: Path, key: str, value: str) -> None:
         expected = f"{text}\n" if text else ""  # `context: |` alone loads as an empty string
         if len(expected.encode("utf-8")) > MAX_CONTEXT_BYTES:
             raise ConfigError(f"'context' is larger than {MAX_CONTEXT_BYTES} bytes")
+    if key == f"commands.{SCOPED_TEST_KEY}" and value:
+        check_scoped_command(value)  # refused before writing, with the loader's message
     config_file = load_config(root).config_path
     original = read_text(config_file)
     before = yaml.safe_load(original) or {}

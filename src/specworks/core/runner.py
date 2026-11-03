@@ -17,12 +17,14 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import shlex
 import subprocess
 import time
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
-from .config import COMMAND_KEYS
+from .config import COMMAND_KEYS, PATHS_PLACEHOLDER, SCOPED_TEST_KEY
 from .errors import SpecworksError
 from .git import GitError, git, git_text
 from .workspace import Module, Workspace
@@ -51,12 +53,21 @@ class RunResult:
         return self.output.rstrip().splitlines()[-lines:]
 
 
-# @req REQ-PROJ-013
-def run_command(ws: Workspace, module: Module, key: str, capture: bool = True) -> RunResult:
-    """Run ``commands.<key>`` (merged top level -> module) in the module's folder, through the shell."""
+# @req REQ-PROJ-013, REQ-PROJ-028
+def run_command(ws: Workspace, module: Module, key: str, capture: bool = True, *, command: str | None = None) -> RunResult:
+    """Run ``commands.<key>`` (merged top level -> module) in the module's folder, through the shell.
+
+    ``command``: an explicit command line to run under ``key`` instead of the configured one (the scoped
+    tests, their ``{paths}`` filled in); without one, key ``test_scoped`` is refused before anything runs.
+    Implements REQ-PROJ-013, REQ-PROJ-028.
+    """
     if key not in COMMAND_KEYS:  # the config refuses any other key, so don't suggest adding it there
         raise CommandError(f"unknown command '{key}'; use one of {', '.join(COMMAND_KEYS)}")
-    command = ws.commands(module).get(key)
+    if command is None:
+        if key == SCOPED_TEST_KEY:
+            raise CommandError(f"'{SCOPED_TEST_KEY}' is run by the review gate, which fills {PATHS_PLACEHOLDER} with the touched capabilities' "
+                               "test folders; run `specworks run test` for the whole suite")
+        command = ws.commands(module).get(key)
     if not command:
         where = ws.rel(module.config.config_path)
         raise CommandError(f"no '{key}' command configured; add it under commands: in {where} (e.g. {key}: <command>)")
@@ -122,16 +133,20 @@ def _load(cache: Path) -> dict:
     return data if isinstance(data, dict) else {}
 
 
-# @req REQ-PROJ-014
-def cached_run(ws: Workspace, module: Module, key: str, reuse: bool = True, capture: bool = True) -> RunResult:
+# @req REQ-PROJ-014, REQ-PROJ-028
+def cached_run(ws: Workspace, module: Module, key: str, reuse: bool = True, capture: bool = True, *, command: str | None = None) -> RunResult:
     """``run_command``, reusing the result of a run on an identical working tree when there is one.
 
     ``reuse=False`` always runs, and records the result for the next caller on this tree.
+    ``command``: an explicit command line to run under ``key`` (as ``run_command``); the reuse is keyed on it.
+    Implements REQ-PROJ-014, REQ-PROJ-028.
     """
-    command = ws.commands(module).get(key, "")
+    explicit = command
+    command = ws.commands(module).get(key, "") if explicit is None else explicit
+    # Keyed on the command line run: a scoped run is reused only for the same folders, never for the full suite.
     found = tree_fingerprint(ws, module, command) if command and os.environ.get("SPECWORKS_RUN_CACHE", "1") != "0" else None
     if found is None:
-        return run_command(ws, module, key, capture)
+        return run_command(ws, module, key, capture, command=explicit)
     digest, cache = found
     runs = _load(cache)
     if reuse and isinstance(hit := runs.get(digest), dict):
@@ -139,7 +154,7 @@ def cached_run(ws: Workspace, module: Module, key: str, reuse: bool = True, capt
             return RunResult(key, command, ws.rel(module.root), int(hit["exit_code"]), str(hit["output"]), cached_at=str(hit["at"]))
         except (KeyError, TypeError, ValueError):
             pass
-    result = run_command(ws, module, key, capture)
+    result = run_command(ws, module, key, capture, command=explicit)
     output = "\n".join(result.tail()) if capture else "(output was shown in the terminal, not kept)"
     runs.pop(digest, None)  # re-inserted last: the newest run is the last one evicted
     runs[digest] = {"exit_code": result.exit_code, "output": output, "at": time.strftime("%Y-%m-%d %H:%M:%S")}
@@ -148,3 +163,40 @@ def cached_run(ws: Workspace, module: Module, key: str, reuse: bool = True, capt
     except OSError:
         pass  # a cache that cannot be written only costs a rerun
     return result
+
+
+def _quote(arg: str) -> str:
+    """``arg`` quoted for the shell ``subprocess`` runs: cmd.exe on Windows (no single quotes there), sh elsewhere."""
+    return subprocess.list2cmdline([arg]) if os.name == "nt" else shlex.quote(arg)
+
+
+# @req REQ-PROJ-028
+def scoped_command(ws: Workspace, module: Module, folders: Sequence[Path]) -> str:
+    """The module's ``commands.test_scoped`` with every ``{paths}`` replaced by ``folders``.
+
+    Each folder is made relative to the module's folder (POSIX separators) and quoted for the
+    platform's shell, separated by spaces. Implements REQ-PROJ-028.
+    """
+    paths = " ".join(_quote(_relative_to_module(module, folder)) for folder in folders)
+    return ws.commands(module).get(SCOPED_TEST_KEY, "").replace(PATHS_PLACEHOLDER, paths)
+
+
+def _relative_to_module(module: Module, folder: Path) -> str:
+    """``folder`` relative to the module's folder, POSIX separators, without resolving symlinks (a symlinked
+    test folder keeps its own path in the module), falling back to ``os.path.relpath`` when it is not under it."""
+    try:
+        return folder.relative_to(module.root).as_posix()
+    except ValueError:
+        return Path(os.path.relpath(folder, module.root)).as_posix()
+
+
+# @req REQ-PROJ-028
+def run_scoped(ws: Workspace, module: Module, folders: Sequence[Path], reuse: bool = True) -> RunResult:
+    """Run the module's scoped tests for ``folders`` (``scoped_command``) in its folder, through ``cached_run``.
+
+    A result is reused only for the same folders on an identical tree. Implements REQ-PROJ-028.
+    """
+    if not ws.commands(module).get(SCOPED_TEST_KEY):
+        where = ws.rel(module.config.config_path)
+        raise CommandError(f"no '{SCOPED_TEST_KEY}' command configured; add it under commands: in {where} (e.g. {SCOPED_TEST_KEY}: <command> {PATHS_PLACEHOLDER})")
+    return cached_run(ws, module, SCOPED_TEST_KEY, reuse=reuse, command=scoped_command(ws, module, folders))

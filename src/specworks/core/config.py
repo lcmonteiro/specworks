@@ -27,9 +27,10 @@ MARKER_RE = re.compile(r"^specworks:[ \t]*\d+[ \t]*(#.*)?$", re.MULTILINE)
 WORKFLOW_DIR = ".specworks"  # the fixed workflow folder of every project and module
 CONFIG_FILE = "config.yml"  # the config's name inside WORKFLOW_DIR
 DEFAULT_DOCS_DIR = "docs"
+DEFAULT_TESTS_DIR = "tests"  # a module's default folder of capability test folders (<tests_dir>/<capability>)
 MAX_CONTEXT_BYTES = 50 * 1024
-CONFIG_KEYS = ("specworks", "context", "docs_dir", "capabilities", "modules", "test_globs", "source_globs", "commands", "diagrams", "tools", "branch_per_change")
-CAPABILITY_KEYS = ("path", "prefix", "description")
+CONFIG_KEYS = ("specworks", "context", "docs_dir", "tests_dir", "capabilities", "modules", "test_globs", "source_globs", "commands", "diagrams", "tools", "branch_per_change")
+CAPABILITY_KEYS = ("path", "prefix", "description", "tests")
 # The AI tool IDs `tools:` may list; the same keys, in the same order, as TOOLS in tools/skills.py (core never imports tools).
 TOOL_IDS: tuple[str, ...] = ("claude", "copilot")
 DIAGRAM_KEYS = ("theme", "dark_theme", "layout", "sketch", "pad")
@@ -47,9 +48,18 @@ class Capability:
     path: str
     description: str = ""
     prefix: str = ""  # requirement ID prefix (REQ-<prefix>-001); derived from the name when empty
+    tests: str = ""  # its own test folder, relative to the module's folder; empty: <tests_dir>/<name>
 
     def docs_path(self, root: Path, docs_dir: str) -> Path:
         return root / self.path / docs_dir
+
+    # @req REQ-PROJ-027
+    def tests_path(self, root: Path, tests_dir: str) -> Path:
+        """The capability's test folder: ``root / tests`` when set, else ``root / tests_dir / name``, whether or not it exists.
+
+        Implements REQ-PROJ-004, REQ-PROJ-027.
+        """
+        return root / (self.tests or f"{tests_dir}/{self.name}")
 
 
 def theme_id(value: object, key: str) -> int:
@@ -91,7 +101,9 @@ class DiagramSettings:
         return pyd2.Options(self.theme, self.dark_theme, self.layout, self.sketch, self.pad, omit_version=True)
 
 
-COMMAND_KEYS = ("test", "lint", "typecheck", "build", "format")
+COMMAND_KEYS = ("test", "test_scoped", "lint", "typecheck", "build", "format")
+SCOPED_TEST_KEY = "test_scoped"  # run by the review gate for the touched capabilities' test folders (REQ-PROJ-028)
+PATHS_PLACEHOLDER = "{paths}"  # replaced in commands.test_scoped by the quoted test folders (REQ-PROJ-003, REQ-PROJ-028)
 
 
 # @req REQ-PROJ-003
@@ -109,7 +121,16 @@ def load_commands(raw: object) -> dict[str, str]:
         if not isinstance(value, str):
             raise ConfigError(f"'commands.{key}' must be a shell command string")
         commands[key] = value.strip()
+    if SCOPED_TEST_KEY in commands:
+        check_scoped_command(commands[SCOPED_TEST_KEY])
     return commands
+
+
+# @req REQ-PROJ-003, REQ-PROJ-025
+def check_scoped_command(command: str) -> None:
+    """Refuse a ``commands.test_scoped`` without ``{paths}``: the review gate fills its test folders in there."""
+    if PATHS_PLACEHOLDER not in command:
+        raise ConfigError(f"'commands.{SCOPED_TEST_KEY}' must hold {PATHS_PLACEHOLDER}, where the test folders go (e.g. uv run pytest {PATHS_PLACEHOLDER})")
 
 
 # @req REQ-PROJ-003
@@ -173,6 +194,7 @@ class Config:
     context: str = ""
     dir: str = WORKFLOW_DIR  # always .specworks
     docs_dir: str = DEFAULT_DOCS_DIR
+    tests_dir: str = DEFAULT_TESTS_DIR  # the folder of this module's capability test folders (REQ-PROJ-027)
     capabilities: dict[str, Capability] = field(default_factory=dict)
     modules: dict[str, str] = field(default_factory=dict)
     test_globs: list[str] = field(default_factory=list)
@@ -260,7 +282,7 @@ def find_root(start: Path | None = None) -> Path | None:
     return None
 
 
-# @req REQ-PROJ-001, REQ-PROJ-002, REQ-PROJ-003, REQ-PROJ-004, REQ-PROJ-026
+# @req REQ-PROJ-001, REQ-PROJ-002, REQ-PROJ-003, REQ-PROJ-004, REQ-PROJ-026, REQ-PROJ-027
 def load_config(root: Path) -> Config:
     """Load ``root/.specworks/config.yml``."""
     path = root / WORKFLOW_DIR / CONFIG_FILE
@@ -288,7 +310,7 @@ def load_config(root: Path) -> Config:
 
     raw_capabilities = raw.get("capabilities") or {}
     if not isinstance(raw_capabilities, dict):
-        raise ConfigError("'capabilities' must be a mapping of name: path (or name: {path, prefix, description})")
+        raise ConfigError("'capabilities' must be a mapping of name: path (or name: {path, prefix, description, tests})")
     capabilities = {}
     for name, value in raw_capabilities.items():
         validate_capability_name(name)
@@ -303,6 +325,7 @@ def load_config(root: Path) -> Config:
             path=validate_relative(value["path"].rstrip("/"), f"capability '{name}' path"),
             description=str(value.get("description") or ""),
             prefix=prefix,
+            tests=validate_relative(value["tests"], f"capability '{name}' tests") if value.get("tests") is not None else "",
         )
 
     raw_modules = raw.get("modules") or {}
@@ -318,6 +341,7 @@ def load_config(root: Path) -> Config:
         context=context,
         # Joined to each capability's path, so it must stay inside it.
         docs_dir=validate_relative(raw.get("docs_dir", DEFAULT_DOCS_DIR), "'docs_dir'"),
+        tests_dir=validate_relative(raw.get("tests_dir", DEFAULT_TESTS_DIR), "'tests_dir'"),
         capabilities=capabilities,
         modules=modules,
         test_globs=load_globs(raw.get("test_globs"), "test_globs"),

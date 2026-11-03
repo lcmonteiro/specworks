@@ -150,7 +150,7 @@ without asking otherwise; the tools it installs SHALL be saved in the config.
 
 `context` SHALL show the workspace: root, current module, inherited context,
 commands, modules (and missing ones), every capability with its docs path,
-prefix and delta path, the changes, and the skills state (`skills`: `current`,
+test folder (`testsPath`), prefix and delta path, the changes, and the skills state (`skills`: `current`,
 `outdated` with its files, or `none`). When the skills are outdated, it SHALL
 also show the hint `skills out of date: run specworks update`. `list` SHALL
 list the current module's active changes (every module's with `--all`,
@@ -161,7 +161,7 @@ marked.
 #### Scenario: AC-CLI-004.1 Context
 
 - **WHEN** `context` runs
-- **THEN** each capability shows its docs path and whether it has a living spec
+- **THEN** each capability shows its docs path, its test folder (`testsPath`, relative to the workspace root, whether or not it exists) and whether it has a living spec
 
 #### Scenario: AC-CLI-004.2 All modules
 
