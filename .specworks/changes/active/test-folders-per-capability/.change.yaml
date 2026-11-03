@@ -1,6 +1,4 @@
 name: test-folders-per-capability
 created: '2026-11-03T10:38:43'
-phase: implement
+phase: review
 skip_specs: true
-dirty:
-  .specworks/changes/active/test-folders-per-capability/.change.yaml: 9a515635451e11a079d8a3fe251fcdd113676c7ec10cb997131f86c636287829
