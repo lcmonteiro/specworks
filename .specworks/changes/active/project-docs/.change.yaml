@@ -1,3 +1,8 @@
 name: project-docs
 created: '2026-11-03T00:07:16'
-phase: specify
+phase: design
+specified:
+  REQ-CLI-004: d08a1950bf07
+  REQ-CLI-007: 2035526997a6
+  REQ-PROJ-029: 0a55c5efaf1a
+  REQ-FLOW-013: d29a3ee01e4d

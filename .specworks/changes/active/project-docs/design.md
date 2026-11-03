@@ -86,11 +86,21 @@ each of refine, specify, design, review and onboard contains
 
 ## Interfaces
 
+Agreed with the user
+
 - `src/specworks/core/workspace.py`: `ARCHITECTURE_FILE = "architecture.md"`; `Module.docs_path -> Path` and `Module.architecture_path -> Path` (properties) (REQ-PROJ-029)
 - `src/specworks/cli/output.py`: `module_dict` entries gain `docsPath` (relative to the workspace root) and `hasArchitecture` (REQ-CLI-004)
 - `src/specworks/cli/workflow.py`: `close` refuses `<ref> has no <path>: write the module's architecture before close (/specworks-close)` before validate; with `--dry-run`, JSON `missing: [<path>]` (empty when present) and the text line `missing: <path> (write it before close)` (REQ-CLI-007)
 - `src/specworks/workflow/validate.py`: `architecture_diagrams_current(ctx: GateContext) -> Check | None`, listed in `VALIDATE` under coherence, fix `/specworks-close` (REQ-FLOW-013)
 - `src/specworks/skills/_shared/architecture.md` and `src/specworks/skills/_shared/reading-architecture.md` (new), included as pinned above
+
+Stubs (tasks 1.1, 3.1): `ARCHITECTURE_FILE` in full; `Module.docs_path` and
+`Module.architecture_path` return `root` and `root / ARCHITECTURE_FILE` until
+the code half (nothing calls them yet); `architecture_diagrams_current` returns
+`None` (no check), so validate's existing checks keep passing. `module_dict`'s
+new keys and close's refusal have no stub: they are behaviour, written by the
+code half. The two shared skill texts exist as one-line placeholder comments
+(no skill includes them yet); the code half writes their pinned wording (4.2).
 
 ## Diagrams
 

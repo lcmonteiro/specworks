@@ -18,7 +18,7 @@ from .checks import Check, CheckFn, GateContext
 COMPLETENESS, CORRECTNESS, COHERENCE = "completeness", "correctness", "coherence"
 GROUPS = (COMPLETENESS, CORRECTNESS, COHERENCE)
 REVIEWED_PHASES = ("review", "validate", "close")
-SPECIFY, DESIGN, TEST, CODE, REVIEW = "/specworks-specify", "/specworks-design", "/specworks-test", "/specworks-code", "/specworks-review"
+SPECIFY, DESIGN, TEST, CODE, REVIEW, CLOSE = "/specworks-specify", "/specworks-design", "/specworks-test", "/specworks-code", "/specworks-review", "/specworks-close"
 
 
 def planning_artifacts(ctx: GateContext) -> Check:
@@ -33,6 +33,14 @@ def diagrams_current(ctx: GateContext) -> Check:
     settings = ctx.ws.top.config.diagrams
     stale = [f"{ctx.ws.rel(d.svg)} ({status})" for d in diagrams_in(ctx.change.path) if (status := state(d, settings)) != "ok"]
     return Check("diagram SVGs are up to date (specworks diagrams)", not stale, stale)
+
+
+def architecture_diagrams_current(ctx: GateContext) -> Check | None:
+    """A non-blocking warning naming each missing or outdated SVG in the module's ``docs/diagrams/``; None when it has no diagram.
+
+    Implements REQ-FLOW-013.
+    """
+    return None  # stub: the code half adds the check
 
 
 # @req REQ-FLOW-013
@@ -68,6 +76,7 @@ VALIDATE: list[tuple[str, str, CheckFn]] = [
     (COHERENCE, REVIEW, c.diff_base),
     (COHERENCE, TEST, c.modified_tests_changed),
     (COHERENCE, SPECIFY, diagrams_current),
+    (COHERENCE, CLOSE, architecture_diagrams_current),
     (COHERENCE, REVIEW, went_through_review),
 ]
 
