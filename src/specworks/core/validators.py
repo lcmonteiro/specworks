@@ -12,12 +12,12 @@ PREFIX_RE = re.compile(r"^[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)*$")
 
 
 # @req REQ-PROJ-003
-def validate_relative(value: object, what: str) -> str:
-    """A plain relative path that stays inside the project folder."""
+def validate_relative(value: object, what: str, allow_dot: bool = False) -> str:
+    """A plain relative path that stays inside the project folder; ``allow_dot`` also accepts the folder itself (``.``)."""
     if not isinstance(value, str) or not value.strip():
         raise ConfigError(f"{what} must be a non-empty folder name")
     path = PurePosixPath(value.strip().replace("\\", "/"))
-    if path.is_absolute() or ".." in path.parts or str(path) == ".":
+    if path.is_absolute() or ".." in path.parts or (str(path) == "." and not allow_dot):
         raise ConfigError(f"{what} must be a relative folder inside the project, got '{value}'")
     return str(path)
 

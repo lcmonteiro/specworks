@@ -42,7 +42,8 @@ def architecture_diagrams_current(ctx: GateContext) -> Check | None:
     stale = [f"{ctx.ws.rel(d.svg)} ({status})" for d in diagrams_in(ctx.module.docs_path) if (status := state(d, settings)) != "ok"]
     if not stale:
         return None
-    return Check("the architecture's diagram SVGs are up to date (specworks diagrams --dir docs)", not stale, stale, blocking=False)
+    fix = f"specworks diagrams --dir {ctx.ws.rel(ctx.module.docs_path)}"
+    return Check(f"the architecture's diagram SVGs are up to date ({fix})", not stale, stale, blocking=False)
 
 
 # @req REQ-FLOW-013

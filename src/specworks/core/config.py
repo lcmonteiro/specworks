@@ -322,7 +322,8 @@ def load_config(root: Path) -> Config:
         prefix = validate_prefix(str(value.get("prefix") or ""), f"capability '{name}': ")
         capabilities[name] = Capability(
             name=name,
-            path=validate_relative(value["path"].rstrip("/"), f"capability '{name}' path"),
+            # A capability may sit on its module's own folder (`.`), sharing the module's docs folder.  @req REQ-PROJ-029
+            path=validate_relative(value["path"].rstrip("/"), f"capability '{name}' path", allow_dot=True),
             description=str(value.get("description") or ""),
             prefix=prefix,
             tests=validate_relative(value["tests"], f"capability '{name}' tests") if value.get("tests") is not None else "",

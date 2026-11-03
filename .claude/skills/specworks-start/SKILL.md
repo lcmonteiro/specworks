@@ -232,7 +232,8 @@ When it is missing, write it now, before `specworks close`.
 - No language files: no manifest, sources or tests, not even a test runner
   config; the first change sets up the stack.
 - Only the `specworks` commands shown here, which exist today: `context`,
-  `skills --tools`, `module add`, `capability add --create`, `config set` and `diagrams --dir`; `init` is the user's,
+  `skills --tools`, `module add`, `capability add --create` and `config set`,
+  plus `diagrams --dir` for the architecture's diagram; `init` is the user's,
   before this skill.
 - Writes only the configs, the `.gitkeep` files (through `capability add --create`), the first
   architecture (step 5) and (through `specworks skills`) the agent skills; no commit.
