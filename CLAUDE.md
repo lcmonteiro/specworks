@@ -29,7 +29,8 @@ Windows and macOS, along with lint, typecheck and a wheel smoke test.
 | `src/specworks/cli` | `cli` | the command surface (`--json`, errors, exit codes) |
 | `src/specworks/skills` | (none) | packaged skills; shared text in `_shared/` |
 | `src/specworks/templates` | | artifact templates |
-| `tests/` | | pytest; `helpers.py` and `samples.py` build sample projects |
+| `tests/<capability>/` | each | pytest, one folder per capability (the review gate runs only the touched ones) |
+| `tests/` | | untagged tests (skill wording, walkthrough); `helpers.py` and `samples.py` build sample projects; `support/` holds helpers shared by the split files |
 
 Each capability's living docs (`spec.md`, `requirements.md`, `design.md`)
 are in `<path>/docs/`.

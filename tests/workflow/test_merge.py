@@ -2,79 +2,30 @@
 
 import pytest
 
-from helpers import REF, git, remove_repo, run_json
+from helpers import REF, git
 from specworks.cli.output import resolve_change
 from specworks.core.git import git_text
 from specworks.core.workspace import load_workspace
 from specworks.specs.trace import Analysis, to_markdown
 from specworks.workflow.merge import BranchMergeError, merge_branch, merge_ticks
+from support.merge import BRANCH, CHANGE, TASKS_MD, commit_on, head, make_halves, merging, snapshot, status, tick
 
-CHANGE = f".specworks/changes/active/{REF}"
-TASKS_MD = f"{CHANGE}/tasks.md"
 TRACE_MD = f"{CHANGE}/traceability.md"
-BRANCH = "half"
-BASELINE = "baseline"
 
 
 @pytest.fixture
 def halves(project, monkeypatch):
-    """The planned project committed on main (tagged `baseline`), with the change's trace written, and a `half` branch from there; on main."""
-    for key, value in {"GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t", "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@t"}.items():
-        monkeypatch.setenv(key, value)
-    (project / "src/auth/session.py").write_text("def session():\n    return 1\n")
-    run_json("trace", "--change", REF, "--write")
-    git(project, "add", "-A")
-    git(project, "commit", "-q", "-m", "baseline")
-    git(project, "tag", BASELINE)
-    git(project, "branch", BRANCH)
-    return project
-
-
-def commit_on(root, branch, files, message):
-    """Check out `branch`, write `files` ({relative path: text}), commit them."""
-    git(root, "checkout", "-q", branch)
-    for rel, text in files.items():
-        path = root / rel
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(text, encoding="utf-8")
-    git(root, "add", "-A")
-    git(root, "commit", "-q", "-m", message)
-
-
-def tick(root, *numbers):
-    """The baseline's tasks.md with the given tasks ticked, whatever is checked out, so each side carries only its own edits."""
-    text = git_text(root, "show", f"{BASELINE}:{TASKS_MD}")
-    for n in numbers:
-        text = text.replace(f"- [ ] {n} ", f"- [x] {n} ")
-    return text
-
-
-def head(root):
-    return git_text(root, "rev-parse", "HEAD").strip()
+    return make_halves(project, monkeypatch)
 
 
 def parents(root):
     return git_text(root, "rev-list", "--parents", "-n", "1", "HEAD").split()[1:]
 
 
-def status(root):
-    return git_text(root, "status", "--porcelain").strip()
-
-
-def merging(root):
-    return (root / ".git/MERGE_HEAD").exists()
-
-
 def merge(root, branch=BRANCH):
     ws = load_workspace(root)
     mod, ch = resolve_change(ws, REF)
     return ws, merge_branch(ws, mod, ch, branch)
-
-
-def snapshot(root):
-    """HEAD and the text of every file git knows, to check an aborted merge left the checkout as it was."""
-    files = git_text(root, "ls-files").split()
-    return head(root), {f: (root / f).read_text(encoding="utf-8") for f in files}
 
 
 # @ac AC-FLOW-015.1
@@ -199,34 +150,3 @@ def test_merge_ticks_keeps_our_line_endings():
 )
 def test_merge_ticks_refuses_lines_that_differ_in_more_than_their_box(theirs):
     assert merge_ticks("# Tasks\n\n- [ ] 1.1 [test] a\n- [x] 1.2 [code] b\n", theirs) is None
-
-
-# @ac AC-CLI-010.1
-def test_ac_cli_010_1_merge_prints_the_resolved_files_relative_to_the_root(halves):
-    commit_on(halves, BRANCH, {TASKS_MD: tick(halves, "1.1")}, "test half")
-    commit_on(halves, "main", {TASKS_MD: tick(halves, "1.2")}, "code half")
-    code, data = run_json("merge", BRANCH, "--change", REF)
-    assert code == 0, data
-    assert data["merged"] is True and data["branch"] == BRANCH and data["resolved"] == [TASKS_MD]
-    text = (halves / TASKS_MD).read_text(encoding="utf-8")
-    assert "- [x] 1.1 [test]" in text and "- [x] 1.2 [code]" in text
-    assert status(halves) == "" and not merging(halves)
-
-
-# @ac AC-CLI-010.2
-def test_ac_cli_010_2_an_aborted_merge_is_an_error_naming_the_files(halves):
-    commit_on(halves, BRANCH, {"src/auth/session.py": "def session():\n    return 2\n"}, "test half")
-    commit_on(halves, "main", {"src/auth/session.py": "def session():\n    return 3\n"}, "code half")
-    before = snapshot(halves)
-    code, data = run_json("merge", BRANCH, "--change", REF)
-    assert code == 1 and "src/auth/session.py" in data["error"]
-    assert snapshot(halves) == before and not merging(halves)
-
-
-# @ac AC-CLI-010.3
-def test_ac_cli_010_3_outside_git_is_refused(halves):
-    remove_repo(halves)
-    tasks = (halves / TASKS_MD).read_text(encoding="utf-8")
-    code, data = run_json("merge", BRANCH, "--change", REF)
-    assert code == 1 and "git repository" in data["error"]
-    assert (halves / TASKS_MD).read_text(encoding="utf-8") == tasks and not (halves / ".git").exists()

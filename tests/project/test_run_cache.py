@@ -1,0 +1,157 @@
+"""Gates reuse the result of a project command run on an identical working tree."""
+
+import json
+import os
+import re
+import sys
+from pathlib import Path
+
+import pytest
+
+from helpers import REF, git, remove_repo, run_json
+from support.run_cache import gate_tests, make_counted, runs
+
+
+@pytest.fixture
+def counted(repo, tmp_path_factory):
+    return make_counted(repo, tmp_path_factory)
+
+
+# @ac AC-PROJ-014.1
+def test_same_tree_reuses_the_run(counted):
+    repo, counter = counted
+    first, second = gate_tests(), gate_tests()
+    assert runs(counter) == 1
+    assert "same code as the run at" not in first["details"][0] and "same code as the run at" in second["details"][0]
+    assert first["ok"] == second["ok"]
+
+
+# @ac AC-PROJ-014.2
+def test_code_changes_rerun_but_workflow_files_do_not(counted):
+    repo, counter = counted
+    gate_tests()
+    (repo / ".specworks/changes/active" / REF / "review.md").write_text("# Review\n")  # workflow folder: not part of the tree
+    gate_tests()
+    assert runs(counter) == 1
+    (repo / "src/auth/reset.py").write_text("# @req REQ-AUTH-003\ndef reset(): return 1\n")  # tracked file changed  # specworks: ignore-tags
+    gate_tests()
+    assert runs(counter) == 2
+    (repo / "src/auth/notes.py").write_text("a = 1\n")  # new untracked file
+    gate_tests()
+    (repo / "src/auth/notes.py").write_text("a = 2\n")  # its content counts, not only its name
+    gate_tests()
+    assert runs(counter) == 4
+
+
+# @ac AC-PROJ-014.3
+def test_a_failing_run_is_reused_too(counted, monkeypatch):
+    repo, counter = counted
+    cfg = repo / ".specworks/config.yml"
+    fail = f'"{sys.executable}" -c "open(r\'{counter}\', \'a\').write(\'x\'); raise SystemExit(3)"'
+    cfg.write_text(re.sub(r"(?m)^  test:.*$", lambda _: f"  test: {json.dumps(fail)}", cfg.read_text(), count=1))
+    first, second = gate_tests(), gate_tests()
+    assert runs(counter) == 1 and not first["ok"] and not second["ok"] and "exit 3" in second["details"][0]
+
+
+# @ac AC-PROJ-014.4
+def test_cache_can_be_turned_off(counted, monkeypatch):
+    repo, counter = counted
+    monkeypatch.setenv("SPECWORKS_RUN_CACHE", "0")
+    gate_tests()
+    gate_tests()
+    assert runs(counter) == 2
+
+
+# @ac AC-PROJ-014.5
+def test_specworks_run_always_runs(counted):
+    repo, counter = counted
+    gate_tests()
+    for _ in range(2):
+        run_json("run", "test", "--change", REF)
+    assert runs(counter) == 3
+
+
+# @ac AC-PROJ-014.4
+def test_without_git_every_run_is_real(project, tmp_path_factory):
+    remove_repo(project)
+    counter = tmp_path_factory.mktemp("runs") / "count"
+    counter.write_text("")
+    command = f'"{sys.executable}" -c "open(r\'{counter}\', \'a\').write(\'x\')"'
+    cfg = project / ".specworks/config.yml"
+    cfg.write_text(re.sub(r"(?m)^  test:.*$", lambda _: f"  test: {json.dumps(command)}", cfg.read_text(), count=1))
+    gate_tests()
+    gate_tests()
+    assert runs(counter) == 2
+
+
+# @ac AC-PROJ-014.6
+def test_edits_inside_a_git_submodule_rerun(counted, tmp_path_factory):
+    repo, counter = counted
+    lib = tmp_path_factory.mktemp("lib")
+    git(lib, "init", "-q", "-b", "main")
+    (lib / "lib.py").write_text("x = 1\n")
+    git(lib, "add", "-A")
+    git(lib, "commit", "-q", "-m", "lib")
+    git(repo, "-c", "protocol.file.allow=always", "submodule", "add", "-q", str(lib), "vendor/lib")
+    git(repo, "commit", "-q", "-m", "add lib")
+    gate_tests()
+    (repo / "vendor/lib/lib.py").write_text("x = 2\n")  # the submodule is now dirty
+    gate_tests()
+    (repo / "vendor/lib/lib.py").write_text("x = 3\n")  # still dirty, but other content
+    gate_tests()
+    assert runs(counter) == 3
+    (repo / "vendor/lib/new.py").write_text("a = 1\n")  # untracked inside the submodule: git shows no content, so never reuse
+    gate_tests()
+    gate_tests()
+    assert runs(counter) == 5
+
+
+# @ac AC-PROJ-014.5
+def test_specworks_run_replaces_the_reused_result(repo):
+    # The suite needs a git-ignored file: the fingerprint cannot see it come and go.
+    (repo / ".gitignore").write_text("local.cfg\n")
+    command = f'"{sys.executable}" -c "import os, sys; sys.exit(0 if os.path.exists(\'local.cfg\') else 4)"'
+    cfg = repo / ".specworks/config.yml"
+    cfg.write_text(re.sub(r"(?m)^  test:.*$", lambda _: f"  test: {json.dumps(command)}", cfg.read_text(), count=1))
+    git(repo, "add", "-A")
+    git(repo, "commit", "-q", "-m", "test command")
+    assert not gate_tests()["ok"]
+    (repo / "local.cfg").write_text("ok")
+    assert not gate_tests()["ok"]  # same code: the failure is reused
+    code, _ = run_json("run", "test", "--change", REF)
+    assert code == 0
+    after = gate_tests()
+    assert after["ok"] and "exit 0, same code as the run at" in after["details"][0]
+    (repo / "local.cfg").unlink()
+    code, _ = run_json("run", "test", "--change", REF)
+    assert code == 4 and not gate_tests()["ok"]  # a stale pass is replaced too
+
+
+# @ac AC-PROJ-014.7
+def test_an_untracked_file_name_that_is_not_utf8_is_fingerprinted(counted):
+    repo, counter = counted
+    try:
+        (repo / os.fsdecode(b"src/auth/caf\xe9.py")).write_text("x = 1\n")
+    except (OSError, UnicodeError):  # a file system that only takes UTF-8 names (macOS, Windows)
+        pytest.skip("cannot create a file whose name is not UTF-8 here")
+    first, second = run_json("gate", "review", "--change", REF), run_json("gate", "review", "--change", REF)
+    assert "checks" in first[1] and "checks" in second[1], (first, second)  # no crash
+    assert runs(counter) == 1 and "same code as the run at" in gate_tests()["details"][0]
+
+
+# @ac AC-PROJ-014.8
+def test_an_untracked_file_that_cannot_be_read_means_a_real_run(counted, monkeypatch):
+    repo, counter = counted
+    secret = repo / "src/auth/secret.py"
+    secret.write_text("token = 1\n")
+    read_bytes = Path.read_bytes
+
+    def unreadable(path):
+        if path.name == secret.name:
+            raise PermissionError(13, "Permission denied", str(path))
+        return read_bytes(path)
+
+    monkeypatch.setattr(Path, "read_bytes", unreadable)
+    first, second = gate_tests(), gate_tests()
+    assert runs(counter) == 2
+    assert not any("same code as the run at" in d for d in first["details"] + second["details"])

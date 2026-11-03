@@ -43,6 +43,9 @@ dev = [
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# Each capability's tests are in tests/<capability>/, where file names repeat.
+pythonpath = ["tests"]
+addopts = "--import-mode=importlib"
 
 [tool.ruff]
 src = ["src", "tests"]

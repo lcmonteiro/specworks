@@ -1,75 +1,24 @@
 """Committing a phase: the files dirty when the phase started, and `specworks commit`, which commits only the phase's own."""
 
-import hashlib
-import json
-
 import pytest
 import yaml
-from typer.testing import CliRunner
 
 from helpers import REF as CLOSED_REF
-from helpers import git, init_repo, make_planned_project, make_repo, on_a_branch, remove_repo
+from helpers import git, init_repo, on_a_branch, remove_repo
 from specworks.cli import app
-from specworks.core.changes import META_FILE, archived_as, commit_phase, load_change, set_phase
+from specworks.core.changes import META_FILE, archived_as, commit_phase, set_phase
 from specworks.core.config import load_config
 from specworks.core.git import GitError, git_text
-
-runner = CliRunner()
-REF = "add-login"
-CHANGE = f".specworks/changes/active/{REF}"
-
-
-def sha(data):
-    return hashlib.sha256(data).hexdigest()
-
-
-def run_json(*args):
-    result = runner.invoke(app, [*args, "--json"])
-    try:
-        return result.exit_code, json.loads(result.output)
-    except json.JSONDecodeError:
-        pytest.fail(result.output)
+from support.commit import CHANGE, REF, change, head, make_closed, make_project, message, record, run_json, runner, sha
 
 
 @pytest.fixture
 def project(tmp_path, monkeypatch):
-    """A project with the change `add-login` and `notes.txt`, `old.txt` and `src/a.py`, all committed on main; work goes on on `feature`."""
-    monkeypatch.chdir(tmp_path)
-    init_repo(tmp_path)
-    assert runner.invoke(app, ["init", "--no-skills"]).exit_code == 0
-    assert run_json("new", REF, "--no-branch")[0] == 0
-    (tmp_path / "notes.txt").write_bytes(b"notes\n")
-    (tmp_path / "old.txt").write_bytes(b"old\n")
-    (tmp_path / "src").mkdir()
-    (tmp_path / "src/a.py").write_bytes(b"A = 1\n")
-    on_a_branch(tmp_path, monkeypatch)
-    return tmp_path
-
-
-def change(root):
-    return load_change(load_config(root), REF)
+    return make_project(tmp_path, monkeypatch)
 
 
 def meta(root):
     return yaml.safe_load((root / CHANGE / META_FILE).read_text(encoding="utf-8"))
-
-
-def record(root, **files):
-    """Save the change's record as if the phase had started with exactly these files dirty (path -> content)."""
-    ch = change(root)
-    ch.dirty = {path.replace("__", "/"): sha(content) for path, content in files.items()}
-    ch.save()
-    git(root, "add", "--", f"{CHANGE}/{META_FILE}")
-    git(root, "commit", "-q", "--allow-empty", "-m", "record")  # the change folder starts clean
-    return change(root)
-
-
-def head(root):
-    return git_text(root, "rev-parse", "HEAD").strip()
-
-
-def message(root):
-    return git_text(root, "log", "-1", "--format=%B").strip()
 
 
 def files_in_head(root):
@@ -258,87 +207,9 @@ def test_a_detached_head_is_refused_before_staging_anything(project):
     assert staged(project) == [] and head(project) == before
 
 
-# @ac AC-CLI-012.1
-def test_the_command_commits_with_the_trailers_and_returns_relative_paths(project):
-    (project / "notes.txt").write_bytes(b"notes, before the phase\n")
-    assert run_json("phase", "design", "--change", REF)[0] == 0  # records notes.txt
-    (project / "src/a.py").write_bytes(b"A = 2\n")
-    code, data = run_json("commit", "--change", REF, "--trailer", "Co-Authored-By: A <a@x>")
-    assert code == 0, data
-    assert data["ref"] == REF and data["subject"] == "add-login: design"
-    assert isinstance(data["commit"], str) and head(project).startswith(data["commit"])
-    assert "src/a.py" in data["committed"] and f"{CHANGE}/{META_FILE}" in data["committed"]
-    assert data["leftOut"] == ["notes.txt"] and data["alreadyDirty"] == []
-    for path in [*data["committed"], *data["leftOut"]]:
-        assert not path.startswith("/") and str(project) not in path and "\\" not in path
-    assert message(project) == "add-login: design\n\nCo-Authored-By: A <a@x>"
-
-
-# @ac AC-CLI-012.1
-def test_the_command_prints_the_commit_and_the_files_left_out(project):
-    (project / "notes.txt").write_bytes(b"notes, before the phase\n")
-    assert run_json("phase", "design", "--change", REF)[0] == 0
-    (project / "src/a.py").write_bytes(b"A = 2\n")
-    result = runner.invoke(app, ["commit", "--change", REF, "--message", "Add the login form"])
-    assert result.exit_code == 0, result.output
-    short = git_text(project, "rev-parse", "--short", "HEAD").strip()
-    assert f"{short} Add the login form" in result.output
-    assert "src/a.py" in result.output
-    assert "left out (unchanged since the phase started): notes.txt" in result.output
-    assert message(project) == "Add the login form"
-
-
-# @ac AC-CLI-012.1, AC-PROJ-024.2
-def test_the_command_prints_the_files_already_dirty(project):
-    (project / "notes.txt").write_bytes(b"notes, before the phase\n")
-    assert run_json("phase", "design", "--change", REF)[0] == 0
-    (project / "notes.txt").write_bytes(b"notes, during the phase\n")
-    result = runner.invoke(app, ["commit", "--change", REF])
-    assert result.exit_code == 0, result.output
-    assert "already dirty when the phase started: notes.txt" in result.output
-
-
-# @ac AC-CLI-012.2
-def test_the_command_returns_a_null_commit_when_nothing_changed(project):
-    record(project)
-    before = head(project)
-    code, data = run_json("commit", "--change", REF)
-    assert code == 0, data
-    assert data["commit"] is None and data["committed"] == []
-    assert head(project) == before
-
-
-# @ac AC-CLI-012.3
-def test_the_command_refuses_an_unknown_change_naming_it(project):
-    code, data = run_json("commit", "--change", "nope")
-    assert code == 1 and "nope" in data["error"]
-
-
 @pytest.fixture
 def closed(tmp_path, monkeypatch):
-    """The planned project's change `add-password-reset`, reviewed and then closed with `specworks close`: archived, its active folder gone."""
-    root = make_repo(make_planned_project(tmp_path, monkeypatch), monkeypatch)
-    active = root / ".specworks/changes/active" / CLOSED_REF
-    (active / "review.md").write_text("# Review\n\n## Findings\n\nNone.\n", encoding="utf-8")
-    assert run_json("phase", "review", "--change", CLOSED_REF)[0] == 0
-    git(root, "add", "-A")
-    git(root, "commit", "-q", "-m", "review")  # the review phase is committed: what is dirty from here on is close's
-    assert run_json("phase", "validate", "--change", CLOSED_REF)[0] == 0  # validate commits nothing: `.change.yaml` stays dirty
-    assert run_json("phase", "close", "--change", CLOSED_REF)[0] == 0  # as `specworks start close` does, close's record names it
-    assert f".specworks/changes/active/{CLOSED_REF}/{META_FILE}" in load_change(load_config(root), CLOSED_REF).dirty
-    code, data = run_json("close", "--change", CLOSED_REF, "--base", "main")
-    assert code == 0, data
-    assert not active.exists()
-    return root, data["archivedTo"]
-
-
-# @ac AC-CLI-012.3
-def test_the_command_refuses_a_ref_neither_active_nor_archived(closed):
-    root, _ = closed
-    before = head(root)
-    code, data = run_json("commit", "--change", "nope")
-    assert code == 1 and "nope" in data["error"]
-    assert head(root) == before
+    return make_closed(tmp_path, monkeypatch)
 
 
 # @ac AC-PROJ-024.6
@@ -360,21 +231,6 @@ def test_a_closed_change_commits_its_archive_and_the_removal_of_its_active_folde
     assert f"{active}/{META_FILE}" in ch.dirty and f"{active}/{META_FILE}" in result.committed
     assert result.already_dirty == []  # the former active folder is the change's own, though close's record names it
     assert not [line for line in dirty_now(root) if ".specworks/changes/" in line]
-
-
-# @ac AC-CLI-012.4
-def test_the_command_commits_a_change_that_close_has_just_archived(closed):
-    root, archived_to = closed
-    code, data = run_json("commit", "--change", CLOSED_REF)
-    assert code == 0, data
-    assert data["ref"] == CLOSED_REF and data["subject"] == f"{CLOSED_REF}: close"
-    assert isinstance(data["commit"], str) and head(root).startswith(data["commit"])
-    assert f"{archived_to}/{META_FILE}" in data["committed"]
-    assert f".specworks/changes/active/{CLOSED_REF}/{META_FILE}" in data["committed"]
-    assert data["alreadyDirty"] == []  # dirty when close started, but the change's own
-    for path in [*data["committed"], *data["leftOut"]]:
-        assert not path.startswith("/") and str(root) not in path and "\\" not in path
-    assert message(root) == f"{CLOSED_REF}: close"
 
 
 # @ac AC-PROJ-024.7
