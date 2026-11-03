@@ -49,6 +49,16 @@ group and the phase skill that fixes each failure, and `start` prints that fix
 too. A check returns `None` when it doesn't apply. Warnings
 (`blocking=False`) never fail a gate. (baseline-workflow)
 
+### Validate warns on the module's architecture diagrams
+
+`architecture_diagrams_current`, a coherence check fixed by
+`/specworks-close`, runs `state` on every diagram in the module's
+`<docs folder>/diagrams/` and warns (non-blocking) naming each stale or
+missing SVG, with the fix `specworks diagrams --dir <module docs folder>`
+built from `Module.docs_path`. It returns `None` when the folder has no
+diagram. A capability on `.` shares the folder, so its block diagram is
+checked there too, which is harmless. (project-docs)
+
 ### Implement's halves are gated separately
 
 `implement` has two halves that run in parallel, each reading only the
@@ -275,7 +285,8 @@ which close raises. (merge-halves-without-conflicts)
 - `src/specworks/workflow/cycle.py`: `next_cycle(change)` (`reviewed`, `open`,
   `startAt`, `phases`, `handOver`; `phases` lists steps).
 - `src/specworks/workflow/validate.py`: `VALIDATE` (rows of group, the skill
-  that fixes a failure, check), `validate_change(ctx)`, `summary(checks)`.
+  that fixes a failure, check), `validate_change(ctx)`, `summary(checks)`,
+  `architecture_diagrams_current(ctx) -> Check | None`.
 - `src/specworks/workflow/merge.py`: `merge_branch(ws, module, change, branch)
   -> MergeResult` (raises `BranchMergeError`, and `GitError` outside a git
   repository), `MergeResult(merged, branch, resolved)` (`merged` is False only

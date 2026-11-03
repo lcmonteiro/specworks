@@ -51,6 +51,17 @@ runs validate first and takes `--no-run` only with `--dry-run`, and `init`
 rejects a bad `--tools` (given or typed at its question) before writing
 anything. (baseline-cli, dedupe-copilot-skills)
 
+### Close needs the module's architecture
+
+`close` checks the change's module for `<docs folder>/architecture.md` before
+validate, so a missing file fails fast, writing nothing and running none of
+the project's commands: `<ref> has no <path>: write the module's architecture
+before close (/specworks-close)`. With `--dry-run` it runs validate as before
+and reports the file under `missing` (JSON) and a `missing: <path> (write it
+before close)` line, so the close skill learns from its dry run what to write.
+Only the change's own module is checked, not its parents. Checking the
+architecture's content or size was left out. (project-docs)
+
 ### The tools are chosen once and saved
 
 `init`, `skills` and `update` call `resolve_tools` and save the result in the
@@ -184,7 +195,12 @@ a second config format exists. (upgrade-project, dedupe-copilot-skills)
   (`--tools`, default `None`: the saved choice).
 - `src/specworks/cli/project.py`: `is_terminal() -> bool`.
 - `context --json`: each capability entry holds `docsPath` and `testsPath`
-  (its test folder), both workspace-relative.
+  (its test folder), both workspace-relative; each module entry holds
+  `docsPath` (workspace-relative) and `hasArchitecture`.
+- `close --change <ref> [--dry-run [--no-run]] [--json]`: refuses a module
+  with no architecture before validate; `--dry-run` adds `missing` (the
+  architecture's path, or empty) and the text line
+  `missing: <path> (write it before close)`.
 - `new <name> [--module M] [--branch|--no-branch] [--json]`: `--json` adds
   `branch`, `startedFrom` and `stayedOn`; text adds `stayed on <branch>`
   when it stays on a named branch.

@@ -1,0 +1,11 @@
+name: project-docs
+created: '2026-11-03T00:07:16'
+phase: done
+specified:
+  REQ-CLI-004: d08a1950bf07
+  REQ-CLI-007: 2035526997a6
+  REQ-PROJ-029: 0a55c5efaf1a
+  REQ-FLOW-013: d29a3ee01e4d
+dirty:
+  .specworks/changes/active/code-half-no-tests/review.md: 15e64dd468a072d5451e292be4a5f75b360a5cfbde171f40710d5438ef286cd8
+  .specworks/changes/active/project-docs/.change.yaml: e110f94c2f1710f4a64ecd581ed990999987e7f6dba78d7d9021418633592c05

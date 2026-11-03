@@ -1,0 +1,33 @@
+direction: down
+
+cli: cli {
+  tooltip: "src/specworks/cli: commands, --json output, errors as values"
+}
+workflow: workflow {
+  tooltip: "src/specworks/workflow: artifacts, gates, review, cycles, validate"
+}
+specs: specs {
+  tooltip: "src/specworks/specs: spec files, checks, tasks, trace, merge at close"
+}
+integrations: integrations {
+  tooltip: "src/specworks/tools: D2 diagrams, installing skills"
+}
+project: project {
+  tooltip: "src/specworks/core: config, workspace, changes, runner, git"
+}
+skills: skills and templates (packaged data) {
+  shape: page
+}
+
+cli -> workflow: gates, review, validate
+cli -> specs: check, trace, spec, close merge
+cli -> integrations: diagrams, skills
+cli -> project: context, config, changes
+workflow -> specs: specs, tags, trace
+workflow -> project: changes, commands
+workflow -> integrations: diagram state
+specs -> project: capabilities, files
+specs -> integrations: diagram checks
+integrations -> project: config, tool IDs
+integrations -> skills: installs
+workflow -> skills: templates, schema
