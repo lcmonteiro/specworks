@@ -17,7 +17,11 @@ result as text or JSON.
 - `specs.py`: `check`, `trace`, `spec`, `diagrams`.
 - `workflow.py`: `gate`, `start`, `review`, `finding`, `cycle`, `merge`,
   `validate`, `close`, `run`.
+- `telemetry.py`: recording events, sending them after `commit`, and
+  `telemetry push`.
 - `__init__.py`: `main` and the order commands are registered in.
+
+![cli](diagrams/cli-blocks.svg)
 
 ## Decisions
 
@@ -103,6 +107,32 @@ change before the skills commit it; neither found is the unknown change error.
 (git-workflow, merge-halves-without-conflicts, commit-command, fix-commit-after-close,
 add-branch-default)
 
+### Commands record telemetry explicitly
+
+Each command that acts on a change (`new`, `phase`, `abandon`, `commit`,
+`start`, `gate`, `run`, `finding *`, `cycle`, `validate`, `close`) takes
+`started = time.monotonic()` once its change is resolved and calls
+`record(ws, module, change, event, started, **fields)` after its work and
+before it emits or raises `typer.Exit`, so a failed gate is recorded and a
+`SpecworksError` is not. Each passes only fixed fields (names, IDs, counts,
+booleans, phase lists, check names), never a finding's text, a reason or
+command output. `record` reads only the top level's opt-in, so it needs no
+keys and no network. A decorator recording every exit was rejected: it cannot
+tell a failed check from a refusal, and each command builds other fields.
+(add-langfuse-monitoring)
+
+### Commit sends, close does not
+
+`commit` commits, records its own event, then sends the change's unsent
+events, so its event goes in the same batch; the send never changes the exit
+code, and its result is the `telemetry` value of the output. `close` records
+into the archived folder and leaves sending to the commit that follows it.
+`telemetry push` sends what is still queued and says why when it cannot.
+`telemetry_app` is declared in `app.py` with the other groups, so `app.py`
+never imports a command module. (add-langfuse-monitoring)
+
+![Sending at commit](diagrams/commit-send-flow.svg)
+
 ### Findings are written through `finding`, not by hand
 
 `specworks finding add|decide|done|close` write a change's review.md through
@@ -124,7 +154,7 @@ refused before anything is read or written. The target is `--module` when
 given, else the current module, as in `capability add`, except for
 `branch_per_change`: only the top level's value is read, so it is always
 written to the top level's config, and the output's `config` and `module`
-name the top level. `config get` was left out: `context` already prints the
+name the top level; `telemetry.*` is written there too. `config get` was left out: `context` already prints the
 commands and context. (add-config-set, add-branch-default)
 
 ### `spec find` is the specify skill's search
@@ -209,7 +239,16 @@ a second config format exists. (upgrade-project, dedupe-copilot-skills)
   `abandon`, `phase`, `skip-specs`, `instructions`, `task list|done|undo`,
   `check`, `trace`, `spec show|list|find`, `diagrams`, `gate`, `start`, `review`,
   `finding add|decide|done|close`, `cycle`, `merge`, `commit`, `validate`,
-  `close`, `run`.
+  `close`, `run`, `telemetry push`.
+- `src/specworks/cli/telemetry.py`: `record(ws, module, change, event,
+  started, **fields)`, `telemetry_state(ws) -> {"state", "host"}`,
+  `telemetry_ids(module, change) -> {"traceId", "sessionId"}`,
+  `send_after_commit(ws, module, change) -> dict | None`.
+- `context --json` adds `telemetry` (`state`: `on` | `keys missing` | `off`,
+  `host`; never the keys); `status --json` adds `telemetry` (`traceId`,
+  `sessionId`).
+- `commit --json` and `telemetry push --change <ref> [--json]` add
+  `telemetry: {"sent", "queued", "reason"}`.
 - `finding add TYPE TEXT --proposal TEXT`, `finding decide ID DECISION`,
   `finding done ID TEXT --in STEP`, `finding close ID TEXT`, each with
   `--change <ref> [--json]`: `--json` prints the change's fields plus

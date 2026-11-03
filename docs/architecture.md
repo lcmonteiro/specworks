@@ -13,19 +13,20 @@ never import higher ones.
 ## Capabilities and how they interact
 
 - **project** (`src/specworks/core`): the base. Config, workspace and modules,
-  changes and their phases, running the project's commands with result reuse,
-  git. Uses nothing else.
+  changes and their phases, a change's telemetry event log, running the
+  project's commands with result reuse, git. Uses nothing else.
 - **specs** (`src/specworks/specs`): spec files, requirement IDs, tasks, the
   trace matrix, and merging deltas into living specs at close. Uses project,
   and integrations for its diagram checks.
-- **integrations** (`src/specworks/tools`): rendering D2 diagrams and
-  installing the packaged skills for Claude Code and Copilot. Uses project.
+- **integrations** (`src/specworks/tools`): rendering D2 diagrams,
+  installing the packaged skills for Claude Code and Copilot, and sending a
+  change's events to Langfuse. Uses project (config, event log).
 - **workflow** (`src/specworks/workflow`): artifacts and instructions, phase
   gates, review drift and findings, build cycles, validate. Uses project, specs
   and integrations (diagram state).
 - **cli** (`src/specworks/cli`): the command surface; resolves the workspace
   and the change, calls the capability that does the work, prints text or
-  JSON. Uses all of the above.
+  JSON, and records each change command's event. Uses all of the above.
 - Skills and templates (`src/specworks/skills`, `src/specworks/templates`) are
   packaged data with no capability yet; they run the CLI.
 
@@ -50,6 +51,11 @@ never import higher ones.
 - **Skills share text**: common wording lives once in `skills/_shared/` and is
   included with `<!-- specworks:include <name> -->`; installed copies are
   refreshed with `specworks skills`. (project-docs)
+- **Opt-in telemetry, sent only at commit**: with `telemetry.langfuse: true`
+  the CLI appends names, IDs, counts and durations (never content) to a
+  git-ignored log in the change folder (project); `commit` and `telemetry
+  push` send it to Langfuse (integrations), and a failed send never fails a
+  command. Keys come only from `SPECWORKS_LANGFUSE_*`. (add-langfuse-monitoring)
 
 ## Glossary
 
@@ -68,3 +74,7 @@ never import higher ones.
   fixes it.
 - **Living docs**: a capability's spec, requirements index and design, plus a
   module's architecture, describing the system as it is now.
+- **Event log**: a change's git-ignored `events.jsonl` of telemetry events,
+  with `events.sent` counting the lines already sent to Langfuse.
+- **Trace ID**: a change's stable telemetry ID (from its module, name and
+  creation time); its session ID is its ref.

@@ -79,9 +79,10 @@ list of `*`/`?`/`**` patterns, a context that is not text or is larger than
 51200 bytes, commands that are not a mapping of test, test_scoped, lint,
 typecheck, build or format to a command string, a `test_scoped` command
 without the `{paths}` placeholder, diagram settings that are not a known theme, a
-known layout (elk or dagre), a true/false sketch and a non-negative pad, and
+known layout (elk or dagre), a true/false sketch and a non-negative pad,
 `tools` that is not a non-empty list of known tool IDs or is set in a module's
-config.
+config, and `telemetry` that is not a mapping of `langfuse` (true or false)
+and `host` (an `http://` or `https://` URL) or is set in a module's config.
 
 #### Scenario: AC-PROJ-003.1 Paths stay inside the project
 
@@ -122,6 +123,16 @@ config.
 
 - **WHEN** `commands.test_scoped` is `uv run pytest`, with no `{paths}`
 - **THEN** loading fails naming `commands.test_scoped` and saying it must hold `{paths}`; `uv run pytest {paths}` loads
+
+#### Scenario: AC-PROJ-003.9 Telemetry
+
+- **WHEN** `telemetry` is not a mapping, has a key other than `langfuse` and `host`, `telemetry.langfuse` is not true or false, or `telemetry.host` is `cloud.langfuse.com` (no scheme)
+- **THEN** loading fails naming `telemetry` or the setting; `{langfuse: true, host: "http://localhost:3000"}` loads
+
+#### Scenario: AC-PROJ-003.10 Telemetry in a module
+
+- **WHEN** a module's config sets `telemetry`
+- **THEN** loading fails saying `telemetry` is set in the top level's config
 
 ### Requirement: REQ-PROJ-004 Capabilities in the config
 
@@ -753,7 +764,8 @@ the user's comments and the other entries SHALL be kept. A command SHALL be
 one line under `commands:`, replacing that key's line when there is one; the
 context SHALL be a block replacing the `context:` entry there. An empty value
 SHALL clear the key. `branch_per_change` SHALL take `true` or `false` and be
-one top-level line, replacing the one there. Any other key SHALL be refused before writing, naming the
+one top-level line, replacing the one there. The telemetry settings are set as
+REQ-PROJ-032 says. Any other key SHALL be refused before writing, naming the
 keys it accepts. A context larger than the config's size limit SHALL be
 refused before writing, naming the limit. A `test_scoped` command without `{paths}` SHALL be
 refused before writing, saying it must hold `{paths}`. When the edit would not load with the new value and every
@@ -803,7 +815,7 @@ say to set the key by hand.
 
 #### Scenario: AC-PROJ-025.8 An unknown key
 
-- **WHEN** `commands.unit` or `docs_dir` is set
+- **WHEN** `commands.unit`, `docs_dir` or `telemetry.secret_key` is set
 - **THEN** it is refused naming the keys it accepts, and the config file is unchanged
 
 #### Scenario: AC-PROJ-025.9 An entry the text edit cannot change
@@ -951,3 +963,87 @@ since the file names do not overlap.
 - **GIVEN** a capability `core` with path `.`
 - **WHEN** the workspace is loaded
 - **THEN** it loads, and `core`'s docs folder and the top level's are both `docs`
+
+### Requirement: REQ-PROJ-030 A change's event log
+
+When the top level's config sets `telemetry.langfuse: true`, recording an
+event for a change SHALL append one line of JSON to `events.jsonl` in the
+change's folder, holding `at` (the date and time), `event` (its name), the
+change's `phase` and the event's own fields, and SHALL write a `.gitignore` in
+the change's folder naming `events.jsonl` and `events.sent` when the folder has
+none. With telemetry off, recording an event SHALL write nothing. A failure to
+write the log SHALL never fail the command that records the event.
+
+#### Scenario: AC-PROJ-030.1 An event recorded
+
+- **GIVEN** a project whose config sets `telemetry.langfuse: true`, and a change in phase `specify`
+- **WHEN** the event `gate` is recorded with `passed` false
+- **THEN** `events.jsonl` in the change's folder ends with one JSON line holding `at`, `event` `gate`, `phase` `specify` and `passed` false
+
+#### Scenario: AC-PROJ-030.2 Kept out of git
+
+- **GIVEN** a project whose config sets `telemetry.langfuse: true`
+- **WHEN** an event is recorded for a change whose folder has no `.gitignore`
+- **THEN** the folder gets a `.gitignore` naming `events.jsonl` and `events.sent`, and `git status` does not list `events.jsonl`
+
+#### Scenario: AC-PROJ-030.3 Telemetry off
+
+- **GIVEN** a config with no `telemetry` block, or with `telemetry.langfuse: false`
+- **WHEN** an event is recorded for a change
+- **THEN** the change's folder has no `events.jsonl` and no new `.gitignore`
+
+#### Scenario: AC-PROJ-030.4 A log that cannot be written
+
+- **GIVEN** a project whose config sets `telemetry.langfuse: true`, and a change whose `events.jsonl` is a folder
+- **WHEN** an event is recorded
+- **THEN** recording raises no error and the folder is unchanged
+
+#### Scenario: AC-PROJ-030.5 The log moves with the change
+
+- **GIVEN** a change with recorded events
+- **WHEN** the change is archived (closed or abandoned)
+- **THEN** its archive folder holds the same `events.jsonl` and `.gitignore`
+
+### Requirement: REQ-PROJ-031 A change's trace identity
+
+A change SHALL have a trace ID of 32 lowercase hexadecimal characters derived
+from its module, its name and its creation time, the same every time the
+change is read, active or archived, and a session ID equal to its ref.
+
+#### Scenario: AC-PROJ-031.1 Stable
+
+- **GIVEN** a change `add-login`
+- **WHEN** its trace ID is read twice, and again after it is archived
+- **THEN** the three are the same 32 lowercase hexadecimal characters, and its session ID is `add-login`
+
+#### Scenario: AC-PROJ-031.2 Distinct per change
+
+- **GIVEN** a change `cleanup` at the top level and a change `cleanup` in module `billing`, created at the same time
+- **WHEN** their trace IDs are read
+- **THEN** they differ, and the session IDs are `cleanup` and `billing:cleanup`
+
+### Requirement: REQ-PROJ-032 Setting telemetry
+
+The system SHALL set `telemetry.langfuse` (`true` or `false`) and
+`telemetry.host` (an `http://` or `https://` URL) in a project's config,
+editing it as text and keeping the user's comments and other entries: each one
+line under `telemetry:`, replacing that key's line when there is one. An empty
+`telemetry.host` SHALL clear it. Any other value SHALL be refused before
+writing, the file unchanged.
+
+#### Scenario: AC-PROJ-032.1 Opting in with a host
+
+- **GIVEN** the default config written by `init`
+- **WHEN** `telemetry.langfuse` is set to `true`, then `telemetry.host` to `https://langfuse.example.com`
+- **THEN** the config loads with `telemetry.langfuse` true and that host, has one `telemetry:` entry with one line each, and its comments are still there
+
+#### Scenario: AC-PROJ-032.2 Replaced and cleared
+
+- **GIVEN** a config with `telemetry.langfuse: true` and `telemetry.host: https://a.example.com`
+- **WHEN** `telemetry.langfuse` is set to `false`, then `telemetry.host` to an empty value
+- **THEN** the config loads with `telemetry.langfuse` false, one `langfuse:` line, and no host
+
+#### Scenario: AC-PROJ-032.3 Values refused
+
+- **WHEN** `telemetry.langfuse` is set to `maybe`, or `telemetry.host` to `langfuse.example.com`
+- **THEN** it is refused naming `true` and `false`, or saying the host must start with `http://` or `https://`, and the config file is unchanged

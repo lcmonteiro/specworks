@@ -1,0 +1,20 @@
+direction: right
+
+cli: cli (src/specworks/cli) {
+  commands: "changes.py, workflow.py (new, phase, start, gate, run, finding, cycle, validate, commit, close, abandon)"
+  telemetry: telemetry.py {
+    tooltip: "record, telemetry_state, telemetry_ids, send_after_commit, telemetry push"
+  }
+  project_cmds: "project.py (context)"
+  output: "output.py (status: telemetry IDs)"
+
+  commands -> telemetry: event name, fields, start time
+  project_cmds -> telemetry: telemetry state
+  output -> telemetry: trace and session IDs
+}
+
+project: project.events
+integrations: integrations.langfuse
+
+cli.telemetry -> project: record event, trace ID
+cli.telemetry -> integrations: settings, send unsent events
