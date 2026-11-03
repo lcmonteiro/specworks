@@ -1,1 +1,1 @@
-<!-- stub: the code half writes this shared text with the wording pinned in design.md (task 4.2) -->
+Read the module's `<docsPath>/architecture.md` first (`docsPath` of the module in `specworks context`); when there is none yet, go on without it.

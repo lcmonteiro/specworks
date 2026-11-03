@@ -282,6 +282,10 @@ def close(
         fail("--no-run only goes with --dry-run: the real close runs test, lint and typecheck before writing anything", as_json)
     ws, mod, ch = require_change(change, as_json)
     ref = mod.qualify(ch.name)
+    # The architecture is checked first: a missing file fails fast, before the project's commands run.
+    missing = [] if mod.architecture_path.is_file() else [ws.rel(mod.architecture_path)]
+    if missing and not dry_run:
+        fail(f"{ref} has no {missing[0]}: write the module's architecture before close (/specworks-close)", as_json)
     # The real close is the last check before the living docs change: it runs the commands, never reuses a result.
     ctx = GateContext(ws, mod, ch, run_tests=not no_run, base=base, reuse_runs=dry_run)
     result = summary(validate_change(ctx))
@@ -293,9 +297,10 @@ def close(
         )
     merges = plan_merge(ws, ch, ctx.analysis.specs, ref)
     archive_target(ch, mod.config.archive_path)
-    data = {**change_dict(ws, mod, ch), "dryRun": dry_run, "merges": [m.to_dict(ws) for m in merges], "archivedTo": None}
+    data = {**change_dict(ws, mod, ch), "dryRun": dry_run, "merges": [m.to_dict(ws) for m in merges], "missing": missing, "archivedTo": None}
     lines = [f"{'would merge' if dry_run else 'merged'} {m.cap.ref} -> {ws.rel(m.spec_path)}{' (new)' if m.created else ''}: {m.summary()}" for m in merges]
     lines = lines or ["no delta specs to merge (skip_specs)"]
+    lines += [f"missing: {path} (write it before close)" for path in missing]
     if not dry_run:
         try:
             target = close_change(merges, ch, mod.config.archive_path)

@@ -172,6 +172,38 @@ next step the same way: the next skill (recommended), any alternative, and
    Keep the context to a few lines (what the project is, its stack, the
    conventions a change must follow): it is read before every phase.
 
+   Then write the first architecture of the top level (and of each module)
+   from the approved tree: the capabilities and how they are meant to
+   interact. The first changes' closes keep it current.
+**The architecture**: the top level and every module have one architecture,
+`<docsPath>/architecture.md` (`docsPath` of the module in `specworks context --json`),
+with one block diagram,
+`<docsPath>/diagrams/architecture-blocks.d2`,
+rendered with `specworks diagrams --dir "<docsPath>"`. It is the picture of the
+whole module that people and the phases read first; the list of capabilities,
+with their paths, stays in `specworks context`. Its sections:
+```markdown
+# Architecture: <project or module>
+
+## Overview
+<what the system is for and how it is put together, in a few lines>
+
+## Capabilities and how they interact
+<one line per capability: what it uses from or gives to the others; each
+module is one block, linking to its own `docs/architecture.md`>
+<the block diagram `diagrams/architecture-blocks.d2`, embedded>
+
+## Architectural decisions
+<each decision that spans capabilities: what, why, and the change that made it `(<change>)`>
+
+## Glossary
+<each term with one meaning, under one name>
+```
+Keep it to about 150 lines: merge or drop entries rather than grow it.
+At every close, check it against the change.
+Update it when the change adds or removes a capability, changes what flows between capabilities, adds a decision that spans capabilities, or adds a term; otherwise leave it as it is.
+When it is missing, write it now, before `specworks close`.
+
 6. **Report and hand over**
 
    ```bash
@@ -200,9 +232,9 @@ next step the same way: the next skill (recommended), any alternative, and
 - No language files: no manifest, sources or tests, not even a test runner
   config; the first change sets up the stack.
 - Only the `specworks` commands shown here, which exist today: `context`,
-  `skills --tools`, `module add`, `capability add --create` and `config set`; `init` is the user's,
+  `skills --tools`, `module add`, `capability add --create`, `config set` and `diagrams --dir`; `init` is the user's,
   before this skill.
-- Writes only the configs, the `.gitkeep` files (through `capability add --create`) and (through
-  `specworks skills`) the agent skills; no commit.
+- Writes only the configs, the `.gitkeep` files (through `capability add --create`), the first
+  architecture (step 5) and (through `specworks skills`) the agent skills; no commit.
 - Never edit the living docs (`<path>/<docs_dir>/`) by hand: a capability's
   first change writes them at close.

@@ -35,12 +35,14 @@ def diagrams_current(ctx: GateContext) -> Check:
     return Check("diagram SVGs are up to date (specworks diagrams)", not stale, stale)
 
 
+# @req REQ-FLOW-013
 def architecture_diagrams_current(ctx: GateContext) -> Check | None:
-    """A non-blocking warning naming each missing or outdated SVG in the module's ``docs/diagrams/``; None when it has no diagram.
-
-    Implements REQ-FLOW-013.
-    """
-    return None  # stub: the code half adds the check
+    """A non-blocking warning naming each missing or outdated SVG in the module's ``docs/diagrams/``; None when none is."""
+    settings = ctx.ws.top.config.diagrams
+    stale = [f"{ctx.ws.rel(d.svg)} ({status})" for d in diagrams_in(ctx.module.docs_path) if (status := state(d, settings)) != "ok"]
+    if not stale:
+        return None
+    return Check("the architecture's diagram SVGs are up to date (specworks diagrams --dir docs)", not stale, stale, blocking=False)
 
 
 # @req REQ-FLOW-013

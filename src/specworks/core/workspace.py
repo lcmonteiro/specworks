@@ -48,15 +48,17 @@ class Module:
     def root(self) -> Path:
         return self.config.root
 
+    # @req REQ-PROJ-029
     @property
     def docs_path(self) -> Path:
-        """The module's docs folder, ``<root>/<docs_dir>``. Implements REQ-PROJ-029."""
-        return self.root  # stub: the code half returns root / config.docs_dir
+        """The module's docs folder, ``<root>/<docs_dir>``, shared with a capability on ``.``."""
+        return self.root / self.config.docs_dir
 
+    # @req REQ-PROJ-029
     @property
     def architecture_path(self) -> Path:
-        """The module's architecture, ``<docs folder>/architecture.md``. Implements REQ-PROJ-029."""
-        return self.root / ARCHITECTURE_FILE  # stub: the code half places it in docs_path
+        """The module's architecture, ``<docs folder>/architecture.md``."""
+        return self.docs_path / ARCHITECTURE_FILE
 
     @property
     def label(self) -> str:

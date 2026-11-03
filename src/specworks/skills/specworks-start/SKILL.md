@@ -152,6 +152,11 @@ files: no manifest, sources or tests; the first change sets up the stack.
    Keep the context to a few lines (what the project is, its stack, the
    conventions a change must follow): it is read before every phase.
 
+   Then write the first architecture of the top level (and of each module)
+   from the approved tree: the capabilities and how they are meant to
+   interact. The first changes' closes keep it current.
+<!-- specworks:include architecture -->
+
 6. **Report and hand over**
 
    ```bash
@@ -180,9 +185,9 @@ files: no manifest, sources or tests; the first change sets up the stack.
 - No language files: no manifest, sources or tests, not even a test runner
   config; the first change sets up the stack.
 - Only the `specworks` commands shown here, which exist today: `context`,
-  `skills --tools`, `module add`, `capability add --create` and `config set`; `init` is the user's,
+  `skills --tools`, `module add`, `capability add --create`, `config set` and `diagrams --dir`; `init` is the user's,
   before this skill.
-- Writes only the configs, the `.gitkeep` files (through `capability add --create`) and (through
-  `specworks skills`) the agent skills; no commit.
+- Writes only the configs, the `.gitkeep` files (through `capability add --create`), the first
+  architecture (step 5) and (through `specworks skills`) the agent skills; no commit.
 - Never edit the living docs (`<path>/<docs_dir>/`) by hand: a capability's
   first change writes them at close.

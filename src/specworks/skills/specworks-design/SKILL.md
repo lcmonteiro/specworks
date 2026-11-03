@@ -38,6 +38,8 @@ it looks easy. When the gate passes, stop and suggest `/specworks-test`
    If it fails, stop: show the failing checks and suggest
    `/specworks-specify <ref>` to finish the plan.
 
+<!-- specworks:include reading-architecture -->
+
 2. **Load the plan and the code it touches**
 
    Re-read from disk:

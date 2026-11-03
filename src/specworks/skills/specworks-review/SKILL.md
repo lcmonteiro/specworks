@@ -67,6 +67,8 @@ design alone.
    say), or the **spec** (`spec-gap`: the criterion is ambiguous, and the
    two halves read it differently).
 
+<!-- specworks:include reading-architecture -->
+
 2. **Collect the drift candidates**
 
    ```bash

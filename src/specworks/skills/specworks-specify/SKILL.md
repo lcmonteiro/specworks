@@ -41,6 +41,8 @@ When the artifacts are done, stop and offer `/specworks-build` (or
      specworks phase specify --change "<ref>"
      ```
 
+<!-- specworks:include reading-architecture -->
+
 2. **Load what exists**
 
    ```bash

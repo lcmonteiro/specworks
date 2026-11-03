@@ -69,12 +69,15 @@ def change_dict(ws: Workspace, module: Module, change: Change) -> dict:
     }
 
 
+# @req REQ-CLI-004
 def module_dict(ws: Workspace, module: Module) -> dict:
     return {
         "name": module.label,
         "path": ws.rel(module.root),
         "dir": ws.rel(module.root / module.config.dir),
         "changesDir": ws.rel(module.config.changes_path),
+        "docsPath": ws.rel(module.docs_path),
+        "hasArchitecture": module.architecture_path.is_file(),
         "current": module is ws.current,
     }
 

@@ -100,6 +100,8 @@ next step the same way: the next skill (recommended), any alternative, and
    3. Stop here
    ```
 
+Read the module's `<docsPath>/architecture.md` first (`docsPath` of the module in `specworks context`); when there is none yet, go on without it.
+
 2. **The basic loop (the primer)**
 
    When the user asks how specworks works, or is new to it, explain from

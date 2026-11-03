@@ -80,6 +80,8 @@ that owns it, never run here.
    3. Stop here
    ```
 
+<!-- specworks:include reading-architecture -->
+
 2. **The basic loop (the primer)**
 
    When the user asks how specworks works, or is new to it, explain from
