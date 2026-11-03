@@ -1,6 +1,6 @@
 name: project-docs
 created: '2026-11-03T00:07:16'
-phase: implement
+phase: review
 specified:
   REQ-CLI-004: d08a1950bf07
   REQ-CLI-007: 2035526997a6
