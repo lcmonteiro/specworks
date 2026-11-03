@@ -32,7 +32,7 @@ or a command's output.
 #### Scenario: AC-CLI-017.3 No content
 
 - **GIVEN** a project with `telemetry.langfuse: true`
-- **WHEN** `finding add code "secret text" --proposal "other text"` and `abandon --reason "why text"` run
+- **WHEN** `finding add code-gap "secret text" --proposal "other text"` and `abandon --reason "why text"` run
 - **THEN** no line of `events.jsonl` holds `secret text`, `other text` or `why text`
 
 #### Scenario: AC-CLI-017.4 A refused command
