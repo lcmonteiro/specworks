@@ -199,6 +199,7 @@ class TelemetryConfig:
     host: str = ""  # empty: SPECWORKS_LANGFUSE_HOST or the default host (REQ-INTEG-008)
 
 
+# @req REQ-PROJ-003
 def load_telemetry(raw: object, present: bool) -> TelemetryConfig | None:
     """The ``telemetry:`` block; None when the key is absent.
 
@@ -206,7 +207,26 @@ def load_telemetry(raw: object, present: bool) -> TelemetryConfig | None:
     """
     if not present:
         return None
-    raise NotImplementedError
+    if raw is None:
+        return TelemetryConfig()
+    if not isinstance(raw, dict):
+        raise ConfigError(f"'telemetry' must be a mapping ({', '.join(TELEMETRY_KEYS)})")
+    check_keys(raw, TELEMETRY_KEYS, "'telemetry'")
+    langfuse = raw.get("langfuse", False)
+    if not isinstance(langfuse, bool):
+        raise ConfigError("'telemetry.langfuse' must be true or false")
+    host = raw.get("host") or ""
+    check_telemetry_host(host)
+    return TelemetryConfig(langfuse=langfuse, host=str(host).strip())
+
+
+# @req REQ-PROJ-003, REQ-PROJ-032
+def check_telemetry_host(host: object) -> None:
+    """Refuse a ``telemetry.host`` that is not empty or an ``http://`` / ``https://`` URL."""
+    if host == "":
+        return
+    if not isinstance(host, str) or not host.strip().startswith(("http://", "https://")):
+        raise ConfigError("'telemetry.host' must start with http:// or https://")
 
 
 @dataclass

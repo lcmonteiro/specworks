@@ -192,6 +192,8 @@ def load_module_config(root: Path, name: str) -> Config | None:
         config = load_config(root)
         if config.tools is not None:  # skills are installed at the workspace root, for the top level's tools
             raise ConfigError(f"module '{name}': 'tools' is set in the top level's config, not in a module's; remove it")
+        if config.telemetry is not None:  # only the top level's telemetry block is read
+            raise ConfigError(f"module '{name}': 'telemetry' is set in the top level's config, not in a module's; remove it")
         return config
     if (old := old_config_in(root)) is not None:
         raise old_layout_error(old, name)
