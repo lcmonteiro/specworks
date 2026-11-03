@@ -18,13 +18,14 @@ reading the diff. `- [ ] R<n>` while open, `- [x] R<n>` once resolved. Write
   - **Decision**: back to test: create the change before opting in, so new does not pre-create events.jsonl and .gitignore
   - done in test: tests for AC-PROJ-030.2, 030.4, 030.5 create the change before opt_in, so new does not pre-create events.jsonl and .gitignore
   - confirmed in review: tests for AC-PROJ-030.2, 030.4, 030.5 create the change before opt_in, so the log and .gitignore start absent; all pass (992 passed)
-- [ ] R3 **spec-gap** AC-CLI-017.3 (specs/cli/spec.md:35): the WHEN runs 'finding add code "secret text" ...', but 'code' is not a finding type (spec-gap, design-gap, test-gap, code-gap, tag, quality), so that command would be refused; tests/cli/test_telemetry.py:126 uses 'code-gap' and the code is right
+- [x] R3 **spec-gap** AC-CLI-017.3 (specs/cli/spec.md:35): the WHEN runs 'finding add code "secret text" ...', but 'code' is not a finding type (spec-gap, design-gap, test-gap, code-gap, tag, quality), so that command would be refused; tests/cli/test_telemetry.py:126 uses 'code-gap' and the code is right
   - **Proposal**: back to specify: MODIFIED AC-CLI-017.3 so its WHEN reads 'finding add code-gap "secret text" --proposal "other text"'; no test or code change
   - **Decision**: back to specify: change AC-CLI-017.3's step to finding add code-gap "secret text" --proposal "other text"
   - done in specify: AC-CLI-017.3's WHEN now runs finding add code-gap (REQ-CLI-017 wording only)
   - done in design: no API change: the finding type is a value passed to finding add, the agreed interfaces and stubs stay as they are
   - done in test: no test change: tests/cli/test_telemetry.py AC-CLI-017.3 already runs finding add code-gap "secret text" --proposal "other text", matching the criterion
   - done in code: no code change: finding add already accepts the code-gap type and REQ-CLI-017 telemetry records no finding text (src/specworks/cli/telemetry.py)
+  - confirmed in review: AC-CLI-017.3's WHEN now runs finding add code-gap, matching tests/cli/test_telemetry.py test_ac_cli_017_3; no test or code change needed; 992 tests pass
 
 ## Changed files without tags
 
@@ -43,4 +44,4 @@ The base `origin/main` does not hold the previous change, test-folders-per-capab
 
 <!-- Two or three lines: what was found, what changed in code, specs and design, and anything sent back to an earlier phase. -->
 
-The code matches the specs and the design. Each listed command records its event with only its own fields, and the log is kept git-ignored. Settings and keys are read only from the `SPECWORKS_LANGFUSE_*` variables, and no key appears in any reason. Events are sent in batches of 100, with `events.sent` keeping count. Push and commit both report on sending, `status` shows the IDs, and `config set telemetry.*` works. Cycle 1 sent two test-gaps back to test (R1, R2); cycle 2 fixed them in `tests/project/test_telemetry.py` and they are closed: 992 tests pass. Cycle 2 found one spec-gap (R3): AC-CLI-017.3 runs `finding add code`, which is not a finding type; it is proposed back to specify to read `code-gap`, as the test already does. No change to code or design is proposed.
+The code matches the specs and the design. Each listed command records its event with only its own fields, and the log is kept git-ignored. Settings and keys are read only from the `SPECWORKS_LANGFUSE_*` variables, and no key appears in any reason. Events are sent in batches of 100, with `events.sent` keeping count. Push and commit both report on sending, `status` shows the IDs, and `config set telemetry.*` works. Cycle 1 sent two test-gaps back to test (R1, R2); cycle 2 fixed them in `tests/project/test_telemetry.py` and they are closed: 992 tests pass. Cycle 2 found one spec-gap (R3): AC-CLI-017.3 runs `finding add code`, which is not a finding type; it is proposed back to specify to read `code-gap`, as the test already does. No change to code or design is proposed. Cycle 3 confirmed the spec now reads `finding add code-gap`, matching the test, and closed R3 with no test or code change: 992 tests pass.
