@@ -5,7 +5,7 @@ import json
 import re
 import sys
 
-from helpers import REF, run_json, runner
+from helpers import REF, fake_executable, run_json, runner
 from specworks.cli import app
 
 FAIL = f'"{sys.executable}" -c "import sys; print(\'lint: 1 error\'); sys.exit(1)"'
@@ -98,6 +98,38 @@ def test_outdated_diagram_fails_coherence(repo):
     code, data = run_json("validate", "--change", REF, "--base", "main")
     check = by_name(data)["diagram SVGs are up to date (specworks diagrams)"]
     assert code == 1 and check["group"] == "coherence" and check["details"] == [f".specworks/changes/active/{REF}/diagrams/flow.svg (missing)"]
+
+
+ARCHITECTURE_SVG = "docs/diagrams/architecture-blocks.svg"
+
+
+def architecture_warnings(data):
+    """The checks that name the module's architecture diagram's SVG."""
+    return [c for c in data["checks"] if any(ARCHITECTURE_SVG in detail for detail in c["details"])]
+
+
+# @ac AC-FLOW-013.9
+def test_ac_flow_013_9_a_missing_or_outdated_architecture_diagram_is_a_warning(repo, monkeypatch, tmp_path_factory):
+    reviewed(repo)
+    code, data = run_json("validate", "--change", REF, "--base", "main")
+    assert code == 0 and data["verdict"] == "PASS" and architecture_warnings(data) == []  # no docs/diagrams/
+    folder = repo / "docs/diagrams"
+    folder.mkdir(parents=True)
+    (folder / "architecture-blocks.d2").write_text("cli -> core\n", encoding="utf-8")
+    for svg, status in ((None, "missing"), ('<?xml version="1.0"?><svg/>', "stale")):
+        if svg:
+            (folder / "architecture-blocks.svg").write_text(svg, encoding="utf-8")  # not rendered from this source
+        code, data = run_json("validate", "--change", REF, "--base", "main")
+        assert code == 0 and data["verdict"] == "PASS", data  # the verdict does not change
+        [check] = architecture_warnings(data)
+        assert check["ok"] is False and check["blocking"] is False and check["group"] == "coherence", check
+        assert any(status in detail for detail in check["details"] if ARCHITECTURE_SVG in detail), check
+    script = fake_executable(tmp_path_factory.mktemp("bin"), "d2", "import sys, pathlib\npathlib.Path(sys.argv[-1]).write_text('<?xml version=\"1.0\"?><svg/>')\n")
+    monkeypatch.setenv("SPECWORKS_D2", str(script))
+    code, data = run_json("diagrams", "--dir", "docs")
+    assert code == 0 and data["diagrams"][0]["status"] == "rendered", data
+    code, data = run_json("validate", "--change", REF, "--base", "main")
+    assert code == 0 and data["verdict"] == "PASS" and architecture_warnings(data) == []  # up to date
 
 
 # @ac AC-FLOW-013.6

@@ -1,8 +1,10 @@
 """Close phase: capability registration, delta merge into living specs, requirements index, archive."""
 
 import hashlib
+import json
 import re
 import shutil
+import sys
 from datetime import date
 
 import pytest
@@ -133,6 +135,55 @@ def test_close_refuses_when_verify_fails(repo):
     code, data = run_json("close", "--change", REF, "--base", "main")
     assert code == 1 and "does not pass validate" in data["error"] and "/specworks-review" in data["goBackTo"]
     assert (repo / CHANGE_DIR).is_dir()
+
+
+@pytest.fixture
+def no_architecture(ready, tmp_path_factory):
+    """The ready change with its module's `docs/architecture.md` removed, and a test command that counts its runs outside the repo."""
+    (ready / "docs/architecture.md").unlink()
+    counter = tmp_path_factory.mktemp("runs") / "count"
+    counter.write_text("")
+    command = f'"{sys.executable}" -c "open(r\'{counter}\', \'a\').write(\'x\')"'
+    cfg = ready / ".specworks/config.yml"
+    cfg.write_text(re.sub(r"(?m)^  test:.*$", lambda _: f"  test: {json.dumps(command)}", cfg.read_text(encoding="utf-8"), count=1), encoding="utf-8")
+    return ready, counter
+
+
+# @ac AC-CLI-007.4
+def test_ac_cli_007_4_close_refuses_a_module_without_its_architecture(no_architecture):
+    root, counter = no_architecture
+    before = snapshot(root)
+    code, data = run_json("close", "--change", REF, "--base", "main")
+    assert code == 1
+    assert data["error"] == f"{REF} has no docs/architecture.md: write the module's architecture before close (/specworks-close)"
+    assert snapshot(root) == before  # nothing written
+    assert counter.read_text() == ""  # refused before validate: no command ran
+    assert (root / CHANGE_DIR).is_dir()
+    code, data = run_json("list")
+    assert [c["name"] for c in data["changes"]] == [REF]
+
+
+# @ac AC-CLI-007.4
+def test_ac_cli_007_4_the_dry_run_names_the_missing_architecture(no_architecture):
+    root, _ = no_architecture
+    before = snapshot(root)
+    code, data = run_json("close", "--change", REF, "--base", "main", "--dry-run")
+    assert code == 0, data
+    assert [m["capability"] for m in data["merges"]] == ["user-auth"]  # the merge plan, as before
+    assert data["missing"] == ["docs/architecture.md"]
+    result = runner.invoke(app, ["close", "--change", REF, "--base", "main", "--dry-run"])
+    assert result.exit_code == 0, result.output
+    assert "missing: docs/architecture.md (write it before close)" in result.output
+    assert snapshot(root) == before
+
+
+# @ac AC-CLI-007.4
+def test_ac_cli_007_4_the_dry_run_names_nothing_missing_with_the_architecture(ready):
+    code, data = run_json("close", "--change", REF, "--base", "main", "--dry-run")
+    assert code == 0, data
+    assert data["missing"] == []
+    result = runner.invoke(app, ["close", "--change", REF, "--base", "main", "--dry-run"])
+    assert "missing:" not in result.output
 
 
 # @ac AC-PROJ-008.2
