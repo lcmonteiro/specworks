@@ -4,10 +4,11 @@ Base: `6fcb845` (the commit before this change's refine; `origin/main` is behind
 
 ## Findings
 
-- [ ] R1 **test-gap** tests/test_skills.py:750 still requires `<!-- specworks:include architecture -->` in specworks-start; the code half rightly dropped it (it asks for a block diagram and `specworks diagrams --dir`, against design.md Decision "The first architecture has no capabilities yet"), so the suite fails (src/specworks/skills/specworks-start/SKILL.md:153)
+- [x] R1 **test-gap** tests/test_skills.py:750 still requires `<!-- specworks:include architecture -->` in specworks-start; the code half rightly dropped it (it asks for a block diagram and `specworks diagrams --dir`, against design.md Decision "The first architecture has no capabilities yet"), so the suite fails (src/specworks/skills/specworks-start/SKILL.md:153)
   - **Proposal**: back to test: remove specworks-start from the parametrize of test_the_skills_that_write_the_architecture_include_its_shared_text (keep close and adopt) and assert start does not include the shared architecture text, so start asks for no block diagram
   - **Decision**: back to test: remove specworks-start from the parametrize of test_the_skills_that_write_the_architecture_include_its_shared_text (keep close and adopt) and assert start does not include the shared architecture text
   - done in test: dropped specworks-start from test_the_skills_that_write_the_architecture_include_its_shared_text and added test_start_does_not_include_the_shared_architecture_text
+  - confirmed in review: test_the_skills_that_write_the_architecture_include_its_shared_text now covers close and adopt only, and test_start_does_not_include_the_shared_architecture_text asserts start has no architecture include; the suite passes (998)
 
 ## Changed files without tags
 

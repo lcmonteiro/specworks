@@ -1,7 +1,6 @@
 name: start-without-capabilities
 created: '2026-11-04T14:05:16'
-phase: implement
+phase: review
 skip_specs: true
 dirty:
-  .specworks/changes/active/start-without-capabilities/review.md: 9a568e32bbc635039e4790441e1bdc4822e852b5a1c7b76c438da19d8d9e785d
   .specworks/changes/active/tighten-telemetry-tests/.change.yaml: 366a3db47c53a2bea546eb4e246bfcf3df0590b041ccfca2980c3a9147b6ff80
