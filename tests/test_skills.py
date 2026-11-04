@@ -235,7 +235,7 @@ def test_start_shows_the_tree_and_asks_before_writing():
     question = text.index("Create this structure? (yes/no)")
     assert text.index("**Create it**") > question
     create = start_step(text, "Create it", "Report and hand over")
-    for command in ("specworks skills --tools", "specworks module add", "specworks capability add"):
+    for command in ("specworks skills --tools", "specworks module add"):
         assert command in create, command
     assert "specworks init" not in text.split("## Stage 2", 1)[1].split("## Guardrails", 1)[0]  # init has run before start
 
@@ -246,7 +246,6 @@ def test_start_creates_the_structure_with_the_cli_and_a_gitkeep_per_code_folder(
     assert re.search(r"specworks skills --tools <[a-z ]+>", create)
     assert "specworks init" not in create
     assert "specworks module add <" in create
-    assert re.search(r"specworks capability add <name> --path <[a-z ]+>", create) and "--description" in create
     assert ".gitkeep" in create
 
 
@@ -620,23 +619,62 @@ def test_the_skills_no_longer_write_commands_or_context_by_hand(path):
     assert "under `commands:`" not in text and "under `context:`" not in text
 
 
-# --- the start skill creates the code folders with `capability add --create` -------------
-
-START_CREATE_WORDING = [
-    'specworks capability add <name> --path <folder> [--module <m>] --create --description "<one line>"',
-    "`--create` creates the code folder with an empty `.gitkeep` so git keeps it",
-    "`module add`, `capability add --create` and `config set`",
-]
+# --- start creates the minimal tree; the first change proposes the capabilities ----------
 
 
-@pytest.mark.parametrize("phrase", START_CREATE_WORDING)
-def test_the_start_skill_creates_the_code_folders_with_capability_add_create(phrase):
-    # `capability add --create` writes each `.gitkeep`; the start skill no longer writes them by hand (REQ-CLI-014).
-    assert phrase in raw_skill_file("specworks-start/SKILL.md")
+def test_the_start_skill_creates_the_minimal_tree_with_no_capabilities():
+    text = raw_skill_file("specworks-start/SKILL.md")
+    assert "the minimal tree: `.specworks/`, `docs/`, `src/` and `tests/`" in text
+    assert "No capabilities: the first change proposes them in its refinement, and close registers them." in text
 
 
-def test_the_start_skill_no_longer_writes_the_gitkeep_by_hand():
-    assert "write an empty `.gitkeep`" not in raw_skill_file("specworks-start/SKILL.md")
+def test_the_start_skill_writes_the_two_gitkeep_files_when_it_creates_the_tree():
+    # With no capability no CLI command creates `src/` or `tests/`, and git does not keep empty folders.
+    create = flat(start_step(read_skill("specworks-start"), "Create it", "Report and hand over"))
+    assert "write an empty `src/.gitkeep` and `tests/.gitkeep`" in create
+
+
+def test_the_start_skill_never_registers_a_capability():
+    text = raw_skill_file("specworks-start/SKILL.md")
+    assert "specworks capability add" not in text and "capability add --create" not in text
+    guardrails = flat(read_skill("specworks-start").split("## Guardrails", 1)[1])
+    assert "No capabilities: start never registers one." in guardrails
+
+
+def test_the_start_skill_writes_an_architecture_with_no_capabilities_yet():
+    create = flat(start_step(read_skill("specworks-start"), "Create it", "Report and hand over"))
+    assert "`## Capabilities and how they interact` says `None yet: the first change proposes them.`" in create
+
+
+ONBOARD_FRESH_ROW = "| `capabilities` and `changes` are empty, and so are `context` and `commands` | set up, nothing mapped |"
+ONBOARD_STARTED_ROW = "| `capabilities` and `changes` are empty, and `context` or `commands` is set | started, no capability yet |"
+
+
+def test_onboard_tells_a_fresh_config_from_a_started_project_with_no_capabilities():
+    text = raw_skill_file(f"{ONBOARD}/SKILL.md")
+    assert ONBOARD_FRESH_ROW in text and ONBOARD_STARTED_ROW in text
+    assert "| `capabilities` is empty |" not in text
+
+
+def test_onboard_sends_a_started_project_with_no_code_to_refine():
+    rows = [flat(line) for line in raw_skill(ONBOARD).splitlines() if ONBOARD_STARTED_ROW in flat(line)]
+    assert len(rows) == 1
+    assert "`/specworks-refine <first change>` when the repository has no code" in rows[0]
+
+
+def test_the_refinement_instruction_asks_a_new_capabilitys_module_path_and_description():
+    text = flat(load_artifacts()["refinement"].instruction)
+    assert "for a new capability say which module should own it, its code path and a one-line description" in text
+
+
+def test_the_refinement_template_has_a_new_capabilitys_module_and_code_path():
+    line = "- `<!-- capability -->`: new (<!-- owning module -->, `<!-- code path -->`) | modified - <!-- what it covers, or why it changes -->"
+    assert line in read_template("refinement.md")
+
+
+def test_refine_proposes_a_new_capabilitys_module_path_and_description():
+    guardrails = flat(read_skill("specworks-refine").split("## Guardrails", 1)[1])
+    assert "say which module should own each one, its code path and a one-line description" in guardrails
 
 
 def test_a_key_given_twice_fails():
@@ -701,7 +739,7 @@ READING_ARCHITECTURE_WORDING = (
 
 @pytest.mark.parametrize("phrase", ARCHITECTURE_WORDING)
 def test_the_shared_architecture_text_has_the_structure_and_the_rules(phrase):
-    # Close writes the module's architecture from this text; adopt and start set it up from it.
+    # Close writes the module's architecture from this text; adopt sets it up from it.
     assert phrase in raw_skill_file("_shared/architecture.md")
 
 
@@ -709,9 +747,14 @@ def test_the_shared_reading_text_reads_the_architecture_first():
     assert READING_ARCHITECTURE_WORDING in raw_skill_file("_shared/reading-architecture.md")
 
 
-@pytest.mark.parametrize("name", ["specworks-close", "specworks-adopt", "specworks-start"])
+@pytest.mark.parametrize("name", ["specworks-close", "specworks-adopt"])
 def test_the_skills_that_write_the_architecture_include_its_shared_text(name):
     assert "<!-- specworks:include architecture -->\n" in raw_skill(name)
+
+
+def test_start_does_not_include_the_shared_architecture_text():
+    # Start's first architecture has no capabilities yet, so it asks for no block diagram.
+    assert "<!-- specworks:include architecture -->" not in raw_skill("specworks-start")
 
 
 @pytest.mark.parametrize("name", ["specworks-refine", "specworks-specify", "specworks-design", "specworks-review", "specworks-onboard"])

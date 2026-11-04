@@ -63,7 +63,8 @@ next step the same way: the next skill (recommended), any alternative, and
    |---|---|---|
    | `"root": null` (or `specworks` is not installed) | not a specworks project | install with `uv tool install git+https://github.com/lcmonteiro/specworks`, run `specworks init`, then `/specworks-start` (no code yet) or `/specworks-adopt` (existing code); give these, do not run them |
    | `skills.state` is not `current` | skills out of date | `specworks update` |
-   | `capabilities` is empty | set up, nothing mapped | `/specworks-start` when the repository has no code, `/specworks-adopt` when it has |
+   | `capabilities` and `changes` are empty, and so are `context` and `commands` | set up, nothing mapped | `/specworks-start` when the repository has no code, `/specworks-adopt` when it has |
+   | `capabilities` and `changes` are empty, and `context` or `commands` is set | started, no capability yet | `/specworks-refine <first change>` when the repository has no code, `/specworks-adopt` when it has |
    | a capability with `"hasSpec": false` | not baselined | `/specworks-baseline <capability>` |
    | `changes` is not empty | work in flight | per change, from its phase (below) |
    | otherwise | ready | `/specworks-refine <what you want>` |

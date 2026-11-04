@@ -51,6 +51,10 @@ never import higher ones.
 - **Skills share text**: common wording lives once in `skills/_shared/` and is
   included with `<!-- specworks:include <name> -->`; installed copies are
   refreshed with `specworks skills`. (project-docs)
+- **Capabilities come from changes, not from start**: `/specworks-start`
+  creates only `.specworks/`, `docs/`, `src/` and `tests/`; each change
+  proposes its capabilities in its refinement, and close registers them.
+  (start-without-capabilities)
 - **Opt-in telemetry, sent only at commit**: with `telemetry.langfuse: true`
   the CLI appends names, IDs, counts and durations (never content) to a
   git-ignored log in the change folder (project); `commit` and `telemetry

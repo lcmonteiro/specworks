@@ -170,4 +170,4 @@ artifact is written), and before the closing question, commit with specworks com
 - Never run `specworks init` unless the user asks for it.
 - Do not invent product intent, priorities or constraints. Ask when only the user can answer.
 - Keep refinement to 1-2 pages. Requirements, acceptance criteria, design and tasks belong to `/specworks-specify`.
-- Use existing capability names from `specworks context` when they fit, qualified with their module (`billing:invoices`); propose new names only for genuinely new behaviour, and say which module should own each one.
+- Use existing capability names from `specworks context` when they fit, qualified with their module (`billing:invoices`); propose new names only for genuinely new behaviour, and say which module should own each one, its code path and a one-line description.

@@ -42,8 +42,8 @@ artifacts:
         record the answer in the relevant section.
       - **Candidate Capabilities**: Capabilities likely to be added or modified,
         using existing capability names from `specworks context` when they fit.
-        Qualify capabilities of other modules as `module:capability`, and for a
-        new capability say which module should own it.
+        Qualify capabilities of other modules as `module:capability`, and
+        for a new capability say which module should own it, its code path and a one-line description.
 
       Keep it to 1-2 pages. No requirements, no tasks, no code: those belong to
       the specify phase.
