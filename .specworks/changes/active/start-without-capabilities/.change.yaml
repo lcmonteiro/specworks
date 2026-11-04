@@ -1,0 +1,5 @@
+name: start-without-capabilities
+created: '2026-11-04T14:05:16'
+phase: refine
+dirty:
+  .specworks/changes/active/tighten-telemetry-tests/.change.yaml: 366a3db47c53a2bea546eb4e246bfcf3df0590b041ccfca2980c3a9147b6ff80
