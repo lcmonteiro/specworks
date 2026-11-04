@@ -1,6 +1,6 @@
 ---
 name: specworks-start
-description: Start a new project with specworks from an empty repository - understand what it is, recommend its tooling, propose its structure (one simple project or several modules, each with its capabilities and code folders), and create it once the user approves the tree, then hand over to /specworks-refine for the first change. Use when the user starts a project from zero (greenfield) and wants to set it up with specworks, or says "start a project", "new project", "set up the structure" or "specworks start".
+description: Start a new project with specworks from an empty repository - understand what it is, recommend its tooling, propose its structure (one simple project or several modules, each with the minimal tree `.specworks/`, `docs/`, `src/` and `tests/`, and no capabilities yet), and create it once the user approves the tree, then hand over to /specworks-refine for the first change. Use when the user starts a project from zero (greenfield) and wants to set it up with specworks, or says "start a project", "new project", "set up the structure" or "specworks start".
 allowed-tools: Bash(specworks:*), Bash(uv run specworks:*), Bash(uvx --from git+https://github.com/lcmonteiro/specworks specworks:*), Read, Grep, Glob, Write, Edit
 ---
 
@@ -9,17 +9,20 @@ It runs after `specworks init` (the step that installs this skill) and goes
 on with the fresh config `init` wrote. It runs in two stages:
 
 1. **Decide**: what the project is, its tooling, and its structure (a simple
-   project or several modules, the capabilities each one owns and the
-   folders that hold them), shown as a tree.
+   project or several modules, each with
+   the minimal tree: `.specworks/`, `docs/`, `src/` and `tests/`),
+   shown as a tree.
 2. **Create**: once the user approves the tree, the configs, the modules,
-   the capabilities and their code folders.
+   their folders and the first architecture.
 
+No capabilities: the first change proposes them in its refinement, and close registers them.
 Then the first change starts with `/specworks-refine`. A capability gets its
 spec from its first change, as ADDED requirements.
 
 **Boundary**: starting writes only the configs, a `.gitkeep` in each
-capability's code folder (through `capability add --create`) and (through `specworks skills`) the agent skills. No language
-files: no manifest, sources or tests; the first change sets up the stack.
+module's `src/` and `tests/`, the first architecture and (through
+`specworks skills`) the agent skills. No language files: no manifest,
+sources or tests; the first change sets up the stack.
 
 **Running the CLI**: use `specworks <cmd>`. If it is not on PATH, use
 `uv run specworks <cmd>` (inside the specworks repo) or
@@ -64,7 +67,7 @@ next step the same way: the next skill (recommended), any alternative, and
      writes: it has capabilities, another module, changes, or a `context`
      or `commands` filled in): refuse. Say so, and suggest
      `/specworks-refine <what you want>` for its next change (or
-     `/specworks-adopt` when capabilities or commands are still missing).
+     `/specworks-adopt` when it has code but no capabilities or commands).
      Stop here.
    - The repository already has code (source files beyond docs such as
      `README.md`, a licence, git files such as `.gitignore` and
@@ -108,28 +111,26 @@ next step the same way: the next skill (recommended), any alternative, and
 4. **Propose the structure**
 
    Recommend one shape from what the user described:
-   - **simple project**: one top level, its capabilities under one source
-     folder (`src/<capability>`); the default for one deliverable in one
-     stack;
-   - **multi-module**: several modules, each a folder with its own config
-     and capabilities (`services/billing`, `packages/web`); for several
-     deliverables, stacks or teams in one repository.
+   - **simple project**: one top level with
+     the minimal tree: `.specworks/`, `docs/`, `src/` and `tests/`;
+     the default for one deliverable in one stack;
+   - **multi-module**: several modules (`services/billing`,
+     `packages/web`), each a folder with its own config and the same four
+     folders; for several deliverables, stacks or teams in one repository.
 
-   A capability is a durable behaviour the user would recognise, with a
-   kebab-case name, a code folder and a one-line description: group by
-   behaviour, not by technical layer (no `utils`, `models` or `helpers`),
-   and prefer a few broad capabilities; one can be split later.
+   No capabilities: the first change proposes them in its refinement, and close registers them.
+   Do not ask for capability names, code folders or ID prefixes here.
 
-   Show the whole proposal as a plain-ASCII tree, with every module, every
-   capability (name, code folder, description) and each config's context
-   and commands, e.g.:
+   Show the whole proposal as a plain-ASCII tree, with every module, its
+   folders and each config's context and commands, e.g.:
    ```
    .                                  (top level)
    |  context:  Invoicing service for small shops; Python 3.12, FastAPI.
    |  commands: test: uv run pytest   lint: uv run ruff check .
-   +-- src/
-       +-- invoices/   invoices   Invoice creation, numbering and PDF export
-       +-- payments/   payments   Card and bank payments, refunds
+   +-- .specworks/
+   +-- docs/architecture.md
+   +-- src/.gitkeep
+   +-- tests/.gitkeep
    ```
    A module's context and commands are shown only when its stack differs
    from the top level's.
@@ -157,13 +158,10 @@ next step the same way: the next skill (recommended), any alternative, and
    It creates `<path>/.specworks/config.yml` and links it as a module named
    after its folder.
 
-   For each capability:
-   ```bash
-   specworks capability add <name> --path <folder> [--module <m>] --create --description "<one line>"
-   ```
-   `--path` is relative to the module's root; `--module` names the module
-   that owns it (omit it for the top level). `--create` creates the code folder with an empty `.gitkeep` so git keeps it
-   (`<module path>/<folder>/.gitkeep`); a folder that already exists is left as it is.
+   For the top level and each module,
+   write an empty `src/.gitkeep` and `tests/.gitkeep`
+   (under the module's path) so git keeps the folders; a file that
+   already exists is left as it is.
 
    Write the context from the approved tree, for the top level and for a
    module whose stack differs: write it with `specworks config set context --file -` (the text on standard input).
@@ -172,37 +170,27 @@ next step the same way: the next skill (recommended), any alternative, and
    Keep the context to a few lines (what the project is, its stack, the
    conventions a change must follow): it is read before every phase.
 
-   Then write the first architecture of the top level (and of each module)
-   from the approved tree: the capabilities and how they are meant to
-   interact. The first changes' closes keep it current.
-**The architecture**: the top level and every module have one architecture,
-`<docsPath>/architecture.md` (`docsPath` of the module in `specworks context --json`),
-with one block diagram,
-`<docsPath>/diagrams/architecture-blocks.d2`,
-rendered with `specworks diagrams --dir "<docsPath>"`. It is the picture of the
-whole module that people and the phases read first; the list of capabilities,
-with their paths, stays in `specworks context`. Its sections:
-```markdown
-# Architecture: <project or module>
+   Then write the first architecture of the top level (and of each module),
+   `<docsPath>/architecture.md` (`docsPath` of the module in
+   `specworks context --json`), from the approved tree:
+   ```markdown
+   # Architecture: <project or module>
 
-## Overview
-<what the system is for and how it is put together, in a few lines>
+   ## Overview
+   <what the system is for and how it is put together, in a few lines>
 
-## Capabilities and how they interact
-<one line per capability: what it uses from or gives to the others; each
-module is one block, linking to its own `docs/architecture.md`>
-<the block diagram `diagrams/architecture-blocks.d2`, embedded>
+   ## Capabilities and how they interact
+   None yet: the first change proposes them.
 
-## Architectural decisions
-<each decision that spans capabilities: what, why, and the change that made it `(<change>)`>
+   ## Architectural decisions
+   <each decision that spans the project, e.g. the stack or the module split>
 
-## Glossary
-<each term with one meaning, under one name>
-```
-Keep it to about 150 lines: merge or drop entries rather than grow it.
-At every close, check it against the change.
-Update it when the change adds or removes a capability, changes what flows between capabilities, adds a decision that spans capabilities, or adds a term; otherwise leave it as it is.
-When it is missing, write it now, before `specworks close`.
+   ## Glossary
+   <each term with one meaning, under one name>
+   ```
+   `## Capabilities and how they interact` says `None yet: the first change proposes them.`
+   No block diagram yet: the close that registers the first capability
+   writes it, and later closes keep the architecture current.
 
 6. **Report and hand over**
 
@@ -210,7 +198,7 @@ When it is missing, write it now, before `specworks close`.
    specworks context
    ```
 
-   Show the tree as created (every module, capability and `.gitkeep`) and
+   Show the tree as created (every module, its folders and `.gitkeep` files) and
    the commands written. Say that `commands.test` fails until the first
    change sets up the stack (its manifest and test runner), so that change's
    design and code gates wait for it; the first change is usually the one
@@ -231,11 +219,13 @@ When it is missing, write it now, before `specworks close`.
 - Nothing is written before the user approves the tree.
 - No language files: no manifest, sources or tests, not even a test runner
   config; the first change sets up the stack.
+- No capabilities: start never registers one.
+  The first change proposes them in its refinement, and close registers them.
 - Only the `specworks` commands shown here, which exist today: `context`,
-  `skills --tools`, `module add`, `capability add --create` and `config set`,
-  plus `diagrams --dir` for the architecture's diagram; `init` is the user's,
+  `skills --tools`, `module add` and `config set`; `init` is the user's,
   before this skill.
-- Writes only the configs, the `.gitkeep` files (through `capability add --create`), the first
-  architecture (step 5) and (through `specworks skills`) the agent skills; no commit.
+- Writes only the configs, the `src/.gitkeep` and `tests/.gitkeep` files,
+  the first architecture (step 5) and (through `specworks skills`) the
+  agent skills; no commit.
 - Never edit the living docs (`<path>/<docs_dir>/`) by hand: a capability's
   first change writes them at close.

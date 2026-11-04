@@ -63,8 +63,10 @@ Then, in your agent:
 New to specworks? Run **`/specworks-onboard`**: it tells you where your project stands and what to run next, and answers your questions.
 
 1. **`/specworks-start`** in a repository with no code yet: it recommends
-   the tooling, proposes the structure (one project or several modules, with their
-   capabilities and code folders) and creates it once you approve the tree. Or
+   the tooling, proposes the structure (one project or several modules, each with
+   `.specworks/`, `docs/`, `src/` and `tests/`, and no capabilities yet) and creates
+   it once you approve the tree; each change then proposes its capabilities in its
+   refinement, and close registers them. Or
    **`/specworks-adopt`** on a project that already has code: it finds the test and
    lint commands from the build files and CI, writes a short `context`, and maps the
    code to capabilities with you.

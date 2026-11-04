@@ -52,4 +52,4 @@
 
 ## Candidate Capabilities
 
-- `<!-- capability -->`: new | modified - <!-- why -->
+- `<!-- capability -->`: new (<!-- owning module -->, `<!-- code path -->`) | modified - <!-- what it covers, or why it changes -->
