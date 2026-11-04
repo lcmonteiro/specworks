@@ -60,6 +60,11 @@ never import higher ones.
   git-ignored log in the change folder (project); `commit` and `telemetry
   push` send it to Langfuse (integrations), and a failed send never fails a
   command. Keys come only from `SPECWORKS_LANGFUSE_*`. (add-langfuse-monitoring)
+- **Refine starts clear and from the base branch**: before it reads anything,
+  `/specworks-refine` asks to compact a conversation that already holds earlier
+  work, then asks to switch to the base branch (`main`, or `master`); both can
+  be answered no, and a changed working tree blocks the switch.
+  (refine-on-main-and-compact)
 
 ## Glossary
 

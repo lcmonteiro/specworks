@@ -760,3 +760,60 @@ def test_start_does_not_include_the_shared_architecture_text():
 @pytest.mark.parametrize("name", ["specworks-refine", "specworks-specify", "specworks-design", "specworks-review", "specworks-onboard"])
 def test_the_skills_that_read_the_architecture_include_the_reading_text(name):
     assert "<!-- specworks:include reading-architecture -->\n" in raw_skill(name)
+
+
+# --- refine starts clear and from the base branch (refine-on-main-and-compact) ---------------
+
+REFINE = "specworks-refine/SKILL.md"
+COMPACT_QUESTION = 'ask "Compact the conversation first? (yes/no)"'
+BRANCH_QUESTION = 'ask "You are on <branch>, not <base>. Switch to <base>? (yes/no)"'
+
+
+def test_refine_has_a_before_step_1_section_ahead_of_the_steps():
+    # The two stops are a section, not a numbered step, so the step numbers other skills point to do not move.
+    text = raw_skill_file(REFINE)
+    assert "## Before step 1" in text
+    assert text.index("## Before step 1") < text.index("## Steps")
+
+
+def test_refine_asks_to_compact_a_conversation_that_holds_earlier_work():
+    text = raw_skill_file(REFINE)
+    assert COMPACT_QUESTION in text
+    assert "anything before this request except a summary left by `/compact`" in text
+
+
+def test_refine_on_yes_tells_the_user_to_compact_and_run_it_again():
+    # A skill cannot compact the conversation itself.
+    assert "tell the user to run `/compact`, then `/specworks-refine` again with the same request, and stop" in raw_skill_file(REFINE)
+
+
+def test_refine_goes_straight_on_in_a_new_or_just_compacted_conversation():
+    assert "A new or just-compacted conversation goes straight on, without asking." in raw_skill_file(REFINE)
+
+
+def test_refine_reads_the_branch_with_git_status():
+    assert "git status --short --branch" in raw_skill_file(REFINE)
+
+
+def test_refine_asks_to_switch_to_the_base_branch_and_switches_with_git_switch():
+    text = raw_skill_file(REFINE)
+    assert BRANCH_QUESTION in text
+    assert "git switch <base>" in text
+
+
+def test_refine_never_switches_a_changed_working_tree():
+    assert "When the working tree has changes, say so, stay on the branch and ask nothing." in raw_skill_file(REFINE)
+
+
+def test_refine_asks_to_compact_before_the_branch_and_both_before_the_steps():
+    text = raw_skill_file(REFINE)
+    assert text.index(COMPACT_QUESTION) < text.index(BRANCH_QUESTION) < text.index("## Steps")
+
+
+def test_only_refine_carries_the_compact_and_branch_questions():
+    # The other skills run mid-change, where switching to the base branch or compacting is wrong.
+    others = [name for name in packaged_skills() if name != "specworks-refine"]
+    assert others
+    for name in others:
+        text = raw_skill_file(f"{name}/SKILL.md")
+        assert COMPACT_QUESTION not in text and BRANCH_QUESTION not in text, name
