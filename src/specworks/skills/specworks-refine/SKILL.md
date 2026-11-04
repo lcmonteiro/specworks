@@ -31,8 +31,8 @@ When refinement is done, stop and suggest `/specworks-specify`.
 
 ## Before step 1
 
-Two stops, in this order, before you read or run anything. Each can be
-answered "no", and the skill then goes on.
+Two stops, in this order, before step 1. Each can be answered "no", and
+the skill then goes on.
 
 1. **Clear context**: when the conversation already holds earlier work
    (anything before this request except a summary left by `/compact`),
