@@ -1,0 +1,16 @@
+# Review: start-without-capabilities
+
+Base: `6fcb845` (the commit before this change's refine; `origin/main` is behind the stacked `tighten-telemetry-tests` work)
+
+## Findings
+
+- [ ] R1 **test-gap** tests/test_skills.py:750 still requires `<!-- specworks:include architecture -->` in specworks-start; the code half rightly dropped it (it asks for a block diagram and `specworks diagrams --dir`, against design.md Decision "The first architecture has no capabilities yet"), so the suite fails (src/specworks/skills/specworks-start/SKILL.md:153)
+  - **Proposal**: back to test: remove specworks-start from the parametrize of test_the_skills_that_write_the_architecture_include_its_shared_text (keep close and adopt) and assert start does not include the shared architecture text, so start asks for no block diagram
+
+## Changed files without tags
+
+- `tests/test_skills.py`: skill-wording tests; the change is `skip-specs` and the skills have no capability, so there is no `@ac` to tag (design.md, Pinned wording). Its one failing test is finding R1.
+
+## Summary
+
+The skill, template, instruction and README text match design.md's Pinned wording, and onboard's new rows and the refusal in start's step 1 agree on what a fresh config is. One drift: the code half dropped start's `<!-- specworks:include architecture -->` (which asks for a block diagram and `specworks diagrams --dir`, against the Decision "The first architecture has no capabilities yet"), but the existing test that requires that include for `specworks-start` was not updated, so the suite fails (R1, back to test). Nothing changed in specs or design.
