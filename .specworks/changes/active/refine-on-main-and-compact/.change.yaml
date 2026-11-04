@@ -1,4 +1,8 @@
 name: refine-on-main-and-compact
 created: '2026-11-04T15:13:01'
-phase: review
+phase: implement
 skip_specs: true
+dirty:
+  .claude/skills/specworks-refine/SKILL.md: a773346a9a0c18e47a03414ab26b8918392c378958b48dafd536823671fcc227
+  .specworks/changes/active/refine-on-main-and-compact/review.md: edacebc0e473c621b8aa6a0b1b28cc8c6bf059c35e3448d2f5c024a1db6630d3
+  src/specworks/skills/specworks-refine/SKILL.md: 41ecbb07ea52e75ed34255a92096948802a50355f058eac6f7f475e29a94dbf8
