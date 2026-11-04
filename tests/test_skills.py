@@ -739,7 +739,7 @@ READING_ARCHITECTURE_WORDING = (
 
 @pytest.mark.parametrize("phrase", ARCHITECTURE_WORDING)
 def test_the_shared_architecture_text_has_the_structure_and_the_rules(phrase):
-    # Close writes the module's architecture from this text; adopt and start set it up from it.
+    # Close writes the module's architecture from this text; adopt sets it up from it.
     assert phrase in raw_skill_file("_shared/architecture.md")
 
 
@@ -747,9 +747,14 @@ def test_the_shared_reading_text_reads_the_architecture_first():
     assert READING_ARCHITECTURE_WORDING in raw_skill_file("_shared/reading-architecture.md")
 
 
-@pytest.mark.parametrize("name", ["specworks-close", "specworks-adopt", "specworks-start"])
+@pytest.mark.parametrize("name", ["specworks-close", "specworks-adopt"])
 def test_the_skills_that_write_the_architecture_include_its_shared_text(name):
     assert "<!-- specworks:include architecture -->\n" in raw_skill(name)
+
+
+def test_start_does_not_include_the_shared_architecture_text():
+    # Start's first architecture has no capabilities yet, so it asks for no block diagram.
+    assert "<!-- specworks:include architecture -->" not in raw_skill("specworks-start")
 
 
 @pytest.mark.parametrize("name", ["specworks-refine", "specworks-specify", "specworks-design", "specworks-review", "specworks-onboard"])
