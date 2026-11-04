@@ -1,0 +1,6 @@
+name: refine-on-main-and-compact
+created: '2026-11-04T15:13:01'
+phase: done
+skip_specs: true
+dirty:
+  .specworks/changes/active/refine-on-main-and-compact/.change.yaml: 91dcc4a25d3824a5484fab968e31ce66d32bf9e703c49a07bcb0f67dd080505a
