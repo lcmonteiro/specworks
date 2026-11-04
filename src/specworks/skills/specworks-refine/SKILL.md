@@ -29,6 +29,26 @@ When refinement is done, stop and suggest `/specworks-specify`.
 
 ---
 
+## Before step 1
+
+Two stops, in this order, before you read or run anything. Each can be
+answered "no", and the skill then goes on.
+
+1. **Clear context**: when the conversation already holds earlier work
+   (anything before this request except a summary left by `/compact`),
+   ask "Compact the conversation first? (yes/no)". On yes, tell the user to
+   run `/compact`, then `/specworks-refine` again with the same request, and
+   stop (a skill cannot compact the conversation itself). A new or
+   just-compacted conversation goes straight on, without asking.
+2. **Base branch**: run `git status --short --branch`. When the checked-out
+   branch is not the base branch (`main`, or `master` when the repository
+   has no `main`), ask "You are on <branch>, not <base>. Switch to <base>?
+   (yes/no)". On yes, run `git switch <base>`; on no, stay (a change
+   continued on its own branch, or a deliberately stacked one). When the
+   working tree has changes, say so, stay on the branch and ask nothing.
+
+---
+
 ## Steps
 
 1. **Check the project**
