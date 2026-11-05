@@ -12,7 +12,7 @@ result as text or JSON.
   and changes.
 - `project.py`: `init`, `skills`, `context`, `list`, `module`, `capability`,
   `config`.
-- `changes.py`: `new`, `status`, `abandon`, `phase`, `skip-specs`,
+- `changes.py`: `new`, `status`, `abandon`, `reopen`, `phase`, `skip-specs`,
   `instructions`, `task`.
 - `specs.py`: `check`, `trace`, `spec`, `diagrams`.
 - `workflow.py`: `gate`, `start`, `review`, `finding`, `cycle`, `merge`,
@@ -45,8 +45,24 @@ relative to the working directory: they name a folder where the user stands.
 ### A change reference is forgiving but never ambiguous
 
 `module:name` is exact. A bare name prefers the current module, then the only
-module that has it. Archived changes are readable only through `status`, and
-every other command says where the change was archived. (baseline-cli)
+module that has it. Archived changes are readable only through `status` and
+`reopen` (`resolve_archived`: name, `module:name` or `<date>-<name>`), and
+every other command says where the change was archived. `reopen` asks
+`resolve_change` when no archive holds the name, so an active change is told
+it is active instead of "not found". (baseline-cli, add-reopen-change)
+
+### `reopen` records the way back, the skill decides it
+
+`specworks reopen --change <ref> --reason "<why>" [--phase <phase>]` wraps
+`reopen_change` in core: a plain, checked move that does not interpret the
+reason. Which phase to start at is decided by `/specworks-reopen`, which reads
+the problem, says its decision in one line, asks for confirmation and, for
+`review`, adds the problem as a finding with `finding add` so the review gate
+and build act on it; `/specworks-refine` and `/specworks-specify` read the
+latest reason from `status` as the problem to start from. `status` text
+appends the count and the latest reason and `--json` carries every record in
+`reopened`. `reopen` records no telemetry event: reasons stay out of events.
+(add-reopen-change)
 
 ### The CLI checks what its own options combine into
 
@@ -231,12 +247,16 @@ a second config format exists. (upgrade-project, dedupe-copilot-skills)
   with no architecture before validate; `--dry-run` adds `missing` (the
   architecture's path, or empty) and the text line
   `missing: <path> (write it before close)`.
+- `reopen --change <ref> --reason "<why>" [--phase <phase>] [--json]`
+  (default phase `review`): `change_dict` carries `reopened` (a list of
+  `{at, reason, phase}`) when the change has entries (REQ-CLI-020,
+  REQ-CLI-021).
 - `new <name> [--module M] [--branch|--no-branch] [--json]`: `--json` adds
   `branch`, `startedFrom` and `stayedOn`; text adds `stayed on <branch>`
   when it stays on a named branch.
 - The commands as `specworks --help` lists them: `version`, `init`, `skills`,
   `update`, `context`, `list`, `module add|list`, `capability add`, `config set`, `new`, `status`,
-  `abandon`, `phase`, `skip-specs`, `instructions`, `task list|done|undo`,
+  `abandon`, `reopen`, `phase`, `skip-specs`, `instructions`, `task list|done|undo`,
   `check`, `trace`, `spec show|list|find`, `diagrams`, `gate`, `start`, `review`,
   `finding add|decide|done|close`, `cycle`, `merge`, `commit`, `validate`,
   `close`, `run`, `telemetry push`.

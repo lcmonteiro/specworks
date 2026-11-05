@@ -282,6 +282,24 @@ names the active `.change.yaml`, which the archive then deletes. Committing an
 older archived change on purpose is out of scope; the newest one with the name
 is the one close just archived. (fix-commit-after-close)
 
+### Reopening is a move plus a record, all or nothing
+
+`reopen_change` finds the archived change by name or folder (`archived_as`),
+refuses one that is active, abandoned or unknown (`ChangeNotFound` when no
+archive or `active/` has the name), checks the reason (mandatory) and the
+phase (any but `done`, the rules `set_phase` uses), records the dirty files
+before the move, appends a `Reopened` entry (`at`, `reason`, `phase`) to the
+metadata and moves the folder back to `active/` with `shutil.move`. When the
+move raises `OSError`, the metadata is written back as it was, like
+`archive_change`. The default phase is `review`. It touches no git state and
+no living doc, and it lives in core, not in specs, because it merges nothing
+and core must not import specs. The record is a `reopened:` list in
+`.change.yaml`, oldest first, written only when it has entries, so a change
+reopened twice keeps both reasons and old metadata reads as never reopened.
+The reason is free text and never goes into an event. A single `reopened`
+string like `abandoned` and putting the move in `merge.py` were rejected.
+(add-reopen-change)
+
 ### Active and archived changes live in sibling folders
 
 `Config.changes_dir` and `changes_path` name `.specworks/changes/active`, and
@@ -354,8 +372,13 @@ where to configure one. (baseline-project, run-unknown-key)
   `subject`, `committed`, `left_out`, `already_dirty`),
   `commit_phase(root, ref, change, subject=None, trailers=()) -> CommitResult`
   (an archived change, phase `done`, defaults to `<ref>: close`).
+- `src/specworks/core/changes.py`: `Reopened` (frozen: `at`, `reason`,
+  `phase`), `Change.reopened: list[Reopened]`,
+  `reopen_change(cfg, name, reason, phase="review", root=None) -> Change`
+  (raises `ChangeError`, and `ChangeNotFound` for a name nothing has)
+  (REQ-PROJ-033, REQ-PROJ-034).
 - `.change.yaml`: `dirty:` (path -> SHA-256 hex or `deleted`), omitted when
-  empty.
+  empty; `reopened:` (list of `{at, reason, phase}`), omitted when empty.
 - `src/specworks/core/runner.py`: `run_command`, `cached_run` (both with a
   keyword-only `command: str | None` to run under `key`), `RunResult`,
   `scoped_command(ws, module, folders) -> str`,
