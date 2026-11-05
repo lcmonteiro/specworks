@@ -31,7 +31,7 @@ AC-FLOW-003.2 (`--no-run`) keeps its meaning; its design-gate test asserts it on
 
 ## Interfaces
 
-None. The API only shrinks: `existing_tests_pass` (`gate.py`), `own_tests` and `has_own_ac_tests` (`checks.py`) are removed, and nothing outside the workflow capability uses them.
+None. The API only shrinks: `existing_tests_pass` (`src/specworks/workflow/gate.py`), `own_tests` and `has_own_ac_tests` (`src/specworks/workflow/checks.py`) are removed, and nothing outside the workflow capability uses them.
 
 ## Diagrams
 
