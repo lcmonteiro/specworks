@@ -162,10 +162,8 @@ heading in any case, HTML comments and code fences ignored), with every file
 named in its code spans existing inside the change's module folder, written
 relative to that folder or to the workspace root. `None` SHALL pass without files, and prose
 naming no file SHALL be a warning. It SHALL run the build and typecheck commands
-when they are configured. The existing test suite must pass, except once the
-change has tests of its own, when a red suite is only a warning. A change's
-own tests SHALL be its `@ac` tests, or the test files changed since the change
-started (committed, uncommitted or untracked); without git none are changed.
+when they are configured. It SHALL NOT run the test suite, so a failing test
+never fails or warns it: the tests first run against the change in the review gate.
 
 #### Scenario: AC-FLOW-006.1 The Interfaces section
 
@@ -182,11 +180,6 @@ started (committed, uncommitted or untracked); without git none are changed.
 - **WHEN** the section says `None`, or describes the API without any file
 - **THEN** the gate passes; prose without files is a non-blocking warning
 
-#### Scenario: AC-FLOW-006.4 The existing tests
-
-- **WHEN** the test suite fails and the change has no tests of its own (no `@ac` tests and no changed test files)
-- **THEN** the gate fails; once the change has `@ac` tests, the failure is a warning saying so
-
 #### Scenario: AC-FLOW-006.5 Build and typecheck
 
 - **WHEN** `build` and `typecheck` are configured
@@ -198,11 +191,11 @@ started (committed, uncommitted or untracked); without git none are changed.
 - **WHEN** the design gate runs
 - **THEN** it fails listing `src/invoices.py`; it passes once the file exists in the module, named either `src/invoices.py` or `services/billing/src/invoices.py`
 
-#### Scenario: AC-FLOW-006.7 Changed test files without tags
+#### Scenario: AC-FLOW-006.8 No test run
 
-- **GIVEN** a change with no `@ac` tests of its own, in a git repository where a test file changed since the change started
-- **WHEN** the test suite fails
-- **THEN** the gate passes with a warning saying the change has changed test files; without git, or with no changed test file, it fails
+- **GIVEN** `commands.test` is configured and its tests fail
+- **WHEN** the design gate runs
+- **THEN** it runs no test command, shows no check for the tests, and passes when its other checks pass
 
 ### Requirement: REQ-FLOW-007 Gate test
 

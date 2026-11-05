@@ -117,7 +117,7 @@ next step the same way: the next skill (recommended), any alternative, and
    specworks run lint
    ```
    A failing command is the project's starting state, not something to fix
-   here: report it, and tell the user that the design and code gates need
+   here: report it, and tell the user that the review gate and `validate` need
    `commands.test` to pass.
 
 3. **Write the context**

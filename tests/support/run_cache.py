@@ -9,13 +9,13 @@ from helpers import REF, run_json
 TESTS = "the test suite passes (commands.test)"
 
 
-def make_counted(repo, tmp_path_factory):
-    """The repo with a test command that counts its runs in a file outside the repo (so counting changes nothing)."""
+def make_counted(repo, tmp_path_factory, key="test"):
+    """The repo with a ``commands.<key>`` command that counts its runs in a file outside the repo (so counting changes nothing)."""
     counter = tmp_path_factory.mktemp("runs") / "count"
     counter.write_text("")
     command = f'"{sys.executable}" -c "open(r\'{counter}\', \'a\').write(\'x\')"'
     cfg = repo / ".specworks/config.yml"
-    cfg.write_text(re.sub(r"(?m)^  test:.*$", lambda _: f"  test: {json.dumps(command)}", cfg.read_text(), count=1))
+    cfg.write_text(re.sub(rf"(?m)^  {key}:.*$", lambda _: f"  {key}: {json.dumps(command)}", cfg.read_text(), count=1))
     return repo, counter
 
 

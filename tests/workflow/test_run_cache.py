@@ -22,11 +22,10 @@ def test_fresh_runs_the_commands_again(counted, command):
 
 
 # @ac AC-FLOW-003.3
-def test_fresh_runs_each_command_once_for_all_the_gates_of_a_start(counted):
-    repo, counter = counted
-    gate_tests()
+def test_fresh_runs_each_command_once_for_all_the_gates_of_a_start(repo, tmp_path_factory):
+    repo, counter = make_counted(repo, tmp_path_factory, "lint")  # the code gate runs lint; no gate of this start runs the tests
     (repo / ".specworks/changes/active" / REF / "design.md").write_text("# Design\n\n## Interfaces\n\nNone\n")
     run_json("phase", "design", "--change", REF)
     code, data = run_json("start", "review", "--change", REF, "--fresh")  # gates design, test and code
     assert code == 0, data
-    assert runs(counter) == 2
+    assert runs(counter) == 1

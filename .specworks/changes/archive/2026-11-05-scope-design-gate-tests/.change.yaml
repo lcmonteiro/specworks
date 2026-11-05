@@ -1,0 +1,7 @@
+name: scope-design-gate-tests
+created: '2026-11-05T16:20:32'
+phase: done
+specified:
+  REQ-FLOW-006: fb9bbb5dc325
+dirty:
+  .specworks/changes/active/scope-design-gate-tests/.change.yaml: 0d18e167959177c24a8cbe0b3ad3e7ef5f348b3f84cafd5908521b640ac3ab60

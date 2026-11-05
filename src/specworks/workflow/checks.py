@@ -266,25 +266,6 @@ def tests_pass(ctx: GateContext) -> Check:
     return command_check(ctx, "test", "the test suite passes (commands.test)")
 
 
-def has_own_ac_tests(ctx: GateContext) -> bool:
-    """The change has ``@ac`` tags of its own in test files."""
-    ids = change_ids(ctx)
-    return any(t.kind == "ac" and t.is_test and t.id in ids for t in ctx.analysis.tags)
-
-
-# @req REQ-FLOW-006
-def own_tests(ctx: GateContext) -> str | None:
-    """Why the change has tests of its own (its ``@ac`` tests, or test files changed since it started), or ``None``.
-
-    The changed files are the ones ``specworks review`` reports; without git they are unknown, so none count.
-    """
-    if has_own_ac_tests(ctx):
-        return "this change has @ac tests of its own"
-    if any(f.kind == "test" for f in ctx.report.changed or []):
-        return "this change has changed test files"
-    return None
-
-
 def not_blocking(ctx: GateContext, tests: Check, why: str, at: int = 1, configured: bool | None = None) -> Check:
     """A failing run of the suite (not a missing command) as a warning, saying why at ``at`` in the details (after the command line).
 

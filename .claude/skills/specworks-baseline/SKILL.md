@@ -98,7 +98,7 @@ next step the same way: the next skill (recommended), any alternative, and
    A capability with requirements already has a living spec: it needs no
    baseline (offer `/specworks-refine` for what is missing).
 
-   The test suite must be green: the design and code gates require it, and a
+   The test suite must be green: validate requires it, and a
    red suite cannot show that the baseline matches the code. Check it first:
    ```bash
    specworks run test
