@@ -1,0 +1,8 @@
+name: tighten-telemetry-tests
+created: '2026-11-03T16:51:12'
+phase: done
+specified:
+  REQ-CLI-019: eca7fa6f3015
+  REQ-INTEG-009: 8da7baf1243c
+dirty:
+  .specworks/changes/active/tighten-telemetry-tests/.change.yaml: f0a527f69cb0de6a59ae1b5c886c7dedf01f4820e23ae79c585b686c91979dd7

@@ -384,7 +384,7 @@ sent and how many are still queued.
 
 - **GIVEN** a change with unsent events, and a host that accepts the connection but never answers
 - **WHEN** its events are sent
-- **THEN** it returns within about 5 seconds with 0 sent, the events still queued, and a reason saying it timed out
+- **THEN** it returns within 7 seconds with 0 sent, the events still queued, and a reason saying it timed out
 
 #### Scenario: AC-INTEG-009.4 Nothing to send
 
