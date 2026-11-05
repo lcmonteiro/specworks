@@ -101,6 +101,20 @@ def abandon(
     emit(change_dict(ws, mod, ch), as_json, f"{mod.qualify(ch.name)}: abandoned in phase {phase}, archived at {ws.rel(ch.path)}")
 
 
+@app.command()
+def reopen(
+    change: str = ChangeOpt,
+    reason: str = typer.Option(..., "--reason", help="Why the closed change is reopened; kept in its metadata."),
+    phase: str = typer.Option("review", "--phase", help="The phase it starts in (any but done)."),
+    as_json: bool = JsonOpt,
+) -> None:
+    """Move a closed change back to the active changes in a phase, recording why. Changes no branch and makes no commit.
+
+    Implements REQ-CLI-020.
+    """
+    raise NotImplementedError
+
+
 # @req REQ-CLI-006
 @app.command()
 def phase(

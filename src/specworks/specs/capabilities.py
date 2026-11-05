@@ -170,11 +170,14 @@ HISTORY_LINE_RE = re.compile(r"^- (?P<date>\d{4}-\d{2}-\d{2})(?: (?P<time>\d{2}:
 
 
 # @req REQ-SPECS-006
-def modified_since(cap: CapabilityRef, since: str) -> dict[str, str]:
+def modified_since(cap: CapabilityRef, since: str, exclude: str = "") -> dict[str, str]:
     """IDs a close at or after ``since`` (YYYY-MM-DD, a time may follow) MODIFIED, per requirements.md History -> ``<change> on <date>``.
 
     A History line and ``since`` are compared by date and time when both have a time, else by day.
+    The History lines of the change ``exclude`` are skipped (REQ-SPECS-017).
     """
+    if exclude:
+        raise NotImplementedError
     since_day, _, since_time = since.replace(" ", "T").partition("T")
     living = cap.living_spec()
     found: dict[str, str] = {}
@@ -192,6 +195,14 @@ def modified_since(cap: CapabilityRef, since: str) -> dict[str, str]:
             if kind == "MODIFIED":
                 found |= {i: f"{match.group('change')} on {match.group('date')}" for i in find_ids(ids)}
     return found
+
+
+def own_ids(cap: CapabilityRef, change_ref: str) -> set[str]:
+    """IDs of ``cap`` that a History line naming ``change_ref`` lists as ADDED, MODIFIED or REMOVED: the change merged them at an earlier close.
+
+    Implements REQ-SPECS-017.
+    """
+    raise NotImplementedError
 
 
 # @req REQ-SPECS-006

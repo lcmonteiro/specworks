@@ -38,6 +38,15 @@ class ChangeNotFound(ChangeError):
     """Raised when no change of that name exists (a broken .change.yaml is a plain ChangeError)."""
 
 
+@dataclass(frozen=True)
+class Reopened:
+    """One reopen of a closed change: when (local date and time), why, and the phase it started in (REQ-PROJ-034)."""
+
+    at: str
+    reason: str
+    phase: str
+
+
 @dataclass
 class Change:
     name: str
@@ -48,6 +57,7 @@ class Change:
     abandoned: str = ""  # why it was archived without merging (specworks abandon)
     specified: dict[str, str] = field(default_factory=dict)  # requirement ID -> fingerprint when specify last passed
     dirty: dict[str, str] = field(default_factory=dict)  # path -> SHA-256 hex or `deleted`, dirty when the phase started (REQ-PROJ-023)
+    reopened: list[Reopened] = field(default_factory=list)  # oldest first (REQ-PROJ-034)
 
     @property
     def order(self) -> tuple[str, str, str]:
@@ -183,6 +193,15 @@ def set_phase(change: Change, phase: str, root: Path | None = None) -> None:
         change.dirty = _record(root)
     change.phase = phase
     change.save()
+
+
+def reopen_change(cfg: Config, name: str, reason: str, phase: str = "review", root: Path | None = None) -> Change:
+    """Move the closed change ``name`` (or archive folder) back to ``active/`` in ``phase``, recording ``reason``.
+
+    Implements REQ-PROJ-033 and REQ-PROJ-034. Raises ``ChangeError`` for a blank reason, a phase it cannot take, a change
+    that is active, abandoned or whose name is in use, and ``ChangeNotFound`` for a name no archive or ``active/`` has.
+    """
+    raise NotImplementedError
 
 
 @dataclass(frozen=True)

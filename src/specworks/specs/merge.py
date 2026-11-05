@@ -97,8 +97,14 @@ def new_spec_text(cap: CapabilityRef, purpose: str) -> str:
 
 
 # @req REQ-SPECS-013
-def apply_delta(living_text: str, delta: Delta) -> tuple[str, list[str], list[str], list[str]]:
-    """New living spec text plus the IDs added, modified and removed."""
+def apply_delta(living_text: str, delta: Delta, own: frozenset[str] = frozenset()) -> tuple[str, list[str], list[str], list[str]]:
+    """New living spec text plus the IDs added, modified and removed.
+
+    ``own`` holds the change's own IDs from an earlier close: an ADDED one the living spec has is replaced in place and
+    listed as modified, a REMOVED one already gone is skipped (REQ-SPECS-017).
+    """
+    if own:
+        raise NotImplementedError
     lines = living_text.rstrip("\n").split("\n")
     _, section_end, blocks = _blocks(lines)
     by_id = {req_id: (start, end) for req_id, start, end in blocks if req_id}

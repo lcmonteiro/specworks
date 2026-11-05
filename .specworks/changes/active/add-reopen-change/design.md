@@ -65,6 +65,8 @@ The skill tests are untagged (the skills have no capability yet). The test half 
 
 ## Interfaces
 
+Agreed with the user
+
 - `src/specworks/core/changes.py`: `@dataclass(frozen=True) class Reopened` with `at: str`, `reason: str`, `phase: str` (REQ-PROJ-034).
 - `src/specworks/core/changes.py`: `Change.reopened: list[Reopened]`, saved and read as the `reopened` list of `{at, reason, phase}` (REQ-PROJ-034).
 - `src/specworks/core/changes.py`: `reopen_change(cfg: Config, name: str, reason: str, phase: str = "review", root: Path | None = None) -> Change`, raising `ChangeError` (and `ChangeNotFound` for a name no archive or `active/` has) (REQ-PROJ-033, REQ-PROJ-034).
@@ -73,7 +75,7 @@ The skill tests are untagged (the skills have no capability yet). The test half 
 - `src/specworks/specs/merge.py`: `apply_delta(living_text: str, delta: Delta, own: frozenset[str] = frozenset()) -> tuple[str, list[str], list[str], list[str]]` (REQ-SPECS-017, REQ-SPECS-013).
 - `src/specworks/cli/changes.py`: `specworks reopen --change <ref> --reason "<why>" [--phase <phase>] [--json]` (REQ-CLI-020).
 - `src/specworks/cli/output.py`: `change_dict` carries `reopened` (a list of `{at, reason, phase}`) when the change has entries; `status` text appends the count and the latest reason (REQ-CLI-021).
-- `src/specworks/skills/specworks-reopen/SKILL.md`: the new skill.
+- The new skill `/specworks-reopen` (its SKILL.md in the skills folder), written in the code half (task 4.2): a skill file is text with no stub form, and an unfinished one would fail the per-skill tests.
 
 ## Diagrams
 
