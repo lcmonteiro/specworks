@@ -1,5 +1,5 @@
 name: scope-design-gate-tests
 created: '2026-11-05T16:20:32'
-phase: implement
+phase: review
 specified:
   REQ-FLOW-006: fb9bbb5dc325
