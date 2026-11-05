@@ -25,6 +25,13 @@ The design skill's step 6 keeps `specworks run build`, `specworks run typecheck`
 
 **Pinned wording:** none; no test asserts these skill lines (the baseline test only checks the order of `specworks run test` and `specworks new`).
 
+### The living design.md drops what this change overturns
+
+This change overturns three things the living `src/specworks/workflow/docs/design.md` still records, so close must drop them (a change's design.md is the only input close folds in; the living doc is never edited by hand). Serves: REQ-FLOW-006.
+- The decision "A change's own tests include its changed test files" (fix-no-own-tests-gate): it existed only for the design gate's `existing_tests_pass`, which is removed. Overturned.
+- `own_tests(ctx)`, `has_own_ac_tests` and `existing_tests_pass`: removed from `checks.py` and `gate.py`; the Interfaces entries that list them go with them.
+- "Validate and the design gate still run the full suite" (in "The review gate runs only the touched capabilities' tests"): the design gate runs no suite now; only validate runs the full suite, and the review gate the touched capabilities' tests.
+
 ### The `--no-run` test moves
 
 AC-FLOW-003.2 (`--no-run`) keeps its meaning; its design-gate test asserts it on the build and typecheck checks, since the test check no longer exists.
