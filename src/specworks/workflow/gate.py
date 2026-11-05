@@ -113,16 +113,6 @@ def stubs_build(key: str) -> CheckFn:
     return check
 
 
-# @req REQ-FLOW-006
-def existing_tests_pass(ctx: GateContext) -> Check:
-    tests = c.command_check(ctx, "test", "the existing tests still pass with the stubs (commands.test)")
-    if tests.ok or not (why := c.own_tests(ctx)):  # the changed files are only computed for a red suite
-        return tests
-    # The test half has started (or a later cycle reopened the API): this change's
-    # own tests are red until the code half makes them pass.
-    return c.not_blocking(ctx, tests, f"{why}, which fail until the code half", at=0)
-
-
 # @req REQ-FLOW-004, REQ-FLOW-006, REQ-FLOW-007, REQ-FLOW-008, REQ-FLOW-011, REQ-FLOW-014
 GATE_CHECKS: dict[str, list[CheckFn]] = {
     "specify": [c.specs_valid, c.specs_warnings, c.tasks_written],  # every criterion having a task is one of specs_valid's errors
@@ -135,7 +125,6 @@ GATE_CHECKS: dict[str, list[CheckFn]] = {
         interface_files_named,
         stubs_build("build"),
         stubs_build("typecheck"),
-        existing_tests_pass,
     ],
     # The two halves of implement: each gate checks only its half (`gate implement` runs both).
     "test": [

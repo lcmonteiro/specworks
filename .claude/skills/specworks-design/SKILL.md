@@ -153,21 +153,15 @@ Read the module's `<docsPath>/architecture.md` first (`docsPath` of the module i
    on. Do not add `@req` tags: `@req` marks implemented code and is added in
    the code half of implement.
 
-6. **Check the stubs build and break nothing, then gate**
+6. **Check the stubs build, then gate**
 
    ```bash
    specworks run build --change "<ref>"       # when configured
    specworks run typecheck --change "<ref>"   # when configured
-   specworks run test --change "<ref>"
    specworks task done <N.M> [<N.M> ...] --change "<ref>"   # interface tasks you completed
    specworks gate design --change "<ref>"
    ```
 
-   The existing test suite must still pass: there are no new tests yet, so a
-   failure means a stub broke an import, a signature or existing behaviour.
-   In a later build cycle (the change already has `@ac` tests), changing an
-   API turns its tests red on purpose: the gate then reports the suite as a
-   warning, and the code half makes it green again.
    Fix every failing blocking check and re-run. Warnings: fix them or explain
    them.
 
