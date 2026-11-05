@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+import shutil
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -74,6 +75,8 @@ class Change:
             data["specified"] = dict(self.specified)
         if self.dirty:
             data["dirty"] = dict(sorted(self.dirty.items()))
+        if self.reopened:
+            data["reopened"] = [{"at": r.at, "reason": r.reason, "phase": r.phase} for r in self.reopened]
         (self.path / META_FILE).write_text(yaml.safe_dump(data, sort_keys=False), encoding="utf-8")
 
 
@@ -109,6 +112,7 @@ def create_change(cfg: Config, name: str, root: Path | None = None) -> Change:
 
 
 # @req REQ-PROJ-011
+# @req REQ-PROJ-034
 def _read_change(path: Path, name: str, where: str) -> Change:
     try:
         meta = yaml.safe_load((path / META_FILE).read_text(encoding="utf-8")) or {}
@@ -130,6 +134,11 @@ def _read_change(path: Path, name: str, where: str) -> Change:
         abandoned=str(meta.get("abandoned") or ""),
         specified={str(k): str(v) for k, v in specified.items()} if isinstance(specified := meta.get("specified"), dict) else {},
         dirty={str(k): str(v) for k, v in dirty.items()} if isinstance(dirty := meta.get("dirty"), dict) else {},  # REQ-PROJ-023
+        reopened=[
+            Reopened(at=str(e.get("at", "")), reason=str(e.get("reason", "")), phase=str(e.get("phase", "")))
+            for e in (meta["reopened"] if isinstance(meta.get("reopened"), list) else [])
+            if isinstance(e, dict)
+        ],
     )
 
 
@@ -175,13 +184,8 @@ def archived_as(cfg: Config, name: str) -> Change | None:
     return found[-1] if found else None
 
 
-# @req REQ-PROJ-011
-# @req REQ-PROJ-023
-def set_phase(change: Change, phase: str, root: Path | None = None) -> None:
-    """Move the change to `phase` and save it; with `root` (the workspace root), a new phase also records its dirty files.
-
-    Moving to the phase the change is already in keeps the record it has. Implements REQ-PROJ-023.
-    """
+def _check_phase(phase: str) -> None:
+    """Refuse a phase a change cannot be moved to."""
     if phase in HALVES:
         raise ChangeError(half_error(phase))
     if phase not in PHASES:
@@ -189,19 +193,58 @@ def set_phase(change: Change, phase: str, root: Path | None = None) -> None:
     if phase == "done":
         # `done` means merged into the living specs and archived; only `specworks close` does that.
         raise ChangeError("a change becomes done only through `specworks close`, which merges its specs and archives it")
+
+
+# @req REQ-PROJ-011
+# @req REQ-PROJ-023
+def set_phase(change: Change, phase: str, root: Path | None = None) -> None:
+    """Move the change to `phase` and save it; with `root` (the workspace root), a new phase also records its dirty files.
+
+    Moving to the phase the change is already in keeps the record it has. Implements REQ-PROJ-023.
+    """
+    _check_phase(phase)
     if root is not None and phase != change.phase:
         change.dirty = _record(root)
     change.phase = phase
     change.save()
 
 
+# @req REQ-PROJ-033
+# @req REQ-PROJ-034
 def reopen_change(cfg: Config, name: str, reason: str, phase: str = "review", root: Path | None = None) -> Change:
     """Move the closed change ``name`` (or archive folder) back to ``active/`` in ``phase``, recording ``reason``.
 
     Implements REQ-PROJ-033 and REQ-PROJ-034. Raises ``ChangeError`` for a blank reason, a phase it cannot take, a change
     that is active, abandoned or whose name is in use, and ``ChangeNotFound`` for a name no archive or ``active/`` has.
     """
-    raise NotImplementedError
+    found = archived_as(cfg, name)
+    if found is None:
+        if (cfg.changes_path / name / META_FILE).is_file():
+            raise ChangeError(f"change '{name}' is active, not archived: there is nothing to reopen")
+        raise ChangeNotFound(f"change '{name}' not found in {cfg.archive_dir}")
+    if found.abandoned:
+        raise ChangeError(f"change '{found.name}' was abandoned ({found.abandoned}), not closed: start a new change instead")
+    target = cfg.changes_path / found.name
+    if target.exists():
+        raise ChangeError(f"change '{found.name}' exists at {target.relative_to(cfg.root).as_posix()}: the active change must close or be abandoned first")
+    if not reason.strip():
+        raise ChangeError("say why with --reason (e.g. --reason 'CI lint failed'): the reason is kept in the change's history")
+    _check_phase(phase)
+
+    meta = found.path / META_FILE
+    original = meta.read_text(encoding="utf-8")
+    found.dirty = _record(root) if root is not None else {}  # before anything moves
+    found.phase = phase
+    found.reopened = [*found.reopened, Reopened(at=datetime.now().isoformat(timespec="seconds"), reason=reason.strip(), phase=phase)]
+    found.save()
+    try:
+        cfg.changes_path.mkdir(parents=True, exist_ok=True)
+        shutil.move(str(found.path), str(target))
+    except OSError:
+        meta.write_text(original, encoding="utf-8")
+        raise
+    found.path = target
+    return found
 
 
 @dataclass(frozen=True)

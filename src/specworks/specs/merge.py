@@ -24,7 +24,7 @@ from ..core.changes import Change
 from ..core.errors import SpecworksError
 from ..core.files import read_text
 from ..core.workspace import Workspace
-from .capabilities import HISTORY_HEADING, REQUIREMENTS_FILE, CapabilityRef, history_lines
+from .capabilities import HISTORY_HEADING, REQUIREMENTS_FILE, CapabilityRef, history_lines, own_ids
 from .check import ChangeSpecs, Delta
 from .specfile import LIVING_SECTION, Requirement, living_problems, parse_spec, section_kind, table_cell
 
@@ -97,19 +97,19 @@ def new_spec_text(cap: CapabilityRef, purpose: str) -> str:
 
 
 # @req REQ-SPECS-013
+# @req REQ-SPECS-017
 def apply_delta(living_text: str, delta: Delta, own: frozenset[str] = frozenset()) -> tuple[str, list[str], list[str], list[str]]:
     """New living spec text plus the IDs added, modified and removed.
 
     ``own`` holds the change's own IDs from an earlier close: an ADDED one the living spec has is replaced in place and
     listed as modified, a REMOVED one already gone is skipped (REQ-SPECS-017).
     """
-    if own:
-        raise NotImplementedError
     lines = living_text.rstrip("\n").split("\n")
     _, section_end, blocks = _blocks(lines)
     by_id = {req_id: (start, end) for req_id, start, end in blocks if req_id}
     added, modified, removed = [], [], []
     replacements: dict[int, tuple[int, list[str]]] = {}
+    in_place: set[str | None] = set()  # own ADDED blocks the living spec already has
 
     for req in delta.doc.requirements:
         if req.section == "MODIFIED":
@@ -120,12 +120,19 @@ def apply_delta(living_text: str, delta: Delta, own: frozenset[str] = frozenset(
             modified.append(req.id)
         elif req.section == "REMOVED":
             if req.id not in by_id:
+                if req.id in own:
+                    continue  # removed by this change's own earlier close
                 raise MergeError(f"{req.id} is REMOVED but not in the living spec of {delta.cap.ref}")
             start, end = by_id[req.id]
             replacements[start] = (end, [])
             removed.append(req.id)
         elif req.section == "ADDED" and req.id in by_id:
-            raise MergeError(f"{req.id} is ADDED but already in the living spec of {delta.cap.ref}")
+            if req.id not in own:
+                raise MergeError(f"{req.id} is ADDED but already in the living spec of {delta.cap.ref}")
+            start, end = by_id[req.id]
+            replacements[start] = (end, _block_lines(req))
+            modified.append(req.id)
+            in_place.add(req.id)
 
     # Every replaced block lies inside the section; ADDED blocks go at its end. Blank lines are
     # tidied only where text is spliced in, so everything else stays as written.
@@ -141,6 +148,8 @@ def apply_delta(living_text: str, delta: Delta, own: frozenset[str] = frozenset(
             out.append(lines[i])
             i += 1
     for req in delta.doc.section("ADDED"):
+        if req.id in in_place:
+            continue
         if out and out[-1].strip():
             out.append("")
         _splice(out, _block_lines(req))
@@ -169,6 +178,7 @@ def requirements_index(cap: CapabilityRef, spec_text: str, history: list[str]) -
 
 
 # @req REQ-SPECS-013
+# @req REQ-SPECS-017
 def plan_merge(ws: Workspace, change: Change, specs: ChangeSpecs, change_ref: str, today: str | None = None) -> list[CapabilityMerge]:
     """Compute every living spec and requirements index this change produces, without writing."""
     today = today or datetime.now().isoformat(sep=" ", timespec="seconds")  # the time lets check order same-day closes
@@ -189,7 +199,7 @@ def plan_merge(ws: Workspace, change: Change, specs: ChangeSpecs, change_ref: st
             listed = "; ".join(f"line {line}: {message}" for line, message in problems)
             raise MergeError(f"{ws.rel(spec_path)} is not a valid living spec ({listed}); fix it before closing")
         try:
-            text, added, modified, removed = apply_delta(living, delta)
+            text, added, modified, removed = apply_delta(living, delta, frozenset(own_ids(delta.cap, change_ref)))
         except MergeError as exc:
             raise MergeError(f"{ws.rel(spec_path)}: {exc}") from None
         merge = CapabilityMerge(delta.cap, spec_path, created, added, modified, removed, text)

@@ -55,6 +55,7 @@ def workspace(as_json: bool) -> Workspace:
     return ws
 
 
+# @req REQ-CLI-021
 def change_dict(ws: Workspace, module: Module, change: Change) -> dict:
     return {
         "name": change.name,
@@ -66,6 +67,7 @@ def change_dict(ws: Workspace, module: Module, change: Change) -> dict:
         "skipSpecs": change.skip_specs,
         **({"archived": True} if change.path.parent.name == ARCHIVE_DIR else {}),
         **({"abandoned": change.abandoned} if change.abandoned else {}),
+        **({"reopened": [{"at": r.at, "reason": r.reason, "phase": r.phase} for r in change.reopened]} if change.reopened else {}),
     }
 
 
