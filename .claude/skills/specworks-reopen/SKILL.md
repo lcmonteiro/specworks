@@ -113,7 +113,6 @@ next step the same way: the next skill (recommended), any alternative, and
    `code-gap`, `tag` or `quality`), and `<step>` the step that carries it out
    (`specify`, `design`, `implement`, `test` or `code`). For `refine` and
    `specify` no finding is added: that phase's skill reads the reason from
-   `specify` no finding is added: that phase's skill reads the reason from
    `specworks status`.
 
    Commit the move with `--message "<ref>: reopen"`, so the history shows
