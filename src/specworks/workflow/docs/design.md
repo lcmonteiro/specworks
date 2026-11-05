@@ -105,21 +105,19 @@ code in review, whose gate runs the tests (the touched capabilities' ones when
 warning under `--allow-open` while review.md has an open finding. A broken
 existing test is no longer caught before review. (code-half-no-tests)
 
-### A change's own tests include its changed test files
+### The design gate does not run the tests
 
-The design gate's `existing_tests_pass` reads one rule, `own_tests(ctx)`: the change has
-tests of its own when it has `@ac` tests tagged with its criteria, or test
-files changed since it started (kind `test` in `ctx.report.changed`, deleted
-ones excluded). It returns the reason, which the warning names. Without the
-second half, a change with no criteria of its own (skip-specs) got stuck in
-implement when its halves disagreed (the code gate used it too until it
-stopped running the suite). The changed files come from the same
-diff `specworks review` computes, so the gates and review agree on what
-changed; a second, lighter `git diff` in the gates was rejected. Without git
-none are known and the suite blocks. The rule is read only for a red suite,
-so a green one costs no diff. Test edits unrelated to the change also relax
-the gate; that is accepted, since the review gate still blocks on the
-tests and validate on the whole suite. (fix-no-own-tests-gate)
+The design gate runs no test command: it checks the stubs with `build` and
+`typecheck`, and the tests first meet the change in the review gate. Its former
+check, `existing_tests_pass`, ran the whole existing suite to see that the stubs
+break nothing, which build and typecheck already cover; it cost a full run and
+a red suite failed or warned the gate for reasons that are not about the API.
+Its helper rules, `own_tests` and `has_own_ac_tests` (a red suite was only a
+warning when the change had tests of its own), went with it. Scoping the run to
+the touched capabilities, as `test_plan` does for review, was rejected: it
+keeps a test run and the warning at design for what build and typecheck cover.
+A stub that breaks an existing test is caught at review, not design.
+(scope-design-gate-tests)
 
 ### The review gate runs only the touched capabilities' tests
 
@@ -138,7 +136,7 @@ its details holding each run's command line and, on a failure, its output
 tail; `--no-run` and the `--allow-open` warning behave as for the full suite.
 `test_folders_exist`, a warning listed before it, names the missing folders
 (workspace-relative), and is `None` when none is missing or `test_scoped` is
-not configured. Validate and the design gate still run the full suite, so a
+not configured. Validate still runs the full suite, so a
 test a scoped run misses still blocks before close. (capability-tests)
 
 ### Specs are fingerprinted when they are agreed
@@ -260,9 +258,7 @@ which close raises. (merge-halves-without-conflicts)
   `TestPlan`, `test_plan(ctx) -> TestPlan`, `test_folders_exist(ctx)`,
   `code_command(key, name) -> CheckFn` (runs `commands.<key>`, blocking on
   failure, `None` when not configured), `no_code_commands(ctx)` (the `[warn]`
-  named `build, typecheck and lint` when none is configured)), and
-  `own_tests(ctx) -> str | None` (why the change has tests of its own, or
-  None; used by the design gate's `existing_tests_pass`).
+  named `build, typecheck and lint` when none is configured)).
 - `src/specworks/workflow/gate.py`: `GATE_CHECKS` (`code`: specs, code tasks, tags,
   then `code_command` for build, typecheck and lint, then
   `no_code_commands`; `review`: `test_folders_exist` before
