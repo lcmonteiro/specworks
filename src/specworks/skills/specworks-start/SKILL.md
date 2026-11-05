@@ -181,7 +181,7 @@ sources or tests; the first change sets up the stack.
    Show the tree as created (every module, its folders and `.gitkeep` files) and
    the commands written. Say that `commands.test` fails until the first
    change sets up the stack (its manifest and test runner), so that change's
-   design and code gates wait for it; the first change is usually the one
+   review gate waits for it; the first change is usually the one
    that sets up the stack. Nothing is committed: the user commits the setup.
    Then offer:
    ```
