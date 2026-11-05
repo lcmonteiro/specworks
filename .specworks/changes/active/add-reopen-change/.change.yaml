@@ -1,6 +1,6 @@
 name: add-reopen-change
 created: '2026-11-05T18:19:26'
-phase: design
+phase: implement
 specified:
   REQ-CLI-020: 3c5059b35867
   REQ-CLI-021: 120b5e5ec2f2
