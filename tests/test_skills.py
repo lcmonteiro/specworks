@@ -350,7 +350,7 @@ def test_baseline_checks_the_suite_before_creating_its_change():
     text = read_skill("specworks-baseline")
     assert 'specworks new "baseline-<capability>" --json' in text and "/specworks-done" in text
     assert "specworks validate" not in text  # validate runs once, in /specworks-done
-    # A red suite fails the design and code gates; checking it first stops before the change is created.
+    # A red suite fails validate; checking it first stops before the change is created.
     assert text.index("specworks run test\n") < text.index('specworks new "baseline-<capability>"')
     # A project with no capabilities is adopted first; the baseline never registers one itself.
     assert "/specworks-adopt" in text.split("## Steps", 1)[1].split("2. **", 1)[0]

@@ -1,10 +1,10 @@
-"""Design phase: the design gate (API recorded in design.md, stubs exist, build and tests still pass)."""
+"""Design phase: the design gate (API recorded in design.md, stubs exist, build and typecheck pass, no test run)."""
 
 import sys
 
 import pytest
 
-from helpers import REF, on_a_branch, remove_repo, run_json
+from helpers import REF, run_json
 from specworks.core.changes import load_change
 from specworks.core.config import load_config
 from specworks.workflow.gate import interface_files, interfaces_section
@@ -31,7 +31,6 @@ def gate(*extra):
 
 SECTION = 'design.md has an Interfaces section (write "None" when the API does not change)'
 FILES = "every file named under Interfaces exists"
-TESTS = "the existing tests still pass with the stubs (commands.test)"
 
 
 @pytest.fixture
@@ -60,7 +59,7 @@ def test_gate_checks_the_named_files_exist(planned):
     (planned / "src/auth/reset.py").write_text("class ResetService:\n    def request_reset(self, email): raise NotImplementedError\n")
     (planned / "src/auth/errors.py").write_text("class ExpiredToken(Exception): ...\n")
     code, checks = gate()
-    assert code == 0 and checks[FILES]["ok"] and checks[TESTS]["ok"]
+    assert code == 0 and checks[FILES]["ok"]
 
 
 # @ac AC-FLOW-006.3
@@ -78,14 +77,16 @@ def test_prose_without_paths_is_a_warning(planned):
     assert code == 0 and not warning["ok"] and warning["blocking"] is False
 
 
-# @ac AC-FLOW-003.2, AC-FLOW-006.4
-def test_stubs_that_break_the_existing_tests_fail_the_gate(planned):
+# @ac AC-FLOW-003.2
+def test_no_run_reports_build_and_typecheck_as_not_run(planned):
     write_design(planned, "None.")
-    set_commands(planned, test=FAIL)
+    set_commands(planned, test=PASS, build=FAIL, typecheck=FAIL)
     code, checks = gate()
-    assert code == 1 and "ImportError: cannot import ResetService" in checks[TESTS]["details"]
+    assert code == 1 and not checks["the stubs build (commands.build)"]["ok"]
     code, checks = gate("--no-run")
-    assert code == 0 and checks[TESTS]["blocking"] is False and "not run" in checks[TESTS]["details"][0]
+    assert code == 0
+    for name in ("the stubs build (commands.build)", "the stubs build (commands.typecheck)"):
+        assert checks[name]["blocking"] is False and "not run" in checks[name]["details"][0]
 
 
 # @ac AC-FLOW-006.5
@@ -122,38 +123,15 @@ def test_interface_files(section, files):
     assert interface_files(section) == files
 
 
-# @ac AC-FLOW-006.4
-def test_red_suite_is_only_a_warning_once_the_change_has_tests(planned):
-    # `/specworks-test` re-checks `gate design`, and a later build cycle reopens the API:
-    # by then this change's own @ac tests are red on purpose.
+# @ac AC-FLOW-006.8
+def test_the_gate_runs_no_test_command(planned):
     write_design(planned, "None.")
-    set_commands(planned, test=FAIL)
-    (planned / "tests").mkdir()
-    (planned / "tests/test_other.py").write_text("# @ac AC-OTHER-001.1\ndef test_other(): ...\n")  # not this change  # specworks: ignore-tags
+    marker = planned / "test-ran.marker"
+    set_commands(planned, test=f'"{sys.executable}" -c "import pathlib, sys; pathlib.Path(r\'{marker}\').write_text(\'ran\'); sys.exit(1)"')
     code, checks = gate()
-    assert code == 1 and checks[TESTS]["blocking"] is True
-    (planned / "tests/test_reset.py").write_text("# @ac AC-AUTH-003.1\ndef test_request(): assert False\n")  # specworks: ignore-tags
-    code, checks = gate()
-    assert code == 0 and checks[TESTS]["ok"] is False and checks[TESTS]["blocking"] is False
-    assert "@ac tests" in checks[TESTS]["details"][0]
-
-
-# @ac AC-FLOW-006.7
-def test_changed_test_files_without_tags_make_a_red_suite_a_warning(planned, monkeypatch):
-    # A skip-specs change, or a test half that has not tagged its tests yet: no @ac tests, but changed test files.
-    write_design(planned, "None.")
-    set_commands(planned, test=FAIL)
-    on_a_branch(planned, monkeypatch)
-    code, checks = gate()
-    assert code == 1 and checks[TESTS]["blocking"] is True  # git, but no test file changed since the change started
-    (planned / "tests").mkdir()
-    (planned / "tests/test_session.py").write_text("def test_session():\n    assert False\n")  # untracked, without a tag
-    code, checks = gate()
-    assert code == 0 and checks[TESTS]["ok"] is False and checks[TESTS]["blocking"] is False
-    assert "changed test files" in checks[TESTS]["details"][0]
-    remove_repo(planned)  # without git, no test file counts as changed
-    code, checks = gate()
-    assert code == 1 and checks[TESTS]["blocking"] is True
+    assert code == 0
+    assert not any("commands.test" in name or "tests" in name for name in checks)
+    assert not marker.exists()
 
 
 # @ac AC-FLOW-006.1
