@@ -1,4 +1,4 @@
-"""Design phase: the design gate (API recorded in design.md, stubs exist, build and tests still pass)."""
+"""Design phase: the design gate (API recorded in design.md, stubs exist, build and typecheck pass, no test run)."""
 
 import pytest
 
