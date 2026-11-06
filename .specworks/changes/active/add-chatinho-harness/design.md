@@ -50,8 +50,14 @@ workspace; `Workspace`, `Change` and `git` from `src/specworks/core`.
 
 `SkillPeer(AgentConnector)` overrides `graph()` with the same eight lines,
 calling `create_deep_agent(model, tools, system_prompt=instructions,
-backend=confined(workspace))` instead of `create_agent`, and caches the graph
-per (chat shape, workspace). The rest (history from the chat, `ask_<peer>`,
+backend=self.shell)` instead of `create_agent`, and caches the graph per chat
+shape only. `self.shell` is one `PeerShell` per peer, built in `__init__`,
+that looks up the peer's workspace (`Workspaces.path_of(peer)`, the main
+checkout before the peer has an id) on every file or shell call, so a
+`/workspace` switch moves the file tools and the shell within the same run
+(review R1: a backend picked once per run, from the workspace at the start of
+the run, kept writing into the old one; deepagents 0.7 has no backend
+factories). The rest (history from the chat, `ask_<peer>`,
 `ask_user`, `run_<command>`, error replies with the failure's kind, never its
 message) is AgentConnector's. Its `listen()` does nothing: a skill peer acts
 only on what is addressed to it (`answer()`). `ask_user=True`.
@@ -114,9 +120,18 @@ under one root.
 ### Confinement in the backend, push refused before the shell
 
 `confined(path)` returns a `LocalShellBackend(root_dir=path, virtual_mode=True)`
-subclass whose `execute` refuses a command matching `\bgit\b.*\bpush\b` with an
-error and otherwise runs it with `path` as the working folder. Virtual mode
-rejects `..` and absolute paths outside the root. Serves: REQ-HARNESS-008.
+subclass whose `execute` refuses a `git push` with an error and otherwise runs
+it with `path` as the working folder. Virtual mode rejects `..` and absolute
+paths outside the root. A push is `git`, then any global options (`-C x`,
+`--no-pager`, `-c a=b`), then the `push` subcommand:
+`\bgit(\s+-{1,2}\S+(\s+[^-\s]\S*)?)*\s+push\b`. `git stash push` and a commit
+message that mentions push run (review R4: `\bgit\b.*\bpush\b` refused them).
+
+`PeerShell(root_of)` is the backend a peer's Deep Agent holds: a
+`SandboxBackendProtocol` that calls `root_of()` on every file or shell call
+and passes the call to `confined(<that folder>)` (one `ConfinedShell` kept per
+folder), so the agent sees one backend while its folder follows the peer's
+workspace. Serves: REQ-HARNESS-006, REQ-HARNESS-008.
 
 ### GitBackend writes chat.jsonl; held until a change exists
 
@@ -175,6 +190,8 @@ Serves: REQ-CLI-022.
 
 Agreed with the user
 
+Cycle 2: `PeerShell`, `SkillPeer.shell` and the new `PUSH_RE` carry out review R1 and R4 as the user decided them in review.md.
+
 Every module below except `src/specworks/core/events.py` and `src/specworks/cli/harness.py` lives in the new package and is imported only from the `harness` command's body. Refusals inside the package are `SpecworksError` subclasses; a chatinho command turns them into `Reply(<message>, status=ReplyStatus.ERROR)` to the peer that ran it, and `hand_over` returns its refusal to the agent as the tool's text starting `error:`.
 
 - `src/specworks/harness/__init__.py`: re-exports `build_harness`, `run_harness`, `model_from_env`, `ModelSettingsError` (new; REQ-HARNESS-001, REQ-HARNESS-010, REQ-CLI-022)
@@ -187,7 +204,7 @@ Every module below except `src/specworks/core/events.py` and `src/specworks/cli/
   - `peer_name(skill: str) -> str` (REQ-HARNESS-001)
   - `preamble(name: str, peers: Sequence[str]) -> str` (REQ-HARNESS-004)
   - `skill_instructions(skill: str, peers: Sequence[str]) -> str`: `preamble(peer_name(skill), peers)` + `"\n\n"` + `read_skill(skill)` (REQ-HARNESS-001, REQ-HARNESS-004)
-  - `class SkillPeer(AgentConnector)` (`@connector("skill")`): `__init__(self, skill: str, model: BaseChatModel, workspaces: Workspaces, peers: Sequence[str])` (name `peer_name(skill)`, `ask_user=True`, `system_prompt=skill_instructions(...)`); `skill: str`; `async graph() -> Any` (a Deep Agent per chat shape and workspace); `async answer(msg: ChatMessage) -> Reply` (AgentConnector's run, then the recorded hand-over is said); `async listen(msg: ChatMessage) -> None` (does nothing); `hand_over_tool() -> StructuredTool`, the agent tool `hand_over(peer: str, text: str) -> str` returning `"handed over to <peer>"` or `"error: unknown peer '<peer>'"` / `"error: cannot hand over to yourself"` (REQ-HARNESS-002, REQ-HARNESS-003, REQ-HARNESS-005)
+  - `class SkillPeer(AgentConnector)` (`@connector("skill")`): `__init__(self, skill: str, model: BaseChatModel, workspaces: Workspaces, peers: Sequence[str])` (name `peer_name(skill)`, `ask_user=True`, `system_prompt=skill_instructions(...)`); `skill: str`; `shell: PeerShell` (`PeerShell(<this peer's workspace folder>)`, built once); `async graph() -> Any` (a Deep Agent over `shell`, cached per chat shape only; extended in cycle 2, review R1); `async answer(msg: ChatMessage) -> Reply` (AgentConnector's run, then the recorded hand-over is said); `async listen(msg: ChatMessage) -> None` (does nothing); `hand_over_tool() -> StructuredTool`, the agent tool `hand_over(peer: str, text: str) -> str` returning `"handed over to <peer>"` or `"error: unknown peer '<peer>'"` / `"error: cannot hand over to yourself"` (REQ-HARNESS-002, REQ-HARNESS-003, REQ-HARNESS-005)
 - `src/specworks/harness/workspaces.py` (new):
   - `WORKSPACES_DIR = ".specworks/workspaces"`; `MAIN = "main"`; `NAME_RE = re.compile(r"^[a-z0-9][a-z0-9-]*$")` (REQ-HARNESS-006)
   - `class WorkspaceError(SpecworksError)`: `__init__(self, message: str, files: list[Path] | None = None)`, `files: list[Path]` (REQ-HARNESS-006, REQ-HARNESS-007)
@@ -195,9 +212,10 @@ Every module below except `src/specworks/core/events.py` and `src/specworks/cli/
   - `class WorkspaceCommand` (`@tool("workspace", ...)`, `@require(HookExecute)`): `__init__(self, workspaces: Workspaces)`; `async execute(args: str = "", by: int = LOCAL, **kwargs: Any) -> Reply` (REQ-HARNESS-006)
   - `class MergeCommand` (`@tool("merge", ...)`, `@require(HookExecute)`): `__init__(self, workspaces: Workspaces, backend: GitBackend)`; `async execute(args: str = "", by: int = LOCAL, **kwargs: Any) -> Reply`, an error reply when the run has no change yet (REQ-HARNESS-007)
 - `src/specworks/harness/confine.py` (new):
-  - `PUSH_RE = re.compile(r"\bgit\b.*\bpush\b")`; `refuses(command: str) -> bool` (REQ-HARNESS-008)
+  - `PUSH_RE = re.compile(r"\bgit(\s+-{1,2}\S+(\s+[^-\s]\S*)?)*\s+push\b")` (git, optional global options, then `push`; changed in cycle 2, review R4); `refuses(command: str) -> bool` (REQ-HARNESS-008)
   - `class ConfinedShell(LocalShellBackend)`: `__init__(self, root: Path)` (`root_dir=root`, `virtual_mode=True`); `execute(command: str, ...)` returns an error response for a refused command without running it (REQ-HARNESS-008)
   - `confined(root: Path) -> ConfinedShell` (REQ-HARNESS-008)
+  - `class PeerShell(SandboxBackendProtocol)` (new in cycle 2, review R1): `__init__(self, root_of: Callable[[], Path])`; `current() -> ConfinedShell` (`confined(root_of())`, one kept per folder); `id: str` (property); `ls`, `read`, `write`, `edit`, `delete`, `grep`, `glob`, `upload_files`, `download_files` and `execute` with `BackendProtocol`'s / `SandboxBackendProtocol`'s signatures, each passed to `current()` at call time (the async variants are the protocol's, over these) (REQ-HARNESS-006, REQ-HARNESS-008)
 - `src/specworks/harness/backend.py` (new):
   - `CHAT_FILE = "chat.jsonl"`
   - `class GitBackend` (`@backend("git")`, `@require(HookListen)`, `@require(HookLoad)`, `@require(HookForget)`): `__init__(self, ws: Workspace, module: Module, change: Change | None)`; `change: Change | None` (the run's change once known); `async listen(msg: ChatMessage) -> None`; `async load(since: datetime | None = None, limit: int | None = None) -> list[ChatMessage]`; `async forget(before: datetime | None = None) -> int` (drops held lines only; the file is kept) (REQ-HARNESS-009)

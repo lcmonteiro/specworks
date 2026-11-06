@@ -16,7 +16,7 @@ from langchain_core.language_models import BaseChatModel
 from langchain_core.tools import StructuredTool
 
 from ..tools.skills import read_skill
-from .confine import confined
+from .confine import PeerShell, confined
 from .workspaces import Workspaces
 
 logger = logging.getLogger(__name__)
@@ -81,6 +81,8 @@ class SkillPeer(AgentConnector):
         #: The skill peers' names, which ``hand_over`` accepts (all but its own).
         self.peer_names = list(peers)
         super().__init__(peer_name(skill), model, [self.hand_over_tool()], memory=MEMORY, ask_user=True, system_prompt=skill_instructions(skill, peers))
+        #: The one backend of this peer's Deep Agent, following its workspace on every call.
+        self.shell = PeerShell(self._workspace)
         #: The compiled graphs, by chat shape and workspace folder.
         self._graphs: dict[tuple[Any, Path], Any] = {}
         #: Hand-overs being said; kept so they are not collected before they run.

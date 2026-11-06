@@ -3,10 +3,23 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Callable
 from pathlib import Path, PurePosixPath
 
 from deepagents.backends import LocalShellBackend
-from deepagents.backends.protocol import ExecuteResponse
+from deepagents.backends.protocol import (
+    DeleteResult,
+    EditResult,
+    ExecuteResponse,
+    FileDownloadResponse,
+    FileUploadResponse,
+    GlobResult,
+    GrepResult,
+    LsResult,
+    ReadResult,
+    SandboxBackendProtocol,
+    WriteResult,
+)
 
 PUSH_RE = re.compile(r"\bgit\b.*\bpush\b")
 
@@ -55,3 +68,66 @@ class ConfinedShell(LocalShellBackend):
 def confined(root: Path) -> ConfinedShell:
     """The file and shell backend of a peer whose workspace is ``root``. Implements REQ-HARNESS-008."""
     return ConfinedShell(root)
+
+
+class PeerShell(SandboxBackendProtocol):
+    """The one backend a peer's Deep Agent holds: every file or shell call goes to ``confined(root_of())`` at call time.
+
+    The folder follows the peer's workspace, so a ``/workspace`` switch moves the file tools and the shell within the same
+    run. Implements REQ-HARNESS-006, REQ-HARNESS-008.
+    """
+
+    def __init__(self, root_of: Callable[[], Path]) -> None:
+        """Following ``root_of``, called on every file or shell call (the peer's workspace folder)."""
+        self.root_of = root_of
+        #: The confined shell of each folder the peer has worked in.
+        self._shells: dict[Path, ConfinedShell] = {}
+
+    def current(self) -> ConfinedShell:
+        """``confined(root_of())``, one kept per folder. Implements REQ-HARNESS-006, REQ-HARNESS-008."""
+        raise NotImplementedError
+
+    @property
+    def id(self) -> str:
+        """The identifier of this backend."""
+        raise NotImplementedError
+
+    def ls(self, path: str) -> LsResult:
+        """``ls`` in the current workspace."""
+        raise NotImplementedError
+
+    def read(self, file_path: str, offset: int = 0, limit: int = 2000) -> ReadResult:
+        """``read`` in the current workspace."""
+        raise NotImplementedError
+
+    def grep(self, pattern: str, path: str | None = None, glob: str | None = None, *, max_count: int | None = None) -> GrepResult:
+        """``grep`` in the current workspace."""
+        raise NotImplementedError
+
+    def glob(self, pattern: str, path: str | None = None) -> GlobResult:
+        """``glob`` in the current workspace."""
+        raise NotImplementedError
+
+    def write(self, file_path: str, content: str) -> WriteResult:
+        """``write`` in the current workspace."""
+        raise NotImplementedError
+
+    def edit(self, file_path: str, old_string: str, new_string: str, replace_all: bool = False) -> EditResult:  # noqa: FBT001, FBT002 - the protocol's signature
+        """``edit`` in the current workspace."""
+        raise NotImplementedError
+
+    def delete(self, file_path: str) -> DeleteResult:
+        """``delete`` in the current workspace."""
+        raise NotImplementedError
+
+    def upload_files(self, files: list[tuple[str, bytes]]) -> list[FileUploadResponse]:
+        """``upload_files`` into the current workspace."""
+        raise NotImplementedError
+
+    def download_files(self, paths: list[str]) -> list[FileDownloadResponse]:
+        """``download_files`` from the current workspace."""
+        raise NotImplementedError
+
+    def execute(self, command: str, *, timeout: int | None = None) -> ExecuteResponse:
+        """``execute`` in the current workspace (a ``git push`` is refused there)."""
+        raise NotImplementedError
