@@ -16,7 +16,7 @@ from langchain_core.language_models import BaseChatModel
 from langchain_core.tools import StructuredTool
 
 from ..tools.skills import read_skill
-from .confine import PeerShell, confined
+from .confine import PeerShell
 from .workspaces import Workspaces
 
 logger = logging.getLogger(__name__)
@@ -83,8 +83,8 @@ class SkillPeer(AgentConnector):
         super().__init__(peer_name(skill), model, [self.hand_over_tool()], memory=MEMORY, ask_user=True, system_prompt=skill_instructions(skill, peers))
         #: The one backend of this peer's Deep Agent, following its workspace on every call.
         self.shell = PeerShell(self._workspace)
-        #: The compiled graphs, by chat shape and workspace folder.
-        self._graphs: dict[tuple[Any, Path], Any] = {}
+        #: The compiled graphs, by chat shape (the shell follows the workspace by itself).
+        self._graphs: dict[Any, Any] = {}
         #: Hand-overs being said; kept so they are not collected before they run.
         self._handing: set[asyncio.Task[None]] = set()
 
@@ -94,17 +94,16 @@ class SkillPeer(AgentConnector):
         return self.workspaces.ws.root if me is None else self.workspaces.path_of(me)
 
     async def graph(self) -> Any:
-        """The compiled graph around a Deep Agent, built per chat shape and workspace. Implements REQ-HARNESS-002."""
+        """The compiled graph around a Deep Agent over ``shell``, built per chat shape. Implements REQ-HARNESS-002, REQ-HARNESS-006."""
         shape = self._shape()
-        root = self._workspace()
         async with self._building:
-            built = self._graphs.get((shape, root))
+            built = self._graphs.get(shape)
             if built is None:
-                # AgentConnector.graph(), with a Deep Agent rooted in the workspace in place of create_agent.
+                # AgentConnector.graph(), with a Deep Agent over the peer's shell in place of create_agent.
                 tools = self.tools + self._chat_tools(shape)
                 options = {k: v for k, v in self.options.items() if k != "checkpointer"}
-                inner = create_deep_agent(self.model, tools, backend=confined(root), **options)
-                built = self._graphs[(shape, root)] = self._compile(inner)
+                inner = create_deep_agent(self.model, tools, backend=self.shell, **options)
+                built = self._graphs[shape] = self._compile(inner)
             return built
 
     async def answer(self, msg: ChatMessage) -> Reply:
