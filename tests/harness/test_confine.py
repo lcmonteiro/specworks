@@ -68,7 +68,7 @@ def test_ac_harness_008_2_the_shells_folder(project, ws, module):
 
 
 # @ac AC-HARNESS-008.3
-@pytest.mark.parametrize("command", ["git push", "git push origin main", "touch ran && git push origin main"])
+@pytest.mark.parametrize("command", ["git push", "git push origin main", "touch ran && git push origin main", "touch ran && git -C . push origin main"])
 def test_ac_harness_008_3_no_push(tmp_path, command):
     assert refuses(command)
     response = confined(tmp_path).execute(command)
@@ -77,6 +77,8 @@ def test_ac_harness_008_3_no_push(tmp_path, command):
 
 
 # @ac AC-HARNESS-008.3
-@pytest.mark.parametrize("command", ["git status", "echo pushed"])
+@pytest.mark.parametrize("command", ["git status", "echo pushed", "git stash push -m wip", 'git commit -m "push later"'])
 def test_ac_harness_008_3_other_commands_run(tmp_path, command):
     assert not refuses(command)
+    response = confined(tmp_path).execute(command)
+    assert "refused" not in response.output
