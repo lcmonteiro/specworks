@@ -173,7 +173,7 @@ Serves: REQ-CLI-022.
 
 ## Interfaces
 
-Proposed: waiting for the user's agreement
+Agreed with the user
 
 Every module below except `src/specworks/core/events.py` and `src/specworks/cli/harness.py` lives in the new package and is imported only from the `harness` command's body. Refusals inside the package are `SpecworksError` subclasses; a chatinho command turns them into `Reply(<message>, status=ReplyStatus.ERROR)` to the peer that ran it, and `hand_over` returns its refusal to the agent as the tool's text starting `error:`.
 

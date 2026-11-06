@@ -25,6 +25,7 @@ from . import changes  # noqa: E402, F401
 from . import specs  # noqa: E402, F401
 from . import workflow  # noqa: E402, F401
 from . import telemetry  # noqa: E402, F401
+from . import harness  # noqa: E402, F401
 # isort: on
 
 __all__ = ["app", "main"]

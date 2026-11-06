@@ -2,7 +2,7 @@
 
 ## 1. Packaging and the change's .gitignore
 
-- [ ] 1.1 Add the `harness` extra and dev entries (chatinho pinned, deepagents; Python >= 3.12 markers), the mypy override, the `src/specworks/harness/` package with its modules as stubs per design.md Interfaces, `ensure_ignored` in `src/specworks/core/events.py` and `src/specworks/cli/harness.py` as stubs (REQ-HARNESS-001, REQ-CLI-022, REQ-PROJ-030); verify `uv sync`, `uv run ruff check src tests && uv run mypy` and `uv run specworks --help` pass
+- [x] 1.1 Add the `harness` extra and dev entries (chatinho pinned, deepagents; Python >= 3.12 markers), the mypy override, the `src/specworks/harness/` package with its modules as stubs per design.md Interfaces, `ensure_ignored` in `src/specworks/core/events.py` and `src/specworks/cli/harness.py` as stubs (REQ-HARNESS-001, REQ-CLI-022, REQ-PROJ-030); verify `uv sync`, `uv run ruff check src tests && uv run mypy` and `uv run specworks --help` pass
 - [ ] 1.2 [test] Write failing tests in `tests/project/` for an existing `.gitignore` gaining the missing names once, tagged `@ac AC-PROJ-030.6`; keep the tests of AC-PROJ-030.1 to AC-PROJ-030.5 passing; verify the new test fails on the stub
 - [ ] 1.3 [code] Implement `ensure_ignored` and call it from `record_event` (REQ-PROJ-030) tagged `@req REQ-PROJ-030`; verify by lint and typecheck, and a manual `record_event` on a folder whose `.gitignore` names `chat.jsonl`
 - [ ] 1.4 Add `tests/harness/conftest.py` (skip the folder when chatinho or deepagents cannot be imported) and the scripted chat model `tests/harness/scripted.py` (tests only, no network) (REQ-HARNESS-002); verify `uv run pytest tests/harness` collects on 3.12+ and skips on 3.11

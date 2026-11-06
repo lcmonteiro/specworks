@@ -8,7 +8,9 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections.abc import Sequence
 from datetime import UTC, datetime
+from pathlib import Path
 
 from .changes import Change
 
@@ -35,6 +37,14 @@ def record_event(change: Change, enabled: bool, event: str, **fields: object) ->
             ignore.write_text(f"{EVENTS_FILE}\n{SENT_FILE}\n", encoding="utf-8")
     except Exception:  # noqa: BLE001 - the log must never fail the command that records the event
         return
+
+
+def ensure_ignored(folder: Path, names: Sequence[str]) -> None:
+    """Make ``folder``'s ``.gitignore`` name each of ``names``: created when missing, each missing name added on its own line.
+
+    Keeps the file's other lines; never raises. Implements REQ-PROJ-030.
+    """
+    raise NotImplementedError
 
 
 # @req REQ-INTEG-009
