@@ -8,6 +8,7 @@ from langchain_openai import ChatOpenAI
 
 from harness.scripted import ScriptedModel, chat, new_change, read_chat
 from specworks.harness import ModelSettingsError, model_from_env
+from specworks.harness.confine import confined
 from specworks.harness.model import MODEL_BASE_URL, MODEL_KEY, MODEL_NAME
 
 KEY = "sk-secret"
@@ -69,3 +70,13 @@ def test_ac_harness_010_3_the_key_never_shown(project, ws, monkeypatch, caplog):
     assert all(KEY not in r.getMessage() and KEY not in str(r.exc_info or "") for r in caplog.records)
     assert read_chat(change), "the conversation is written"
     assert KEY not in (change.path / "chat.jsonl").read_text(encoding="utf-8")
+
+
+# @ac AC-HARNESS-010.3
+def test_ac_harness_010_3_the_key_never_in_a_peers_shell(tmp_path, monkeypatch):
+    for name, value in SETTINGS.items():
+        monkeypatch.setenv(name, value)
+    response = confined(tmp_path).execute("env")
+    assert response.exit_code == 0
+    assert "PATH=" in response.output
+    assert KEY not in response.output
