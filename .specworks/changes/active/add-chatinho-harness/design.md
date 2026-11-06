@@ -120,7 +120,7 @@ rejects `..` and absolute paths outside the root. Serves: REQ-HARNESS-008.
 
 ### GitBackend writes chat.jsonl; held until a change exists
 
-`GitBackend(ws, change)` is a chatinho `@backend` with `HookListen`, `HookLoad`
+`GitBackend(ws, module, change)` is a chatinho `@backend` with `HookListen`, `HookLoad`
 and `HookForget`. Each heard message becomes
 `{"id", "from", "to", "replyTo", "status", "text", "at"}` (ids as `str()`
 writes them). With no change, it notes the active change names at start, holds
@@ -173,34 +173,43 @@ Serves: REQ-CLI-022.
 
 ## Interfaces
 
-- `src/specworks/harness/__init__.py`: re-exports `build_harness`, `run_harness`, `model_from_env`, `ModelSettingsError`.
-- `src/specworks/harness/model.py`:
+Proposed: waiting for the user's agreement
+
+Every module below except `src/specworks/core/events.py` and `src/specworks/cli/harness.py` lives in the new package and is imported only from the `harness` command's body. Refusals inside the package are `SpecworksError` subclasses; a chatinho command turns them into `Reply(<message>, status=ReplyStatus.ERROR)` to the peer that ran it, and `hand_over` returns its refusal to the agent as the tool's text starting `error:`.
+
+- `src/specworks/harness/__init__.py`: re-exports `build_harness`, `run_harness`, `model_from_env`, `ModelSettingsError` (new; REQ-HARNESS-001, REQ-HARNESS-010, REQ-CLI-022)
+- `src/specworks/harness/model.py` (new):
   - `MODEL_KEY = "SPECWORKS_MODEL_API_KEY"`, `MODEL_NAME = "SPECWORKS_MODEL_MODEL"`, `MODEL_BASE_URL = "SPECWORKS_MODEL_BASE_URL"` (REQ-HARNESS-010)
-  - `class ModelSettingsError(SpecworksError)` with `variable: str` (REQ-HARNESS-010)
-  - `model_from_env(env: Mapping[str, str] | None = None) -> BaseChatModel` (REQ-HARNESS-010)
-- `src/specworks/harness/peers.py`:
-  - `PREFIX = "specworks-"`; `peer_name(skill: str) -> str` (REQ-HARNESS-001)
+  - `class ModelSettingsError(SpecworksError)`: `__init__(self, variable: str)`, `variable: str`; message `"<variable> is not set"`, never a value (REQ-HARNESS-010)
+  - `model_from_env(env: Mapping[str, str] | None = None) -> BaseChatModel` (`os.environ` when `None`), raises `ModelSettingsError` for the first of `MODEL_KEY`, `MODEL_NAME` missing or empty (REQ-HARNESS-010)
+- `src/specworks/harness/peers.py` (new):
+  - `PREFIX = "specworks-"`; `PREAMBLE: str` (the pinned wording above, with `{name}` and `{peers}`) (REQ-HARNESS-004)
+  - `peer_name(skill: str) -> str` (REQ-HARNESS-001)
   - `preamble(name: str, peers: Sequence[str]) -> str` (REQ-HARNESS-004)
-  - `skill_instructions(skill: str, peers: Sequence[str]) -> str` (REQ-HARNESS-001, REQ-HARNESS-004)
-  - `class SkillPeer(AgentConnector)`: `__init__(self, skill: str, model: BaseChatModel, workspaces: Workspaces, peers: Sequence[str])`; `async graph() -> Any`; `async answer(msg: ChatMessage) -> Reply`; `async listen(msg: ChatMessage) -> None`; `hand_over` tool `(peer: str, text: str) -> str` (REQ-HARNESS-002, REQ-HARNESS-003, REQ-HARNESS-005)
-- `src/specworks/harness/workspaces.py`:
-  - `WORKSPACES_DIR = ".specworks/workspaces"`; `MAIN = "main"`; `NAME_RE`
-  - `class WorkspaceError(SpecworksError)` with `files: list[Path]` (REQ-HARNESS-006, REQ-HARNESS-007)
-  - `class Workspaces`: `__init__(self, ws: Workspace, module: Module)`; `path_of(peer: int) -> Path`; `name_of(peer: int) -> str`; `open(name: str, peer: int) -> Path`; `merge(name: str, change: Change) -> MergeResult` (REQ-HARNESS-006, REQ-HARNESS-007)
-  - `class WorkspaceCommand` (`@tool("workspace", ...)`, `execute(args: str, by: int) -> Reply`) and `class MergeCommand` (`@tool("merge", ...)`, `__init__(self, workspaces: Workspaces, backend: GitBackend)`) (REQ-HARNESS-006, REQ-HARNESS-007)
-- `src/specworks/harness/confine.py`:
-  - `PUSH_RE`; `refuses(command: str) -> bool` (REQ-HARNESS-008)
-  - `confined(root: Path) -> BackendProtocol` (REQ-HARNESS-008)
-- `src/specworks/harness/backend.py`:
+  - `skill_instructions(skill: str, peers: Sequence[str]) -> str`: `preamble(peer_name(skill), peers)` + `"\n\n"` + `read_skill(skill)` (REQ-HARNESS-001, REQ-HARNESS-004)
+  - `class SkillPeer(AgentConnector)` (`@connector("skill")`): `__init__(self, skill: str, model: BaseChatModel, workspaces: Workspaces, peers: Sequence[str])` (name `peer_name(skill)`, `ask_user=True`, `system_prompt=skill_instructions(...)`); `skill: str`; `async graph() -> Any` (a Deep Agent per chat shape and workspace); `async answer(msg: ChatMessage) -> Reply` (AgentConnector's run, then the recorded hand-over is said); `async listen(msg: ChatMessage) -> None` (does nothing); `hand_over_tool() -> StructuredTool`, the agent tool `hand_over(peer: str, text: str) -> str` returning `"handed over to <peer>"` or `"error: unknown peer '<peer>'"` / `"error: cannot hand over to yourself"` (REQ-HARNESS-002, REQ-HARNESS-003, REQ-HARNESS-005)
+- `src/specworks/harness/workspaces.py` (new):
+  - `WORKSPACES_DIR = ".specworks/workspaces"`; `MAIN = "main"`; `NAME_RE = re.compile(r"^[a-z0-9][a-z0-9-]*$")` (REQ-HARNESS-006)
+  - `class WorkspaceError(SpecworksError)`: `__init__(self, message: str, files: list[Path] | None = None)`, `files: list[Path]` (REQ-HARNESS-006, REQ-HARNESS-007)
+  - `class Workspaces`: `__init__(self, ws: Workspace, module: Module)`; `path_of(peer: int) -> Path`; `name_of(peer: int) -> str`; `branch_of(name: str) -> str` (`<main branch>--<name>`); `open(name: str, peer: int) -> Path`, raises `WorkspaceError` for a bad name (message names the rule: lowercase letters, digits and hyphens); `merge(name: str, change: Change) -> MergeResult`, raises `WorkspaceError` for an unknown workspace (`no workspace '<name>'`) or a conflict (`files` set) (REQ-HARNESS-006, REQ-HARNESS-007)
+  - `class WorkspaceCommand` (`@tool("workspace", ...)`, `@require(HookExecute)`): `__init__(self, workspaces: Workspaces)`; `async execute(args: str = "", by: int = LOCAL, **kwargs: Any) -> Reply` (REQ-HARNESS-006)
+  - `class MergeCommand` (`@tool("merge", ...)`, `@require(HookExecute)`): `__init__(self, workspaces: Workspaces, backend: GitBackend)`; `async execute(args: str = "", by: int = LOCAL, **kwargs: Any) -> Reply`, an error reply when the run has no change yet (REQ-HARNESS-007)
+- `src/specworks/harness/confine.py` (new):
+  - `PUSH_RE = re.compile(r"\bgit\b.*\bpush\b")`; `refuses(command: str) -> bool` (REQ-HARNESS-008)
+  - `class ConfinedShell(LocalShellBackend)`: `__init__(self, root: Path)` (`root_dir=root`, `virtual_mode=True`); `execute(command: str, ...)` returns an error response for a refused command without running it (REQ-HARNESS-008)
+  - `confined(root: Path) -> ConfinedShell` (REQ-HARNESS-008)
+- `src/specworks/harness/backend.py` (new):
   - `CHAT_FILE = "chat.jsonl"`
-  - `class GitBackend` (`@backend("git")`): `__init__(self, ws: Workspace, change: Change | None)`; `change: Change | None`; `async listen(msg)`, `async load() -> list[ChatMessage]`, `async forget() -> None` (REQ-HARNESS-009)
-  - `to_line(msg: ChatMessage) -> dict`, `from_line(line: dict) -> ChatMessage` (REQ-HARNESS-009)
-- `src/specworks/harness/session.py`:
+  - `class GitBackend` (`@backend("git")`, `@require(HookListen)`, `@require(HookLoad)`, `@require(HookForget)`): `__init__(self, ws: Workspace, module: Module, change: Change | None)`; `change: Change | None` (the run's change once known); `async listen(msg: ChatMessage) -> None`; `async load(since: datetime | None = None, limit: int | None = None) -> list[ChatMessage]`; `async forget(before: datetime | None = None) -> int` (drops held lines only; the file is kept) (REQ-HARNESS-009)
+  - `to_line(msg: ChatMessage) -> dict[str, Any]` (`id`, `from`, `to`, `replyTo`, `status`, `text`, `at`), `from_line(line: dict[str, Any]) -> ChatMessage` (REQ-HARNESS-009)
+- `src/specworks/harness/session.py` (new):
   - `first_peer(change: Change | None) -> str` (REQ-CLI-022)
-  - `build_harness(ws: Workspace, model: BaseChatModel, *, request: str | None = None, change: Change | None = None, frontend: Any = None) -> ChatSession` — `frontend=None` builds the terminal; the request is said by the frontend to `first_peer(change)` once the session starts (REQ-HARNESS-001, REQ-CLI-022)
-  - `run_harness(ws: Workspace, request: str | None, change: Change | None) -> None` (REQ-CLI-022)
-- `src/specworks/core/events.py`: `ensure_ignored(folder: Path, names: Sequence[str]) -> None` (REQ-PROJ-030)
-- `src/specworks/cli/harness.py`: `specworks harness [REQUEST] [--change REF]` (REQ-CLI-022)
+  - `build_harness(ws: Workspace, model: BaseChatModel, *, request: str | None = None, change: Change | None = None, frontend: Any = None) -> ChatSession`: `frontend=None` builds the terminal; the request is said by the user to `first_peer(change)` once the session starts (REQ-HARNESS-001, REQ-CLI-022)
+  - `run_harness(ws: Workspace, request: str | None, change: Change | None) -> None`: `model_from_env()` first, then `build_harness(...).run()` (REQ-CLI-022)
+- `src/specworks/core/events.py`: `ensure_ignored(folder: Path, names: Sequence[str]) -> None` (new; never raises, adds each missing name on its own line, keeps other lines) (REQ-PROJ-030)
+- `src/specworks/cli/harness.py` (new): `specworks harness [REQUEST] [--change REF]`, registered in `src/specworks/cli/__init__.py`; no `--json` (it opens a terminal); errors as `error: ...` on stderr, exit 1 (REQ-CLI-022)
+
+Nothing existing changes signature; `record_event` keeps its signature and calls `ensure_ignored`. No breaking change.
 
 ## Diagrams
 
