@@ -1,0 +1,14 @@
+name: add-reopen-change
+created: '2026-11-05T18:19:26'
+phase: done
+specified:
+  REQ-CLI-020: 3c5059b35867
+  REQ-CLI-021: 120b5e5ec2f2
+  REQ-CLI-002: bd6a09d56341
+  REQ-PROJ-033: 6c22c5f0bc3b
+  REQ-PROJ-034: 334e594ffc60
+  REQ-SPECS-017: 77fd85ea6926
+  REQ-SPECS-006: f7eb1399ae56
+  REQ-SPECS-013: f5173315b83f
+dirty:
+  .specworks/changes/active/add-reopen-change/.change.yaml: 640e6516d298eaf774401908c4d0b3d48398638556a00c551295cdb4fc429490

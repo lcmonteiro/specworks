@@ -6,7 +6,7 @@ import time
 
 import typer
 
-from ..core.changes import PHASES, ChangeError, ChangeNotFound, commit_phase, create_change, set_phase
+from ..core.changes import PHASES, ChangeError, ChangeNotFound, commit_phase, create_change, reopen_change, set_phase
 from ..core.git import GitError, branch_name, create_branch, current_branch, plan_branch, require_repo
 from ..specs.merge import archive_change
 from ..specs.tasks import read_tasks, set_done
@@ -62,6 +62,7 @@ def new(
 
 # @req REQ-CLI-002
 # @req REQ-CLI-019
+# @req REQ-CLI-021
 @app.command()
 def status(change: str = ChangeOpt, as_json: bool = JsonOpt) -> None:
     """Phase and artifact states (done / ready / blocked) of a change, active or archived."""
@@ -79,6 +80,8 @@ def status(change: str = ChangeOpt, as_json: bool = JsonOpt) -> None:
     if data.get("archived"):
         head += f", abandoned: {ch.abandoned}" if ch.abandoned else ""
         head += f", archived at {ws.rel(ch.path)}"
+    if ch.reopened:
+        head += f", reopened {len(ch.reopened)}x, latest: {ch.reopened[-1].reason}"
     text = "\n".join([head] + [f"  [{s['status']:^7}] {s['generates']}" for s in states])
     emit(data, as_json, text)
 
@@ -99,6 +102,30 @@ def abandon(
     ch.path = archive_change(ch, mod.config.archive_path, abandoned=reason.strip())
     record(ws, mod, ch, "abandon", started)  # into the archived folder; never the reason
     emit(change_dict(ws, mod, ch), as_json, f"{mod.qualify(ch.name)}: abandoned in phase {phase}, archived at {ws.rel(ch.path)}")
+
+
+# @req REQ-CLI-002
+# @req REQ-CLI-020
+@app.command()
+def reopen(
+    change: str = ChangeOpt,
+    reason: str = typer.Option(..., "--reason", help="Why the closed change is reopened; kept in its metadata."),
+    phase: str = typer.Option("review", "--phase", help="The phase it starts in (any but done)."),
+    as_json: bool = JsonOpt,
+) -> None:
+    """Move a closed change back to the active changes in a phase, recording why. Changes no branch and makes no commit.
+
+    Implements REQ-CLI-020.
+    """
+    ws = workspace(as_json)
+    try:
+        resolve_change(ws, change)
+    except ChangeNotFound:
+        mod, ch = resolve_archived(ws, change)
+    else:
+        raise ChangeError(f"change '{change}' is active, not closed: there is nothing to reopen")
+    reopened = reopen_change(mod.config, ch.path.name, reason, phase, ws.root)
+    emit(change_dict(ws, mod, reopened), as_json, f"{mod.qualify(reopened.name)}: reopened in phase {reopened.phase}, now at {ws.rel(reopened.path)}")
 
 
 # @req REQ-CLI-006

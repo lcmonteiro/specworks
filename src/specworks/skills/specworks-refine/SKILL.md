@@ -82,7 +82,7 @@ the skill then goes on.
 
 2. **Select or create the change**
 
-   - If the user named an existing change, use it.
+   - If the user named an existing change, use it. When the change was reopened, the latest reason in specworks status is the problem to start from.
    - Otherwise derive a kebab-case name from the request
      (`"let users reset passwords"` → `add-password-reset`) and pick the
      module that owns it:

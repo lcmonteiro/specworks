@@ -169,8 +169,11 @@ def test_baseline_no_longer_asks_for_a_new_branch():
     assert "preferably on a new branch" not in " ".join(read_skill("specworks-baseline").split())
 
 
-# refine, adopt and baseline create the change they work on (adopt and start none) instead of picking one; onboard reports every change and picks none.
-@pytest.mark.parametrize("name", [n for n in packaged_skills() if n not in ("specworks-refine", "specworks-adopt", "specworks-baseline", "specworks-start", "specworks-onboard")])
+# refine, adopt and baseline create the change they work on (adopt and start none) instead of picking one; onboard reports every change and picks none;
+# reopen picks a closed change, which the rule for active changes does not cover.
+@pytest.mark.parametrize(
+    "name", [n for n in packaged_skills() if n not in ("specworks-refine", "specworks-adopt", "specworks-baseline", "specworks-start", "specworks-onboard", "specworks-reopen")]
+)
 def test_skills_pick_the_change_by_one_shared_rule(name):
     # "Select the change as the other phases do" pointed at no rule; the shared paragraph is that rule.
     text = read_skill(name)
@@ -817,3 +820,39 @@ def test_only_refine_carries_the_compact_and_branch_questions():
     for name in others:
         text = raw_skill_file(f"{name}/SKILL.md")
         assert COMPACT_QUESTION not in text and BRANCH_QUESTION not in text, name
+
+
+# --- reopen: a closed change goes back to a phase, and why is the problem to start from (add-reopen-change) ---------------
+# The skills have no capability, so these tests are untagged and assert only the pinned phrases of design.md, verbatim.
+REOPEN = "specworks-reopen"
+REOPEN_LINE = "When the change was reopened, the latest reason in specworks status is the problem to start from."
+
+
+def test_reopen_is_a_packaged_skill_scoped_to_specworks():
+    assert REOPEN in packaged_skills()
+    meta = raw_skill(REOPEN).split("---\n")[1]
+    assert f"name: {REOPEN}\n" in meta
+    description = flat(meta.split("description:", 1)[1].split("allowed-tools:", 1)[0])
+    use_when = description.split("Use ", 1)[1]
+    assert "specworks" in use_when and '"specworks reopen"' in use_when
+
+
+@pytest.mark.parametrize(
+    "phrase",
+    [
+        'specworks reopen --change "<ref>" --reason "<reason>" --phase <phase>',
+        "Reopen <ref> at <phase>? (yes/no)",
+        "The reason comes from the user; never invent it.",
+        "the earliest phase any of them needs",
+        "specworks finding add",
+        '--message "<ref>: reopen"',
+        "does not switch branches, rebase or push",
+    ],
+)
+def test_the_reopen_skill_carries_its_pinned_wording(phrase):
+    assert phrase in flat(read_skill(REOPEN))
+
+
+@pytest.mark.parametrize("name", ["specworks-refine", "specworks-specify"])
+def test_refine_and_specify_start_from_the_latest_reopen_reason(name):
+    assert REOPEN_LINE in flat(read_skill(name))

@@ -13,7 +13,7 @@ from ..core.config import ConfigError
 from ..core.files import read_text
 from ..core.workspace import Workspace
 from ..tools.diagrams import diagrams_in, referenced_images, state
-from .capabilities import SPECS_DIR, CapabilityRef, delta_files, modified_since, read_spec, resolve_delta, retired_ids
+from .capabilities import SPECS_DIR, CapabilityRef, delta_files, modified_since, own_ids, read_spec, resolve_delta, retired_ids
 from .specfile import DELTA_SECTIONS, LIVING_SECTION, NORMATIVE_RE, Requirement, Scenario, SpecDoc, ac_parent, h2_titles, living_problems, parse_spec
 from .tasks import TASKS_FILE, Task, parse_tasks
 
@@ -263,16 +263,25 @@ def _check_conflict(req: Requirement, rid: str, others: dict[str, dict[str, Clai
 
 
 # @req REQ-SPECS-006
+# @req REQ-SPECS-017
 def _check_against_living(
-    delta: Delta, req: Requirement, rid: str, living_ids: set[str], retired: set[str], file: str, issues: list[Issue], others: dict[str, dict[str, Claim]]
+    delta: Delta,
+    req: Requirement,
+    rid: str,
+    living_ids: set[str],
+    retired: set[str],
+    own: set[str],
+    file: str,
+    issues: list[Issue],
+    others: dict[str, dict[str, Claim]],
 ) -> None:
     cap = delta.cap
     if req.section == "ADDED":
-        if rid in living_ids:
+        if rid in living_ids and rid not in own:
             issues.append(Issue.error(file, req.line, f"{rid} already exists in {cap.ref}; use MODIFIED to change it, or take the next free ID"))
         if rid in retired:
             issues.append(Issue.error(file, req.line, f"{rid} was removed from {cap.ref} (requirements.md History); IDs are never reused, take the next free ID"))
-    elif delta.living is not None and rid not in living_ids:
+    elif delta.living is not None and rid not in living_ids and not (req.section == "REMOVED" and rid in own):
         issues.append(Issue.error(file, req.line, f"{rid} is not in the living spec of {cap.ref}, so it cannot be {req.section}"))
         return
     _check_conflict(req, rid, others, file, issues)
@@ -325,14 +334,16 @@ def _check_delta(ws: Workspace, change: Change, delta: Delta, seen: dict[str, st
     living_ids = set(delta.living.by_id()) if delta.living else set()
     others = _other_changes(ws, change, cap)
     retired = retired_ids(cap)
+    ref = ws.owner(change.path).qualify(change.name)  # the ref close writes in History
+    own = own_ids(cap, ref)  # merged by this change at an earlier close (REQ-SPECS-017)
     # A change that closed after this one started may have edited a block this one copied before.
-    closed_since = modified_since(cap, change.created) if change.created else {}
+    closed_since = modified_since(cap, change.created, exclude=ref) if change.created else {}
     for req in doc.requirements:
         if req.section not in DELTA_SECTIONS:
             continue
         if (rid := _check_header(delta, req, file, seen, issues)) is None:
             continue
-        _check_against_living(delta, req, rid, living_ids, retired, file, issues, others)
+        _check_against_living(delta, req, rid, living_ids, retired, own, file, issues, others)
         if req.section == "MODIFIED":
             _check_modified(delta, req, rid, closed_since, file, issues)
         if req.section == "REMOVED":

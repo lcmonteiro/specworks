@@ -55,6 +55,8 @@ When the artifacts are done, stop and offer `/specworks-build` (or
    a requirement or listed under Out of Scope. If a planning artifact already
    exists, continue from it instead of overwriting it.
 
+   When the change was reopened, the latest reason in specworks status is the problem to start from.
+
    **Back from review**: if the change has a `review.md`, list its open
    findings with `specworks cycle --change "<ref>" --json`. Those with
    `"phase": "specify"` are why the change is back here: carry out the agreed

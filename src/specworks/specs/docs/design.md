@@ -58,6 +58,23 @@ close earlier the same day from one after a change started, when it warns that
 a MODIFIED block may be out of date; a line that holds only a day (written
 before this) is compared by day. (baseline-specs, same-day-modified-warning)
 
+### A reopened change owns the IDs its earlier close merged
+
+`own_ids(cap, change_ref)` returns the IDs the History lines naming
+`change_ref` list as ADDED, MODIFIED or REMOVED. Archived names stay taken, so
+only a reopened change can have such lines. `check` and `plan_merge` call it
+with the ref close would write. The exemptions are narrow: an ADDED own ID the
+living spec already has is accepted, and so is a REMOVED own ID it lacks, but a
+MODIFIED ID it lacks is still an error (another change removed it) and so is
+any ID of another change. `modified_since` takes an `exclude` ref, so the
+change's own earlier close is not "another change" for the "modified after
+this change started" warning. In the merge, an own ADDED block already in the
+living spec is replaced in place, reported as MODIFIED (so the second History
+line says what that close did), and not appended again; an own REMOVED ID
+already gone is skipped. Treating every ID of a change that has a `reopened`
+record as own was rejected: it would let it ADD an ID another change put in
+the living spec in between. (add-reopen-change)
+
 ### A clash fails only the later change
 
 When two active changes ADD the same ID, or MODIFY or REMOVE the same
@@ -148,7 +165,9 @@ was. (baseline-specs)
   `find_ids`, `table_cell(text)`.
 - `src/specworks/specs/capabilities.py`: `CapabilityRef`, `resolve_ref(ws, ref)`,
   `resolve_delta`, `next_id(ws, cap)`, `describe(ws, cap)`, `retired_ids`,
-  `modified_since`; `search_requirements(ws, terms) -> RequirementSearch`,
+  `modified_since(cap, since, exclude="")` (skips the History lines of the
+  change `exclude`), `own_ids(cap, change_ref) -> set[str]` (REQ-SPECS-017);
+  `search_requirements(ws, terms) -> RequirementSearch`,
   raising `ConfigError(f"empty search term: {term!r}")` for the first blank
   term (REQ-SPECS-016); `RequirementSearch` (`matches: list[RequirementMatch]`,
   `broad: list[BroadTerm]` in the order of the terms, `searched`: living
@@ -167,7 +186,9 @@ was. (baseline-specs)
   tags of the workspace with marked lines left out (REQ-SPECS-001..003, 011);
   `build_matrix`, `gaps`, `unknown_tags`, `to_markdown`, `Analysis`.
 - `src/specworks/specs/merge.py`: `plan_merge(...) -> [CapabilityMerge]`,
-  `close_change(merges, change, archive_root)`, `archive_change`.
+  `close_change(merges, change, archive_root)`, `archive_change`,
+  `apply_delta(living_text, delta, own=frozenset()) -> (text, added,
+  modified, removed)` (REQ-SPECS-013, REQ-SPECS-017).
 
 ## Constraints
 

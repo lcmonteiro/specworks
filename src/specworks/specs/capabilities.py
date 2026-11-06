@@ -170,17 +170,19 @@ HISTORY_LINE_RE = re.compile(r"^- (?P<date>\d{4}-\d{2}-\d{2})(?: (?P<time>\d{2}:
 
 
 # @req REQ-SPECS-006
-def modified_since(cap: CapabilityRef, since: str) -> dict[str, str]:
+# @req REQ-SPECS-017
+def modified_since(cap: CapabilityRef, since: str, exclude: str = "") -> dict[str, str]:
     """IDs a close at or after ``since`` (YYYY-MM-DD, a time may follow) MODIFIED, per requirements.md History -> ``<change> on <date>``.
 
     A History line and ``since`` are compared by date and time when both have a time, else by day.
+    The History lines of the change ``exclude`` are skipped (REQ-SPECS-017).
     """
     since_day, _, since_time = since.replace(" ", "T").partition("T")
     living = cap.living_spec()
     found: dict[str, str] = {}
     for line in history_lines(living.parent / REQUIREMENTS_FILE if living else None):
         match = HISTORY_LINE_RE.match(line)
-        if not match:
+        if not match or (exclude and match.group("change") == exclude):
             continue
         if match.group("time") and since_time:
             if (match.group("date"), match.group("time")) < (since_day, since_time[:8]):
@@ -191,6 +193,21 @@ def modified_since(cap: CapabilityRef, since: str) -> dict[str, str]:
             kind, _, ids = part.strip().partition(" ")
             if kind == "MODIFIED":
                 found |= {i: f"{match.group('change')} on {match.group('date')}" for i in find_ids(ids)}
+    return found
+
+
+# @req REQ-SPECS-017
+def own_ids(cap: CapabilityRef, change_ref: str) -> set[str]:
+    """IDs of ``cap`` that a History line naming ``change_ref`` lists as ADDED, MODIFIED or REMOVED: the change merged them at an earlier close.
+
+    Implements REQ-SPECS-017.
+    """
+    living = cap.living_spec()
+    found: set[str] = set()
+    for line in history_lines(living.parent / REQUIREMENTS_FILE if living else None):
+        match = HISTORY_LINE_RE.match(line)
+        if match and match.group("change") == change_ref:
+            found |= {i for i in find_ids(match.group("summary")) if cap.id_matches(i)}
     return found
 
 
