@@ -81,7 +81,7 @@ check_untyped_defs = true
 
 # The harness's dependencies need Python 3.12+; the lint job runs on 3.11 without them.
 [[tool.mypy.overrides]]
-module = ["chatinho.*", "deepagents.*", "langchain_core.*", "langchain_openai.*"]
+module = ["chatinho.*", "deepagents.*", "langchain_core.*", "langchain_openai.*", "pydantic.*"]
 ignore_missing_imports = true
 
 [tool.coverage.run]
