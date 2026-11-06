@@ -47,6 +47,10 @@ capabilities:
     path: src/specworks/cli
     description: "The command surface and its conventions: --json output, errors as {\"error\": ...} with exit 1, and {\"root\": null} when there's no project"
     prefix: CLI
+  harness:
+    path: src/specworks/harness
+    description: "Runs the specworks flow as a chatinho chat: one Deep Agent peer per skill, handing over by message, in git workspaces the backend creates and merges"
+    prefix: HARNESS
 
 # Modules: sub-projects with their own config (their own .specworks/config.yml),
 # like git submodules. Each one is a complete project (own context,
