@@ -1,0 +1,15 @@
+shape: sequence_diagram
+
+user: user (terminal)
+refine: refine peer
+session: chatinho session
+specify: specify peer
+backend: GitBackend
+
+user -> refine: "add x (asked)"
+refine -> refine: "deep agent run; hand_over(specify) recorded"
+refine -> session: reply to the request
+session -> backend: every message, chat.jsonl
+refine -> session: "after the run, fresh context: say to specify"
+session -> specify: "answer() at depth 1"
+specify -> session: reply to the hand-over

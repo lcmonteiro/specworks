@@ -15,6 +15,9 @@ integrations: integrations {
 project: project {
   tooltip: "src/specworks/core: config, workspace, changes, event log, runner, git"
 }
+harness: harness (optional extra) {
+  tooltip: "src/specworks/harness: the flow as a chatinho chat, one Deep Agent peer per skill"
+}
 skills: skills and templates (packaged data) {
   shape: page
 }
@@ -31,3 +34,7 @@ specs -> integrations: diagram checks
 integrations -> project: config, tool IDs, event log
 integrations -> skills: installs
 workflow -> skills: templates, schema
+cli -> harness: "harness (imported only when run)"
+harness -> workflow: merge a workspace
+harness -> integrations: skill text
+harness -> project: changes, .gitignore

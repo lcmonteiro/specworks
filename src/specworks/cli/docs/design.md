@@ -19,6 +19,8 @@ result as text or JSON.
   `validate`, `close`, `run`.
 - `telemetry.py`: recording events, sending them after `commit`, and
   `telemetry push`.
+- `harness.py`: `harness`, which imports the optional harness capability only
+  when it runs.
 - `__init__.py`: `main` and the order commands are registered in.
 
 ![cli](diagrams/cli-blocks.svg)
@@ -149,6 +151,17 @@ never imports a command module. (add-langfuse-monitoring)
 
 ![Sending at commit](diagrams/commit-send-flow.svg)
 
+### `harness` imports its capability only when it runs
+
+`harness.py` registers `specworks harness [REQUEST] [--change REF]` and
+imports `specworks.harness` inside the command's body, so `import specworks`
+and every other command never load chatinho or deepagents. On Python before
+3.12, or when the import fails, it raises `SpecworksError("specworks harness
+needs the harness extra on Python 3.12 or later: install specworks[harness]")`.
+It has no `--json`: it opens a terminal, and errors are `error: ...` on stderr
+with exit 1. With `--change` the first message goes to the peer of the
+change's phase (`first_peer` in harness). (add-chatinho-harness)
+
 ### Findings are written through `finding`, not by hand
 
 `specworks finding add|decide|done|close` write a change's review.md through
@@ -259,7 +272,9 @@ a second config format exists. (upgrade-project, dedupe-copilot-skills)
   `abandon`, `reopen`, `phase`, `skip-specs`, `instructions`, `task list|done|undo`,
   `check`, `trace`, `spec show|list|find`, `diagrams`, `gate`, `start`, `review`,
   `finding add|decide|done|close`, `cycle`, `merge`, `commit`, `validate`,
-  `close`, `run`, `telemetry push`.
+  `close`, `run`, `telemetry push`, `harness`.
+- `harness [REQUEST] [--change/-c REF]` (no `--json`; needs the `harness`
+  extra on Python 3.12+) (REQ-CLI-022).
 - `src/specworks/cli/telemetry.py`: `record(ws, module, change, event,
   started, **fields)`, `telemetry_state(ws) -> {"state", "host"}`,
   `telemetry_ids(module, change) -> {"traceId", "sessionId"}`,

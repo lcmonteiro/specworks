@@ -1,0 +1,38 @@
+direction: right
+
+harness: harness (src/specworks/harness) {
+  session: "session.py (build_harness, run_harness, first_peer)"
+  peers: "peers.py (SkillPeer x 15, preamble)"
+  workspaces: "workspaces.py (Workspaces, /workspace, /merge)"
+  confine: "confine.py (confined backend, push refused)"
+  backend: "backend.py (GitBackend)"
+  model: "model.py (model_from_env)"
+
+  session -> peers: one per skill
+  session -> backend: run's change
+  session -> workspaces: commands
+  session -> model: chat model
+  peers -> confine: workspace folder
+  peers -> workspaces: "peer's workspace"
+}
+
+chatinho: "chatinho (ChatSession, AgentConnector, terminal)"
+deepagents: "deepagents (create_deep_agent)"
+integrations: "integrations (read_skill)"
+workflow: "workflow (merge_branch)"
+project: "project (Workspace, Change, ensure_ignored)"
+repo: git repository {
+  shape: cylinder
+}
+env: "SPECWORKS_MODEL_* environment" {
+  shape: page
+}
+
+harness.session -> chatinho: session, terminal
+harness.peers -> deepagents: inner agent
+harness.peers -> integrations: skill text
+harness.workspaces -> workflow: merge a branch
+harness.workspaces -> repo: worktrees, branches
+harness.backend -> project: change folder, .gitignore
+harness.backend -> repo: chat.jsonl
+harness.model -> env: key, model, base URL

@@ -180,16 +180,19 @@ one-line block edit as `commands.<key>`, always in the top level's config.
 
 `record_event` appends one JSON line (`at` in UTC, `event`, then the fields)
 to `events.jsonl` in the change folder with one `write` in append mode, and
-writes a `.gitignore` naming `events.jsonl` and `events.sent` with the first
-event, so no project needs its own ignore rule and the log moves with the
-folder at archive. It does nothing when telemetry is off and never raises.
+makes the folder's `.gitignore` name `events.jsonl` and `events.sent`, so no
+project needs its own ignore rule and the log moves with the folder at
+archive. `ensure_ignored(folder, names)` adds only the missing names, each on
+its own line, keeping the file's other lines; the harness's `chat.jsonl`
+shares the same `.gitignore` through it, whichever was written first.
+`record_event` does nothing when telemetry is off and never raises.
 `events.sent` holds a count of lines already sent, not IDs: the log is
 append-only, so `read_unsent` returns the lines after it (each with its line
 number), and a line that does not parse is skipped but still counted, so one
 bad line never blocks the queue. A log under `.git/` and a committed log were
 rejected (out of sight; dirties the folder on every command). The run cache's
 fingerprint excludes `.specworks/`, so the log never stops a result being
-reused. (add-langfuse-monitoring)
+reused. (add-langfuse-monitoring, add-chatinho-harness)
 
 ### A change's trace ID is stable
 
@@ -361,6 +364,8 @@ where to configure one. (baseline-project, run-unknown-key)
 - `src/specworks/core/events.py`: `EVENTS_FILE` (`events.jsonl`), `SENT_FILE`
   (`events.sent`), `IGNORE_FILE` (`.gitignore`),
   `record_event(change, enabled, event, **fields)` (never raises),
+  `ensure_ignored(folder, names)` (adds the missing names to the folder's
+  `.gitignore`, never raises),
   `read_unsent(change) -> (sent, events)`, `mark_sent(change, count)`,
   `trace_id(module_label, change) -> str`, `session_id(ref) -> str`.
 

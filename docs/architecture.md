@@ -27,6 +27,11 @@ never import higher ones.
 - **cli** (`src/specworks/cli`): the command surface; resolves the workspace
   and the change, calls the capability that does the work, prints text or
   JSON, and records each change command's event. Uses all of the above.
+- **harness** (`src/specworks/harness`, optional `harness` extra, Python
+  3.12+): runs the whole flow as a chatinho chat, one Deep Agent peer per
+  skill, handing work over by message, in git worktrees it creates and merges.
+  Uses project (changes, `.gitignore`), workflow (`merge_branch`) and
+  integrations (`read_skill`); only cli's `harness` command imports it.
 - Skills and templates (`src/specworks/skills`, `src/specworks/templates`) are
   packaged data with no capability yet; they run the CLI.
 
@@ -66,6 +71,11 @@ never import higher ones.
   be answered no, and a changed working tree blocks the switch.
   (refine-on-main-and-compact)
 
+- **Optional capabilities are imported lazily**: a capability that needs an
+  extra (harness) is imported only inside the command that runs it, so
+  `import specworks` and every other command work without the extra, and the
+  command says which extra to install. (add-chatinho-harness)
+
 ## Glossary
 
 - **Capability**: a named part of the code with a path, an ID prefix and its
@@ -87,3 +97,9 @@ never import higher ones.
   with `events.sent` counting the lines already sent to Langfuse.
 - **Trace ID**: a change's stable telemetry ID (from its module, name and
   creation time); its session ID is its ref.
+- **Peer**: a participant in a harness chat: the user, or one skill as a Deep
+  Agent named after it without `specworks-`.
+- **Hand-over**: a peer saying its next step to the next peer after its own
+  run, so stages follow each other without nesting.
+- **Workspace**: a harness peer's git worktree under `.specworks/workspaces/`
+  on its own branch, merged back with `/merge`; `main` is the main checkout.

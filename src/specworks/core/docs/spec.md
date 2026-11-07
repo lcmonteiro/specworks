@@ -969,10 +969,12 @@ since the file names do not overlap.
 When the top level's config sets `telemetry.langfuse: true`, recording an
 event for a change SHALL append one line of JSON to `events.jsonl` in the
 change's folder, holding `at` (the date and time), `event` (its name), the
-change's `phase` and the event's own fields, and SHALL write a `.gitignore` in
-the change's folder naming `events.jsonl` and `events.sent` when the folder has
-none. With telemetry off, recording an event SHALL write nothing. A failure to
-write the log SHALL never fail the command that records the event.
+change's `phase` and the event's own fields, and SHALL make the `.gitignore` in
+the change's folder name `events.jsonl` and `events.sent`: written when the
+folder has none, and the missing names added, each on its own line, to one it
+already has, keeping its other lines. With telemetry off, recording an event
+SHALL write nothing. A failure to write the log SHALL never fail the command
+that records the event.
 
 #### Scenario: AC-PROJ-030.1 An event recorded
 
@@ -1003,6 +1005,12 @@ write the log SHALL never fail the command that records the event.
 - **GIVEN** a change with recorded events
 - **WHEN** the change is archived (closed or abandoned)
 - **THEN** its archive folder holds the same `events.jsonl` and `.gitignore`
+
+#### Scenario: AC-PROJ-030.6 An existing .gitignore
+
+- **GIVEN** a project whose config sets `telemetry.langfuse: true`, and a change whose `.gitignore` names only `chat.jsonl`
+- **WHEN** an event is recorded
+- **THEN** the `.gitignore` names `chat.jsonl`, `events.jsonl` and `events.sent`, each once, and recording again adds nothing
 
 ### Requirement: REQ-PROJ-031 A change's trace identity
 
