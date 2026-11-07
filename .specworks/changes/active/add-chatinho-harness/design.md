@@ -78,9 +78,13 @@ Serves: REQ-HARNESS-004.
 `SpecworksWorktrees(GitWorktrees)` is built with `repo=ws.root`,
 `workspace=SpecworksWorkspace`. `WORKTREE_PEERS = frozenset({"test"})`.
 `provision(owner, name, create)`:
-- `name` not in `WORKTREE_PEERS`: the main checkout, as a `Tree` rooted at the
-  repository's top on its current branch, kept one per process (one lock), a
-  `SpecworksWorkspace` when `owner` is also a checkout peer, a view otherwise;
+- `name` not in `WORKTREE_PEERS`: the main checkout, as one chatinho `Tree`
+  for the whole provider (one lock), built after `initialize()` with
+  `Tree(top, "checkout", <current branch>, "HEAD", WorkspaceView, <the
+  provider's identity>)`: its base is `HEAD`, so its `diff` is the uncommitted
+  work and stays right when a skill switches the checkout's branch. It is a
+  `SpecworksWorkspace` when `owner` is also a checkout peer, a `WorkspaceView`
+  otherwise (another peer, `test`, or `None` for a command);
 - `name` in `WORKTREE_PEERS`: before chatinho creates a worktree that does not
   exist yet, `base` is set to the branch the checkout has now (`git
   symbolic-ref --short HEAD`, else `HEAD`'s commit); then chatinho's
@@ -95,23 +99,40 @@ refinement: every stage would need a merge.
 
 `SpecworksWorkspace(Workspace)` adds
 `@operation("Run a shell command in the workspace and return its output and exit code", writes=True) async def run(self, command: str) -> str`.
-It refuses `refuses(command)` with `PermissionError` before starting
+It refuses `refuses(command)` with
+`PermissionError("git push is refused: only the user pushes")` before starting
 anything; otherwise it starts the command through the platform shell
-(`asyncio.create_subprocess_shell`) with `cwd=<tree root>` and
-`env=shell_env()`, waits up to `RUN_TIMEOUT` (600 s) and kills it after,
-raising `TimeoutError`; it returns `"exit code <n>\n<stdout and stderr>"`.
-`writes=True` serialises it with the workspace's other writes. Agents get it as
-`ws_run`. `confine.py` keeps `PUSH_RE`, `refuses` and `shell_env`.
+(`asyncio.create_subprocess_shell`, stderr merged into stdout) with
+`cwd=self.tree.root` and `env=shell_env()`, waits up to the module's
+`RUN_TIMEOUT` (600 s, read at call time so a test can shorten it) and then
+kills it and waits for it to exit, raising
+`TimeoutError("command stopped after <RUN_TIMEOUT> seconds")`; it returns
+`"exit code <n>\n<output>"`. `writes=True` serialises it with the workspace's
+other writes. Agents get it as `ws_run`; chatinho's tool turns an exception
+into the result `ws_run failed: <Type>: <message>`, the error the agent sees.
+`confine.py` keeps `PUSH_RE`, `HIDDEN_ENV`, `refuses` and `shell_env`;
+`shell_env(env)` filters `env` (default `os.environ`).
 Serves: REQ-HARNESS-008, REQ-HARNESS-010.
 
 ### /merge stays ours, user only
 
-`MergeCommand(provider, backend, ws, module)`: refuses when `by != LOCAL`
-(`PermissionError: only the user can merge`), when the backend has no change,
-and for a name not in `provider.names()`; otherwise `merge_branch(ws, module,
-change, "peer/<name>")` in the checkout, then `git worktree remove --force` and
-`git branch -D peer/<name>`. A `BranchMergeError` becomes an error reply with
-its files; the worktree stays. Serves: REQ-HARNESS-007.
+`MergeCommand(provider, backend)` (the specworks workspace and module are the
+backend's `ws` and `module`, as before). Every refusal is an error reply and
+changes nothing, checked in this order:
+- `by != LOCAL`: `only the user can merge: ask the user to run /merge <name>`;
+- no name: `usage: /merge <name>`;
+- `backend.change is None`: `the run has no change yet: create it before
+  merging a workspace`;
+- a name not in `await provider.names()`: `no workspace '<name>'`;
+- uncommitted changes in the worktree: `workspace '<name>' has uncommitted
+  changes: commit them in it before merging` (the guard accepted in R5, kept so
+  the removal below never loses work).
+Otherwise `merge_branch(backend.ws, backend.module, change, "peer/<name>")` in
+the checkout, then `await provider.drop(name)` (worktree and branch removed);
+the reply lists `resolved <file>` lines, `merged peer/<name> into the main
+checkout` (or `already up to date`) and `workspace <name> removed`. A
+`BranchMergeError` becomes an error reply naming its files; the worktree
+stays. Serves: REQ-HARNESS-007.
 
 Alternative: chatinho's `/ws merge`. Rejected: it aborts on the `tasks.md`
 conflict both halves make.
@@ -143,11 +164,11 @@ Proposed: waiting for the user's agreement
   - `peer_name`, `preamble`, `skill_instructions`: unchanged (REQ-HARNESS-001, REQ-HARNESS-004)
 - `src/specworks/harness/workspaces.py`:
   - `WORKTREE_PEERS: frozenset[str] = frozenset({"test"})`; `RUN_TIMEOUT: float = 600.0` (REQ-HARNESS-006, REQ-HARNESS-008)
-  - `class SpecworksWorkspace(Workspace)`: `async run(self, command: str) -> str` (`@operation(..., writes=True)`) (REQ-HARNESS-008)
-  - `class SpecworksWorktrees(GitWorktrees)`: `__init__(self, ws: Workspace)`; `async provision(self, owner: str | None, name: str, create: bool = True) -> WorkspaceView`; `async current_branch() -> str` (REQ-HARNESS-006)
-  - `class MergeCommand` (`@tool("merge", ...)`, `@require(HookExecute)`): `__init__(self, provider: SpecworksWorktrees, backend: GitBackend, ws: Workspace, module: Module)`; `async execute(args: str = "", by: int = LOCAL, **kwargs: Any) -> Reply` (REQ-HARNESS-007)
-  - Removed: `Workspaces`, `WorkspaceCommand`, `WorkspaceError`'s use by `/workspace`, `WORKSPACES_DIR`, `MAIN`, `NAME_RE`. `WorkspaceError(SpecworksError)` with `files` is kept for `/merge`.
-- `src/specworks/harness/confine.py`: `PUSH_RE`, `refuses(command: str) -> bool`, `shell_env(env: Mapping[str, str] | None = None) -> dict[str, str]` (REQ-HARNESS-008, REQ-HARNESS-010). Removed: `ConfinedShell`, `confined`, `PeerShell`.
+  - `class SpecworksWorkspace(chatinho.workspaces.Workspace)`: `async run(self, command: str) -> str` (`@operation(..., writes=True)`), returns `"exit code <n>\n<output>"`, raises `PermissionError` (a push) and `TimeoutError` (past `RUN_TIMEOUT`) (REQ-HARNESS-008)
+  - `class SpecworksWorktrees(GitWorktrees)`: `__init__(self, ws: specworks.core.workspace.Workspace)` (`repo=ws.root`, `workspace=SpecworksWorkspace`); `async provision(self, owner: str | None, name: str, create: bool = True) -> WorkspaceView`; `async current_branch() -> str` (REQ-HARNESS-006)
+  - `class MergeCommand` (`@tool("merge", "Merge a workspace into the main checkout: /merge <name>")`, `@require(HookExecute)`): `__init__(self, provider: SpecworksWorktrees, backend: GitBackend)`; `async execute(args: str = "", by: int = LOCAL, **kwargs: Any) -> Reply`, every refusal an error reply with the messages of the Decision above (REQ-HARNESS-007)
+  - Removed: `Workspaces`, `WorkspaceCommand` (specworks' `/workspace`), `WORKSPACES_DIR`, `MAIN`, `NAME_RE`. `WorkspaceError(SpecworksError)` with `files` is kept for `/merge`.
+- `src/specworks/harness/confine.py`: `PUSH_RE`, `refuses(command: str) -> bool`, `shell_env(env: Mapping[str, str] | None = None) -> dict[str, str]` (REQ-HARNESS-008, REQ-HARNESS-010). `HIDDEN_ENV` kept. Removed: `ConfinedShell`, `confined`, `PeerShell`, `OutsideWorkspaceError` (chatinho's `Tree.resolve` and `WorkspaceBackend` now refuse outside paths).
 - `src/specworks/harness/session.py`: `build_harness(...)` signature unchanged; it builds the session with `workspaces=SpecworksWorktrees(ws)` and the commands `/ws` (chatinho's `WorkspaceCommand`) and `/merge` (REQ-HARNESS-006, REQ-HARNESS-007)
 - Unchanged: `model.py`, `backend.py`, `src/specworks/cli/harness.py`, `src/specworks/core/events.py`.
 
