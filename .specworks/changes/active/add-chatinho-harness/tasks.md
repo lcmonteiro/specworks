@@ -42,6 +42,19 @@
 - [x] 6.3 [code] Implement the `harness` command with its lazy import and errors (REQ-CLI-022) tagged `@req REQ-CLI-022`; verify `uv run specworks harness --help` and, with `SPECWORKS_MODEL_API_KEY` unset, `uv run specworks harness "x"` exits 1 naming it
 - [x] 6.4 [code] Update `.github/workflows/ci.yml`: on 3.11 report coverage with `--omit "*/specworks/harness/*"`; on 3.12+ install the extra so the harness counts (REQ-CLI-022); verify the workflow file parses and `uv run coverage report` passes locally on 3.12
 
+
+## 7. Rebuild on chatinho c7bcc17 (reopened)
+
+- [ ] 7.1 Pin chatinho at `c7bcc17` with `tui` and `deepagents` and deepagents `>=0.7.34,<0.8` in the extra and the dev group, regenerate `uv.lock`, and reshape the stubs per design.md Interfaces: `SkillPeer(DeepAgentConnector)`, `SpecworksWorktrees`, `SpecworksWorkspace.run`, the new `MergeCommand`, `shell_env` in `confine.py`; remove `Workspaces`, `WorkspaceCommand`, `ConfinedShell`, `confined` and `PeerShell` (REQ-HARNESS-002, REQ-HARNESS-006, REQ-HARNESS-007, REQ-HARNESS-008); verify `uv sync`, `uv run ruff check src tests && uv run mypy` and `uv run specworks harness --help`
+- [ ] 7.2 [test] Update the tests for a question answered, the new tool list and a failed run, tagged `@ac AC-HARNESS-002.1`, `@ac AC-HARNESS-002.2`, `@ac AC-HARNESS-002.3`; verify they fail on the stubs for the right reason
+- [ ] 7.3 [test] Update the tests for the preamble's four rules (design.md pinned wording, verbatim) and a question for the user, tagged `@ac AC-HARNESS-004.1`, `@ac AC-HARNESS-004.2`; verify they fail on the stubs
+- [ ] 7.4 [test] Rewrite the workspace tests for the test worktree, the shared checkout, the base following the checkout, reuse and `/ws`, tagged `@ac AC-HARNESS-006.1`, `@ac AC-HARNESS-006.2`, `@ac AC-HARNESS-006.3`, `@ac AC-HARNESS-006.4`, `@ac AC-HARNESS-006.5`; verify they fail on the stubs
+- [ ] 7.5 [test] Rewrite the merge tests for merged, a conflict, unknown, a model refused and no change yet, tagged `@ac AC-HARNESS-007.1`, `@ac AC-HARNESS-007.2`, `@ac AC-HARNESS-007.3`, `@ac AC-HARNESS-007.4`, `@ac AC-HARNESS-007.5`; verify they fail on the stubs
+- [ ] 7.6 [test] Rewrite the confinement tests through the file tools and `ws_run`: outside paths, the command's folder checked with the process's own working folder (not `pwd` text, so it passes on Windows), no push, another peer's workspace read-only and a command stopped after the time limit, tagged `@ac AC-HARNESS-008.1`, `@ac AC-HARNESS-008.2`, `@ac AC-HARNESS-008.3`, `@ac AC-HARNESS-008.4`, `@ac AC-HARNESS-008.5`; keep the AC-HARNESS-010.3 shell case on `ws_run`; verify they fail on the stubs
+- [ ] 7.7 [code] Implement `SkillPeer` on `DeepAgentConnector` with the new preamble (REQ-HARNESS-002, REQ-HARNESS-004) tagged `@req REQ-HARNESS-002`, `@req REQ-HARNESS-004`; verify by typecheck and that a built peer's system prompt ends with its skill text
+- [ ] 7.8 [code] Implement `SpecworksWorktrees` and `SpecworksWorkspace.run` with `refuses`, `shell_env` and the time limit (REQ-HARNESS-006, REQ-HARNESS-008) tagged `@req REQ-HARNESS-006`, `@req REQ-HARNESS-008`; verify by typecheck and a manual provision of `test` and `refine` on a scratch repository
+- [ ] 7.9 [code] Implement the user-only `MergeCommand` and wire the provider, `/ws` and `/merge` into `build_harness` (REQ-HARNESS-006, REQ-HARNESS-007) tagged `@req REQ-HARNESS-007`; verify by typecheck and a manual `/merge test` on a scratch repository
+
 ## Workflow follow-up
 
 - Document `specworks harness` and the `SPECWORKS_MODEL_*` variables in the wiki after close.
