@@ -2,110 +2,82 @@
 
 ## Why
 
-The specworks flow runs only inside an AI coding tool, one `/specworks-*`
-command typed at a time. Following the refinement's option A, this change adds
-a harness that runs the whole flow as a chatinho chat: every skill is a
-LangChain Deep Agent peer, the peers hand work to each other by message, and the
-repository is the backend that keeps the conversation and the git workspaces.
+Reopened: chatinho's `main` (`c7bcc17`) now ships deep-agent peers
+(`DeepAgentConnector`), git-worktree workspaces (`GitWorktrees`, `/ws`) and a
+deep agents backend over a workspace (`WorkspaceBackend`), which the harness
+had built for itself on `d3f29a2`. Following the refinement's option A, the
+harness moves onto them, keeps chatinho's rule that only the user merges, and
+fixes the Windows CI failure in the test of AC-HARNESS-008.2.
 
 ## What Changes
 
-- New `specworks harness [REQUEST] [--change REF]` opens a chatinho terminal.
-  The user is peer zero; every packaged skill is a peer named after it without
-  the `specworks-` prefix (`refine`, `specify`, `build`, `test`, ...); a git
-  backend keeps the conversation. A request is handed to `refine`.
-- Each skill peer is a Deep Agent (`create_deep_agent`) whose instructions are
-  the packaged skill as `read_skill` returns it (unchanged), after a short
-  harness preamble: take the skill's recommended next step and hand over to
-  that peer; stop for the user only where the skill asks something else.
-- A peer's tools: `hand_over(peer, text)` (a say addressed to the next peer,
-  replying to the message it was working on, so stages never nest),
-  `ask_<peer>` (ask and wait, used by `build` and `done` for their phases),
-  `ask_user`, the `/workspace` and `/merge` commands, and file and shell tools
-  rooted in its current workspace. A path outside it is refused, and `git push`
-  is refused.
-- `/workspace <name>` creates (or reuses) a git worktree on its own branch from
-  the change's branch and makes it the invoking peer's workspace;
-  `/workspace main` goes back to the main checkout. `/merge <name>` merges the
-  workspace's branch into the main checkout as `specworks merge` does: on a
-  conflict the merge is aborted, the checkout is left as it was and the
-  conflicting files go back to the peer that asked; on success the workspace
-  is removed.
-- The backend appends every message to a git-ignored `chat.jsonl` in the
-  change's folder and loads it at start, so `specworks harness --change REF`
-  continues a stopped run. Before the run has created its change, messages are
-  held in memory and written to the change's folder once it exists.
-- The model comes from `SPECWORKS_MODEL_API_KEY`, `SPECWORKS_MODEL_BASE_URL`
-  (optional) and `SPECWORKS_MODEL_MODEL`; a missing one stops the command naming
-  the variable, never a value.
-- Packaging: a `harness` extra (chatinho with its `tui` and `langchain`
-  batteries, and `deepagents`), Python 3.12+ only. `import specworks` and every
-  other command never import it; `specworks harness` without it says which
-  extra to install. CI's coverage job moves to 3.12+ with the extra; the 3.11
-  job skips `tests/harness`.
-- A change's `.gitignore` now gains the names it lacks instead of being written
-  only when missing, so `chat.jsonl` and `events.jsonl` are both ignored
-  whichever came first.
+- chatinho is pinned to `c7bcc17` with its `tui` and `deepagents` extras; the
+  harness's own `deepagents` pin follows chatinho's (`>=0.7.34,<0.8`).
+- Each skill peer is a `DeepAgentConnector` (subclassed only to add
+  `hand_over`, the preamble and doing nothing on unaddressed says). The
+  override of `AgentConnector.graph()` goes.
+- Workspaces come from a specworks `GitWorktrees` subclass: every phase peer's
+  workspace is the main checkout (writable, shared), the `test` peer's is a
+  worktree `peer/test` started from the checkout's current branch. Peers read
+  each other's under `/peers/<name>/`; chatinho's `/ws` lists and diffs them.
+  The `/workspace` command and `Workspaces` go.
+- A `run(command)` operation on a specworks workspace class gives each peer a
+  shell as `ws_run`: it runs in the workspace, refuses `git push`, drops the
+  model and Langfuse keys from its environment, and stops a command after 600
+  seconds. `ConfinedShell` and `PeerShell` go.
+- `/merge <name>` runs `specworks merge` of that workspace's branch into the
+  checkout for the run's change, only when the user runs it; a model is
+  refused. After a merge the worktree and branch are removed. The preamble
+  tells peers to ask the user for `/merge test` instead of merging.
+- The test of AC-HARNESS-008.2 checks the shell's folder with a path the
+  process reports, not `pwd` text, so it passes on Windows.
+- Unchanged: one peer per skill, hand-over by message, `@peer`, `chat.jsonl`,
+  the `SPECWORKS_MODEL_*` model, the `specworks harness` command.
 
 ## Capabilities
 
 ### New Capabilities
 
-- `harness` ((top), `src/specworks/harness`): runs the specworks flow as a
-  chatinho session: one Deep Agent peer per skill, handing over by message,
-  confined to git workspaces that a git backend creates and merges, with the
-  conversation kept in the change's folder and the model read from the
-  environment.
+None.
 
 ### Modified Capabilities
 
-- `cli`: adds REQ-CLI-022 `harness` (the command, its errors without the extra
-  or a key).
-- `project`: REQ-PROJ-030 a change's `.gitignore` gains the names it lacks.
+- `harness`: REQ-HARNESS-002 (a peer is a `DeepAgentConnector`, its tools),
+  REQ-HARNESS-004 (the preamble's merge rule), REQ-HARNESS-006 (workspaces:
+  shared checkout, the test worktree), REQ-HARNESS-007 (merging: user-only),
+  REQ-HARNESS-008 (staying in the workspace: `ws_run`, read-only views, a
+  timeout). REQ-HARNESS-001, -003, -005, -009 and -010 are kept as merged.
+- `cli`: none beyond REQ-CLI-022 as merged (its delta is kept unchanged).
+- `project`: none beyond REQ-PROJ-030 as merged (its delta is kept unchanged).
 
 ## Related requirements
 
-- REQ-PROJ-030 modified: the change folder's `.gitignore` is shared with the
-  harness's `chat.jsonl`, so missing names are added to an existing file.
-- REQ-PROJ-014 left: command result reuse is not touched.
-- REQ-PROJ-033 left: reopening moves the folder, `chat.jsonl` with it.
-- REQ-INTEG-003 left: d2 is not touched.
-- REQ-INTEG-007 left: the harness reads skills through `read_skill`, which
-  fills includes as today.
-- REQ-INTEG-008 left: Langfuse variables are unchanged; the model variables
-  follow the same rule (values never shown) in their own requirement.
-- REQ-INTEG-009 left: sending events is unchanged.
-- REQ-CLI-004 left: `context` does not show the harness.
-- REQ-CLI-010 left: `/merge` reuses the same merge; the command is unchanged.
-- REQ-CLI-012 left: `commit` stages the change folder, and git skips the
-  ignored `chat.jsonl`.
-- REQ-CLI-017 left: the harness records no telemetry events of its own; the
-  CLI commands its peers run record theirs as today.
-- REQ-CLI-018 left: `telemetry push` is unchanged.
-- REQ-SPECS-015 left: code tasks waiting on the test half are unchanged.
+- REQ-HARNESS-002, -004, -006, -007, -008 modified (this change's own IDs,
+  updated in place at close).
+- REQ-HARNESS-001, -003, -005, -009, -010 left: their behaviour does not change.
+- REQ-CLI-022 left: the command's surface and errors do not change.
+- REQ-PROJ-030 left: unchanged.
+- REQ-FLOW-015 left: `/merge` calls the same merge.
+- REQ-CLI-010 left: `specworks merge` is unchanged.
+- REQ-INTEG-007 left: skills are still read through `read_skill`.
+- REQ-INTEG-008 left: the Langfuse keys are dropped from the shell, as the
+  model's are; their own rules are unchanged.
 
 ## Impact
 
-- New package `src/specworks/harness` (peer, backend, workspaces, model,
-  session builder); new command in `src/specworks/cli`; a small change in
-  `src/specworks/core` (`.gitignore`).
-- `pyproject.toml`: the `harness` extra (`chatinho` from git, pinned to a
-  commit; `deepagents`), the dev group and mypy settings for a module that
-  needs 3.12+.
-- `.github/workflows/ci.yml`: coverage on 3.12+ with the extra; 3.11 skips
-  `tests/harness`.
-- New tests in `tests/harness/` with a scripted chat model (tests only, no
-  network).
+- `src/specworks/harness/`: `peers.py` rebuilt on `DeepAgentConnector`;
+  `workspaces.py` becomes the `GitWorktrees` subclass, the workspace class with
+  `run`, and `MergeCommand`; `confine.py` reduced to the push and environment
+  rules; `session.py` passes the provider and chatinho's `/ws`.
+- `pyproject.toml` and `uv.lock`: chatinho at `c7bcc17` with `deepagents`.
+- `tests/harness/`: updated to the new workspaces and tools; AC-HARNESS-008.2
+  fixed for Windows.
 - No skill text changes.
 
 ## Out of Scope
 
-- A headless mode or an automatic answer policy (the refinement chose the
-  interactive chat).
-- Approval prompts for writes outside a workspace: they are refused instead.
-- Real sandboxing of the shell: commands run in the workspace with `git push`
-  refused, but a command can still reach the rest of the machine.
-- Telemetry events for harness messages.
-- Moving `SkillPeer` or the git backend into chatinho.
-- A runnable scripted model (`--model scripted`): the user chose tests only.
-- Pushing: no peer pushes; the user pushes after the run.
+- Requiring a peer to commit before it hands over: the phase peers share one
+  checkout, and the skills already commit after each phase.
+- Any change to chatinho.
+- A sandbox: `ws_run` runs on the machine, as before.
+- More than one worktree besides the checkout: only `test` gets its own.
