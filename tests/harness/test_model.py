@@ -1,6 +1,8 @@
 """The harness's model, read from the SPECWORKS_MODEL_* variables, and a key that is never shown (REQ-HARNESS-010)."""
 
+import asyncio
 import logging
+import sys
 
 import openai
 import pytest
@@ -8,8 +10,9 @@ from langchain_openai import ChatOpenAI
 
 from harness.scripted import ScriptedModel, chat, new_change, read_chat
 from specworks.harness import ModelSettingsError, model_from_env
-from specworks.harness.confine import confined
+from specworks.harness.confine import shell_env
 from specworks.harness.model import MODEL_BASE_URL, MODEL_KEY, MODEL_NAME
+from specworks.harness.workspaces import SpecworksWorktrees
 
 KEY = "sk-secret"
 SETTINGS = {MODEL_KEY: KEY, MODEL_NAME: "gpt-test", MODEL_BASE_URL: "http://127.0.0.1:9/v1"}
@@ -73,10 +76,24 @@ def test_ac_harness_010_3_the_key_never_shown(project, ws, monkeypatch, caplog):
 
 
 # @ac AC-HARNESS-010.3
-def test_ac_harness_010_3_the_key_never_in_a_peers_shell(tmp_path, monkeypatch):
+def test_ac_harness_010_3_the_key_never_in_a_peers_shell(project, ws, monkeypatch):
     for name, value in SETTINGS.items():
         monkeypatch.setenv(name, value)
-    response = confined(tmp_path).execute("env")
-    assert response.exit_code == 0
-    assert "PATH=" in response.output
-    assert KEY not in response.output
+    monkeypatch.setenv("SPECWORKS_LANGFUSE_SECRET_KEY", "lf-secret")
+
+    async def main():
+        checkout = await SpecworksWorktrees(ws).provision("refine", "refine")
+        return await checkout.run(f'"{sys.executable}" -c "import os; print(sorted(os.environ.items()))"')
+
+    output = asyncio.run(main())
+    assert output.startswith("exit code 0")
+    assert "PATH" in output
+    assert KEY not in output and "lf-secret" not in output
+    assert MODEL_KEY not in output and "SPECWORKS_LANGFUSE_SECRET_KEY" not in output
+
+
+# @ac AC-HARNESS-010.3
+def test_ac_harness_010_3_the_shells_environment():
+    env = {"PATH": "/bin", MODEL_KEY: KEY, MODEL_NAME: "gpt-test", "SPECWORKS_LANGFUSE_SECRET_KEY": "lf-secret", "SPECWORKS_OTHER": "kept"}
+    assert shell_env(env) == {"PATH": "/bin", "SPECWORKS_OTHER": "kept"}
+    assert MODEL_KEY in env, "the given environment is not changed"

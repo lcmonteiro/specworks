@@ -9,7 +9,7 @@ from specworks.harness.peers import PREFIX, preamble, skill_instructions
 from specworks.tools.skills import packaged_skills, read_skill
 
 PEERS = [skill.removeprefix("specworks-") for skill in packaged_skills()]
-FILE_TOOLS = {"ls", "read_file", "write_file", "edit_file", "glob", "grep", "execute"}
+FILE_TOOLS = {"read_file", "write_file", "edit_file"}
 
 #: The pinned preamble of design.md, verbatim.
 PINNED = (
@@ -17,7 +17,8 @@ PINNED = (
     "No one types slash commands here: `/specworks-<name>` in your skill means the peer `<name>`.\n"
     "When your skill stops with a question that only offers the next step, take the option marked (recommended) and call hand_over with that peer and the change ref; do not ask the user.\n"
     "When your skill asks the user anything else, call ask_user and wait for the answer.\n"
-    "When the recommended option is `stop here`, end without calling hand_over."
+    "When the recommended option is `stop here`, end without calling hand_over.\n"
+    "When your skill merges a worktree's branch, do not merge it yourself: call ask_user asking the user to run `/merge <name>`, and wait."
 )
 
 
@@ -90,8 +91,9 @@ def test_ac_harness_002_2_its_tools(project, ws):
     model = ScriptedModel(script={"build": ["done"]})
     chat(ws, model, then=ask("build", "build add-x"))
     tools = set(model.runs_of("build")[0].tools)
-    assert {"hand_over", "ask_test", "ask_code", "ask_user", "run_workspace", "run_merge"} <= tools
+    assert {"hand_over", "ask_test", "ask_code", "ask_user", "run_merge", "run_ws", "ws_run"} <= tools
     assert FILE_TOOLS <= tools
+    assert "run_workspace" not in tools, "the /workspace command is gone"
     assert "ask_build" not in tools
     assert {f"ask_{peer}" for peer in PEERS if peer != "build"} <= tools
 
