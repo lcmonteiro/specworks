@@ -16,9 +16,7 @@ HIDDEN_ENV = ("SPECWORKS_MODEL_", "SPECWORKS_LANGFUSE_")
 # @req REQ-HARNESS-010
 def shell_env(env: Mapping[str, str] | None = None) -> dict[str, str]:
     """The environment of a peer's shell: ``env`` (default this process's), without ``HIDDEN_ENV``. Implements REQ-HARNESS-010."""
-    if env is not None:
-        raise NotImplementedError
-    return {k: v for k, v in os.environ.items() if not k.startswith(HIDDEN_ENV)}
+    return {k: v for k, v in (os.environ if env is None else env).items() if not k.startswith(HIDDEN_ENV)}
 
 
 # @req REQ-HARNESS-008

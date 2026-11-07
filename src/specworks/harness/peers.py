@@ -74,7 +74,12 @@ class SkillPeer(DeepAgentConnector):
 
         Implements REQ-HARNESS-002.
         """
-        raise NotImplementedError
+        self.skill = skill
+        #: The skill peers' names, which ``hand_over`` accepts (all but its own).
+        self.peer_names = list(peers)
+        #: Hand-overs being said; kept so they are not collected before they run.
+        self._handing: set[asyncio.Task[None]] = set()
+        super().__init__(peer_name(skill), model, [self.hand_over_tool()], memory=MEMORY, ask_user=True, system_prompt=skill_instructions(skill, peers))
 
     async def answer(self, msg: ChatMessage) -> Reply:
         """AgentConnector's run on ``msg``, then the recorded hand-over is said. Implements REQ-HARNESS-003, REQ-HARNESS-005."""

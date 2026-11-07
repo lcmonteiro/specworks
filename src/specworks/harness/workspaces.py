@@ -2,14 +2,23 @@
 
 from __future__ import annotations
 
+import asyncio
+import os
+import signal
+import sys
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from chatinho import LOCAL, HookExecute, Reply, require, tool
-from chatinho.workspaces import GitWorktrees, Workspace, WorkspaceView, operation
+from chatinho import LOCAL, HookExecute, Reply, ReplyStatus, require, tool
+from chatinho.workspaces import GitWorktrees, Tree, Workspace, WorkspaceView, operation
+from chatinho.workspaces.git import BRANCH_PREFIX, WORKTREES
+from chatinho.workspaces.tree import run_git
 
 from ..core.errors import SpecworksError
+from ..core.git import git_text
 from ..core.workspace import Workspace as SpecworksProject
+from ..workflow.merge import BranchMergeError, merge_branch
+from .confine import refuses, shell_env
 
 if TYPE_CHECKING:
     from .backend import GitBackend
@@ -34,6 +43,7 @@ class WorkspaceError(SpecworksError):
         self.files: list[Path] = list(files or [])
 
 
+# @req REQ-HARNESS-008
 class SpecworksWorkspace(Workspace):
     """chatinho's ``Workspace`` with a ``run`` operation, which agents get as ``ws_run``. Implements REQ-HARNESS-008."""
 
@@ -44,9 +54,40 @@ class SpecworksWorkspace(Workspace):
         Returns ``"exit code <n>\\n<output>"`` (stderr merged into stdout). Raises ``PermissionError`` for a ``git push``
         (nothing runs) and ``TimeoutError`` once it has run past ``RUN_TIMEOUT`` (it is killed). Implements REQ-HARNESS-008.
         """
-        raise NotImplementedError
+        if refuses(command):
+            raise PermissionError("git push is refused: only the user pushes")
+        limit = RUN_TIMEOUT
+        # Its own process group on POSIX, so a timeout stops the shell and every command it started.
+        process = await asyncio.create_subprocess_shell(
+            command,
+            cwd=self.tree.root,
+            env=shell_env(),
+            stdin=asyncio.subprocess.DEVNULL,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.STDOUT,
+            start_new_session=sys.platform != "win32",
+        )
+        try:
+            out, _ = await asyncio.wait_for(process.communicate(), timeout=limit)
+        except TimeoutError:
+            _kill(process)
+            await process.wait()
+            raise TimeoutError(f"command stopped after {limit:g} seconds") from None
+        return f"exit code {process.returncode}\n{out.decode('utf-8', 'replace')}"
 
 
+def _kill(process: asyncio.subprocess.Process) -> None:
+    """Stop ``process`` and, on POSIX, every process of its group."""
+    if sys.platform != "win32":
+        try:
+            os.killpg(process.pid, signal.SIGKILL)
+            return
+        except ProcessLookupError:  # already gone
+            return
+    process.kill()
+
+
+# @req REQ-HARNESS-006
 class SpecworksWorktrees(GitWorktrees):
     """The provider: one main checkout every phase peer shares, and a worktree for each of ``WORKTREE_PEERS``.
 
@@ -57,6 +98,8 @@ class SpecworksWorktrees(GitWorktrees):
         """Over the repository of ``ws`` (``repo=ws.root``), with ``SpecworksWorkspace`` as the owner's workspace."""
         super().__init__(ws.root, workspace=SpecworksWorkspace)
         self.ws = ws
+        #: The main checkout, one tree (so one lock) for every peer that works in it; built once started.
+        self._checkout: Tree | None = None
 
     async def provision(self, owner: str | None, name: str, create: bool = True) -> WorkspaceView:
         """``name``'s workspace for ``owner``: the main checkout for a name not in ``WORKTREE_PEERS``, else its worktree.
@@ -64,13 +107,31 @@ class SpecworksWorktrees(GitWorktrees):
         The main checkout is a ``SpecworksWorkspace`` when ``owner`` is a checkout peer too, a ``WorkspaceView`` otherwise.
         A worktree created now starts from the branch the checkout has now. Implements REQ-HARNESS-006.
         """
-        raise NotImplementedError
+        if name in WORKTREE_PEERS:
+            top = await self._started()
+            if create and not (top / WORKTREES / name / ".git").exists() and not await self._branch_exists(BRANCH_PREFIX + name):
+                self.base = await self.current_branch()  # a new worktree starts where the checkout is now
+            return await super().provision(owner, name, create)
+        tree = await self._checkout_tree()
+        writes = owner is not None and owner not in WORKTREE_PEERS
+        return (self.workspace if writes else self.view)(tree)
+
+    async def _checkout_tree(self) -> Tree:
+        """The main checkout's tree; its base is ``HEAD``, so its diff is the uncommitted work on whatever branch it is on."""
+        top = await self._started()
+        async with self._opening:
+            if self._checkout is None:
+                self._checkout = Tree(top, "checkout", await self.current_branch(), "HEAD", self.view, self._identity)
+            return self._checkout
 
     async def current_branch(self) -> str:
         """The branch the main checkout has checked out, else its ``HEAD`` commit. Implements REQ-HARNESS-006."""
-        raise NotImplementedError
+        top = await self._started()
+        branch = (await run_git(top, "symbolic-ref", "--quiet", "--short", "HEAD", check=False)).strip()
+        return branch or (await run_git(top, "rev-parse", "HEAD")).strip()
 
 
+# @req REQ-HARNESS-007
 @tool("merge", "Merge a workspace into the main checkout: /merge <name>")
 @require(HookExecute)
 class MergeCommand:
@@ -85,4 +146,39 @@ class MergeCommand:
 
     async def execute(self, args: str = "", by: int = LOCAL, **kwargs: Any) -> Reply:
         """Merge the workspace named in ``args``; every refusal is an error reply and changes nothing. Implements REQ-HARNESS-007."""
-        raise NotImplementedError
+        name = args.strip()
+        if by != LOCAL:
+            return _error(f"only the user can merge: ask the user to run /merge {name or '<name>'}")
+        if not name:
+            return _error("usage: /merge <name>")
+        change = self.backend.change
+        if change is None:
+            return _error("the run has no change yet: create it before merging a workspace")
+        if name not in await self.provider.names():
+            return _error(f"no workspace '{name}'")
+        root = (await self.provider.provision(None, name, create=False)).tree.root
+        if (await asyncio.to_thread(git_text, root, "status", "--porcelain")).strip():
+            return _error(f"workspace '{name}' has uncommitted changes: commit them in it before merging")
+        branch = BRANCH_PREFIX + name
+        try:
+            result = await asyncio.to_thread(merge_branch, self.backend.ws, self.backend.module, change, branch)
+        except BranchMergeError as exc:  # aborted: the main checkout is as it was, and the workspace stays
+            return _error(str(exc))
+        await self.provider.drop(name)
+        lines = [f"resolved {_rel(self.backend.ws, p)}" for p in result.resolved]
+        lines.append(f"merged {branch} into the main checkout" if result.merged else f"{branch}: already up to date, nothing to merge")
+        lines.append(f"workspace {name} removed")
+        return Reply("\n".join(lines))
+
+
+def _error(text: str) -> Reply:
+    """A refusal, as the error reply to whoever ran the command."""
+    return Reply(text, status=ReplyStatus.ERROR)
+
+
+def _rel(ws: SpecworksProject, path: Path) -> str:
+    """``path`` relative to the workspace root, or as it is when it lies outside it."""
+    try:
+        return ws.rel(path)
+    except ValueError:
+        return path.as_posix()
