@@ -1,10 +1,10 @@
-"""The harness session: the user, one skill peer per packaged skill, the git backend and the workspace commands."""
+"""The harness session: the user, one skill peer per packaged skill, the git backend, the workspaces and their commands."""
 
 from __future__ import annotations
 
 from typing import Any
 
-from chatinho import LOCAL, ChatSession
+from chatinho import LOCAL, ChatSession, WorkspaceCommand
 from chatinho.routers import SimpleRouter
 from langchain_core.language_models import BaseChatModel
 
@@ -14,7 +14,7 @@ from ..tools.skills import packaged_skills
 from .backend import GitBackend
 from .model import model_from_env
 from .peers import SkillPeer, peer_name
-from .workspaces import MergeCommand, WorkspaceCommand, Workspaces
+from .workspaces import MergeCommand, SpecworksWorktrees
 
 #: The peer that carries on a change in each phase; a baseline change goes to `baseline` from specify to review.
 PHASE_PEERS = {
@@ -66,15 +66,16 @@ def build_harness(ws: Workspace, model: BaseChatModel, *, request: str | None = 
     module = ws.owner(change.path) if change is not None else ws.current
     skills = packaged_skills()
     names = [peer_name(skill) for skill in skills]
-    workspaces = Workspaces(ws, module)
+    provider = SpecworksWorktrees(ws)
     backend = GitBackend(ws, module, change)
     if frontend is None:
         from chatinho.frontends.chat import ChatFrontend  # the terminal: only when one is opened
 
         frontend = ChatFrontend(title="specworks harness", name="me", welcome_message=f"Peers: {', '.join(names)}. Ask one with @<peer> <text>.")
     return HarnessSession(
-        connectors=[SkillPeer(skill, model, workspaces, names) for skill in skills],
-        commands=[WorkspaceCommand(workspaces), MergeCommand(workspaces, backend)],
+        connectors=[SkillPeer(skill, model, names) for skill in skills],
+        commands=[WorkspaceCommand(provider), MergeCommand(provider, backend)],
+        workspaces=provider,
         frontend=frontend,
         backend=backend,
         router=SimpleRouter(),

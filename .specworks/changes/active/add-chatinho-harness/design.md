@@ -156,7 +156,7 @@ Unchanged decisions (hand-over from a fresh context, `GitBackend`,
 
 ## Interfaces
 
-Proposed: waiting for the user's agreement
+Agreed with the user
 
 - `src/specworks/harness/peers.py`:
   - `PREAMBLE: str` (the pinned wording above) (REQ-HARNESS-004)
@@ -170,7 +170,7 @@ Proposed: waiting for the user's agreement
   - Removed: `Workspaces`, `WorkspaceCommand` (specworks' `/workspace`), `WORKSPACES_DIR`, `MAIN`, `NAME_RE`. `WorkspaceError(SpecworksError)` with `files` is kept for `/merge`.
 - `src/specworks/harness/confine.py`: `PUSH_RE`, `refuses(command: str) -> bool`, `shell_env(env: Mapping[str, str] | None = None) -> dict[str, str]` (REQ-HARNESS-008, REQ-HARNESS-010). `HIDDEN_ENV` kept. Removed: `ConfinedShell`, `confined`, `PeerShell`, `OutsideWorkspaceError` (chatinho's `Tree.resolve` and `WorkspaceBackend` now refuse outside paths).
 - `src/specworks/harness/session.py`: `build_harness(...)` signature unchanged; it builds the session with `workspaces=SpecworksWorktrees(ws)` and the commands `/ws` (chatinho's `WorkspaceCommand`) and `/merge` (REQ-HARNESS-006, REQ-HARNESS-007)
-- Unchanged: `model.py`, `backend.py`, `src/specworks/cli/harness.py`, `src/specworks/core/events.py`.
+- Unchanged: `src/specworks/harness/model.py`, `src/specworks/harness/backend.py`, `src/specworks/cli/harness.py`, `src/specworks/core/events.py`.
 
 ## Diagrams
 

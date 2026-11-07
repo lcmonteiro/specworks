@@ -389,11 +389,11 @@ wheels = [
 [[package]]
 name = "chatinho"
 version = "0.1.0"
-source = { git = "https://github.com/lcmonteiro/chatinho?rev=d3f29a263d323774c0820eb21b8276f25b170372#d3f29a263d323774c0820eb21b8276f25b170372" }
+source = { git = "https://github.com/lcmonteiro/chatinho?rev=c7bcc176c633d9aab17c4cb4874dbc40aae4ef85#c7bcc176c633d9aab17c4cb4874dbc40aae4ef85" }
 
 [package.optional-dependencies]
-langchain = [
-    { name = "langchain" },
+deepagents = [
+    { name = "deepagents" },
     { name = "langchain-openai" },
 ]
 tui = [
@@ -1973,13 +1973,13 @@ dependencies = [
 
 [package.optional-dependencies]
 harness = [
-    { name = "chatinho", extra = ["langchain", "tui"], marker = "python_full_version >= '3.12'" },
+    { name = "chatinho", extra = ["deepagents", "tui"], marker = "python_full_version >= '3.12'" },
     { name = "deepagents", marker = "python_full_version >= '3.12'" },
 ]
 
 [package.dev-dependencies]
 dev = [
-    { name = "chatinho", extra = ["langchain", "tui"], marker = "python_full_version >= '3.12'" },
+    { name = "chatinho", extra = ["deepagents", "tui"], marker = "python_full_version >= '3.12'" },
     { name = "coverage" },
     { name = "deepagents", marker = "python_full_version >= '3.12'" },
     { name = "mypy" },
@@ -1990,8 +1990,8 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "chatinho", extras = ["tui", "langchain"], marker = "python_full_version >= '3.12' and extra == 'harness'", git = "https://github.com/lcmonteiro/chatinho?rev=d3f29a263d323774c0820eb21b8276f25b170372" },
-    { name = "deepagents", marker = "python_full_version >= '3.12' and extra == 'harness'", specifier = ">=0.7,<0.8" },
+    { name = "chatinho", extras = ["tui", "deepagents"], marker = "python_full_version >= '3.12' and extra == 'harness'", git = "https://github.com/lcmonteiro/chatinho?rev=c7bcc176c633d9aab17c4cb4874dbc40aae4ef85" },
+    { name = "deepagents", marker = "python_full_version >= '3.12' and extra == 'harness'", specifier = ">=0.7.34,<0.8" },
     { name = "pyd2", git = "https://github.com/lcmonteiro/pyd2?rev=3f82c049daada03a0c8ab6e0a6fd5d8fe75c69cb" },
     { name = "pyyaml", specifier = ">=6.0.3" },
     { name = "typer", specifier = ">=0.27.3" },
@@ -2000,9 +2000,9 @@ provides-extras = ["harness"]
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "chatinho", extras = ["tui", "langchain"], marker = "python_full_version >= '3.12'", git = "https://github.com/lcmonteiro/chatinho?rev=d3f29a263d323774c0820eb21b8276f25b170372" },
+    { name = "chatinho", extras = ["tui", "deepagents"], marker = "python_full_version >= '3.12'", git = "https://github.com/lcmonteiro/chatinho?rev=c7bcc176c633d9aab17c4cb4874dbc40aae4ef85" },
     { name = "coverage", specifier = ">=7.16.2" },
-    { name = "deepagents", marker = "python_full_version >= '3.12'", specifier = ">=0.7,<0.8" },
+    { name = "deepagents", marker = "python_full_version >= '3.12'", specifier = ">=0.7.34,<0.8" },
     { name = "mypy", specifier = ">=2.4.0" },
     { name = "pytest", specifier = ">=9.1.1" },
     { name = "ruff", specifier = ">=0.17.0" },

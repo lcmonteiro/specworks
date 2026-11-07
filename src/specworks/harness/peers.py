@@ -1,4 +1,4 @@
-"""Skill peers: one chatinho ``AgentConnector`` per packaged skill, whose inner agent is a Deep Agent in its workspace."""
+"""Skill peers: one chatinho ``DeepAgentConnector`` per packaged skill, working in the workspace the provider gives it."""
 
 from __future__ import annotations
 
@@ -6,18 +6,13 @@ import asyncio
 import contextvars
 import logging
 from collections.abc import Sequence
-from pathlib import Path
-from typing import Any
 
 from chatinho import ChatMessage, Query, Reply, ReplyStatus, connector, name_of
-from chatinho.connectors.agent import AgentConnector
-from deepagents import create_deep_agent
+from chatinho.connectors.deep import DeepAgentConnector
 from langchain_core.language_models import BaseChatModel
 from langchain_core.tools import StructuredTool
 
 from ..tools.skills import read_skill
-from .confine import PeerShell
-from .workspaces import Workspaces
 
 logger = logging.getLogger(__name__)
 
@@ -67,44 +62,19 @@ def skill_instructions(skill: str, peers: Sequence[str]) -> str:
 # @req REQ-HARNESS-003
 # @req REQ-HARNESS-005
 @connector("skill")
-class SkillPeer(AgentConnector):
-    """A packaged skill as a chat peer: AgentConnector's graph and chat tools, with a Deep Agent inside.
+class SkillPeer(DeepAgentConnector):
+    """A packaged skill as a chat peer: chatinho's Deep Agent connector, in the workspace the provider gives it.
 
     It acts only on what is addressed to it, and hands over to the next peer after its run, from a fresh context.
     Implements REQ-HARNESS-002, REQ-HARNESS-003, REQ-HARNESS-005.
     """
 
-    def __init__(self, skill: str, model: BaseChatModel, workspaces: Workspaces, peers: Sequence[str]) -> None:
-        """Named ``peer_name(skill)``, with ``ask_user=True`` and ``skill_instructions(skill, peers)`` as its system prompt."""
-        self.skill = skill
-        self.workspaces = workspaces
-        #: The skill peers' names, which ``hand_over`` accepts (all but its own).
-        self.peer_names = list(peers)
-        super().__init__(peer_name(skill), model, [self.hand_over_tool()], memory=MEMORY, ask_user=True, system_prompt=skill_instructions(skill, peers))
-        #: The one backend of this peer's Deep Agent, following its workspace on every call.
-        self.shell = PeerShell(self._workspace)
-        #: The compiled graphs, by chat shape (the shell follows the workspace by itself).
-        self._graphs: dict[Any, Any] = {}
-        #: Hand-overs being said; kept so they are not collected before they run.
-        self._handing: set[asyncio.Task[None]] = set()
+    def __init__(self, skill: str, model: BaseChatModel, peers: Sequence[str]) -> None:
+        """Named ``peer_name(skill)``: ``ask_user=True``, ``MEMORY``, the ``hand_over`` tool and ``skill_instructions(skill, peers)``.
 
-    def _workspace(self) -> Path:
-        """The folder of this peer's workspace (the main checkout until it opens another)."""
-        me = getattr(self, "peer_id", None)
-        return self.workspaces.ws.root if me is None else self.workspaces.path_of(me)
-
-    async def graph(self) -> Any:
-        """The compiled graph around a Deep Agent over ``shell``, built per chat shape. Implements REQ-HARNESS-002, REQ-HARNESS-006."""
-        shape = self._shape()
-        async with self._building:
-            built = self._graphs.get(shape)
-            if built is None:
-                # AgentConnector.graph(), with a Deep Agent over the peer's shell in place of create_agent.
-                tools = self.tools + self._chat_tools(shape)
-                options = {k: v for k, v in self.options.items() if k != "checkpointer"}
-                inner = create_deep_agent(self.model, tools, backend=self.shell, **options)
-                built = self._graphs[shape] = self._compile(inner)
-            return built
+        Implements REQ-HARNESS-002.
+        """
+        raise NotImplementedError
 
     async def answer(self, msg: ChatMessage) -> Reply:
         """AgentConnector's run on ``msg``, then the recorded hand-over is said. Implements REQ-HARNESS-003, REQ-HARNESS-005."""

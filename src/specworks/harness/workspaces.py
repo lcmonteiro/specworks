@@ -1,31 +1,30 @@
-"""Workspaces: git worktrees on their own branches that peers work in, and the ``/workspace`` and ``/merge`` commands."""
+"""Workspaces: the main checkout the phase peers share, a git worktree for ``test``, a ``run`` operation, and ``/merge``."""
 
 from __future__ import annotations
 
-import re
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from chatinho import LOCAL, HookExecute, Reply, ReplyStatus, require, tool
+from chatinho import LOCAL, HookExecute, Reply, require, tool
+from chatinho.workspaces import GitWorktrees, Workspace, WorkspaceView, operation
 
-from ..core.changes import Change
 from ..core.errors import SpecworksError
-from ..core.git import GitError, current_branch, git, git_text
-from ..core.workspace import Module, Workspace
-from ..workflow.merge import BranchMergeError, MergeResult, merge_branch
+from ..core.workspace import Workspace as SpecworksProject
 
 if TYPE_CHECKING:
     from .backend import GitBackend
 
-WORKSPACES_DIR = ".specworks/workspaces"
-MAIN = "main"
-NAME_RE = re.compile(r"^[a-z0-9][a-z0-9-]*$")
+#: The peers that work in a git worktree of their own; every other peer works in the main checkout.
+WORKTREE_PEERS: frozenset[str] = frozenset({"test"})
+
+#: How long ``run`` waits for a command, in seconds, before it stops it (read at call time).
+RUN_TIMEOUT: float = 600.0
 
 
 # @req REQ-HARNESS-006
 # @req REQ-HARNESS-007
 class WorkspaceError(SpecworksError):
-    """A workspace refused: a bad or unknown name, or a merge aborted on a conflict (``files``).
+    """A workspace refused: a merge aborted on a conflict (``files``).
 
     Implements REQ-HARNESS-006, REQ-HARNESS-007.
     """
@@ -35,140 +34,55 @@ class WorkspaceError(SpecworksError):
         self.files: list[Path] = list(files or [])
 
 
-# @req REQ-HARNESS-006
-# @req REQ-HARNESS-007
-class Workspaces:
-    """Each peer's workspace (``main``, the main checkout, until it opens another). Implements REQ-HARNESS-006, REQ-HARNESS-007."""
+class SpecworksWorkspace(Workspace):
+    """chatinho's ``Workspace`` with a ``run`` operation, which agents get as ``ws_run``. Implements REQ-HARNESS-008."""
 
-    def __init__(self, ws: Workspace, module: Module) -> None:
+    @operation("Run a shell command in the workspace and return its output and exit code", writes=True)
+    async def run(self, command: str) -> str:
+        """Run ``command`` through the platform shell in the workspace's folder, with ``shell_env()``.
+
+        Returns ``"exit code <n>\\n<output>"`` (stderr merged into stdout). Raises ``PermissionError`` for a ``git push``
+        (nothing runs) and ``TimeoutError`` once it has run past ``RUN_TIMEOUT`` (it is killed). Implements REQ-HARNESS-008.
+        """
+        raise NotImplementedError
+
+
+class SpecworksWorktrees(GitWorktrees):
+    """The provider: one main checkout every phase peer shares, and a worktree for each of ``WORKTREE_PEERS``.
+
+    Implements REQ-HARNESS-006.
+    """
+
+    def __init__(self, ws: SpecworksProject) -> None:
+        """Over the repository of ``ws`` (``repo=ws.root``), with ``SpecworksWorkspace`` as the owner's workspace."""
+        super().__init__(ws.root, workspace=SpecworksWorkspace)
         self.ws = ws
-        self.module = module
-        self.folder = ws.root / WORKSPACES_DIR
-        self._of: dict[int, str] = {}  # peer id -> workspace name; a peer not in it is in main
 
-    def path_of(self, peer: int) -> Path:
-        """The folder of ``peer``'s workspace. Implements REQ-HARNESS-006."""
-        name = self.name_of(peer)
-        return self.ws.root if name == MAIN else self.folder / name
+    async def provision(self, owner: str | None, name: str, create: bool = True) -> WorkspaceView:
+        """``name``'s workspace for ``owner``: the main checkout for a name not in ``WORKTREE_PEERS``, else its worktree.
 
-    def name_of(self, peer: int) -> str:
-        """The name of ``peer``'s workspace. Implements REQ-HARNESS-006."""
-        return self._of.get(peer, MAIN)
-
-    def branch_of(self, name: str) -> str:
-        """The branch of the workspace ``name``: ``<main branch>--<name>``. Implements REQ-HARNESS-006."""
-        branch = current_branch(self.ws.root)
-        if branch is None:
-            raise WorkspaceError("the main checkout's HEAD is detached: switch to the change's branch first")
-        return f"{branch}--{name}"
-
-    def open(self, name: str, peer: int) -> Path:
-        """Create (or reuse) the workspace ``name`` and make it ``peer``'s; ``main`` is the main checkout.
-
-        Raises ``WorkspaceError`` for a name that is not lowercase letters, digits and hyphens. Implements REQ-HARNESS-006.
+        The main checkout is a ``SpecworksWorkspace`` when ``owner`` is a checkout peer too, a ``WorkspaceView`` otherwise.
+        A worktree created now starts from the branch the checkout has now. Implements REQ-HARNESS-006.
         """
-        if name == MAIN:
-            self._of.pop(peer, None)
-            return self.ws.root
-        if not NAME_RE.match(name):
-            raise WorkspaceError(f"bad workspace name '{name}': use lowercase letters, digits and hyphens, starting with a letter or digit")
-        path = self.folder / name
-        if not path.is_dir():
-            branch = self.branch_of(name)
-            self.folder.mkdir(parents=True, exist_ok=True)
-            ignore = self.folder / ".gitignore"
-            if not ignore.exists():
-                ignore.write_text("*\n", encoding="utf-8")  # the worktrees never show in the main checkout's status
-            try:
-                git(self.ws.root, "rev-parse", "--verify", "--quiet", f"refs/heads/{branch}")
-            except GitError:  # a new workspace: a new branch from the main checkout's commit
-                git(self.ws.root, "worktree", "add", "-b", branch, str(path))
-            else:  # its branch outlived its folder: check it out again
-                git(self.ws.root, "worktree", "add", str(path), branch)
-        self._of[peer] = name
-        return path
+        raise NotImplementedError
 
-    def merge(self, name: str, change: Change) -> MergeResult:
-        """Merge the workspace's branch into the main checkout for ``change``, then remove it.
-
-        Raises ``WorkspaceError`` for an unknown workspace (``no workspace '<name>'``) or a conflict (``files`` set).
-        Implements REQ-HARNESS-007.
-        """
-        path = self.folder / name
-        if name == MAIN or not NAME_RE.match(name) or not path.is_dir():
-            raise WorkspaceError(f"no workspace '{name}'")
-        if git_text(path, "status", "--porcelain").strip():
-            raise WorkspaceError(f"workspace '{name}' has uncommitted changes: commit them in it before merging")
-        branch = self.branch_of(name)
-        try:
-            result = merge_branch(self.ws, self.module, change, branch)
-        except BranchMergeError as exc:  # aborted: the main checkout is as it was, and the workspace stays
-            raise WorkspaceError(str(exc), exc.files) from None
-        git(self.ws.root, "worktree", "remove", str(path))
-        git(self.ws.root, "branch", "-D", branch)
-        self._of = {peer: other for peer, other in self._of.items() if other != name}
-        return result
+    async def current_branch(self) -> str:
+        """The branch the main checkout has checked out, else its ``HEAD`` commit. Implements REQ-HARNESS-006."""
+        raise NotImplementedError
 
 
-def _error(exc: SpecworksError) -> Reply:
-    """A refusal as the error reply to the peer that ran the command."""
-    return Reply(str(exc), status=ReplyStatus.ERROR)
-
-
-# @req REQ-HARNESS-006
-@tool("workspace", "Work in a git workspace: /workspace <name>, or /workspace main")
-@require(HookExecute)
-class WorkspaceCommand:
-    """``/workspace <name>``: the invoking peer's workspace becomes ``<name>``. Implements REQ-HARNESS-006."""
-
-    def __init__(self, workspaces: Workspaces) -> None:
-        self.workspaces = workspaces
-
-    async def execute(self, args: str = "", by: int = LOCAL, **kwargs: Any) -> Reply:
-        """Open the workspace named in ``args`` for ``by``; a refusal is an error reply. Implements REQ-HARNESS-006."""
-        name = args.strip()
-        if not name:
-            return Reply("usage: /workspace <name>, or /workspace main", status=ReplyStatus.ERROR)
-        try:
-            path = self.workspaces.open(name, by)
-        except SpecworksError as exc:
-            return _error(exc)
-        if name == MAIN:
-            return Reply(f"now working in the main checkout ({path})")
-        return Reply(f"now working in workspace {name} ({path}), branch {self.workspaces.branch_of(name)}")
-
-
-# @req REQ-HARNESS-007
 @tool("merge", "Merge a workspace into the main checkout: /merge <name>")
 @require(HookExecute)
 class MergeCommand:
-    """``/merge <name>``: merge the workspace for the run's change. Implements REQ-HARNESS-007."""
+    """``/merge <name>``: the user merges a worktree into the main checkout for the run's change, then removes it.
 
-    def __init__(self, workspaces: Workspaces, backend: GitBackend) -> None:
-        self.workspaces = workspaces
+    Implements REQ-HARNESS-007.
+    """
+
+    def __init__(self, provider: SpecworksWorktrees, backend: GitBackend) -> None:
+        self.provider = provider
         self.backend = backend
 
     async def execute(self, args: str = "", by: int = LOCAL, **kwargs: Any) -> Reply:
-        """Merge the workspace named in ``args``; an error reply when the run has no change yet. Implements REQ-HARNESS-007."""
-        name = args.strip()
-        if not name:
-            return Reply("usage: /merge <name>", status=ReplyStatus.ERROR)
-        change = self.backend.change
-        if change is None:
-            return Reply("the run has no change yet: create it before merging a workspace", status=ReplyStatus.ERROR)
-        try:
-            result = self.workspaces.merge(name, change)
-        except SpecworksError as exc:  # a conflict's message names the conflicting files
-            return _error(exc)
-        lines = [f"resolved {_rel(self.workspaces.ws, p)}" for p in result.resolved]
-        lines.append(f"merged {result.branch} into the main checkout" if result.merged else f"{result.branch}: already up to date, nothing to merge")
-        lines.append(f"workspace {name} removed")
-        return Reply("\n".join(lines))
-
-
-def _rel(ws: Workspace, path: Path) -> str:
-    """``path`` relative to the workspace root, or as it is when it lies outside it."""
-    try:
-        return ws.rel(path)
-    except ValueError:
-        return path.as_posix()
+        """Merge the workspace named in ``args``; every refusal is an error reply and changes nothing. Implements REQ-HARNESS-007."""
+        raise NotImplementedError
