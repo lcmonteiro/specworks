@@ -15,6 +15,14 @@ dependencies = [
     "typer>=0.27.3",
 ]
 
+[project.optional-dependencies]
+# `specworks harness`: the specworks flow as a chatinho chat of Deep Agent peers. chatinho needs Python 3.12+,
+# and is pinned to a commit because SkillPeer overrides AgentConnector.graph(). Imported only by that command.
+harness = [
+    "chatinho[tui,langchain] @ git+https://github.com/lcmonteiro/chatinho@d3f29a263d323774c0820eb21b8276f25b170372 ; python_version >= '3.12'",
+    "deepagents>=0.7,<0.8; python_version >= '3.12'",
+]
+
 [project.scripts]
 specworks = "specworks.cli:main"
 
@@ -39,6 +47,9 @@ dev = [
     "pytest>=9.1.1",
     "ruff>=0.17.0",
     "types-pyyaml>=6.0.12.20260906",
+    # The harness extra, so `uv sync` on 3.12+ installs what tests/harness needs.
+    "chatinho[tui,langchain] @ git+https://github.com/lcmonteiro/chatinho@d3f29a263d323774c0820eb21b8276f25b170372 ; python_version >= '3.12'",
+    "deepagents>=0.7,<0.8; python_version >= '3.12'",
 ]
 
 [tool.pytest.ini_options]
@@ -67,6 +78,11 @@ extend-immutable-calls = ["typer.Argument", "typer.Option"]
 files = ["src/specworks"]
 python_version = "3.11"
 check_untyped_defs = true
+
+# The harness's dependencies need Python 3.12+; the lint job runs on 3.11 without them.
+[[tool.mypy.overrides]]
+module = ["chatinho.*", "deepagents.*", "langchain_core.*", "langchain_openai.*", "pydantic.*"]
+ignore_missing_imports = true
 
 [tool.coverage.run]
 source = ["specworks"]

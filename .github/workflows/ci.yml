@@ -35,7 +35,8 @@ jobs:
           python-version: ${{ matrix.python-version }}
           enable-cache: true
 
-      # pyd2 brings the pinned D2 release, so the diagram tests render with the real d2.
+      # pyd2 brings the pinned D2 release, so the diagram tests render with the real d2. On Python 3.12+ the dev
+      # group also brings the harness extra (chatinho, deepagents), so tests/harness runs; on 3.11 it is skipped.
       - name: Install dependencies
         run: uv sync --locked
 
@@ -43,8 +44,14 @@ jobs:
         run: uv run coverage run -m pytest -v
 
       # Branch coverage of src/specworks; fails under [tool.coverage.report] fail_under.
+      # The harness counts on 3.12+, where it runs; 3.11 cannot import it, so leaves it out.
       - name: Coverage
+        if: matrix.python-version != '3.11'
         run: uv run coverage report
+
+      - name: Coverage (without the harness)
+        if: matrix.python-version == '3.11'
+        run: uv run coverage report --omit "*/specworks/harness/*"
 
   lint:
     name: Lint and typecheck

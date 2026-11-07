@@ -195,6 +195,18 @@ def test_ac_proj_030_5_the_log_moves_with_the_change(project, abandoned):
     assert [json.loads(line)["event"] for line in log.decode("utf-8").splitlines()] == ["gate", "commit"]
 
 
+# @ac AC-PROJ-030.6
+def test_ac_proj_030_6_an_existing_gitignore(project):
+    change = add_change(project)
+    opt_in(project)
+    (change.path / ".gitignore").write_text("chat.jsonl\n", encoding="utf-8")
+    record_event(change, enabled(project), "gate", passed=True)
+    names = (change.path / ".gitignore").read_text(encoding="utf-8").splitlines()
+    assert sorted(names) == ["chat.jsonl", "events.jsonl", "events.sent"]
+    record_event(change, enabled(project), "commit", sha="abc1234")
+    assert (change.path / ".gitignore").read_text(encoding="utf-8").splitlines() == names
+
+
 # --- the trace identity (REQ-PROJ-031) ---------------------------------------
 
 
