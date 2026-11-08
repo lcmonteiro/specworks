@@ -5,9 +5,10 @@ from __future__ import annotations
 import json
 import logging
 from datetime import datetime
+from pathlib import Path
 from typing import Any
 
-from chatinho import ChatMessage, HookForget, HookListen, HookLoad, MessageID, ReplyStatus, backend, require
+from chatinho import ChatMessage, HookForget, HookListen, MessageID, ReplyStatus, backend, require
 
 from ..core.changes import Change, list_changes
 from ..core.events import ensure_ignored
@@ -49,10 +50,17 @@ def from_line(line: dict[str, Any]) -> ChatMessage:
     )
 
 
+def signature(folder: Path) -> int:
+    """The newest ``st_mtime_ns`` of any file in ``folder`` except ``chat.jsonl``; ``0`` for an empty or unreadable folder.
+
+    Implements REQ-HARNESS-009.
+    """
+    raise NotImplementedError
+
+
 # @req REQ-HARNESS-009
 @backend("git")
 @require(HookListen)
-@require(HookLoad)
 @require(HookForget)
 class GitBackend:
     """Appends every message to the run's change's ``chat.jsonl``, holding them until the run has a change.
@@ -62,14 +70,16 @@ class GitBackend:
 
     change: Change | None
 
-    def __init__(self, ws: Workspace, module: Module, change: Change | None) -> None:
+    def __init__(self, ws: Workspace, module: Module) -> None:
+        """A backend with no change yet: the run's change is found from what the run does. Implements REQ-HARNESS-009."""
         self.ws = ws
         self.module = module
-        self.change = change
+        #: The run's change: ``None`` until it is found.
+        self.change = None
         #: Lines not written yet: all of them while the run has no change, and any whose write failed.
         self._held: list[dict[str, Any]] = []
         #: The changes there were at start; the first other one found is the run's.
-        self._known: set[str] = set() if change is not None else self._active()
+        self._known: set[str] = self._active()
 
     def _active(self) -> set[str]:
         """The names of the module's active changes; none when they cannot be read."""
@@ -109,24 +119,6 @@ class GitBackend:
         if self.change is None:
             self._find_change()
         self._flush()
-
-    async def load(self, since: datetime | None = None, limit: int | None = None) -> list[ChatMessage]:
-        """The change's earlier messages, from its ``chat.jsonl``. Implements REQ-HARNESS-009."""
-        if self.change is None:
-            return []
-        try:
-            text = (self.change.path / CHAT_FILE).read_text(encoding="utf-8", errors="replace")
-        except OSError:
-            return []
-        found = []
-        for raw in text.splitlines():
-            try:
-                msg = from_line(json.loads(raw))
-            except (ValueError, KeyError, TypeError):  # a torn or hand-edited line is skipped
-                continue
-            if since is None or msg.timestamp >= since:
-                found.append(msg)
-        return found if limit is None else found[max(len(found) - limit, 0) :]
 
     async def forget(self, before: datetime | None = None) -> int:
         """Drop held lines (the file is kept); how many were dropped. Implements REQ-HARNESS-009."""

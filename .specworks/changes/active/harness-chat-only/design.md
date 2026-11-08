@@ -24,8 +24,8 @@ gives back the change's `chat.jsonl`.
 ### The command and the session lose their inputs
 
 `harness()` takes no parameter and calls `run_harness(ws)`. `build_harness(ws,
-model, *, frontend=None)` builds a plain chatinho `ChatSession` (through
-`build_chat_session` when `frontend` is None); `HarnessSession` and
+model, *, frontend=None)` builds a plain chatinho `ChatSession` directly, as
+today (`build_chat_session` takes no `workspaces`); `HarnessSession` and
 `first_peer` are removed, since nothing is said for the user.
 Serves: REQ-CLI-022.
 
@@ -46,7 +46,7 @@ parsing the text, and a peer may name a change it only reads.
 
 ## Interfaces
 
-Proposed: waiting for the user's agreement
+Agreed with the user (with one change: `build_harness` builds `ChatSession(...)` directly, as today, not through `build_chat_session`, which takes no `workspaces`)
 
 - `src/specworks/cli/harness.py`: `harness() -> None` (no argument, no option) (REQ-CLI-022)
 - `src/specworks/harness/session.py`: `build_harness(ws: Workspace, model: BaseChatModel, *, frontend: Any = None) -> ChatSession`; `run_harness(ws: Workspace) -> None`. Removed: `first_peer`, `HarnessSession` (REQ-CLI-022)
