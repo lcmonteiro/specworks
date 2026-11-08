@@ -50,12 +50,20 @@ def from_line(line: dict[str, Any]) -> ChatMessage:
     )
 
 
+# @req REQ-HARNESS-009
 def signature(folder: Path) -> int:
     """The newest ``st_mtime_ns`` of any file in ``folder`` except ``chat.jsonl``; ``0`` for an empty or unreadable folder.
 
     Implements REQ-HARNESS-009.
     """
-    raise NotImplementedError
+    newest = 0
+    try:
+        for path in folder.rglob("*"):
+            if path.name != CHAT_FILE and path.is_file():
+                newest = max(newest, path.stat().st_mtime_ns)
+    except OSError:
+        return 0
+    return newest
 
 
 # @req REQ-HARNESS-009
@@ -78,26 +86,23 @@ class GitBackend:
         self.change = None
         #: Lines not written yet: all of them while the run has no change, and any whose write failed.
         self._held: list[dict[str, Any]] = []
-        #: The changes there were at start; the first other one found is the run's.
-        self._known: set[str] = self._active()
+        #: The active changes at start, each with its folder's signature; the first one new or changed is the run's.
+        self._snapshot: dict[str, int] = {c.name: signature(c.path) for c in self._active()}
 
-    def _active(self) -> set[str]:
-        """The names of the module's active changes; none when they cannot be read."""
+    def _active(self) -> list[Change]:
+        """The module's active changes, by name; none when they cannot be read."""
         try:
-            return {c.name for c in list_changes(self.module.config)}
+            return sorted(list_changes(self.module.config), key=lambda c: c.name)
         except Exception:  # noqa: BLE001 - a broken change folder must not stop the chat
             logger.warning("cannot list the changes", exc_info=True)
-            return set()
+            return []
 
     def _find_change(self) -> None:
-        """Make the first change created during the run (the oldest new one) the run's change."""
-        try:
-            new = [c for c in list_changes(self.module.config) if c.name not in self._known]
-        except Exception:  # noqa: BLE001 - a broken change folder must not stop the chat
-            logger.warning("cannot list the changes", exc_info=True)
-            return
-        if new:
-            self.change = min(new, key=lambda c: c.order)
+        """Make the first active change, by name, created or changed since the start the run's change."""
+        for change in self._active():
+            if self._snapshot.get(change.name) != signature(change.path):
+                self.change = change
+                return
 
     def _flush(self) -> None:
         """Append the held lines to the change's ``chat.jsonl``, in order; on a failure they stay held."""
