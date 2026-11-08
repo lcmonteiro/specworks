@@ -70,21 +70,27 @@ class SpecworksWorkspace(Workspace):
         try:
             out, _ = await asyncio.wait_for(process.communicate(), timeout=limit)
         except TimeoutError:
-            _kill(process)
+            await _kill(process)
             await process.wait()
             raise TimeoutError(f"command stopped after {limit:g} seconds") from None
         return f"exit code {process.returncode}\n{out.decode('utf-8', 'replace')}"
 
 
-def _kill(process: asyncio.subprocess.Process) -> None:
-    """Stop ``process`` and, on POSIX, every process of its group."""
+async def _kill(process: asyncio.subprocess.Process) -> None:
+    """Stop ``process`` and every process it started: its process group on POSIX, its process tree on Windows."""
     if sys.platform != "win32":
         try:
             os.killpg(process.pid, signal.SIGKILL)
-            return
         except ProcessLookupError:  # already gone
-            return
-    process.kill()
+            pass
+        return
+    # Killing the shell alone (cmd.exe) leaves the command it started running; taskkill /T stops the whole tree.
+    killer = await asyncio.create_subprocess_exec(  # pragma: no cover - Windows only
+        "taskkill", "/F", "/T", "/PID", str(process.pid), stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.DEVNULL
+    )
+    await killer.wait()  # pragma: no cover - Windows only
+    if process.returncode is None:  # pragma: no cover - Windows only
+        process.kill()
 
 
 # @req REQ-HARNESS-006
