@@ -36,6 +36,7 @@ reading the diff. `- [ ] R<n>` while open, `- [x] R<n>` once resolved. Write
 - [ ] R6 **code-gap** AC-HARNESS-004.1 fails on Python 3.12 (tests/harness/test_peers.py:186): PREAMBLE (src/specworks/harness/peers.py:22-29) still ends at the 'stop here' rule and lacks the fourth rule of design.md's pinned wording, 'When your skill merges a worktree's branch, do not merge it yourself: call ask_user asking the user to run `/merge <name>`, and wait.', so peers are never told to ask the user for /merge (REQ-HARNESS-004, task 7.7)
   - **Proposal**: back to code: append the merge rule line to PREAMBLE in peers.py exactly as design.md's pinned wording; the existing AC-HARNESS-004.1 test already covers it
   - **Decision**: back to code: append the merge rule line to PREAMBLE exactly as design.md's pinned wording, and check it is in the committed file
+  - done in code: appended the merge rule line to PREAMBLE in src/specworks/harness/peers.py, verbatim as design.md's pinned wording (checked equal to the design block)
 
 ## Changed files without tags
 

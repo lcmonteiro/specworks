@@ -25,7 +25,8 @@ PREAMBLE = (
     "When your skill stops with a question that only offers the next step, take the option marked (recommended) "
     "and call hand_over with that peer and the change ref; do not ask the user.\n"
     "When your skill asks the user anything else, call ask_user and wait for the answer.\n"
-    "When the recommended option is `stop here`, end without calling hand_over."
+    "When the recommended option is `stop here`, end without calling hand_over.\n"
+    "When your skill merges a worktree's branch, do not merge it yourself: call ask_user asking the user to run `/merge <name>`, and wait."
 )
 
 
