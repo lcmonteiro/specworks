@@ -1,6 +1,6 @@
 name: harness-chat-only
 created: '2026-11-08T19:59:39'
-phase: design
+phase: implement
 specified:
   REQ-CLI-022: 9dfd37894b8d
   REQ-HARNESS-009: 921ef4dfb1a4

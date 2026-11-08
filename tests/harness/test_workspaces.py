@@ -171,7 +171,9 @@ def test_ac_harness_006_5_listed(project, ws):
 
 def merge(ws, module, change, name, by=LOCAL):
     async def main():
-        return await MergeCommand(SpecworksWorktrees(ws), GitBackend(ws, module, change)).execute(name, by=by)
+        backend = GitBackend(ws, module)
+        backend.change = change  # the run's change, as if a peer had worked on it
+        return await MergeCommand(SpecworksWorktrees(ws), backend).execute(name, by=by)
 
     return asyncio.run(main())
 
@@ -195,7 +197,8 @@ def test_ac_harness_007_1_merged_from_the_session(project, ws, module):
     committed_test_file(ws, project)
 
     async def main():
-        session = build_harness(ws, ScriptedModel(), change=change, frontend=User())
+        session = build_harness(ws, ScriptedModel(), frontend=User())
+        session.backend.change = change  # the run's change, as if a peer had worked on it
         return await session.commands["merge"].execute("test", by=LOCAL)
 
     reply = asyncio.run(main())
@@ -239,11 +242,11 @@ def test_ac_harness_007_3_unknown(project, ws, module):
 
 # @ac AC-HARNESS-007.4
 def test_ac_harness_007_4_a_model_cannot_merge(project, ws, module):
-    change = new_change(project)
+    new_change(project)
     path = committed_test_file(ws, project)
     made, before = head(path), head(project)
     model = ScriptedModel(script={"build": [call("run_merge", arguments="test"), "done"]})
-    chat(ws, model, change=change, then=ask("build", "build add-x"))
+    chat(ws, model, then=ask("build", "build add-x"))
     [result] = model.runs_of("build")[-1].tool_results()
     assert "only the user can merge" in result
     assert head(project) == before and not (project / "tests/test_x.py").exists()

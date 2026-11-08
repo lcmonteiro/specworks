@@ -122,7 +122,7 @@ def test_ac_harness_002_3_a_failed_run(project, ws):
 # @ac AC-HARNESS-003.1
 def test_ac_harness_003_1_the_next_peer_starts(project, ws):
     model = ScriptedModel(script={"refine": [call("hand_over", peer="specify", text="specify add-x"), "refined"], "specify": ["specified"]})
-    session, user = chat(ws, model, request="add x")
+    session, user = chat(ws, model, say="add x")
     request = next(m for m in user.messages() if m.text == "add x")
     handed = [m for m in said_by(session, user, "refine") if m.to == peer_id(session, "specify")]
     assert len(handed) == 1
@@ -142,7 +142,7 @@ def test_ac_harness_003_2_no_nesting(project, ws):
     script = {a: [call("hand_over", peer=b, text=f"over to {b}"), f"{a} done"] for a, b in zip(CHAIN, CHAIN[1:], strict=False)}
     script[CHAIN[-1]] = [f"{CHAIN[-1]} done"]
     model = ScriptedModel(script=script)
-    session, user = chat(ws, model, request="add x")
+    session, user = chat(ws, model, say="add x")
     assert len(CHAIN) > session.max_depth
     assert model.peers_run() == CHAIN
     assert not [m for m in user.messages() if m.status is ReplyStatus.ERROR]
@@ -167,7 +167,7 @@ def test_ac_harness_003_3_not_addressed(project, ws):
 @pytest.mark.parametrize("target", ["nobody", "refine"], ids=["unknown", "itself"])
 def test_ac_harness_003_4_an_unknown_peer(project, ws, target):
     model = ScriptedModel(script={"refine": [call("hand_over", peer=target, text="go"), "stopped"]})
-    session, user = chat(ws, model, request="add x")
+    session, user = chat(ws, model, say="add x")
     result = model.runs_of("refine")[-1].tool_results()[-1]
     assert result.startswith("error:")
     if target == "nobody":
@@ -199,7 +199,7 @@ def test_ac_harness_004_2_a_question_for_the_user(project, ws):
     model = ScriptedModel(
         script={"refine": [call("ask_user", question="Which option?"), call("hand_over", peer="specify", text="specify option 2"), "refined"], "specify": ["specified"]}
     )
-    session, user = chat(ws, model, request="add x", user=User(answers=["option 2"]))
+    session, user = chat(ws, model, say="add x", user=User(answers=["option 2"]))
     assert [m.text for m in user.asked] == ["Which option?"]
     assert any("option 2" in r for r in model.runs_of("refine")[1].tool_results())
     texts = [m.text for m in user.messages()]
