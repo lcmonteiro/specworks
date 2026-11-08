@@ -271,6 +271,7 @@ def test_ac_harness_007_5_no_change_yet(project, ws, module):
     before = head(project)
     reply = merge(ws, module, None, "test")
     assert reply.status is ReplyStatus.ERROR
-    assert "the run has no change" in reply.text
+    assert "the run has no change yet: ask the peer working on the change to go on with it (such as @build go on with <change>), then merge" in reply.text
+    assert "create" not in reply.text
     assert head(project) == before and not (project / "tests/test_x.py").exists()
     assert path.is_dir() and TEST_BRANCH in branches(project)
