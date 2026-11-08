@@ -12,14 +12,17 @@ reading the diff. `- [ ] R<n>` while open, `- [x] R<n>` once resolved. Write
   - **Proposal**: back to design: signature(folder) also leaves out the telemetry log, events.jsonl and events.sent (core.events EVENTS_FILE, SENT_FILE), so only a peer's own work on a change binds it; Interfaces and the Decision updated, a test that a recorded event alone does not bind a change, the code follows
   - **Decision**: back to design: signature() also ignores events.jsonl and events.sent, with a test that a recorded event alone does not bind a change
   - done in design: signature() in design.md Interfaces and Decision now also leaves out events.jsonl and events.sent; test and code follow
+  - done in implement: signature() also leaves out events.jsonl and events.sent (IGNORED in backend.py), so a recorded event alone does not bind a change
 - [ ] R2 **design-gap** design.md says from_line stays for reading a log in tests, but no test or code reads through it since load() went: it is dead code (src/specworks/harness/backend.py:40; design.md Decision 'The run's change is the first active change whose folder changes')
   - **Proposal**: back to design: drop from_line, its only reader (load) is gone; remove the sentence that keeps it and list it under Removed in Interfaces; the code half deletes it
   - **Decision**: back to design: remove the unused from_line from the design and the code
   - done in design: from_line() listed as removed under Interfaces and the Decision no longer keeps it; the code half deletes it
+  - done in implement: from_line() removed from backend.py with its unused MessageID import
 - [ ] R3 **quality** AC-HARNESS-007.5: a run now has no change until a peer writes in a change folder, so on a run that continues a change (no --change any more) /merge test is refused first, and the refusal says 'create it before merging a workspace', wrong for a change that already exists and silent on how to go on (src/specworks/harness/workspaces.py:162)
   - **Proposal**: back to code: the refusal says how the run gets its change, e.g. 'the run has no change yet: ask the peer working on it to go on (such as @build go on with <change>), then merge'; still an error saying the run has no change, as AC-HARNESS-007.5 asks. Alternative, larger: back to specify: with no change yet, /merge takes the change whose folder the worktree's branch changed
   - **Decision**: back to design: when the run has no change yet, /merge's refusal says to ask the peer working on the change to go on first (so the run binds it), not to create one; code follows
   - done in design: design.md has a new Decision and an Interfaces entry giving /merge's no-change refusal text (ask the peer to go on with the change, then merge); the code half changes the text
+  - done in implement: MergeCommand's no-change refusal now reads the design.md text: ask the peer working on the change to go on with it (such as @build go on with <change>), then merge
 
 ## Changed files without tags
 

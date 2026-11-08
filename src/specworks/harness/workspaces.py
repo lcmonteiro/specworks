@@ -159,7 +159,7 @@ class MergeCommand:
             return _error("usage: /merge <name>")
         change = self.backend.change
         if change is None:
-            return _error("the run has no change yet: create it before merging a workspace")
+            return _error("the run has no change yet: ask the peer working on the change to go on with it (such as @build go on with <change>), then merge")
         if name not in await self.provider.names():
             return _error(f"no workspace '{name}'")
         root = (await self.provider.provision(None, name, create=False)).tree.root

@@ -8,13 +8,15 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from chatinho import ChatMessage, HookForget, HookListen, MessageID, ReplyStatus, backend, require
+from chatinho import ChatMessage, HookForget, HookListen, ReplyStatus, backend, require
 
 from ..core.changes import Change, list_changes
-from ..core.events import ensure_ignored
+from ..core.events import EVENTS_FILE, SENT_FILE, ensure_ignored
 from ..core.workspace import Module, Workspace
 
 CHAT_FILE = "chat.jsonl"
+#: Files a change's signature leaves out: the backend's own log and the telemetry log every change command appends to.
+IGNORED = frozenset({CHAT_FILE, EVENTS_FILE, SENT_FILE})
 
 logger = logging.getLogger(__name__)
 
@@ -37,29 +39,15 @@ def to_line(msg: ChatMessage) -> dict[str, Any]:
 
 
 # @req REQ-HARNESS-009
-def from_line(line: dict[str, Any]) -> ChatMessage:
-    """The message a ``chat.jsonl`` line holds. Implements REQ-HARNESS-009."""
-    return ChatMessage(
-        id=MessageID.parse(str(line["id"])),
-        text=str(line["text"]),
-        frm=int(line["from"]),
-        to=None if line.get("to") is None else int(line["to"]),
-        reply_to=MessageID.parse(line.get("replyTo")),
-        timestamp=datetime.fromisoformat(line["at"]) if line.get("at") else datetime.now(),
-        status=ReplyStatus(line.get("status") or ReplyStatus.ANSWERED.value),
-    )
-
-
-# @req REQ-HARNESS-009
 def signature(folder: Path) -> int:
-    """The newest ``st_mtime_ns`` of any file in ``folder`` except ``chat.jsonl``; ``0`` for an empty or unreadable folder.
+    """The newest ``st_mtime_ns`` of any file in ``folder`` except ``chat.jsonl``, ``events.jsonl`` and ``events.sent``; ``0`` for an empty or unreadable folder.
 
     Implements REQ-HARNESS-009.
     """
     newest = 0
     try:
         for path in folder.rglob("*"):
-            if path.name != CHAT_FILE and path.is_file():
+            if path.name not in IGNORED and path.is_file():
                 newest = max(newest, path.stat().st_mtime_ns)
     except OSError:
         return 0
