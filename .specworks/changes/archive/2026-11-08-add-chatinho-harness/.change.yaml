@@ -1,0 +1,22 @@
+name: add-chatinho-harness
+created: '2026-11-06T22:13:07'
+phase: done
+specified:
+  REQ-CLI-022: f352d693d635
+  REQ-HARNESS-001: b184a6aa811a
+  REQ-HARNESS-002: 8ded826ac2bc
+  REQ-HARNESS-003: 0d7002db9e41
+  REQ-HARNESS-004: 51145c88678b
+  REQ-HARNESS-005: a6f289f659c5
+  REQ-HARNESS-006: f32a35b3a9f8
+  REQ-HARNESS-007: aea28a4e3175
+  REQ-HARNESS-008: 35bd0719d3e4
+  REQ-HARNESS-009: 51e7fc709596
+  REQ-HARNESS-010: b531d6b6f47c
+  REQ-PROJ-030: 5da99f6c3716
+reopened:
+- at: '2026-11-07T20:53:16'
+  reason: Update chatinho to its latest main, which now has deep agents and workspaces
+    of its own; also CI fails on Windows (the test of AC-HARNESS-008.2 compares pwd
+    output /c/... with a Windows path)
+  phase: refine

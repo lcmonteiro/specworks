@@ -8,7 +8,9 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections.abc import Sequence
 from datetime import UTC, datetime
+from pathlib import Path
 
 from .changes import Change
 
@@ -30,10 +32,28 @@ def record_event(change: Change, enabled: bool, event: str, **fields: object) ->
         line = json.dumps({"at": at, "event": event, "phase": change.phase, **fields}, ensure_ascii=False, default=str)
         with (change.path / EVENTS_FILE).open("a", encoding="utf-8") as log:
             log.write(line + "\n")  # one write in append mode, so two processes never interleave inside a line
-        ignore = change.path / IGNORE_FILE
-        if not ignore.exists():
-            ignore.write_text(f"{EVENTS_FILE}\n{SENT_FILE}\n", encoding="utf-8")
+        ensure_ignored(change.path, (EVENTS_FILE, SENT_FILE))
     except Exception:  # noqa: BLE001 - the log must never fail the command that records the event
+        return
+
+
+# @req REQ-PROJ-030
+def ensure_ignored(folder: Path, names: Sequence[str]) -> None:
+    """Make ``folder``'s ``.gitignore`` name each of ``names``: created when missing, each missing name added on its own line.
+
+    Keeps the file's other lines; never raises. Implements REQ-PROJ-030.
+    """
+    try:
+        ignore = folder / IGNORE_FILE
+        text = ignore.read_text(encoding="utf-8") if ignore.exists() else ""
+        present = {line.strip() for line in text.splitlines()}
+        missing = [name for name in dict.fromkeys(names) if name not in present]
+        if not missing:
+            return
+        if text and not text.endswith("\n"):
+            text += "\n"
+        ignore.write_text(text + "".join(f"{name}\n" for name in missing), encoding="utf-8")
+    except Exception:  # noqa: BLE001 - a .gitignore that cannot be written must never fail the caller
         return
 
 
