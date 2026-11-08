@@ -40,7 +40,9 @@ def to_line(msg: ChatMessage) -> dict[str, Any]:
 
 # @req REQ-HARNESS-009
 def signature(folder: Path) -> int:
-    """The newest ``st_mtime_ns`` of any file in ``folder`` except ``chat.jsonl``, ``events.jsonl`` and ``events.sent``; ``0`` for an empty or unreadable folder.
+    """The newest ``st_mtime_ns`` of any file in ``folder`` except ``chat.jsonl``, ``events.jsonl``, ``events.sent`` and ``.gitignore``.
+
+    ``0`` for an empty or unreadable folder.
 
     Implements REQ-HARNESS-009.
     """

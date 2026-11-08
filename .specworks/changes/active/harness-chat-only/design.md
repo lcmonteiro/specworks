@@ -42,7 +42,11 @@ the backend's own writes never count; the telemetry log (`events.jsonl`,
 because every change command appends to it, read-only ones included (`gate`,
 `validate`, `cycle`, `run`): a peer that only checks another active change
 must not make it the run's, so only a peer's own work on a change binds it
-(review R1). `HookLoad` is no longer declared (no reload), and `from_line`
+(review R1). The folder's `.gitignore` (`core.events` `IGNORE_FILE`) is left
+out too: `record_event` creates or extends it through `ensure_ignored` the
+first time a change logs an event, so on a change with no event yet a
+read-only check would still bind it; nothing but that side effect of a log
+writes it during a run (review R4). `HookLoad` is no longer declared (no reload), and `from_line`
 goes with `load()`, its only reader (review R2).
 Serves: REQ-HARNESS-009.
 
@@ -67,11 +71,11 @@ parsing the text, and a peer may name a change it only reads.
 
 ## Interfaces
 
-Agreed with the user (cycle 2: the review decisions on R1, R2 and R3; cycle 1 with one change: `build_harness` builds `ChatSession(...)` directly, as today, not through `build_chat_session`, which takes no `workspaces`)
+Agreed with the user (cycle 3: the review decision on R4; cycle 2: the review decisions on R1, R2 and R3; cycle 1 with one change: `build_harness` builds `ChatSession(...)` directly, as today, not through `build_chat_session`, which takes no `workspaces`)
 
 - `src/specworks/cli/harness.py`: `harness() -> None` (no argument, no option) (REQ-CLI-022)
 - `src/specworks/harness/session.py`: `build_harness(ws: Workspace, model: BaseChatModel, *, frontend: Any = None) -> ChatSession`; `run_harness(ws: Workspace) -> None`. Removed: `first_peer`, `HarnessSession` (REQ-CLI-022)
-- `src/specworks/harness/backend.py`: `GitBackend.__init__(self, ws: Workspace, module: Module)` (**BREAKING**: the `change` parameter goes); `GitBackend.change: Change | None` kept, `None` until the run's change is found (`MergeCommand` reads it; its tests set it directly); `signature(folder: Path) -> int`, the newest `st_mtime_ns` of any file in `folder` except `chat.jsonl`, `events.jsonl` and `events.sent`, `0` for an empty or unreadable folder (review R1); `HookLoad`, `load()` and `from_line()` removed (review R2) (REQ-HARNESS-009)
+- `src/specworks/harness/backend.py`: `GitBackend.__init__(self, ws: Workspace, module: Module)` (**BREAKING**: the `change` parameter goes); `GitBackend.change: Change | None` kept, `None` until the run's change is found (`MergeCommand` reads it; its tests set it directly); `signature(folder: Path) -> int`, the newest `st_mtime_ns` of any file in `folder` except `chat.jsonl`, `events.jsonl`, `events.sent` and `.gitignore`, `0` for an empty or unreadable folder (review R1, R4); `HookLoad`, `load()` and `from_line()` removed (review R2) (REQ-HARNESS-009)
 - `src/specworks/harness/workspaces.py`: `MergeCommand.execute(self, args: str = "", by: int = LOCAL, **kwargs: Any) -> Reply` unchanged; with no change yet its error reply reads `the run has no change yet: ask the peer working on the change to go on with it (such as @build go on with <change>), then merge` (review R3) (REQ-HARNESS-007)
 - `src/specworks/harness/__init__.py`: exports unchanged (`build_harness`, `run_harness`, `model_from_env`, `ModelSettingsError`)
 
