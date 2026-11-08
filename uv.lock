@@ -449,7 +449,7 @@ wheels = [
 [[package]]
 name = "pyd2"
 version = "0.7.1"
-source = { git = "https://github.com/lcmonteiro/pyd2?rev=3f82c049daada03a0c8ab6e0a6fd5d8fe75c69cb#3f82c049daada03a0c8ab6e0a6fd5d8fe75c69cb" }
+source = { git = "https://github.com/lcmonteiro/pyd2?rev=265f8b97abbc4e5da483cf4ca27d622164216e19#265f8b97abbc4e5da483cf4ca27d622164216e19" }
 
 [[package]]
 name = "pygments"
@@ -580,7 +580,7 @@ wheels = [
 
 [[package]]
 name = "specworks"
-version = "0.1.0"
+version = "1.0.0"
 source = { editable = "." }
 dependencies = [
     { name = "pyd2" },
@@ -599,7 +599,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "pyd2", git = "https://github.com/lcmonteiro/pyd2?rev=3f82c049daada03a0c8ab6e0a6fd5d8fe75c69cb" },
+    { name = "pyd2", git = "https://github.com/lcmonteiro/pyd2?rev=265f8b97abbc4e5da483cf4ca27d622164216e19" },
     { name = "pyyaml", specifier = ">=6.0.3" },
     { name = "typer", specifier = ">=0.27.3" },
 ]

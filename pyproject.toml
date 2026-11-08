@@ -1,6 +1,6 @@
 [project]
 name = "specworks"
-version = "0.1.0"
+version = "1.0.0"
 description = "Spec-driven development workflow (refine → specify → design → test → code → review → validate → close) for AI coding agents"
 readme = "README.md"
 authors = [
@@ -10,7 +10,7 @@ requires-python = ">=3.11"
 dependencies = [
     # D2 and its Python API, pinned to a pyd2 commit so every install (uv tool install too,
     # which does not read uv.lock) gets the same D2. To upgrade, put a newer commit here and run `uv lock`.
-    "pyd2 @ git+https://github.com/lcmonteiro/pyd2@3f82c049daada03a0c8ab6e0a6fd5d8fe75c69cb",
+    "pyd2 @ git+https://github.com/lcmonteiro/pyd2@265f8b97abbc4e5da483cf4ca27d622164216e19",
     "pyyaml>=6.0.3",
     "typer>=0.27.3",
 ]
