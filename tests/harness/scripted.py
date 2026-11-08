@@ -191,16 +191,22 @@ async def settle(timeout: float = SETTLE_TIMEOUT) -> None:
 Then = Callable[[Any, User], Awaitable[None]]
 
 
-def chat(ws: Any, model: BaseChatModel, *, request: str | None = None, change: Any = None, user: User | None = None, then: Then | None = None, max_depth: int | None = None) -> tuple[Any, User]:
-    """Build the harness with ``user`` as its frontend, start it, run ``then(session, user)``, wait until quiet, close it."""
+def chat(
+    ws: Any, model: BaseChatModel, *, say: str | None = None, to: str = "refine", user: User | None = None, then: Then | None = None, max_depth: int | None = None
+) -> tuple[Any, User]:
+    """Build the harness with ``user`` as its frontend, start it, have the user ``say`` its first message to ``to``, run
+    ``then(session, user)``, wait until quiet, close it."""
     user = user or User()
 
     async def main() -> Any:
-        session = build_harness(ws, model, request=request, change=change, frontend=user)
+        session = build_harness(ws, model, frontend=user)
         if max_depth is not None:
             session.max_depth = max_depth
         await session.start()
         await settle()
+        if say is not None:
+            await user.say(say, to=peer_id(session, to))
+            await settle()
         if then is not None:
             await then(session, user)
             await settle()
@@ -254,6 +260,18 @@ def new_change(root: Path, phase: str = "refine", name: str = CHANGE) -> Change:
         set_phase(load_change(config, name), phase)
     commit_all(root, f"{name}: {phase}")
     return load_change(config, name)
+
+
+def touches(change: Change, then: Any = DEFAULT) -> Callable[[Any], Any]:
+    """A step that writes a file in the change's folder, as a peer working on the change would, then takes the step ``then``."""
+
+    def step(_messages: Any) -> Any:
+        notes = change.path / "notes.md"
+        with notes.open("a", encoding="utf-8") as out:
+            out.write("worked on\n")
+        return then
+
+    return step
 
 
 def write_chat(change: Change, lines: Sequence[dict[str, Any]]) -> None:

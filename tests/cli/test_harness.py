@@ -41,7 +41,7 @@ def test_ac_cli_022_1_without_the_extra(tmp_path, monkeypatch):
     forget_harness(monkeypatch)
     for name in HARNESS_MODULES:
         monkeypatch.setitem(sys.modules, name, None)  # importing it raises ImportError, as when it is not installed
-    result = runner.invoke(app, ["harness", "add x"])
+    result = runner.invoke(app, ["harness"])
     assert result.exit_code == 1
     assert "specworks[harness]" in result.stderr
     assert "3.12" in result.stderr
@@ -57,47 +57,59 @@ def test_ac_cli_022_2_no_key(harness_project, monkeypatch):
     opened = []
     monkeypatch.setattr(chatinho.ChatSession, "run", lambda self: opened.append(self))
     monkeypatch.setattr(chatinho.ChatSession, "start", lambda self: opened.append(self))
-    result = runner.invoke(app, ["harness", "add x"])
+    result = runner.invoke(app, ["harness"])
     assert result.exit_code == 1
     assert "SPECWORKS_MODEL_API_KEY" in result.stderr
     assert result.stderr.startswith("error: ")
     assert opened == []
 
 
-# @ac AC-CLI-022.3
-def test_ac_cli_022_3_the_request_goes_to_refine(harness_project):
+def opened_sessions(monkeypatch):
+    """The sessions the command runs or starts, recorded instead of opening a terminal."""
+    import chatinho
+
+    opened = []
+    monkeypatch.setattr(chatinho.ChatSession, "run", lambda self: opened.append(self))
+    monkeypatch.setattr(chatinho.ChatSession, "start", lambda self: opened.append(self))
+    return opened
+
+
+# @ac AC-CLI-022.6
+def test_ac_cli_022_6_the_chat_opens_with_nothing_said(harness_project, monkeypatch):
     from harness.scripted import ScriptedModel, chat, peer_id
     from specworks.core.workspace import load_workspace
-    from specworks.harness.session import first_peer
 
-    assert first_peer(None) == "refine"
-    session, user = chat(load_workspace(harness_project), ScriptedModel(), request="add x")
+    model = ScriptedModel(script={"refine": ["refining add x"]})
+    session, user = chat(load_workspace(harness_project), model)
+    assert user.messages() == [] and user.heard == []
+    assert model.peers_run() == []
+    # the user starts the change: `@refine add x`
+    session, user = chat(load_workspace(harness_project), model, say="add x")
+    assert model.peers_run() == ["refine"]
     first = user.messages()[0]
-    assert first.text == "add x" and first.frm == 0
-    assert first.to == peer_id(session, "refine")
+    assert first.text == "add x" and first.frm == 0 and first.to == peer_id(session, "refine")
 
 
-# @ac AC-CLI-022.4
-def test_ac_cli_022_4_continuing_a_change(harness_project):
-    from harness.scripted import ScriptedModel, User, chat, new_change, peer_id, write_chat
-    from specworks.core.workspace import load_workspace
-    from specworks.harness import build_harness
-    from specworks.harness.session import first_peer
+# @ac AC-CLI-022.6
+def test_ac_cli_022_6_the_command_says_nothing(harness_project, monkeypatch):
+    import specworks.harness.session as session_module
+    from harness.scripted import ScriptedModel
 
-    change = new_change(harness_project, phase="design")
-    ws = load_workspace(harness_project)
-    assert first_peer(change) == "build"
-    build = peer_id(build_harness(ws, ScriptedModel(), change=change, frontend=User()), "build")
-    earlier = [
-        {"id": "msg-00000000000000b1", "from": 0, "to": build, "replyTo": None, "status": "answered", "text": "build add-x", "at": "2026-11-01T10:00:00"},
-        {"id": "msg-00000000000000b2", "from": build, "to": None, "replyTo": "msg-00000000000000b1", "status": "answered", "text": "design agreed", "at": "2026-11-01T10:00:05"},
-    ]
-    write_chat(change, earlier)
-    session, user = chat(ws, ScriptedModel(), request="go on", change=change)
-    texts = [m.text for m in user.messages()]
-    assert texts[:2] == ["build add-x", "design agreed"]
-    go_on = next(m for m in user.messages() if m.text == "go on")
-    assert go_on.frm == 0 and go_on.to == peer_id(session, "build")
+    monkeypatch.setattr(session_module, "model_from_env", lambda: ScriptedModel())
+    opened = opened_sessions(monkeypatch)
+    result = runner.invoke(app, ["harness"])
+    assert result.exit_code == 0, result.output
+    assert result.output == ""
+    assert len(opened) == 1
+
+
+# @ac AC-CLI-022.7
+def test_ac_cli_022_7_no_change_option(harness_project, monkeypatch):
+    opened = opened_sessions(monkeypatch)
+    result = runner.invoke(app, ["harness", "--change", "add-x"])
+    assert result.exit_code == 2
+    assert "--change" in result.stderr
+    assert opened == []
 
 
 # @ac AC-CLI-022.5

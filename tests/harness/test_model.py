@@ -8,7 +8,7 @@ import openai
 import pytest
 from langchain_openai import ChatOpenAI
 
-from harness.scripted import ScriptedModel, chat, new_change, read_chat
+from harness.scripted import ScriptedModel, chat, new_change, read_chat, touches
 from specworks.harness import ModelSettingsError, model_from_env
 from specworks.harness.confine import shell_env
 from specworks.harness.model import MODEL_BASE_URL, MODEL_KEY, MODEL_NAME
@@ -63,9 +63,9 @@ def auth_error():
 def test_ac_harness_010_3_the_key_never_shown(project, ws, monkeypatch, caplog):
     monkeypatch.setenv(MODEL_KEY, KEY)
     change = new_change(project)
-    model = ScriptedModel(script={"refine": [auth_error()]})
+    model = ScriptedModel(script={"refine": [touches(change, auth_error())]})
     with caplog.at_level(logging.DEBUG):
-        _, user = chat(ws, model, request="add x", change=change)
+        _, user = chat(ws, model, say="add x")
     replies = [m for m in user.messages() if m.frm != 0]
     assert replies, "the failed run must still reply"
     assert all(KEY not in m.text for m in user.messages())
