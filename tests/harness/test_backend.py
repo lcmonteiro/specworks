@@ -117,15 +117,25 @@ def test_a_recorded_event_alone_does_not_bind_a_change(project, ws, change):
     assert not (change.path / "chat.jsonl").exists()
 
 
+def test_a_first_recorded_event_does_not_bind_a_change(project, ws, change):
+    # REQ-HARNESS-009 (review R4): the first event a change logs creates its .gitignore, a side effect of the log that never binds a change.
+    (change.path / ".gitignore").unlink(missing_ok=True)  # a change that has logged no event yet: made before telemetry was on, or by hand
+    assert not (change.path / "events.jsonl").exists()
+    _, user = chat(ws, ScriptedModel(script={"refine": [checks(change)]}), say="is add-x ready?")
+    assert [m.text for m in user.messages()] == ["is add-x ready?", "checked"]
+    assert (change.path / ".gitignore").exists(), "the check logged the change's first event"
+    assert not (change.path / "chat.jsonl").exists()
+
+
 def test_the_signature_leaves_out_the_chat_and_the_telemetry_log(tmp_path):
-    # REQ-HARNESS-009: chat.jsonl, events.jsonl and events.sent never change a folder's signature; any other file does.
+    # REQ-HARNESS-009: chat.jsonl, events.jsonl, events.sent and .gitignore never change a folder's signature; any other file does.
     def write(path, at):
         path.write_text("x", encoding="utf-8")
         os.utime(path, ns=(at, at))  # explicit times: a coarse filesystem clock must not make two writes look the same
 
     write(tmp_path / "proposal.md", 1_000_000_000)
     assert signature(tmp_path) == 1_000_000_000
-    for name in ("chat.jsonl", "events.jsonl", "events.sent"):
+    for name in ("chat.jsonl", "events.jsonl", "events.sent", ".gitignore"):
         write(tmp_path / name, 2_000_000_000)
     assert signature(tmp_path) == 1_000_000_000
     (tmp_path / "specs").mkdir()
