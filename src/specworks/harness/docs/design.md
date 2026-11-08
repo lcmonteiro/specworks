@@ -2,20 +2,21 @@
 
 ## Overview
 
-`specworks harness [REQUEST] [--change REF]` runs the whole specworks flow as a
-chatinho chat in the terminal. The user is peer zero; every packaged skill is a
+`specworks harness` (no argument, no option) opens the whole specworks flow as
+an empty chatinho chat in the terminal; a change starts or continues when the
+user messages a peer (`@refine <request>`, `@build go on with <change>`). The user is peer zero; every packaged skill is a
 peer named after it without the `specworks-` prefix (`refine`, `specify`,
 `build`, `test`, ...), each a chatinho `DeepAgentConnector` whose instructions
 are a short harness preamble followed by the skill unchanged. Peers hand work
 to each other by message. The phase peers share the main checkout; the `test`
 peer works in its own git worktree, which only the user merges back with
-`/merge test`. The conversation is kept in the change's folder. The package
+`/merge test`. A run's conversation is kept in the folder of the change it works on. The package
 `src/specworks/harness` needs the optional `harness` extra (chatinho with its
 `tui` and `deepagents` extras; Python 3.12+) and is imported only by the
 `harness` command.
 
 - `session.py`: `build_harness` (the session: user, peers, workspace
-  provider, backend, `/ws` and `/merge`), `run_harness`, `first_peer`.
+  provider, backend, `/ws` and `/merge`), `run_harness`.
 - `peers.py`: `SkillPeer` (one per skill), the pinned preamble, `hand_over`.
 - `workspaces.py`: `SpecworksWorktrees` (the provider), `SpecworksWorkspace`
   (its `run` operation), `MergeCommand` (`/merge`).
@@ -103,7 +104,10 @@ machine, and the push refusal is a pattern on the command text.
 
 `MergeCommand(provider, backend)` refuses, in order and changing nothing: a
 model (`only the user can merge: ask the user to run /merge <name>`), no name,
-a run with no change yet, a name that is not a worktree, and a worktree with
+a run with no change yet (`the run has no change yet: ask the peer working on
+the change to go on with it (such as @build go on with <change>), then merge`;
+taking the change the worktree's branch changed was rejected
+(harness-chat-only)), a name that is not a worktree, and a worktree with
 uncommitted changes (they would be left behind when it is removed). Otherwise
 it calls `merge_branch` (workflow) for `peer/<name>` in the main checkout for
 the run's change, then drops the worktree and its branch; a
@@ -111,16 +115,30 @@ the run's change, then drops the worktree and its branch; a
 stays. chatinho's `/ws merge` was rejected: it aborts on the `tasks.md`
 conflict both implement halves make. (add-chatinho-harness)
 
-### The conversation lives in the change's folder
+### The chat opens empty; nothing is said for the user
+
+`run_harness(ws)` builds a plain chatinho `ChatSession` and opens it with no
+message: the user starts or continues a change by messaging a peer. Taking a
+request (or a `--change`) and saying it to the peer of the change's phase was
+rejected as a second way to do what the chat already does. A run never loads
+an earlier conversation. (harness-chat-only)
+
+### The conversation lives in the run's change folder
 
 `GitBackend` appends each message as one JSON line (`id`, `from`, `to`,
 `replyTo`, `status`, `text`, `at`; never credentials) to a git-ignored
-`chat.jsonl` in the change's folder, and `load()` returns them at start, so
-`--change REF` continues a stopped run. Before the run has created its change,
-lines are held in memory; after each message it looks for an active change
-that did not exist at start, and the first found becomes the run's change and
-gets the held lines. The folder's `.gitignore` gains `chat.jsonl` through
-`ensure_ignored` (project). A write failure is logged and ignored.
+`chat.jsonl` in the folder of the run's change. (add-chatinho-harness) The
+run's change is found from what the run does: at start the backend snapshots
+each active change's `signature` (the newest `st_mtime_ns` of any file in its
+folder except `chat.jsonl`, `events.jsonl`, `events.sent` and `.gitignore`);
+lines are held in memory until, after a message, an active change is new or
+its signature differs, and the first by name becomes the run's change and gets
+the held lines. The backend's own log and the telemetry log (with the
+`.gitignore` its first event creates) are left out, so a peer that only checks
+another change (`gate`, `validate`, `run`) never binds it. Binding to the
+change a peer names in a message was rejected: a peer may name a change it
+only reads. (harness-chat-only) The folder's `.gitignore` gains `chat.jsonl`
+through `ensure_ignored` (project). A write failure is logged and ignored.
 (add-chatinho-harness)
 
 ### The model comes from the environment
@@ -134,14 +152,9 @@ one raises `ModelSettingsError` naming the variable, never a value.
 
 - `specworks.harness`: `build_harness`, `run_harness`, `model_from_env`,
   `ModelSettingsError`.
-- `session.py`: `first_peer(change) -> str` (`refine` without a change, else
-  by phase: `design`/`implement`/`review` -> `build`, `validate`/`close` ->
-  `done`, a `baseline-*` change from specify to review -> `baseline`);
-  `build_harness(ws, model, *, request=None, change=None, frontend=None) ->
-  ChatSession` (`workspaces=SpecworksWorktrees(ws)`, commands `/ws` and
-  `/merge`; the request is said to `first_peer(change)` once the session
-  starts; `frontend=None` builds the terminal); `run_harness(ws, request,
-  change)`.
+- `session.py`: `build_harness(ws, model, *, frontend=None) -> ChatSession`
+  (`workspaces=SpecworksWorktrees(ws)`, commands `/ws` and `/merge`;
+  `frontend=None` builds the terminal); `run_harness(ws)`.
 - `peers.py`: `PREFIX`, `PREAMBLE`, `peer_name(skill)`, `preamble(name,
   peers)`, `skill_instructions(skill, peers)`; `SkillPeer(skill, model,
   peers)` with `skill`, `answer()`, `listen()`, `hand_over_tool()` (agent
@@ -154,9 +167,10 @@ one raises `ModelSettingsError` naming the variable, never a value.
   only).
 - `confine.py`: `PUSH_RE`, `HIDDEN_ENV`, `refuses(command)`,
   `shell_env(env=None)`.
-- `backend.py`: `CHAT_FILE` (`chat.jsonl`), `GitBackend(ws, module, change)`
-  with `change`, `listen`, `load`, `forget` (drops held lines only),
-  `to_line(msg)`, `from_line(line)`.
+- `backend.py`: `CHAT_FILE` (`chat.jsonl`), `signature(folder) -> int` (`0`
+  for an empty or unreadable folder); `GitBackend(ws, module)` with `change`
+  (`None` until the run's change is found), `listen`, `forget` (drops held
+  lines only), `to_line(msg)`.
 - `model.py`: `MODEL_KEY`, `MODEL_NAME`, `MODEL_BASE_URL`,
   `ModelSettingsError(variable)`, `model_from_env(env=None)`.
 

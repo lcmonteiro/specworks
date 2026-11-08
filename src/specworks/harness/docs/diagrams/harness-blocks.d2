@@ -1,7 +1,7 @@
 direction: right
 
 harness: harness (src/specworks/harness) {
-  session: "session.py (build_harness, run_harness, first_peer)"
+  session: "session.py (build_harness, run_harness)"
   peers: "peers.py (SkillPeer x 15, preamble)"
   workspaces: "workspaces.py (SpecworksWorktrees, SpecworksWorkspace.run, /merge)"
   confine: "confine.py (push refused, shell environment)"
