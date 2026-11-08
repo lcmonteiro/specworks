@@ -30,6 +30,7 @@ reading the diff. `- [ ] R<n>` while open, `- [x] R<n>` once resolved. Write
   - **Proposal**: back to design: signature(folder) also leaves out .gitignore (core.events IGNORE_FILE), which only ensure_ignored writes as a side effect of a log, never a peer's work on the change; Interfaces and the Decision updated, a test that a first recorded event on a change with no .gitignore does not bind it, the code adds IGNORE_FILE to IGNORED. Alternative: accepted: telemetry is opt-in and a change created with it on already has its .gitignore
   - **Decision**: back to design: signature() also ignores .gitignore (core.events IGNORE_FILE), with a test that a first recorded event on a change with no .gitignore does not bind it; the code follows
   - done in design: signature() in design.md Interfaces and Decision now also leaves out .gitignore (core.events IGNORE_FILE), and its docstring says so; the test (a first recorded event on a change with no .gitignore does not bind it) and the code (IGNORE_FILE in IGNORED) follow
+  - done in implement: signature() also leaves out .gitignore (IGNORE_FILE added to IGNORED in backend.py), so a first recorded event that creates a change's .gitignore does not bind it
 
 ## Changed files without tags
 
