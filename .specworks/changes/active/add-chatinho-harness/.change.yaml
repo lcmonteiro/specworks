@@ -1,6 +1,6 @@
 name: add-chatinho-harness
 created: '2026-11-06T22:13:07'
-phase: review
+phase: validate
 specified:
   REQ-CLI-022: f352d693d635
   REQ-HARNESS-001: b184a6aa811a
