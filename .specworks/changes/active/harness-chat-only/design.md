@@ -50,7 +50,8 @@ Proposed: waiting for the user's agreement
 
 - `src/specworks/cli/harness.py`: `harness() -> None` (no argument, no option) (REQ-CLI-022)
 - `src/specworks/harness/session.py`: `build_harness(ws: Workspace, model: BaseChatModel, *, frontend: Any = None) -> ChatSession`; `run_harness(ws: Workspace) -> None`. Removed: `first_peer`, `HarnessSession` (REQ-CLI-022)
-- `src/specworks/harness/backend.py`: `GitBackend.__init__(self, ws: Workspace, module: Module)`; `signature(folder: Path) -> int`; `HookLoad` and `load()` removed (REQ-HARNESS-009)
+- `src/specworks/harness/backend.py`: `GitBackend.__init__(self, ws: Workspace, module: Module)` (**BREAKING**: the `change` parameter goes); `GitBackend.change: Change | None` kept, `None` until the run's change is found (`MergeCommand` reads it; its tests set it directly); `signature(folder: Path) -> int`, the newest `st_mtime_ns` of any file in `folder` except `chat.jsonl`, `0` for an empty or unreadable folder; `HookLoad` and `load()` removed (REQ-HARNESS-009)
+- `src/specworks/harness/__init__.py`: exports unchanged (`build_harness`, `run_harness`, `model_from_env`, `ModelSettingsError`)
 
 ## Diagrams
 

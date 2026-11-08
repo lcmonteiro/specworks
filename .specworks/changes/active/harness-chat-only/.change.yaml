@@ -1,5 +1,6 @@
 name: harness-chat-only
 created: '2026-11-08T19:59:39'
-phase: specify
-dirty:
-  .specworks/changes/active/harness-chat-only/.change.yaml: 826104ef97174b80e048a0148cf50ee0818c92668e2577d4d1d02dc3f2cbde53
+phase: design
+specified:
+  REQ-CLI-022: 9dfd37894b8d
+  REQ-HARNESS-009: 921ef4dfb1a4
