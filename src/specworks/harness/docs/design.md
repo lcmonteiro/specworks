@@ -5,19 +5,21 @@
 `specworks harness [REQUEST] [--change REF]` runs the whole specworks flow as a
 chatinho chat in the terminal. The user is peer zero; every packaged skill is a
 peer named after it without the `specworks-` prefix (`refine`, `specify`,
-`build`, `test`, ...), each a LangChain Deep Agent whose instructions are a
-short harness preamble followed by the skill unchanged. Peers hand work to each
-other by message, work in git worktrees ("workspaces") that the harness creates
-and merges, and the conversation is kept in the change's folder. The package
-`src/specworks/harness` needs the optional `harness` extra (chatinho,
-deepagents; Python 3.12+) and is imported only by the `harness` command.
+`build`, `test`, ...), each a chatinho `DeepAgentConnector` whose instructions
+are a short harness preamble followed by the skill unchanged. Peers hand work
+to each other by message. The phase peers share the main checkout; the `test`
+peer works in its own git worktree, which only the user merges back with
+`/merge test`. The conversation is kept in the change's folder. The package
+`src/specworks/harness` needs the optional `harness` extra (chatinho with its
+`tui` and `deepagents` extras; Python 3.12+) and is imported only by the
+`harness` command.
 
-- `session.py`: `build_harness` (the session: user, peers, backend, commands),
-  `run_harness`, `first_peer`.
+- `session.py`: `build_harness` (the session: user, peers, workspace
+  provider, backend, `/ws` and `/merge`), `run_harness`, `first_peer`.
 - `peers.py`: `SkillPeer` (one per skill), the pinned preamble, `hand_over`.
-- `workspaces.py`: `Workspaces`, the `/workspace` and `/merge` commands.
-- `confine.py`: `ConfinedShell`, `PeerShell`, the push refusal, the shell's
-  environment.
+- `workspaces.py`: `SpecworksWorktrees` (the provider), `SpecworksWorkspace`
+  (its `run` operation), `MergeCommand` (`/merge`).
+- `confine.py`: the push refusal and the shell's environment.
 - `backend.py`: `GitBackend` (`chat.jsonl`).
 - `model.py`: `model_from_env`.
 
@@ -25,26 +27,17 @@ deepagents; Python 3.12+) and is imported only by the `harness` command.
 
 ## Decisions
 
-### SkillPeer extends AgentConnector and swaps the inner agent
+### SkillPeer is a thin DeepAgentConnector
 
-`SkillPeer(AgentConnector)` overrides `graph()` with the same shape as
-chatinho's, calling `create_deep_agent(model, tools, system_prompt=...,
-backend=self.shell)` instead of `create_agent`, and caches the graph per chat
-shape only. Everything else (history from the chat, `ask_<peer>`, `ask_user`,
-`run_<command>`, error replies that give the failure's kind, never its message)
-is AgentConnector's. `listen()` does nothing: a skill peer acts only on what is
-addressed to it. A connector written from scratch was rejected: it would copy
-the chat-tool and history code; chatinho is pinned to a commit and a test
-fails if `graph()`'s shape changes. (add-chatinho-harness)
-
-### One backend per peer that follows its workspace
-
-`self.shell` is one `PeerShell` per peer that calls `Workspaces.path_of(peer)`
-on every file or shell call and passes the call to `confined(<that folder>)`
-(one `ConfinedShell` kept per folder), so a `/workspace` switch moves the file
-tools and the shell within the same run. A backend picked once per run kept
-writing into the old workspace, and deepagents 0.7 has no backend factories.
-(add-chatinho-harness)
+`SkillPeer(DeepAgentConnector)` passes `system_prompt=skill_instructions(...)`,
+`ask_user=True`, the chat memory (the last 100 messages) and
+`tools=[hand_over]`; the model's agent, its backend over the peer's workspace
+(`/` its own, `/peers/<name>/` the others, read-only) and the `ws_<op>` tools
+are chatinho's. It overrides only `answer()` (the run, then the recorded
+hand-over) and `listen()` (does nothing: a skill peer acts only on what is
+addressed to it). Keeping our own `AgentConnector.graph()` override with
+`create_deep_agent` was rejected: it copied what chatinho now owns and could
+not use its workspaces. chatinho is pinned to a commit. (add-chatinho-harness)
 
 ### A hand-over is said after the run, from a fresh context
 
@@ -67,35 +60,56 @@ then `read_skill(skill)`. The preamble (`PREAMBLE` in `peers.py`, pinned
 verbatim by a test) says that `/specworks-<name>` means the peer `<name>`,
 that a question offering only the next step is answered by taking the
 `(recommended)` option and calling `hand_over`, that any other question goes
-to `ask_user`, and that `stop here` ends without a hand-over. No skill text
-changes for the harness. (add-chatinho-harness)
+to `ask_user`, that `stop here` ends without a hand-over, and that a skill
+that merges a worktree's branch asks the user to run `/merge <name>` instead
+of merging. No skill text changes for the harness. (add-chatinho-harness)
 
-### Workspaces are git worktrees the commands own
+### One shared checkout, one test worktree
 
-`Workspaces` maps each peer to a workspace name (`main` by default, the main
-checkout). `/workspace <name>` (names `^[a-z0-9][a-z0-9-]*$`) creates or reuses
-`.specworks/workspaces/<name>` with `git worktree add -b <branch>--<name>`,
-writing `.specworks/workspaces/.gitignore` with `*`. `/merge <name>` refuses a
-workspace with uncommitted changes (they would be left behind, and the
-worktree could not be removed), then calls `merge_branch` (workflow) in the
-main checkout for the run's change; on success the worktree and branch are
-removed and its peers go back to `main`; on a conflict the merge is aborted,
-the workspace stays and the files go back to the peer as an error reply.
-Worktrees outside the repository were rejected: that folder may not be
-writable. (add-chatinho-harness)
+`SpecworksWorktrees(GitWorktrees)` (`repo=ws.root`,
+`workspace=SpecworksWorkspace`) gives every peer not in `WORKTREE_PEERS`
+(`{"test"}`) the main checkout: one chatinho `Tree` for the whole provider
+(one lock) whose base is `HEAD`, so its diff is the uncommitted work and stays
+right when a skill switches the checkout's branch. It is writable
+(`SpecworksWorkspace`) for a checkout peer and a read-only `WorkspaceView` for
+`test` and for commands. `test` gets chatinho's worktree
+`.chatinho/worktrees/test` on `peer/test`, started from the branch the
+checkout has when it is created. `/ws` (chatinho's) lists and diffs the real
+worktrees only. One worktree per peer, chatinho's default, was rejected: every
+stage would need a merge. Overriding `provision` and building the checkout's
+`Tree` rely on chatinho internals, which the pin keeps stable.
+(add-chatinho-harness)
 
-### Confinement in the backend, push refused before the shell
+### The shell is a workspace operation
 
-`ConfinedShell` is a `LocalShellBackend(root_dir=<workspace>,
-virtual_mode=True)`: a path with `..`, `~` or outside the workspace raises
-`OutsideWorkspaceError` (a `PermissionError`), so every file operation returns
-an error result the agent sees and changes nothing. `execute` refuses a git
-push (`PUSH_RE`: `git`, any global options, then the `push` subcommand, so
-`git stash push` and a commit message mentioning push still run) and runs
-everything else in the workspace with `shell_env()`: the environment without
-`SPECWORKS_MODEL_*` and `SPECWORKS_LANGFUSE_*`, so no key reaches the shell's
-output. The shell is not a sandbox: a command can still reach the machine, and
-the push refusal is a pattern on the command text. (add-chatinho-harness)
+`SpecworksWorkspace.run(command)` is an `@operation(..., writes=True)`, so
+agents get it as `ws_run` and it is serialised with the workspace's other
+writes. It refuses a git push (`PUSH_RE`: `git`, any global options, then the
+`push` subcommand, so `git stash push` and a commit message mentioning push
+still run) with `PermissionError` before anything starts; otherwise it runs the
+command through the platform shell in the workspace's folder with
+`shell_env()` (the environment without `SPECWORKS_MODEL_*` and
+`SPECWORKS_LANGFUSE_*`, so no key reaches the output), stderr merged into
+stdout, and returns `exit code <n>\n<output>`. Past `RUN_TIMEOUT` (600 s, read
+at call time) it kills the command (its whole process group on POSIX) and
+raises `TimeoutError`. chatinho turns an exception into the result
+`ws_run failed: <Type>: <message>`, so a refusal is an error the agent sees.
+Paths outside a workspace are refused by chatinho's `Tree` and
+`WorkspaceBackend`. The shell is not a sandbox: a command can still reach the
+machine, and the push refusal is a pattern on the command text.
+(add-chatinho-harness)
+
+### /merge is ours and only the user's
+
+`MergeCommand(provider, backend)` refuses, in order and changing nothing: a
+model (`only the user can merge: ask the user to run /merge <name>`), no name,
+a run with no change yet, a name that is not a worktree, and a worktree with
+uncommitted changes (they would be left behind when it is removed). Otherwise
+it calls `merge_branch` (workflow) for `peer/<name>` in the main checkout for
+the run's change, then drops the worktree and its branch; a
+`BranchMergeError` becomes an error reply naming its files and the worktree
+stays. chatinho's `/ws merge` was rejected: it aborts on the `tasks.md`
+conflict both implement halves make. (add-chatinho-harness)
 
 ### The conversation lives in the change's folder
 
@@ -124,24 +138,22 @@ one raises `ModelSettingsError` naming the variable, never a value.
   by phase: `design`/`implement`/`review` -> `build`, `validate`/`close` ->
   `done`, a `baseline-*` change from specify to review -> `baseline`);
   `build_harness(ws, model, *, request=None, change=None, frontend=None) ->
-  ChatSession` (the request is said to `first_peer(change)` once the session
+  ChatSession` (`workspaces=SpecworksWorktrees(ws)`, commands `/ws` and
+  `/merge`; the request is said to `first_peer(change)` once the session
   starts; `frontend=None` builds the terminal); `run_harness(ws, request,
   change)`.
 - `peers.py`: `PREFIX`, `PREAMBLE`, `peer_name(skill)`, `preamble(name,
   peers)`, `skill_instructions(skill, peers)`; `SkillPeer(skill, model,
-  workspaces, peers)` with `shell`, `graph()`, `answer()`, `listen()`,
-  `hand_over_tool()` (agent tool `hand_over(peer, text)` -> `handed over to
-  <peer>` or `error: unknown peer '<peer>'` / `error: cannot hand over to
-  yourself`).
-- `workspaces.py`: `WORKSPACES_DIR`, `MAIN`, `NAME_RE`, `WorkspaceError`
-  (`files`), `Workspaces(ws, module)` with `path_of`, `name_of`, `branch_of`,
-  `open(name, peer)`, `merge(name, change)`; `WorkspaceCommand`
-  (`run_workspace`), `MergeCommand` (`run_merge`, an error reply before the
-  run has a change).
-- `confine.py`: `PUSH_RE`, `refuses(command)`, `shell_env()`,
-  `OutsideWorkspaceError`, `ConfinedShell(root)`, `confined(root)`,
-  `PeerShell(root_of)` (the deepagents sandbox protocol, each call passed to
-  the current folder's `ConfinedShell`).
+  peers)` with `skill`, `answer()`, `listen()`, `hand_over_tool()` (agent
+  tool `hand_over(peer, text)` -> `handed over to <peer>` or `error: unknown
+  peer '<peer>'` / `error: cannot hand over to yourself`).
+- `workspaces.py`: `WORKTREE_PEERS`, `RUN_TIMEOUT`, `WorkspaceError`
+  (`files`); `SpecworksWorkspace.run(command) -> str` (`ws_run`);
+  `SpecworksWorktrees(ws)` with `provision(owner, name, create=True)` and
+  `current_branch()`; `MergeCommand(provider, backend)` (`/merge <name>`, user
+  only).
+- `confine.py`: `PUSH_RE`, `HIDDEN_ENV`, `refuses(command)`,
+  `shell_env(env=None)`.
 - `backend.py`: `CHAT_FILE` (`chat.jsonl`), `GitBackend(ws, module, change)`
   with `change`, `listen`, `load`, `forget` (drops held lines only),
   `to_line(msg)`, `from_line(line)`.
@@ -152,7 +164,9 @@ one raises `ModelSettingsError` naming the variable, never a value.
 
 - Imported only from the `harness` command's body; `import specworks` and
   every other command never load chatinho or deepagents.
-- Python 3.12+ with the `harness` extra (chatinho pinned to a commit,
-  `deepagents>=0.7,<0.8`); tests in `tests/harness/` skip without it and use a
-  scripted chat model (no network). On 3.11, coverage omits the package.
-- No peer pushes; refusals are errors the agent sees, never crashes of the run.
+- Python 3.12+ with the `harness` extra (chatinho pinned to a commit with its
+  `tui` and `deepagents` extras, `deepagents>=0.7.34,<0.8`); tests in
+  `tests/harness/` skip without it and use a scripted chat model (no network).
+  On 3.11, coverage omits the package.
+- No peer pushes or merges a worktree; refusals are errors the agent sees,
+  never crashes of the run.

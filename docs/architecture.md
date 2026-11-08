@@ -29,7 +29,8 @@ never import higher ones.
   JSON, and records each change command's event. Uses all of the above.
 - **harness** (`src/specworks/harness`, optional `harness` extra, Python
   3.12+): runs the whole flow as a chatinho chat, one Deep Agent peer per
-  skill, handing work over by message, in git worktrees it creates and merges.
+  skill, handing work over by message; the phase peers share the main
+  checkout, `test` works in its own git worktree that only the user merges.
   Uses project (changes, `.gitignore`), workflow (`merge_branch`) and
   integrations (`read_skill`); only cli's `harness` command imports it.
 - Skills and templates (`src/specworks/skills`, `src/specworks/templates`) are
@@ -101,5 +102,6 @@ never import higher ones.
   Agent named after it without `specworks-`.
 - **Hand-over**: a peer saying its next step to the next peer after its own
   run, so stages follow each other without nesting.
-- **Workspace**: a harness peer's git worktree under `.specworks/workspaces/`
-  on its own branch, merged back with `/merge`; `main` is the main checkout.
+- **Workspace**: where a harness peer works: the main checkout, shared by the
+  phase peers, or the `test` peer's git worktree on `peer/test`, merged back
+  by the user with `/merge test`.
