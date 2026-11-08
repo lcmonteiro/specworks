@@ -37,16 +37,8 @@ jobs:
           enable-cache: true
 
       # pyd2 brings the pinned D2 release, so the diagram tests render with the real d2.
-      # Building pyd2 downloads D2 from GitHub without retrying (it happens whenever
-      # uv.lock changes and the uv cache misses), so retry a failed install.
       - name: Install dependencies
-        shell: bash
-        run: |
-          for attempt in 1 2 3; do
-            uv sync --locked && exit 0
-            echo "uv sync failed (attempt $attempt)"; sleep 20
-          done
-          exit 1
+        run: uv sync --locked
 
       - name: Run tests
         run: uv run coverage run -m pytest -v
@@ -65,14 +57,8 @@ jobs:
         with:
           enable-cache: true
 
-      # Retried: see "Install dependencies" in the test job.
       - name: Install dependencies
-        run: |
-          for attempt in 1 2 3; do
-            uv sync --locked && exit 0
-            echo "uv sync failed (attempt $attempt)"; sleep 20
-          done
-          exit 1
+        run: uv sync --locked
 
       - name: Ruff
         run: uv run ruff check src tests
@@ -100,17 +86,6 @@ jobs:
           echo "$wheel"
           case "$wheel" in *-py3-none-any.whl) ;; *) echo "unexpected wheel tag"; exit 1 ;; esac
           unzip -p "$wheel" '*/METADATA' | grep -qxE 'Requires-Dist: pyd2 @ git\+https://github.com/lcmonteiro/pyd2@[0-9a-f]{40}'
-
-      # Installs the wheel's dependencies into the uv cache, retried: building pyd2
-      # downloads D2 from GitHub (see "Install dependencies" in the test job).
-      - name: Install the wheel's dependencies
-        run: |
-          wheel="$(ls dist/*.whl)"
-          for attempt in 1 2 3; do
-            uv tool run --isolated --from "$wheel" specworks --help > /dev/null && exit 0
-            echo "install failed (attempt $attempt)"; sleep 20
-          done
-          exit 1
 
       # The CLI reads schema.yaml, templates/ and skills/ (with skills/_shared/,
       # filled into each skill on install) from the installed package, so check
