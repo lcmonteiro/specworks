@@ -1,10 +1,14 @@
 """The conversation kept in the change's git-ignored chat.jsonl (REQ-HARNESS-009)."""
 
+import os
+
 from chatinho import LOCAL
 
 from harness.scripted import ScriptedModel, chat, git_out, peer_id, read_chat, touches, write_chat
 from specworks.core.changes import create_change, load_change
+from specworks.core.events import mark_sent, record_event
 from specworks.core.workspace import load_workspace
+from specworks.harness.backend import signature
 
 FIELDS = {"id", "from", "to", "replyTo", "status", "text"}
 
@@ -92,3 +96,45 @@ def test_an_untouched_change_is_not_the_runs(project, ws, change):
     _, user = chat(ws, ScriptedModel(script={"refine": ["just talking"]}), say="new question")
     assert [m.text for m in user.messages()] == ["new question", "just talking"]
     assert read_chat(change) == EARLIER
+
+
+def checks(change):
+    """A step that only checks the change, as a read-only command (`specworks gate`) does with telemetry on: it records an event, then answers."""
+
+    def step(_messages):
+        record_event(change, True, "command", command="gate")
+        mark_sent(change, 1)
+        return "checked"
+
+    return step
+
+
+def test_a_recorded_event_alone_does_not_bind_a_change(project, ws, change):
+    # REQ-HARNESS-009 (review R1): every change command appends to the telemetry log, read-only ones included, so it never binds a change.
+    record_event(change, True, "command", command="new")  # with telemetry on, the change's earlier commands already logged events
+    _, user = chat(ws, ScriptedModel(script={"refine": [checks(change)]}), say="is add-x ready?")
+    assert [m.text for m in user.messages()] == ["is add-x ready?", "checked"]
+    assert not (change.path / "chat.jsonl").exists()
+
+
+def test_the_signature_leaves_out_the_chat_and_the_telemetry_log(tmp_path):
+    # REQ-HARNESS-009: chat.jsonl, events.jsonl and events.sent never change a folder's signature; any other file does.
+    def write(path, at):
+        path.write_text("x", encoding="utf-8")
+        os.utime(path, ns=(at, at))  # explicit times: a coarse filesystem clock must not make two writes look the same
+
+    write(tmp_path / "proposal.md", 1_000_000_000)
+    assert signature(tmp_path) == 1_000_000_000
+    for name in ("chat.jsonl", "events.jsonl", "events.sent"):
+        write(tmp_path / name, 2_000_000_000)
+    assert signature(tmp_path) == 1_000_000_000
+    (tmp_path / "specs").mkdir()
+    write(tmp_path / "specs" / "spec.md", 3_000_000_000)
+    assert signature(tmp_path) == 3_000_000_000
+
+
+def test_the_signature_of_a_folder_with_only_the_logs(tmp_path):
+    # REQ-HARNESS-009: an empty folder, or one holding only the left-out files, has the signature 0.
+    assert signature(tmp_path) == 0
+    (tmp_path / "events.jsonl").write_text("y", encoding="utf-8")
+    assert signature(tmp_path) == 0
