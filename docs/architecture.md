@@ -2,7 +2,7 @@
 
 ## Overview
 
-specworks is a spec-driven development CLI (Python 3.11+, typer, uv) plus the
+specworks is a spec-driven development CLI (Python 3.12+, typer, uv) plus the
 agent skills it installs. The skills do the work that needs judgement (refine,
 specify, design, test, code, review, close); the CLI gives them facts and
 gates: where the project and its changes are, what a change's specs, tasks and
@@ -27,8 +27,7 @@ never import higher ones.
 - **cli** (`src/specworks/cli`): the command surface; resolves the workspace
   and the change, calls the capability that does the work, prints text or
   JSON, and records each change command's event. Uses all of the above.
-- **harness** (`src/specworks/harness`, optional `harness` extra, Python
-  3.12+): runs the whole flow as a chatinho chat, one Deep Agent peer per
+- **harness** (`src/specworks/harness`, optional `harness` extra, Python 3.12+): runs the whole flow as a chatinho chat, one Deep Agent peer per
   skill, handing work over by message; the phase peers share the main
   checkout, `test` works in its own git worktree that only the user merges.
   Uses project (changes, `.gitignore`), workflow (`merge_branch`) and

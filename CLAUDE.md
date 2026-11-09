@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-specworks is a spec-driven development CLI (Python 3.11+, typer, managed with
+specworks is a spec-driven development CLI (Python 3.12+, typer, managed with
 uv), plus the agent skills it installs. This repo is developed with specworks
 itself. `.specworks/config.yml` holds the project context, commands and
 capabilities, and `.specworks/changes/active/` holds the work in flight.
@@ -15,7 +15,7 @@ uv run ruff check src tests && uv run mypy   # lint and typecheck (specworks run
 uv run coverage run -m pytest && uv run coverage report   # CI fails under 95% branch coverage
 ```
 
-CI (`.github/workflows/ci.yml`) runs the tests on Ubuntu (Python 3.11-3.14),
+CI (`.github/workflows/ci.yml`) runs the tests on Ubuntu (Python 3.12-3.14),
 Windows and macOS, along with lint, typecheck and a wheel smoke test.
 
 ## Layout
