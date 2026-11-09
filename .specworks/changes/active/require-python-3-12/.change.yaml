@@ -1,3 +1,5 @@
 name: require-python-3-12
 created: '2026-11-09T15:56:37'
-phase: specify
+phase: design
+specified:
+  REQ-CLI-022: e42f3f7261d6
