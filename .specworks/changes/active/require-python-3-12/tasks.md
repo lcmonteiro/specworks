@@ -2,7 +2,7 @@
 
 ## 1. The missing-extra message
 
-- [ ] 1.1 [test] Change the AC-CLI-022.1 test in `tests/cli/test_harness.py` to expect `specworks[harness]` in stderr and no Python version, tagged `@ac AC-CLI-022.1` (REQ-CLI-022, AC-CLI-022.1); verify it fails against the current message
+- [x] 1.1 [test] Change the AC-CLI-022.1 test in `tests/cli/test_harness.py` to expect `specworks[harness]` in stderr and no Python version, tagged `@ac AC-CLI-022.1` (REQ-CLI-022, AC-CLI-022.1); verify it fails against the current message
 - [ ] 1.2 [code] In `src/specworks/cli/harness.py` remove the `sys.version_info` check and its `import sys`, and drop the Python version from `EXTRA_MISSING` and the command docstring, tagged `@req REQ-CLI-022` (REQ-CLI-022); verify `uv run ruff check src` and `uv run mypy`
 
 ## 2. Packaging and tooling
