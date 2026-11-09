@@ -862,8 +862,8 @@ change; a change never reopened SHALL have no `reopened` in its `--json`.
 `specworks harness`, with no argument or option, SHALL open the harness chat
 (REQ-HARNESS-001) in the terminal for the current project, with an empty
 conversation, and SHALL say nothing for the user: the user starts or continues
-a change by sending a message to a peer, such as `@refine <request>`. Without the `harness` extra, or on a Python older than 3.12,
-it SHALL fail saying to install `specworks[harness]` on Python 3.12 or later. A
+a change by sending a message to a peer, such as `@refine <request>`. Without the `harness` extra,
+it SHALL fail saying to install `specworks[harness]`, without naming a Python version. A
 model setting missing (REQ-HARNESS-010) SHALL fail naming the variable before
 the chat opens. Every failure SHALL be `error: …` on stderr with exit 1. No
 other command SHALL import the harness or its dependencies.
@@ -872,7 +872,7 @@ other command SHALL import the harness or its dependencies.
 
 - **GIVEN** chatinho or deepagents cannot be imported
 - **WHEN** `specworks harness` runs
-- **THEN** it exits 1 and stderr says to install `specworks[harness]` on Python 3.12 or later
+- **THEN** it exits 1 and stderr says to install `specworks[harness]`, and names no Python version
 
 #### Scenario: AC-CLI-022.2 No key
 

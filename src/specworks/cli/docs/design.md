@@ -155,9 +155,10 @@ never imports a command module. (add-langfuse-monitoring)
 
 `harness.py` registers `specworks harness` and
 imports `specworks.harness` inside the command's body, so `import specworks`
-and every other command never load chatinho or deepagents. On Python before
-3.12, or when the import fails, it raises `SpecworksError("specworks harness
-needs the harness extra on Python 3.12 or later: install specworks[harness]")`.
+and every other command never load chatinho or deepagents. When the import
+fails, it raises `SpecworksError("specworks harness needs the harness extra:
+install specworks[harness]")`, naming no Python version: specworks itself
+requires Python 3.12+, so there is no version check. (require-python-3-12)
 It has no `--json`: it opens a terminal, and errors are `error: ...` on stderr
 with exit 1. (add-chatinho-harness) It takes no argument and no option: it
 opens the chat empty and the user messages a peer to start or continue a
@@ -276,7 +277,7 @@ a second config format exists. (upgrade-project, dedupe-copilot-skills)
   `finding add|decide|done|close`, `cycle`, `merge`, `commit`, `validate`,
   `close`, `run`, `telemetry push`, `harness`.
 - `harness` (no argument or option, no `--json`; needs the `harness`
-  extra on Python 3.12+) (REQ-CLI-022).
+  extra) (REQ-CLI-022).
 - `src/specworks/cli/telemetry.py`: `record(ws, module, change, event,
   started, **fields)`, `telemetry_state(ws) -> {"state", "host"}`,
   `telemetry_ids(module, change) -> {"traceId", "sessionId"}`,
