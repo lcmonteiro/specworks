@@ -6,7 +6,7 @@ readme = "README.md"
 authors = [
     { name = "lcmonteiro", email = "monteiro.lcm@gmail.com" }
 ]
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 dependencies = [
     # D2 and its Python API, pinned to a pyd2 commit so every install (uv tool install too,
     # which does not read uv.lock) gets the same D2. To upgrade, put a newer commit here and run `uv lock`.
@@ -16,11 +16,11 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-# `specworks harness`: the specworks flow as a chatinho chat of Deep Agent peers. chatinho needs Python 3.12+,
-# and is pinned to a commit because SpecworksWorktrees builds on GitWorktrees internals. Imported only by that command.
+# `specworks harness`: the specworks flow as a chatinho chat of Deep Agent peers. chatinho is pinned to a commit
+# because SpecworksWorktrees builds on GitWorktrees internals. Imported only by that command.
 harness = [
-    "chatinho[tui,deepagents] @ git+https://github.com/lcmonteiro/chatinho@c7bcc176c633d9aab17c4cb4874dbc40aae4ef85 ; python_version >= '3.12'",
-    "deepagents>=0.7.34,<0.8 ; python_version >= '3.12'",
+    "chatinho[tui,deepagents] @ git+https://github.com/lcmonteiro/chatinho@c7bcc176c633d9aab17c4cb4874dbc40aae4ef85",
+    "deepagents>=0.7.34,<0.8",
 ]
 
 [project.scripts]
@@ -47,9 +47,9 @@ dev = [
     "pytest>=9.1.1",
     "ruff>=0.17.0",
     "types-pyyaml>=6.0.12.20260906",
-    # The harness extra, so `uv sync` on 3.12+ installs what tests/harness needs.
-    "chatinho[tui,deepagents] @ git+https://github.com/lcmonteiro/chatinho@c7bcc176c633d9aab17c4cb4874dbc40aae4ef85 ; python_version >= '3.12'",
-    "deepagents>=0.7.34,<0.8 ; python_version >= '3.12'",
+    # The harness extra, so `uv sync` installs what tests/harness needs.
+    "chatinho[tui,deepagents] @ git+https://github.com/lcmonteiro/chatinho@c7bcc176c633d9aab17c4cb4874dbc40aae4ef85",
+    "deepagents>=0.7.34,<0.8",
 ]
 
 [tool.pytest.ini_options]
@@ -60,7 +60,7 @@ addopts = "--import-mode=importlib"
 
 [tool.ruff]
 src = ["src", "tests"]
-target-version = "py311"
+target-version = "py312"
 # Long enough that imports stay on one line, grouped stdlib / third party / specworks.
 line-length = 170
 
@@ -76,10 +76,9 @@ extend-immutable-calls = ["typer.Argument", "typer.Option"]
 
 [tool.mypy]
 files = ["src/specworks"]
-python_version = "3.11"
+python_version = "3.12"
 check_untyped_defs = true
 
-# The harness's dependencies need Python 3.12+; the lint job runs on 3.11 without them.
 [[tool.mypy.overrides]]
 module = ["chatinho.*", "deepagents.*", "langchain_core.*", "langchain_openai.*", "pydantic.*"]
 ignore_missing_imports = true

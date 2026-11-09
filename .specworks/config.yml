@@ -6,7 +6,7 @@ specworks: 1
 # context: free text the agent reads before every phase (stack, conventions,
 # constraints). Keep it short; it is guidance, not documentation.
 context: |
-  specworks itself: a Python 3.11+ CLI (typer, managed with uv) plus the agent
+  specworks itself: a Python 3.12+ CLI (typer, managed with uv) plus the agent
   skills it installs. Code in src/specworks (cli, core, workflow, tools; skills/
   and templates/ are packaged data). Tests in tests/<capability>/ (pytest);
   untagged and cross-cutting tests stay directly in tests/. Lint with ruff,

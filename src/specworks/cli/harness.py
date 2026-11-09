@@ -2,27 +2,23 @@
 
 from __future__ import annotations
 
-import sys
-
 from ..core.errors import SpecworksError
 from .app import app
 from .output import workspace
 
 #: Why the command cannot run without its extra.
-EXTRA_MISSING = "specworks harness needs the harness extra on Python 3.12 or later: install specworks[harness]"
+EXTRA_MISSING = "specworks harness needs the harness extra: install specworks[harness]"
 
 
 # @req REQ-CLI-022
 @app.command()
 def harness() -> None:
-    """Open the harness chat, empty: one agent peer per skill, handing work to each other (needs the harness extra, Python 3.12+).
+    """Open the harness chat, empty: one agent peer per skill, handing work to each other (needs the harness extra).
 
     A change starts or continues when the user messages a peer, such as ``@refine <request>``.
 
     Implements REQ-CLI-022.
     """
-    if sys.version_info < (3, 12):
-        raise SpecworksError(EXTRA_MISSING)
     # The harness is imported here only, so no other command loads chatinho or deepagents.
     try:
         from ..harness import run_harness

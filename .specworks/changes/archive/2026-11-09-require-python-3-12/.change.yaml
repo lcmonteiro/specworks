@@ -1,0 +1,7 @@
+name: require-python-3-12
+created: '2026-11-09T15:56:37'
+phase: done
+specified:
+  REQ-CLI-022: e42f3f7261d6
+dirty:
+  .specworks/changes/active/require-python-3-12/.change.yaml: 742d68f52e3c79f0feb22d5cafd771a5d779acd41ac96b84ddd0ef0479a699a4

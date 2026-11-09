@@ -1,5 +1,6 @@
 """`specworks harness`: the harness chat in the terminal, imported only by this command (REQ-CLI-022)."""
 
+import re
 import subprocess
 import sys
 import textwrap
@@ -44,7 +45,8 @@ def test_ac_cli_022_1_without_the_extra(tmp_path, monkeypatch):
     result = runner.invoke(app, ["harness"])
     assert result.exit_code == 1
     assert "specworks[harness]" in result.stderr
-    assert "3.12" in result.stderr
+    assert "Python" not in result.stderr
+    assert not re.search(r"\d+\.\d+", result.stderr)
     assert result.stderr.startswith("error: ")
 
 

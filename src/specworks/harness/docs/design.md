@@ -12,7 +12,7 @@ to each other by message. The phase peers share the main checkout; the `test`
 peer works in its own git worktree, which only the user merges back with
 `/merge test`. A run's conversation is kept in the folder of the change it works on. The package
 `src/specworks/harness` needs the optional `harness` extra (chatinho with its
-`tui` and `deepagents` extras; Python 3.12+) and is imported only by the
+`tui` and `deepagents` extras) and is imported only by the
 `harness` command.
 
 - `session.py`: `build_harness` (the session: user, peers, workspace
@@ -178,9 +178,9 @@ one raises `ModelSettingsError` naming the variable, never a value.
 
 - Imported only from the `harness` command's body; `import specworks` and
   every other command never load chatinho or deepagents.
-- Python 3.12+ with the `harness` extra (chatinho pinned to a commit with its
+- The `harness` extra (specworks requires Python 3.12+; chatinho pinned to a commit with its
   `tui` and `deepagents` extras, `deepagents>=0.7.34,<0.8`); tests in
-  `tests/harness/` skip without it and use a scripted chat model (no network).
-  On 3.11, coverage omits the package.
+  `tests/harness/` skip without it and use a scripted chat model (no network);
+  every CI job installs it and covers the package. (require-python-3-12)
 - No peer pushes or merges a worktree; refusals are errors the agent sees,
   never crashes of the run.
