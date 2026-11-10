@@ -1,6 +1,6 @@
 name: split-harness-peers
 created: '2026-11-10T00:12:40'
-phase: close
+phase: done
 specified:
   REQ-HARNESS-001: 18e4e6713057
   REQ-HARNESS-004: 367cf8e9da62
