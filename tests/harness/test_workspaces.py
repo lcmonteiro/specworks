@@ -8,6 +8,7 @@ from chatinho import LOCAL, ReplyStatus
 from harness.scripted import BRANCH, ScriptedModel, User, call, chat, commit_all, git_out, head, new_change, peer_id, settle
 from specworks.harness import build_harness
 from specworks.harness.backend import GitBackend
+from specworks.harness.peers import PEERS, RefinePeer, TestPeer, worktree_peers
 from specworks.harness.workspaces import MergeCommand, SpecworksWorktrees
 
 TEST_BRANCH = "peer/test"
@@ -74,6 +75,35 @@ def test_ac_harness_006_1_the_test_worktree(project, ws):
     assert (folder / "tests/test_x.py").read_text(encoding="utf-8") == "x = 1\n"
     assert head(folder) == start, f"started at {BRANCH}'s commit"
     assert not (project / "tests/test_x.py").exists()
+    assert clean(project)
+
+
+# @ac AC-HARNESS-006.1
+def test_ac_harness_006_1_the_test_peer_states_its_worktree(project, ws):
+    assert worktree_peers() == frozenset({"test"})
+    assert [cls.name for cls in PEERS if cls.worktree] == ["test"]
+    assert worktree_peers((RefinePeer, TestPeer)) == frozenset({"test"})
+    assert worktree_peers((RefinePeer,)) == frozenset()
+    assert SpecworksWorktrees(ws).worktrees == worktree_peers()
+    session = build_harness(ws, ScriptedModel(), frontend=User())
+    assert session.workspaces.worktrees == frozenset({"test"})
+
+
+# @ac AC-HARNESS-006.1, AC-HARNESS-006.2
+def test_ac_harness_006_1_an_explicit_worktree_set(project, ws):
+    start = head(project)
+
+    async def main():
+        provider = SpecworksWorktrees(ws, worktrees={"test"})
+        assert provider.worktrees == frozenset({"test"})
+        test = await provider.provision("test", "test")
+        refine = await provider.provision("refine", "refine")
+        return test.tree.root, refine.tree.root
+
+    test, refine = asyncio.run(main())
+    assert test == worktree_of(project) != project.resolve()
+    assert head(test) == start
+    assert refine == project.resolve()
     assert clean(project)
 
 

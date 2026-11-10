@@ -5,10 +5,11 @@ import pytest
 from chatinho import LOCAL, HookAnswer, ReplyStatus, declares, name_of
 
 from harness.scripted import ScriptedModel, User, call, chat, peer_id
-from specworks.harness.peers import PREFIX, preamble, skill_instructions
+from specworks.harness import peers as peers_package
+from specworks.harness.peers import MERGE_RULE, PEERS, PREFIX, SkillPeer, TestPeer, preamble, skill_instructions
 from specworks.tools.skills import packaged_skills, read_skill
 
-PEERS = [skill.removeprefix("specworks-") for skill in packaged_skills()]
+NAMES = [skill.removeprefix("specworks-") for skill in packaged_skills()]
 FILE_TOOLS = {"read_file", "write_file", "edit_file"}
 
 #: The pinned preamble of design.md, verbatim.
@@ -17,9 +18,11 @@ PINNED = (
     "No one types slash commands here: `/specworks-<name>` in your skill means the peer `<name>`.\n"
     "When your skill stops with a question that only offers the next step, take the option marked (recommended) and call hand_over with that peer and the change ref; do not ask the user.\n"
     "When your skill asks the user anything else, call ask_user and wait for the answer.\n"
-    "When the recommended option is `stop here`, end without calling hand_over.\n"
-    "When your skill merges a worktree's branch, do not merge it yourself: call ask_user asking the user to run `/merge <name>`, and wait."
+    "When the recommended option is `stop here`, end without calling hand_over."
 )
+
+#: The pinned merge rule of design.md, verbatim: only `build` gets it.
+PINNED_MERGE = "When your skill merges a worktree's branch, do not merge it yourself: call ask_user asking the user to run `/merge <name>`, and wait."
 
 
 def roster(user):
@@ -38,6 +41,11 @@ def ask(name, text):
     return then
 
 
+def preamble_lines(peer):
+    """The lines of ``peer``'s preamble: its instructions up to the first blank line."""
+    return peer.options["system_prompt"].split("\n\n", 1)[0].splitlines()
+
+
 def said_by(session, user, name):
     at = peer_id(session, name)
     return [m for m in user.messages() if m.frm == at]
@@ -52,10 +60,10 @@ def test_ac_harness_001_1_every_skill_is_a_peer(project, ws):
     session, _ = chat(ws, ScriptedModel(), user=user)
     peers = roster(user)
     assert peers[LOCAL] is user
-    assert sorted(skill_peers(user)) == sorted(PEERS)
+    assert sorted(skill_peers(user)) == sorted(NAMES)
     assert {"adopt", "baseline", "build", "refine", "test", "validate"} <= set(skill_peers(user))
     assert not any(name.startswith(PREFIX) for name in skill_peers(user))
-    others = [who for at, who in peers.items() if at != LOCAL and name_of(who) not in PEERS]
+    others = [who for at, who in peers.items() if at != LOCAL and name_of(who) not in NAMES]
     assert len(others) == 1 and not declares(others[0], HookAnswer), "besides the skills, only the backend, which answers nothing"
 
 
@@ -67,7 +75,41 @@ def test_ac_harness_001_2_the_skill_unchanged(project, ws):
     instructions = test.options["system_prompt"]
     assert instructions.endswith("\n\n" + read_skill("specworks-test"))
     assert instructions.startswith("You are the peer `test` ")
-    assert skill_instructions("specworks-test", PEERS) == preamble("test", PEERS) + "\n\n" + read_skill("specworks-test")
+    assert skill_instructions("specworks-test", NAMES) == preamble("test", NAMES) + "\n\n" + read_skill("specworks-test")
+    # built from its class alone, as the session builds it
+    built = TestPeer(ScriptedModel(), NAMES)
+    assert built.skill == "specworks-test"
+    assert built.options["system_prompt"] == instructions
+
+
+# @ac AC-HARNESS-001.3
+def test_ac_harness_001_3_a_kind_and_a_module_per_peer(project, ws):
+    user = User()
+    chat(ws, ScriptedModel(), user=user)
+    peers = skill_peers(user)
+    kinds = [type(peer) for peer in peers.values()]
+    assert len(set(kinds)) == len(kinds) == len(NAMES), "no two skill peers of the same kind"
+    for name, peer in peers.items():
+        kind = type(peer)
+        assert issubclass(kind, SkillPeer) and kind is not SkillPeer
+        assert kind.__module__ == f"{peers_package.__name__}.{name}", f"{kind.__name__} is defined in the module {name}"
+        assert kind.name == name
+    # each module of the package defines its peer's kind under the name the design gives it
+    for cls in PEERS:
+        module = __import__(cls.__module__, fromlist=["_"])
+        assert getattr(module, cls.__name__) is cls
+        assert cls.__name__ == cls.name.capitalize() + "Peer"
+
+
+# @ac AC-HARNESS-001.4
+def test_ac_harness_001_4_peer_kinds_match_the_skills():
+    skills = packaged_skills()
+    served = [cls.skill_name() for cls in PEERS]
+    assert len(served) == len(set(served)), "no skill has two peer kinds"
+    assert set(served) == set(skills), "every packaged skill has a peer kind and every peer kind serves a packaged skill"
+    assert len(PEERS) == len(skills)
+    assert [cls.name for cls in PEERS] == sorted(cls.name for cls in PEERS), "PEERS in alphabetical order of name"
+    assert all(cls.skill_name() == PREFIX + cls.name for cls in PEERS)
 
 
 # --- REQ-HARNESS-002 -------------------------------------------------------------
@@ -95,7 +137,7 @@ def test_ac_harness_002_2_its_tools(project, ws):
     assert FILE_TOOLS <= tools
     assert "run_workspace" not in tools, "the /workspace command is gone"
     assert "ask_build" not in tools
-    assert {f"ask_{peer}" for peer in PEERS if peer != "build"} <= tools
+    assert {f"ask_{peer}" for peer in NAMES if peer != "build"} <= tools
 
 
 def auth_error(message):
@@ -184,14 +226,33 @@ def test_ac_harness_003_4_an_unknown_peer(project, ws, target):
 # @ac AC-HARNESS-004.1
 def test_ac_harness_004_1_the_preamble(project, ws):
     assert preamble("test", ["refine", "specify"]) == PINNED.format(name="test", peers="refine, specify")
+    assert len(PINNED.splitlines()) == 5
     user = User()
     chat(ws, ScriptedModel(), user=user)
     for name, peer in skill_peers(user).items():
-        instructions = peer.options["system_prompt"]
-        first, *rules = instructions.split("\n\n", 1)[0].splitlines()
+        first, *rules = preamble_lines(peer)
         assert first.startswith(f"You are the peer `{name}` in a specworks harness chat. The other peers are: ")
-        assert all(other in first for other in PEERS if other != name)
-        assert rules == PINNED.splitlines()[1:]
+        assert all(other in first for other in NAMES if other != name)
+        assert rules[:4] == PINNED.splitlines()[1:], "the three rules, after the line naming the peers"
+
+
+# @ac AC-HARNESS-004.3
+def test_ac_harness_004_3_the_merge_rule(project, ws):
+    assert MERGE_RULE == PINNED_MERGE
+    peers = ["refine", "build"]
+    assert preamble("build", peers, [MERGE_RULE]) == PINNED.format(name="build", peers="refine, build") + "\n" + PINNED_MERGE
+    assert preamble("done", peers, ["one", "two"]) == PINNED.format(name="done", peers="refine, build") + "\none\ntwo"
+    assert skill_instructions("specworks-build", peers, [MERGE_RULE]) == preamble("build", peers, [MERGE_RULE]) + "\n\n" + read_skill("specworks-build")
+    user = User()
+    chat(ws, ScriptedModel(), user=user)
+    for name, peer in skill_peers(user).items():
+        lines = preamble_lines(peer)
+        if name == "build":
+            assert lines == preamble("build", NAMES, [MERGE_RULE]).splitlines()
+            assert lines[-1] == PINNED_MERGE
+        else:
+            assert lines == PINNED.format(name=name, peers=", ".join(NAMES)).splitlines()
+            assert not any("/merge" in line for line in lines), f"{name}'s preamble mentions /merge"
 
 
 # @ac AC-HARNESS-004.2
