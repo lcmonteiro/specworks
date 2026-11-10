@@ -103,12 +103,14 @@ added without its class fails CI, not the user's chat (agreed in refinement).
 
 ## Interfaces
 
+Proposed: waiting for the user's agreement
+
 - `src/specworks/harness/peers/base.py`:
   - `PREFIX = "specworks-"`, `PREAMBLE` (five lines, above), `MERGE_RULE` (above), `MEMORY` (unchanged)
   - `peer_name(skill: str) -> str` (unchanged) (REQ-HARNESS-001)
   - `preamble(name: str, peers: Sequence[str], rules: Sequence[str] = ()) -> str` (REQ-HARNESS-004)
   - `skill_instructions(skill: str, peers: Sequence[str], rules: Sequence[str] = ()) -> str` (REQ-HARNESS-001, REQ-HARNESS-004)
-  - `class SkillPeer(DeepAgentConnector)`: class attributes `name: ClassVar[str]` (from `@connector`), `worktree: ClassVar[bool] = False`, `rules: ClassVar[tuple[str, ...]] = ()`; classmethod `skill_name() -> str` = `PREFIX + cls.name` (a classmethod, since `@connector` sets `name` after the class body runs), and the instance attribute `skill` set from it; `__init__(self, model: BaseChatModel, peers: Sequence[str]) -> None`; `answer`, `listen`, `hand_over_tool` unchanged (REQ-HARNESS-001 to 005)
+  - `class SkillPeer(DeepAgentConnector)`: class attributes `name: ClassVar[str]` (from `@connector`), `worktree: ClassVar[bool] = False`, `rules: ClassVar[tuple[str, ...]] = ()`; classmethod `skill_name() -> str` = `PREFIX + cls.name` (a classmethod, since `@connector` sets `name` after the class body runs), and the instance attribute `skill` set from it; `__init__(self, model: BaseChatModel, peers: Sequence[str]) -> None` (**BREAKING** for in-package callers: the `skill` parameter goes; only `session.py` calls it, updated here); `answer`, `listen`, `hand_over_tool` unchanged (REQ-HARNESS-001 to 005)
 - `src/specworks/harness/peers/<name>.py`, one per skill, each `@connector("<name>") class <Name>Peer(SkillPeer)`:
   `adopt.AdoptPeer`, `baseline.BaselinePeer`, `build.BuildPeer` (`rules = (MERGE_RULE,)`), `close.ClosePeer`, `code.CodePeer`,
   `design.DesignPeer`, `done.DonePeer`, `onboard.OnboardPeer`, `refine.RefinePeer`, `reopen.ReopenPeer`, `review.ReviewPeer`,
@@ -116,7 +118,7 @@ added without its class fails CI, not the user's chat (agreed in refinement).
 - `src/specworks/harness/peers/__init__.py`:
   - `PEERS: tuple[type[SkillPeer], ...]`, the 15 classes in alphabetical order of name (REQ-HARNESS-001)
   - `worktree_peers(peers: Sequence[type[SkillPeer]] = PEERS) -> frozenset[str]`: the names of those with `worktree` (REQ-HARNESS-006)
-- `src/specworks/harness/workspaces.py`: `SpecworksWorktrees(ws: Workspace, worktrees: AbstractSet[str] | None = None)`; `WORKTREE_PEERS` removed (REQ-HARNESS-006)
+- `src/specworks/harness/workspaces.py`: `SpecworksWorktrees(ws: Workspace, worktrees: AbstractSet[str] | None = None)`; `WORKTREE_PEERS` removed (**BREAKING** for in-package callers: only `workspaces.py` used it; the chat behaves as today) (REQ-HARNESS-006)
 - `src/specworks/harness/session.py`: `build_harness` builds `cls(model, names)` for each of `PEERS`, `names = [cls.name for cls in PEERS]` (REQ-HARNESS-001)
 
 ## Diagrams
