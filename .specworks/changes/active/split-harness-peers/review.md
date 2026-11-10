@@ -6,6 +6,7 @@ Base: `origin/main`
 
 - [ ] R1 **test-gap** AC-HARNESS-006.1/006.2: test_ac_harness_006_1_an_explicit_worktree_set passes worktrees={'test'}, the same set as the default worktree_peers(), so it still passes if SpecworksWorktrees ignores its worktrees argument (tests/harness/test_workspaces.py:93)
   - **Proposal**: back to test: build the provider with a set other than the default (e.g. worktrees=frozenset() so test gets the main checkout, or {'refine'} so refine gets a worktree) and assert provision follows that set
+  - **Decision**: back to test: build the provider with a set other than the default (frozenset() so test gets the main checkout, or {"refine"} so refine gets a worktree) and assert provision follows it
 
 ## Changed files without tags
 
