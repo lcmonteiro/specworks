@@ -4,10 +4,11 @@ Base: `origin/main`
 
 ## Findings
 
-- [ ] R1 **test-gap** AC-HARNESS-006.1/006.2: test_ac_harness_006_1_an_explicit_worktree_set passes worktrees={'test'}, the same set as the default worktree_peers(), so it still passes if SpecworksWorktrees ignores its worktrees argument (tests/harness/test_workspaces.py:93)
+- [x] R1 **test-gap** AC-HARNESS-006.1/006.2: test_ac_harness_006_1_an_explicit_worktree_set passes worktrees={'test'}, the same set as the default worktree_peers(), so it still passes if SpecworksWorktrees ignores its worktrees argument (tests/harness/test_workspaces.py:93)
   - **Proposal**: back to test: build the provider with a set other than the default (e.g. worktrees=frozenset() so test gets the main checkout, or {'refine'} so refine gets a worktree) and assert provision follows that set
   - **Decision**: back to test: build the provider with a set other than the default (frozenset() so test gets the main checkout, or {"refine"} so refine gets a worktree) and assert provision follows it
   - done in test: test_ac_harness_006_1_an_explicit_worktree_set now passes worktrees={'refine'} and asserts refine gets its own worktree and test the main checkout (no peer/test); new test_ac_harness_006_2_an_empty_worktree_set passes frozenset() and asserts test and refine share the main checkout with no worktree
+  - confirmed in review: confirmed: test_ac_harness_006_1_an_explicit_worktree_set now passes worktrees={'refine'} (refine gets its own worktree, test the main checkout, no peer/test), and test_ac_harness_006_2_an_empty_worktree_set passes frozenset() (no worktree for any peer); both would fail if SpecworksWorktrees ignored its worktrees argument; suite passes (1135 tests)
 
 ## Changed files without tags
 
@@ -33,3 +34,7 @@ The split matches the delta specs and design.md: the `peers/` package, the 15
 `self.worktrees`; no `WORKTREE_PEERS` is left. The suite passes (1134 tests).
 One test-gap: the explicit-`worktrees` test passes the default set, so it would
 not catch the provider ignoring the argument (R1, proposed back to test).
+
+Cycle 2: R1 is done. The explicit-set test now passes `{"refine"}` and a new
+test passes `frozenset()`, so both fail if the provider ignores its
+`worktrees` argument. No new finding; the suite passes (1135 tests).
