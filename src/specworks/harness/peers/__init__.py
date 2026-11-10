@@ -21,6 +21,7 @@ from .start import StartPeer
 from .test import TestPeer
 from .validate import ValidatePeer
 
+# @req REQ-HARNESS-001
 #: The peer classes, one per packaged skill, in alphabetical order of name. Implements REQ-HARNESS-001.
 PEERS: tuple[type[SkillPeer], ...] = (
     AdoptPeer,
@@ -41,9 +42,10 @@ PEERS: tuple[type[SkillPeer], ...] = (
 )
 
 
+# @req REQ-HARNESS-006
 def worktree_peers(peers: Sequence[type[SkillPeer]] = PEERS) -> frozenset[str]:
     """The names of ``peers`` that work in a git worktree of their own (``worktree``). Implements REQ-HARNESS-006."""
-    raise NotImplementedError("worktree_peers")
+    return frozenset(cls.name for cls in peers if cls.worktree)
 
 
 __all__ = [

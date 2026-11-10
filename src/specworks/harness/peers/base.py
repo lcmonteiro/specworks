@@ -26,8 +26,7 @@ PREAMBLE = (
     "When your skill stops with a question that only offers the next step, take the option marked (recommended) "
     "and call hand_over with that peer and the change ref; do not ask the user.\n"
     "When your skill asks the user anything else, call ask_user and wait for the answer.\n"
-    "When the recommended option is `stop here`, end without calling hand_over.\n"
-    "When your skill merges a worktree's branch, do not merge it yourself: call ask_user asking the user to run `/merge <name>`, and wait."
+    "When the recommended option is `stop here`, end without calling hand_over."
 )
 
 #: The preamble rule for the peer whose skill merges a worktree's branch (``build``), added after ``PREAMBLE``.
@@ -50,9 +49,7 @@ def peer_name(skill: str) -> str:
 # @req REQ-HARNESS-004
 def preamble(name: str, peers: Sequence[str], rules: Sequence[str] = ()) -> str:
     """``PREAMBLE`` for the peer ``name`` in a chat of ``peers``, then each of ``rules`` on its own line. Implements REQ-HARNESS-004."""
-    if rules:
-        raise NotImplementedError("preamble rules")
-    return PREAMBLE.format(name=name, peers=", ".join(peers))
+    return "\n".join([PREAMBLE.format(name=name, peers=", ".join(peers)), *rules])
 
 
 # @req REQ-HARNESS-001
@@ -65,6 +62,7 @@ def skill_instructions(skill: str, peers: Sequence[str], rules: Sequence[str] = 
     return preamble(peer_name(skill), peers, rules) + "\n\n" + read_skill(skill)
 
 
+# @req REQ-HARNESS-001
 # @req REQ-HARNESS-002
 # @req REQ-HARNESS-003
 # @req REQ-HARNESS-005

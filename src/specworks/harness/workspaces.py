@@ -20,6 +20,7 @@ from ..core.git import git_text
 from ..core.workspace import Workspace as SpecworksProject
 from ..workflow.merge import BranchMergeError, merge_branch
 from .confine import refuses, shell_env
+from .peers import worktree_peers
 
 if TYPE_CHECKING:
     from .backend import GitBackend
@@ -103,12 +104,10 @@ class SpecworksWorktrees(GitWorktrees):
 
         ``worktrees`` names the peers that get a worktree of their own; ``None`` means ``worktree_peers()``. Implements REQ-HARNESS-006.
         """
-        if worktrees is not None:
-            raise NotImplementedError("SpecworksWorktrees(worktrees=...)")
         super().__init__(ws.root, workspace=SpecworksWorkspace)
         self.ws = ws
         #: The names of the peers that work in a git worktree of their own; every other peer works in the main checkout.
-        self.worktrees: frozenset[str] = frozenset({"test"})
+        self.worktrees: frozenset[str] = worktree_peers() if worktrees is None else frozenset(worktrees)
         #: The main checkout, one tree (so one lock) for every peer that works in it; built once started.
         self._checkout: Tree | None = None
 

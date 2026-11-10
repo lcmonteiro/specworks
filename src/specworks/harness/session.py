@@ -11,20 +11,21 @@ from langchain_core.language_models import BaseChatModel
 from ..core.workspace import Workspace
 from .backend import GitBackend
 from .model import model_from_env
-from .peers import PEERS
+from .peers import PEERS, worktree_peers
 from .workspaces import MergeCommand, SpecworksWorktrees
 
 
 # @req REQ-HARNESS-001
+# @req REQ-HARNESS-006
 # @req REQ-CLI-022
 def build_harness(ws: Workspace, model: BaseChatModel, *, frontend: Any = None) -> ChatSession:
     """The harness session, with an empty conversation and nothing said for the user; ``frontend=None`` builds the terminal.
 
-    Implements REQ-HARNESS-001, REQ-CLI-022.
+    Implements REQ-HARNESS-001, REQ-HARNESS-006, REQ-CLI-022.
     """
     module = ws.current
     names = [cls.name for cls in PEERS]
-    provider = SpecworksWorktrees(ws)
+    provider = SpecworksWorktrees(ws, worktree_peers(PEERS))
     backend = GitBackend(ws, module)
     if frontend is None:
         from chatinho.frontends.chat import ChatFrontend  # the terminal: only when one is opened
