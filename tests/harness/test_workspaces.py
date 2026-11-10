@@ -8,6 +8,7 @@ from chatinho import LOCAL, ReplyStatus
 from harness.scripted import BRANCH, ScriptedModel, User, call, chat, commit_all, git_out, head, new_change, peer_id, settle
 from specworks.harness import build_harness
 from specworks.harness.backend import GitBackend
+from specworks.harness.peers import PEERS, RefinePeer, TestPeer, worktree_peers
 from specworks.harness.workspaces import MergeCommand, SpecworksWorktrees
 
 TEST_BRANCH = "peer/test"
@@ -74,6 +75,52 @@ def test_ac_harness_006_1_the_test_worktree(project, ws):
     assert (folder / "tests/test_x.py").read_text(encoding="utf-8") == "x = 1\n"
     assert head(folder) == start, f"started at {BRANCH}'s commit"
     assert not (project / "tests/test_x.py").exists()
+    assert clean(project)
+
+
+# @ac AC-HARNESS-006.1
+def test_ac_harness_006_1_the_test_peer_states_its_worktree(project, ws):
+    assert worktree_peers() == frozenset({"test"})
+    assert [cls.name for cls in PEERS if cls.worktree] == ["test"]
+    assert worktree_peers((RefinePeer, TestPeer)) == frozenset({"test"})
+    assert worktree_peers((RefinePeer,)) == frozenset()
+    assert SpecworksWorktrees(ws).worktrees == worktree_peers()
+    session = build_harness(ws, ScriptedModel(), frontend=User())
+    assert session.workspaces.worktrees == frozenset({"test"})
+
+
+# @ac AC-HARNESS-006.1, AC-HARNESS-006.2
+def test_ac_harness_006_1_an_explicit_worktree_set(project, ws):
+    start = head(project)
+
+    async def main():
+        provider = SpecworksWorktrees(ws, worktrees={"refine"})
+        assert provider.worktrees == frozenset({"refine"})
+        refine = await provider.provision("refine", "refine")
+        test = await provider.provision("test", "test")
+        return refine.tree.root, test.tree.root
+
+    refine, test = asyncio.run(main())
+    assert refine != project.resolve()
+    assert refine.resolve() in worktrees(project), "refine is in the set: a worktree of its own"
+    assert head(refine) == start
+    assert test == project.resolve(), "test is not in the set: the main checkout"
+    assert worktree_of(project) is None, "no worktree on peer/test"
+    assert clean(project)
+
+
+# @ac AC-HARNESS-006.2
+def test_ac_harness_006_2_an_empty_worktree_set(project, ws):
+    async def main():
+        provider = SpecworksWorktrees(ws, worktrees=frozenset())
+        assert provider.worktrees == frozenset()
+        test = await provider.provision("test", "test")
+        refine = await provider.provision("refine", "refine")
+        return test.tree.root, refine.tree.root
+
+    test, refine = asyncio.run(main())
+    assert test == refine == project.resolve()
+    assert worktree_of(project) is None, "no worktree for any peer"
     assert clean(project)
 
 

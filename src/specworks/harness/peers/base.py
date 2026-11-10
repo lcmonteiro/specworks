@@ -1,4 +1,4 @@
-"""Skill peers: one chatinho ``DeepAgentConnector`` per packaged skill, working in the workspace the provider gives it."""
+"""The skill peers' base: ``SkillPeer``, a chatinho ``DeepAgentConnector`` per packaged skill, and the preamble every peer gets."""
 
 from __future__ import annotations
 
@@ -6,13 +6,14 @@ import asyncio
 import contextvars
 import logging
 from collections.abc import Sequence
+from typing import ClassVar
 
-from chatinho import ChatMessage, Query, Reply, ReplyStatus, connector, name_of
+from chatinho import ChatMessage, Query, Reply, ReplyStatus, name_of
 from chatinho.connectors.deep import DeepAgentConnector
 from langchain_core.language_models import BaseChatModel
 from langchain_core.tools import StructuredTool
 
-from ..tools.skills import read_skill
+from ...tools.skills import read_skill
 
 logger = logging.getLogger(__name__)
 
@@ -25,9 +26,11 @@ PREAMBLE = (
     "When your skill stops with a question that only offers the next step, take the option marked (recommended) "
     "and call hand_over with that peer and the change ref; do not ask the user.\n"
     "When your skill asks the user anything else, call ask_user and wait for the answer.\n"
-    "When the recommended option is `stop here`, end without calling hand_over.\n"
-    "When your skill merges a worktree's branch, do not merge it yourself: call ask_user asking the user to run `/merge <name>`, and wait."
+    "When the recommended option is `stop here`, end without calling hand_over."
 )
+
+#: The preamble rule for the peer whose skill merges a worktree's branch (``build``), added after ``PREAMBLE``.
+MERGE_RULE = "When your skill merges a worktree's branch, do not merge it yourself: call ask_user asking the user to run `/merge <name>`, and wait."
 
 
 #: What a skill peer remembers: the conversation as the backend keeps it, every peer's messages, the newest ones.
@@ -44,43 +47,57 @@ def peer_name(skill: str) -> str:
 
 
 # @req REQ-HARNESS-004
-def preamble(name: str, peers: Sequence[str]) -> str:
-    """``PREAMBLE`` for the peer ``name`` in a chat of ``peers``. Implements REQ-HARNESS-004."""
-    return PREAMBLE.format(name=name, peers=", ".join(peers))
+def preamble(name: str, peers: Sequence[str], rules: Sequence[str] = ()) -> str:
+    """``PREAMBLE`` for the peer ``name`` in a chat of ``peers``, then each of ``rules`` on its own line. Implements REQ-HARNESS-004."""
+    return "\n".join([PREAMBLE.format(name=name, peers=", ".join(peers)), *rules])
 
 
 # @req REQ-HARNESS-001
 # @req REQ-HARNESS-004
-def skill_instructions(skill: str, peers: Sequence[str]) -> str:
-    """The peer's instructions: its preamble, a blank line, then ``read_skill(skill)`` unchanged.
+def skill_instructions(skill: str, peers: Sequence[str], rules: Sequence[str] = ()) -> str:
+    """The peer's instructions: its preamble (with ``rules``), a blank line, then ``read_skill(skill)`` unchanged.
 
     Implements REQ-HARNESS-001, REQ-HARNESS-004.
     """
-    return preamble(peer_name(skill), peers) + "\n\n" + read_skill(skill)
+    return preamble(peer_name(skill), peers, rules) + "\n\n" + read_skill(skill)
 
 
+# @req REQ-HARNESS-001
 # @req REQ-HARNESS-002
 # @req REQ-HARNESS-003
 # @req REQ-HARNESS-005
-@connector("skill")
 class SkillPeer(DeepAgentConnector):
     """A packaged skill as a chat peer: chatinho's Deep Agent connector, in the workspace the provider gives it.
 
+    Each step is a subclass in its own module, named by ``@connector("<name>")``; its skill is ``PREFIX + name``.
     It acts only on what is addressed to it, and hands over to the next peer after its run, from a fresh context.
-    Implements REQ-HARNESS-002, REQ-HARNESS-003, REQ-HARNESS-005.
+    Implements REQ-HARNESS-001, REQ-HARNESS-002, REQ-HARNESS-003, REQ-HARNESS-005.
     """
 
-    def __init__(self, skill: str, model: BaseChatModel, peers: Sequence[str]) -> None:
-        """Named ``peer_name(skill)``: ``ask_user=True``, ``MEMORY``, the ``hand_over`` tool and ``skill_instructions(skill, peers)``.
+    #: The peer's name, set on each subclass by ``@connector("<name>")``. Implements REQ-HARNESS-001.
+    name: str = "skill"
+    #: The step works in a git worktree of its own instead of the main checkout. Implements REQ-HARNESS-006.
+    worktree: ClassVar[bool] = False
+    #: Preamble lines this step gets after the common ones. Implements REQ-HARNESS-004.
+    rules: ClassVar[tuple[str, ...]] = ()
 
-        Implements REQ-HARNESS-002.
+    @classmethod
+    def skill_name(cls) -> str:
+        """The packaged skill this class serves: ``PREFIX + cls.name``. Implements REQ-HARNESS-001."""
+        return PREFIX + cls.name
+
+    def __init__(self, model: BaseChatModel, peers: Sequence[str]) -> None:
+        """Named ``cls.name``: ``ask_user=True``, ``MEMORY``, the ``hand_over`` tool and ``skill_instructions(skill, peers, rules)``.
+
+        Implements REQ-HARNESS-001, REQ-HARNESS-002.
         """
+        skill = self.skill_name()
         self.skill = skill
         #: The skill peers' names, which ``hand_over`` accepts (all but its own).
         self.peer_names = list(peers)
         #: Hand-overs being said; kept so they are not collected before they run.
         self._handing: set[asyncio.Task[None]] = set()
-        super().__init__(peer_name(skill), model, [self.hand_over_tool()], memory=MEMORY, ask_user=True, system_prompt=skill_instructions(skill, peers))
+        super().__init__(peer_name(skill), model, [self.hand_over_tool()], memory=MEMORY, ask_user=True, system_prompt=skill_instructions(skill, peers, self.rules))
 
     async def answer(self, msg: ChatMessage) -> Reply:
         """AgentConnector's run on ``msg``, then the recorded hand-over is said. Implements REQ-HARNESS-003, REQ-HARNESS-005."""

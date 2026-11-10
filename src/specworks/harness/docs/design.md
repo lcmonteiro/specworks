@@ -17,7 +17,9 @@ peer works in its own git worktree, which only the user merges back with
 
 - `session.py`: `build_harness` (the session: user, peers, workspace
   provider, backend, `/ws` and `/merge`), `run_harness`.
-- `peers.py`: `SkillPeer` (one per skill), the pinned preamble, `hand_over`.
+- `peers/`: `base.py` (`SkillPeer`, the pinned preamble, `MERGE_RULE`,
+  `hand_over`), one module per skill (`<Name>Peer`), and `__init__.py`
+  (`PEERS`, `worktree_peers`).
 - `workspaces.py`: `SpecworksWorktrees` (the provider), `SpecworksWorkspace`
   (its `run` operation), `MergeCommand` (`/merge`).
 - `confine.py`: the push refusal and the shell's environment.
@@ -54,22 +56,42 @@ the text (`@specify ...`) was rejected: it bypasses chatinho's addressing.
 
 ![A hand-over between stages](diagrams/hand-over-flow.svg)
 
+### One peer class per skill, each in its own module
+
+`peers/` holds `base.py` (`SkillPeer` and everything the peers share), one
+module `<name>.py` per packaged skill with one subclass `<Name>Peer`
+decorated `@connector("<name>")` that sets only what differs from the base,
+and `__init__.py` with `PEERS`, the classes in alphabetical order of name.
+A class states its name once: its skill is `skill_name()` = `PREFIX + name`.
+`build_harness` builds `cls(model, names)` for each of `PEERS`. A step's
+specifics live on its class: `worktree` (only `TestPeer`, which also sets
+`__test__ = False` so pytest does not collect it) and `rules`, preamble lines
+after the common ones (only `BuildPeer`, `(MERGE_RULE,)`). Auto-discovery (a
+registry plus `pkgutil`) was rejected as implicit and import-order dependent;
+a settings table was rejected as not a class per step. That `PEERS` matches
+`packaged_skills()` one to one is checked by a test, not at run time, so a
+skill added without its class fails CI, not the chat. (split-harness-peers)
+
 ### The preamble, then the skill unchanged
 
-`skill_instructions(skill, peers)` is `preamble(name, peers)`, a blank line,
-then `read_skill(skill)`. The preamble (`PREAMBLE` in `peers.py`, pinned
-verbatim by a test) says that `/specworks-<name>` means the peer `<name>`,
-that a question offering only the next step is answered by taking the
-`(recommended)` option and calling `hand_over`, that any other question goes
-to `ask_user`, that `stop here` ends without a hand-over, and that a skill
-that merges a worktree's branch asks the user to run `/merge <name>` instead
-of merging. No skill text changes for the harness. (add-chatinho-harness)
+`skill_instructions(skill, peers, rules=())` is `preamble(name, peers,
+rules)`, a blank line, then `read_skill(skill)`. The preamble (`PREAMBLE` in
+`peers/base.py`, pinned verbatim by a test) says that `/specworks-<name>`
+means the peer `<name>`, that a question offering only the next step is
+answered by taking the `(recommended)` option and calling `hand_over`, that
+any other question goes to `ask_user`, and that `stop here` ends without a
+hand-over; each of the peer's `rules` follows on its own line. No skill text
+changes for the harness. (add-chatinho-harness) `MERGE_RULE` (a skill that
+merges a worktree's branch asks the user to run `/merge <name>` instead of
+merging) goes only to `build`, the one skill that merges a worktree's branch;
+`done` merges specs at close, never a branch. (split-harness-peers)
 
 ### One shared checkout, one test worktree
 
 `SpecworksWorktrees(GitWorktrees)` (`repo=ws.root`,
-`workspace=SpecworksWorkspace`) gives every peer not in `WORKTREE_PEERS`
-(`{"test"}`) the main checkout: one chatinho `Tree` for the whole provider
+`workspace=SpecworksWorkspace`) gives every peer not in `self.worktrees`
+(`worktree_peers(PEERS)`, the classes with `worktree`: `{"test"}`; taken from
+the peers since split-harness-peers) the main checkout: one chatinho `Tree` for the whole provider
 (one lock) whose base is `HEAD`, so its diff is the uncommitted work and stays
 right when a skill switches the checkout's branch. It is writable
 (`SpecworksWorkspace`) for a checkout peer and a read-only `WorkspaceView` for
@@ -153,16 +175,25 @@ one raises `ModelSettingsError` naming the variable, never a value.
 - `specworks.harness`: `build_harness`, `run_harness`, `model_from_env`,
   `ModelSettingsError`.
 - `session.py`: `build_harness(ws, model, *, frontend=None) -> ChatSession`
-  (`workspaces=SpecworksWorktrees(ws)`, commands `/ws` and `/merge`;
+  (`workspaces=SpecworksWorktrees(ws, worktree_peers(PEERS))`, commands `/ws` and `/merge`;
   `frontend=None` builds the terminal); `run_harness(ws)`.
-- `peers.py`: `PREFIX`, `PREAMBLE`, `peer_name(skill)`, `preamble(name,
-  peers)`, `skill_instructions(skill, peers)`; `SkillPeer(skill, model,
-  peers)` with `skill`, `answer()`, `listen()`, `hand_over_tool()` (agent
-  tool `hand_over(peer, text)` -> `handed over to <peer>` or `error: unknown
-  peer '<peer>'` / `error: cannot hand over to yourself`).
-- `workspaces.py`: `WORKTREE_PEERS`, `RUN_TIMEOUT`, `WorkspaceError`
+- `peers/base.py` (re-exported by `peers`): `PREFIX`, `PREAMBLE`,
+  `MERGE_RULE`, `MEMORY`, `peer_name(skill)`, `preamble(name, peers,
+  rules=())`, `skill_instructions(skill, peers, rules=())`;
+  `SkillPeer(model, peers)` with class attributes `name`,
+  `worktree: ClassVar[bool] = False`, `rules: ClassVar[tuple[str, ...]] = ()`,
+  classmethod `skill_name()`, `skill`, `answer()`, `listen()`,
+  `hand_over_tool()` (agent tool `hand_over(peer, text)` -> `handed over to
+  <peer>` or `error: unknown peer '<peer>'` / `error: cannot hand over to
+  yourself`).
+- `peers/<name>.py`: `<Name>Peer(SkillPeer)` for each of the 15 skills
+  (`BuildPeer.rules = (MERGE_RULE,)`, `TestPeer.worktree = True`).
+- `peers/__init__.py`: `PEERS: tuple[type[SkillPeer], ...]`,
+  `worktree_peers(peers=PEERS) -> frozenset[str]`.
+- `workspaces.py`: `RUN_TIMEOUT`, `WorkspaceError`
   (`files`); `SpecworksWorkspace.run(command) -> str` (`ws_run`);
-  `SpecworksWorktrees(ws)` with `provision(owner, name, create=True)` and
+  `SpecworksWorktrees(ws, worktrees=None)` (`None`: `worktree_peers()`) with
+  `worktrees`, `provision(owner, name, create=True)` and
   `current_branch()`; `MergeCommand(provider, backend)` (`/merge <name>`, user
   only).
 - `confine.py`: `PUSH_RE`, `HIDDEN_ENV`, `refuses(command)`,
