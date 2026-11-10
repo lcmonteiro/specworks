@@ -6,6 +6,7 @@ import asyncio
 import os
 import signal
 import sys
+from collections.abc import Set as AbstractSet
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -22,9 +23,6 @@ from .confine import refuses, shell_env
 
 if TYPE_CHECKING:
     from .backend import GitBackend
-
-#: The peers that work in a git worktree of their own; every other peer works in the main checkout.
-WORKTREE_PEERS: frozenset[str] = frozenset({"test"})
 
 #: How long ``run`` waits for a command, in seconds, before it stops it (read at call time).
 RUN_TIMEOUT: float = 600.0
@@ -95,31 +93,38 @@ async def _kill(process: asyncio.subprocess.Process) -> None:
 
 # @req REQ-HARNESS-006
 class SpecworksWorktrees(GitWorktrees):
-    """The provider: one main checkout every phase peer shares, and a worktree for each of ``WORKTREE_PEERS``.
+    """The provider: one main checkout every phase peer shares, and a worktree for each of ``worktrees``.
 
     Implements REQ-HARNESS-006.
     """
 
-    def __init__(self, ws: SpecworksProject) -> None:
-        """Over the repository of ``ws`` (``repo=ws.root``), with ``SpecworksWorkspace`` as the owner's workspace."""
+    def __init__(self, ws: SpecworksProject, worktrees: AbstractSet[str] | None = None) -> None:
+        """Over the repository of ``ws`` (``repo=ws.root``), with ``SpecworksWorkspace`` as the owner's workspace.
+
+        ``worktrees`` names the peers that get a worktree of their own; ``None`` means ``worktree_peers()``. Implements REQ-HARNESS-006.
+        """
+        if worktrees is not None:
+            raise NotImplementedError("SpecworksWorktrees(worktrees=...)")
         super().__init__(ws.root, workspace=SpecworksWorkspace)
         self.ws = ws
+        #: The names of the peers that work in a git worktree of their own; every other peer works in the main checkout.
+        self.worktrees: frozenset[str] = frozenset({"test"})
         #: The main checkout, one tree (so one lock) for every peer that works in it; built once started.
         self._checkout: Tree | None = None
 
     async def provision(self, owner: str | None, name: str, create: bool = True) -> WorkspaceView:
-        """``name``'s workspace for ``owner``: the main checkout for a name not in ``WORKTREE_PEERS``, else its worktree.
+        """``name``'s workspace for ``owner``: the main checkout for a name not in ``self.worktrees``, else its worktree.
 
         The main checkout is a ``SpecworksWorkspace`` when ``owner`` is a checkout peer too, a ``WorkspaceView`` otherwise.
         A worktree created now starts from the branch the checkout has now. Implements REQ-HARNESS-006.
         """
-        if name in WORKTREE_PEERS:
+        if name in self.worktrees:
             top = await self._started()
             if create and not (top / WORKTREES / name / ".git").exists() and not await self._branch_exists(BRANCH_PREFIX + name):
                 self.base = await self.current_branch()  # a new worktree starts where the checkout is now
             return await super().provision(owner, name, create)
         tree = await self._checkout_tree()
-        writes = owner is not None and owner not in WORKTREE_PEERS
+        writes = owner is not None and owner not in self.worktrees
         return (self.workspace if writes else self.view)(tree)
 
     async def _checkout_tree(self) -> Tree:

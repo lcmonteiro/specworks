@@ -52,7 +52,8 @@ REQ-HARNESS-001.
 
 `SkillPeer.__init__(model, peers)` no longer takes the skill: it reads it from
 the class. The base stays usable on its own only through a subclass (`name`
-comes from `@connector`); `@connector("skill")` on the base is dropped.
+comes from `@connector`); `@connector("skill")` on the base is dropped, and
+its plain default `name = "skill"` only lets mypy read `cls.name` on a class.
 Serves REQ-HARNESS-001, REQ-HARNESS-004.
 
 ### The `/merge` rule leaves the common preamble
@@ -110,16 +111,29 @@ Agreed with the user
   - `peer_name(skill: str) -> str` (unchanged) (REQ-HARNESS-001)
   - `preamble(name: str, peers: Sequence[str], rules: Sequence[str] = ()) -> str` (REQ-HARNESS-004)
   - `skill_instructions(skill: str, peers: Sequence[str], rules: Sequence[str] = ()) -> str` (REQ-HARNESS-001, REQ-HARNESS-004)
-  - `class SkillPeer(DeepAgentConnector)`: class attributes `name: ClassVar[str]` (from `@connector`), `worktree: ClassVar[bool] = False`, `rules: ClassVar[tuple[str, ...]] = ()`; classmethod `skill_name() -> str` = `PREFIX + cls.name` (a classmethod, since `@connector` sets `name` after the class body runs), and the instance attribute `skill` set from it; `__init__(self, model: BaseChatModel, peers: Sequence[str]) -> None` (**BREAKING** for in-package callers: the `skill` parameter goes; only `session.py` calls it, updated here); `answer`, `listen`, `hand_over_tool` unchanged (REQ-HARNESS-001 to 005)
-- `src/specworks/harness/peers/<name>.py`, one per skill, each `@connector("<name>") class <Name>Peer(SkillPeer)`:
+  - `class SkillPeer(DeepAgentConnector)`: class attributes `name: str = "skill"` (the class default each `@connector` overrides; mypy refuses `ClassVar` here, since `AgentConnector` declares `name` per instance), `worktree: ClassVar[bool] = False`, `rules: ClassVar[tuple[str, ...]] = ()`; classmethod `skill_name() -> str` = `PREFIX + cls.name` (a classmethod, since `@connector` sets `name` after the class body runs), and the instance attribute `skill` set from it; `__init__(self, model: BaseChatModel, peers: Sequence[str]) -> None` (**BREAKING** for in-package callers: the `skill` parameter goes; only `src/specworks/harness/session.py` calls it, updated here); `answer`, `listen`, `hand_over_tool` unchanged (REQ-HARNESS-001 to 005)
+- `src/specworks/harness/peers/`, one module <name>.py per skill, each `@connector("<name>") class <Name>Peer(SkillPeer)`:
   `adopt.AdoptPeer`, `baseline.BaselinePeer`, `build.BuildPeer` (`rules = (MERGE_RULE,)`), `close.ClosePeer`, `code.CodePeer`,
   `design.DesignPeer`, `done.DonePeer`, `onboard.OnboardPeer`, `refine.RefinePeer`, `reopen.ReopenPeer`, `review.ReviewPeer`,
   `specify.SpecifyPeer`, `start.StartPeer`, `test.TestPeer` (`worktree = True`, `__test__ = False`), `validate.ValidatePeer` (REQ-HARNESS-001)
 - `src/specworks/harness/peers/__init__.py`:
   - `PEERS: tuple[type[SkillPeer], ...]`, the 15 classes in alphabetical order of name (REQ-HARNESS-001)
   - `worktree_peers(peers: Sequence[type[SkillPeer]] = PEERS) -> frozenset[str]`: the names of those with `worktree` (REQ-HARNESS-006)
-- `src/specworks/harness/workspaces.py`: `SpecworksWorktrees(ws: Workspace, worktrees: AbstractSet[str] | None = None)`; `WORKTREE_PEERS` removed (**BREAKING** for in-package callers: only `workspaces.py` used it; the chat behaves as today) (REQ-HARNESS-006)
+- `src/specworks/harness/workspaces.py`: `SpecworksWorktrees(ws: Workspace, worktrees: AbstractSet[str] | None = None)`; `WORKTREE_PEERS` removed (**BREAKING** for in-package callers: only `src/specworks/harness/workspaces.py` used it; the chat behaves as today) (REQ-HARNESS-006)
 - `src/specworks/harness/session.py`: `build_harness` builds `cls(model, names)` for each of `PEERS`, `names = [cls.name for cls in PEERS]` (REQ-HARNESS-001)
+
+### The stubs keep the chat working
+
+The split itself (the package, the 15 classes, `PEERS`, `skill_name()`,
+`__init__(model, peers)` and `build_harness` building from `PEERS`) is
+declarations and wiring, so the stubs carry it whole and every existing harness
+test still passes; AC-HARNESS-001.3 and 001.4 hold on the stubs. The stubs
+signal "not implemented" only on the new paths: `preamble`/`skill_instructions`
+with non-empty `rules`, `worktree_peers()`, and `SpecworksWorktrees(ws,
+worktrees=...)` with a set (until then the provider keeps `{"test"}` in
+`self.worktrees`). `PREAMBLE` still has six lines, `BuildPeer.rules` and
+`TestPeer.worktree` keep the base defaults, and `build_harness` still builds
+`SpecworksWorktrees(ws)`: those are the code half's (tasks 2.3, 3.3).
 
 ## Diagrams
 

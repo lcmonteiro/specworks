@@ -9,10 +9,9 @@ from chatinho.routers import SimpleRouter
 from langchain_core.language_models import BaseChatModel
 
 from ..core.workspace import Workspace
-from ..tools.skills import packaged_skills
 from .backend import GitBackend
 from .model import model_from_env
-from .peers import SkillPeer, peer_name
+from .peers import PEERS
 from .workspaces import MergeCommand, SpecworksWorktrees
 
 
@@ -24,8 +23,7 @@ def build_harness(ws: Workspace, model: BaseChatModel, *, frontend: Any = None) 
     Implements REQ-HARNESS-001, REQ-CLI-022.
     """
     module = ws.current
-    skills = packaged_skills()
-    names = [peer_name(skill) for skill in skills]
+    names = [cls.name for cls in PEERS]
     provider = SpecworksWorktrees(ws)
     backend = GitBackend(ws, module)
     if frontend is None:
@@ -33,7 +31,7 @@ def build_harness(ws: Workspace, model: BaseChatModel, *, frontend: Any = None) 
 
         frontend = ChatFrontend(title="specworks harness", name="me", welcome_message=f"Peers: {', '.join(names)}. Ask one with @<peer> <text>.")
     return ChatSession(
-        connectors=[SkillPeer(skill, model, names) for skill in skills],
+        connectors=[cls(model, names) for cls in PEERS],
         commands=[WorkspaceCommand(provider), MergeCommand(provider, backend)],
         workspaces=provider,
         frontend=frontend,
