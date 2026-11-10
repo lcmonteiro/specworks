@@ -103,7 +103,7 @@ added without its class fails CI, not the user's chat (agreed in refinement).
 
 ## Interfaces
 
-Proposed: waiting for the user's agreement
+Agreed with the user
 
 - `src/specworks/harness/peers/base.py`:
   - `PREFIX = "specworks-"`, `PREAMBLE` (five lines, above), `MERGE_RULE` (above), `MEMORY` (unchanged)
