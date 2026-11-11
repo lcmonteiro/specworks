@@ -1,6 +1,6 @@
 name: absolute-imports
 created: '2026-11-10T23:25:59'
-phase: close
+phase: done
 skip_specs: true
 dirty:
   .specworks/changes/active/absolute-imports/.change.yaml: fbad56935c849e1ca69670377bcfb34e353eb63f44da1999556be5b048845fa4
