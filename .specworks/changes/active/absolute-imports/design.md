@@ -24,11 +24,14 @@ lines; ruff already lints `src` and `tests` (`specworks run lint`).
   ban-relative-imports = "all"` (the default, `"parents"`, would still allow
   `from .base import`). Alternative: a convention in `CLAUDE.md` only,
   rejected in refinement (nothing checks it).
-- **Lazy imports stay lazy.** The two imports inside functions
-  (`src/specworks/cli/harness.py`, `from ..harness import run_harness`, and
-  `src/specworks/harness/workspaces.py`, `from .backend import GitBackend`)
-  are rewritten in place and stay inside their functions, so `import
-  specworks` still works without the harness extra (docs/architecture.md).
+- **Lazy imports stay lazy.** The two indented imports are rewritten in
+  place and stay where they are. `src/specworks/cli/harness.py`'s
+  `from specworks.harness import run_harness` stays inside `harness()`, the
+  lazy import docs/architecture.md requires, so `import specworks` still
+  works without the harness extra. `src/specworks/harness/workspaces.py`'s
+  `from specworks.harness.backend import GitBackend` stays under
+  `if TYPE_CHECKING:` at module level: it is type-only and never runs at
+  import time.
 
 ## Interfaces
 

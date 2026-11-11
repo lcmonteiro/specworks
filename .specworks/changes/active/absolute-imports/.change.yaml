@@ -1,4 +1,4 @@
 name: absolute-imports
 created: '2026-11-10T23:25:59'
-phase: review
+phase: design
 skip_specs: true
