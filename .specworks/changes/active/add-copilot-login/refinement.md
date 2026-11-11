@@ -7,7 +7,7 @@
 ## Outcomes
 
 - `specworks login copilot` shows a GitHub verification URL and code, waits for the user to authorise, and reports success without printing any token.
-- The user chooses where the login is kept: `--global` (the user's config, one login for every project, the default, works outside a project) or `--local` (this project only, git-ignored, needs a project).
+- The user chooses where the login is kept: `--global` (the user's config, one login for every project, the default, works outside a project) or `--local` (this project only, kept outside the project's folder, needs a project).
 - Run again where a login already exists and still works, `login copilot` says so and reuses it, with no new authorisation; `--force` does the flow again, and a stale stored login does it on its own.
 - After it, `specworks harness` starts and talks to Copilot with only `SPECWORKS_MODEL_MODEL` set: no key, no base URL, no `export`. A project's local login is used before the global one.
 - The harness keeps working past the ~25 minute life of a Copilot session token (no re-login mid-chat).
@@ -35,13 +35,13 @@
 
 - [hard] A command cannot set its parent shell's environment: the login must persist its result in a file, not in variables.
 - [hard] REQ-HARNESS-010: a token's value never appears in output, errors, logs or `chat.jsonl`. Only the long-lived OAuth token may be stored, owner-only (dir 0700 for the global one, file 0600 for both); a session token is never stored.
-- [hard] A local login must never be committed: its file is added to the project's git-ignore when written. `--local` outside a project is an error, never a silent fallback to global.
+- [hard] No token sits in the project's folder: the harness agents' file tools read the main checkout, so even a git-ignored token file there could be read by an agent (decided in specify: a local login is kept in the user config dir, keyed by the project's root path). `--local` outside a project is an error, never a silent fallback to global.
 - [hard] `--local` and `--global` are exclusive; global is the default when neither is given (decided: a flag, not a prompt, so it works non-interactively).
 - [hard] Reuse means the stored token still exchanges for a session token; a token that no longer does is not reported as logged in.
 - [hard] An explicit `SPECWORKS_MODEL_API_KEY` takes precedence; `SPECWORKS_MODEL_MODEL` stays required (decided: the user names the model).
 - [hard] No other command loads the extra: `login` imports its code lazily and, if the extra is missing, says which to install (as `harness` does).
 - [hard] CLI conventions: `--json`, errors as `{"error": ...}` with exit 1; 95% branch coverage, so network calls are testable with a fake transport.
-- [soft] The stored login lives in a specworks-owned path, not in `~/.config/copilot_model/` of the other project: global in the user config dir (`XDG_CONFIG_HOME`, `%APPDATA%` on Windows, since CI runs on all three systems), local under the project's `.specworks/`.
+- [soft] The stored login lives in a specworks-owned path, not in `~/.config/copilot_model/` of the other project: global in the user config dir (`XDG_CONFIG_HOME`, `%APPDATA%` on Windows, since CI runs on all three systems), local in the same dir under a key made from the project's root path.
 - [soft] Support `--ghe-host` for GitHub Enterprise, as the source does.
 
 ## Options
