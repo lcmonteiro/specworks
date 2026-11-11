@@ -18,7 +18,7 @@ from importlib import resources
 from pathlib import Path
 from typing import Literal
 
-from ..core.errors import SpecworksError
+from specworks.core.errors import SpecworksError
 
 FRONTMATTER_RE = re.compile(r"\A---\n(.*?)\n---\n", re.DOTALL)
 

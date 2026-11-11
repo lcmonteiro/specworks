@@ -18,8 +18,8 @@ import pyd2
 import yaml
 from pyd2 import LAYOUTS, THEMES
 
-from .errors import ConfigError
-from .validators import check_keys, validate_capability_name, validate_module_name, validate_prefix, validate_relative
+from specworks.core.errors import ConfigError
+from specworks.core.validators import check_keys, validate_capability_name, validate_module_name, validate_prefix, validate_relative
 
 CONFIG_EXT = ".yml"
 CONFIG_VERSION = 1

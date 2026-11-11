@@ -13,8 +13,8 @@ out (``done in specify: ...``), it needs design, so the build can resume.
 
 from __future__ import annotations
 
-from ..core.changes import HALVES, Change
-from .review import read_review
+from specworks.core.changes import HALVES, Change
+from specworks.workflow.review import read_review
 
 
 # @req REQ-FLOW-012

@@ -18,14 +18,14 @@ import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from ..core.changes import META_FILE, Change
-from ..core.errors import SpecworksError
-from ..core.files import read_text
-from ..core.git import GitError, git, git_text
-from ..core.workspace import Workspace
-from ..specs.specfile import H2_RE, blank_comments, fenced
-from ..specs.trace import Analysis, scan_rule
-from .artifacts import read_template
+from specworks.core.changes import META_FILE, Change
+from specworks.core.errors import SpecworksError
+from specworks.core.files import read_text
+from specworks.core.git import GitError, git, git_text
+from specworks.core.workspace import Workspace
+from specworks.specs.specfile import H2_RE, blank_comments, fenced
+from specworks.specs.trace import Analysis, scan_rule
+from specworks.workflow.artifacts import read_template
 
 CODE_EXTENSIONS = {
     ".py", ".pyi", ".js", ".jsx", ".mjs", ".cjs", ".ts", ".tsx", ".go", ".rs", ".java", ".kt", ".kts",

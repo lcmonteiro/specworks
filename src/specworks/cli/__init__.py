@@ -15,17 +15,17 @@ import sys
 
 import typer
 
-from ..core.errors import SpecworksError
-from .app import app
+from specworks.cli.app import app
+from specworks.core.errors import SpecworksError
 
 # Importing the command modules registers their commands; this order is the order of `--help`.
 # isort: off
-from . import project  # noqa: E402, F401
-from . import changes  # noqa: E402, F401
-from . import specs  # noqa: E402, F401
-from . import workflow  # noqa: E402, F401
-from . import telemetry  # noqa: E402, F401
-from . import harness  # noqa: E402, F401
+from specworks.cli import project  # noqa: E402, F401
+from specworks.cli import changes  # noqa: E402, F401
+from specworks.cli import specs  # noqa: E402, F401
+from specworks.cli import workflow  # noqa: E402, F401
+from specworks.cli import telemetry  # noqa: E402, F401
+from specworks.cli import harness  # noqa: E402, F401
 # isort: on
 
 __all__ = ["app", "main"]

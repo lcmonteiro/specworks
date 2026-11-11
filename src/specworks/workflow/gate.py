@@ -11,15 +11,15 @@ from __future__ import annotations
 import re
 from pathlib import PurePosixPath
 
-from ..core.changes import HALVES, PHASES, Change, half_error, set_phase
-from ..core.errors import SpecworksError
-from ..core.files import read_text
-from ..specs.check import DESIGN_FILE
-from ..specs.specfile import H2_RE, blank_comments, fenced
-from . import checks as c
-from .checks import Check, CheckFn, GateContext, passed, run_checks
-from .review import CODE_EXTENSIONS
-from .validate import validate_change
+from specworks.core.changes import HALVES, PHASES, Change, half_error, set_phase
+from specworks.core.errors import SpecworksError
+from specworks.core.files import read_text
+from specworks.specs.check import DESIGN_FILE
+from specworks.specs.specfile import H2_RE, blank_comments, fenced
+from specworks.workflow import checks as c
+from specworks.workflow.checks import Check, CheckFn, GateContext, passed, run_checks
+from specworks.workflow.review import CODE_EXTENSIONS
+from specworks.workflow.validate import validate_change
 
 
 class GateError(SpecworksError):

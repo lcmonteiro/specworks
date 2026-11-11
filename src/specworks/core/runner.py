@@ -24,10 +24,10 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
-from .config import COMMAND_KEYS, PATHS_PLACEHOLDER, SCOPED_TEST_KEY
-from .errors import SpecworksError
-from .git import GitError, git, git_text
-from .workspace import Module, Workspace
+from specworks.core.config import COMMAND_KEYS, PATHS_PLACEHOLDER, SCOPED_TEST_KEY
+from specworks.core.errors import SpecworksError
+from specworks.core.git import GitError, git, git_text
+from specworks.core.workspace import Module, Workspace
 
 TAIL_LINES = 40
 

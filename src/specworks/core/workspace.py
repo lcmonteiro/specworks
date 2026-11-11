@@ -21,8 +21,8 @@ from pathlib import Path
 
 import yaml
 
-from .config import Capability, Config, ConfigError, find_config, find_root, load_config, old_config_in, old_layout_error
-from .errors import SpecworksError
+from specworks.core.config import Capability, Config, ConfigError, find_config, find_root, load_config, old_config_in, old_layout_error
+from specworks.core.errors import SpecworksError
 
 SEP = ":"
 ARCHITECTURE_FILE = "architecture.md"  # a module's architecture, in its docs folder

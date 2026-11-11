@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from .errors import SpecworksError
+from specworks.core.errors import SpecworksError
 
 
 class FileError(SpecworksError):

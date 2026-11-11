@@ -12,7 +12,7 @@ from collections.abc import Sequence
 from datetime import UTC, datetime
 from pathlib import Path
 
-from .changes import Change
+from specworks.core.changes import Change
 
 EVENTS_FILE = "events.jsonl"
 SENT_FILE = "events.sent"

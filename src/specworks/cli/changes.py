@@ -6,15 +6,15 @@ import time
 
 import typer
 
-from ..core.changes import PHASES, ChangeError, ChangeNotFound, commit_phase, create_change, reopen_change, set_phase
-from ..core.git import GitError, branch_name, create_branch, current_branch, plan_branch, require_repo
-from ..specs.merge import archive_change
-from ..specs.tasks import read_tasks, set_done
-from ..workflow.artifacts import artifact_states, half_progress, instructions
-from ..workflow.review import detect_base
-from .app import app, task_app
-from .output import ChangeOpt, JsonOpt, change_dict, emit, require_change, resolve_archived, resolve_change, workspace
-from .telemetry import record, send_after_commit, telemetry_ids
+from specworks.cli.app import app, task_app
+from specworks.cli.output import ChangeOpt, JsonOpt, change_dict, emit, require_change, resolve_archived, resolve_change, workspace
+from specworks.cli.telemetry import record, send_after_commit, telemetry_ids
+from specworks.core.changes import PHASES, ChangeError, ChangeNotFound, commit_phase, create_change, reopen_change, set_phase
+from specworks.core.git import GitError, branch_name, create_branch, current_branch, plan_branch, require_repo
+from specworks.specs.merge import archive_change
+from specworks.specs.tasks import read_tasks, set_done
+from specworks.workflow.artifacts import artifact_states, half_progress, instructions
+from specworks.workflow.review import detect_base
 
 
 # @req REQ-CLI-006

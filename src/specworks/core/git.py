@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from subprocess import run
 
-from .errors import SpecworksError
+from specworks.core.errors import SpecworksError
 
 
 class GitError(SpecworksError):

@@ -8,13 +8,13 @@ from importlib import resources
 
 import yaml
 
-from ..core.changes import HALVES, Change
-from ..core.config import ConfigError
-from ..core.errors import SpecworksError
-from ..core.files import read_text
-from ..core.workspace import Module, Workspace
-from ..specs.capabilities import delta_files, describe, resolve_delta, workspace_capabilities
-from ..specs.tasks import TASKS_FILE, parse_tasks
+from specworks.core.changes import HALVES, Change
+from specworks.core.config import ConfigError
+from specworks.core.errors import SpecworksError
+from specworks.core.files import read_text
+from specworks.core.workspace import Module, Workspace
+from specworks.specs.capabilities import delta_files, describe, resolve_delta, workspace_capabilities
+from specworks.specs.tasks import TASKS_FILE, parse_tasks
 
 
 @dataclass

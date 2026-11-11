@@ -10,9 +10,9 @@ from typing import Any
 
 from chatinho import ChatMessage, HookForget, HookListen, ReplyStatus, backend, require
 
-from ..core.changes import Change, list_changes
-from ..core.events import EVENTS_FILE, IGNORE_FILE, SENT_FILE, ensure_ignored
-from ..core.workspace import Module, Workspace
+from specworks.core.changes import Change, list_changes
+from specworks.core.events import EVENTS_FILE, IGNORE_FILE, SENT_FILE, ensure_ignored
+from specworks.core.workspace import Module, Workspace
 
 CHAT_FILE = "chat.jsonl"
 #: Files a change's signature leaves out: the backend's own log, the telemetry log every change command appends to,

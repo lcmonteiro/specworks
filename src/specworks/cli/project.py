@@ -8,18 +8,18 @@ from pathlib import Path
 
 import typer
 
-from .. import __version__
-from ..core.changes import archived_as, list_archived
-from ..core.config import Config, ConfigError, find_config, load_config, old_config_in, old_layout_error
-from ..core.config_file import add_capability_entry, add_module_entry, save_tools, set_config_value, write_default_config
-from ..core.git import require_repo
-from ..core.validators import validate_relative
-from ..core.workspace import Module, Workspace, capability_prefix, load_module_config, load_workspace, require_workspace
-from ..specs.capabilities import capability_ref, describe
-from ..tools.skills import TOOLS, Tool, expected_skills, install_skills, parse_tools, remove_stale_skills, resolve_tools, skills_state, update_skills
-from .app import app, capability_app, config_app, module_app
-from .output import AllOpt, JsonOpt, ToolsOpt, change_dict, changes_of, emit, fail, missing_dicts, module_dict, workspace
-from .telemetry import telemetry_state
+from specworks import __version__
+from specworks.cli.app import app, capability_app, config_app, module_app
+from specworks.cli.output import AllOpt, JsonOpt, ToolsOpt, change_dict, changes_of, emit, fail, missing_dicts, module_dict, workspace
+from specworks.cli.telemetry import telemetry_state
+from specworks.core.changes import archived_as, list_archived
+from specworks.core.config import Config, ConfigError, find_config, load_config, old_config_in, old_layout_error
+from specworks.core.config_file import add_capability_entry, add_module_entry, save_tools, set_config_value, write_default_config
+from specworks.core.git import require_repo
+from specworks.core.validators import validate_relative
+from specworks.core.workspace import Module, Workspace, capability_prefix, load_module_config, load_workspace, require_workspace
+from specworks.specs.capabilities import capability_ref, describe
+from specworks.tools.skills import TOOLS, Tool, expected_skills, install_skills, parse_tools, remove_stale_skills, resolve_tools, skills_state, update_skills
 
 
 def default_module_name(path: Path) -> str:

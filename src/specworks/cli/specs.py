@@ -7,12 +7,12 @@ from pathlib import Path
 import typer
 from pyd2 import DARK_THEMES, THEMES
 
-from ..core.config import theme_name
-from ..specs.capabilities import describe, resolve_ref, search_requirements, workspace_capabilities
-from ..specs.trace import Analysis, to_markdown, write_traceability
-from ..tools.diagrams import DiagramError, diagrams_in, find_d2, render, state
-from .app import app, spec_app
-from .output import ChangeOpt, JsonOpt, change_dict, emit, fail, require_change, workspace
+from specworks.cli.app import app, spec_app
+from specworks.cli.output import ChangeOpt, JsonOpt, change_dict, emit, fail, require_change, workspace
+from specworks.core.config import theme_name
+from specworks.specs.capabilities import describe, resolve_ref, search_requirements, workspace_capabilities
+from specworks.specs.trace import Analysis, to_markdown, write_traceability
+from specworks.tools.diagrams import DiagramError, diagrams_in, find_d2, render, state
 
 
 @app.command("check")

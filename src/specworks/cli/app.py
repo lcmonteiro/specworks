@@ -12,8 +12,8 @@ from typing import Any
 
 import typer
 
-from ..core.errors import SpecworksError
-from .output import fail
+from specworks.cli.output import fail
+from specworks.core.errors import SpecworksError
 
 
 # @req REQ-CLI-001

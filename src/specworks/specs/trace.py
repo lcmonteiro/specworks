@@ -40,10 +40,10 @@ from dataclasses import dataclass, field, replace
 from functools import cached_property
 from pathlib import Path
 
-from ..core.changes import Change
-from ..core.workspace import Module, Workspace
-from .check import ChangeSpecs, Issue, check_change, other_deltas
-from .specfile import id_prefix, table_cell
+from specworks.core.changes import Change
+from specworks.core.workspace import Module, Workspace
+from specworks.specs.check import ChangeSpecs, Issue, check_change, other_deltas
+from specworks.specs.specfile import id_prefix, table_cell
 
 TAG_ID = r"(?:REQ|AC)-[A-Z0-9][A-Z0-9.-]*[A-Z0-9]"
 TAG_RE = re.compile(rf"@(?P<kind>req|ac)\s+(?P<ids>{TAG_ID}(?:\s*,\s*{TAG_ID})*)")

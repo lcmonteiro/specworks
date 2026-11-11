@@ -6,9 +6,9 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
-from ..core.errors import SpecworksError
-from ..core.files import read_text
-from .specfile import fenced, find_ids
+from specworks.core.errors import SpecworksError
+from specworks.core.files import read_text
+from specworks.specs.specfile import fenced, find_ids
 
 TASKS_FILE = "tasks.md"
 TASK_RE = re.compile(r"^(?P<lead>\s*- \[)(?P<mark>[^\]]*)(?P<close>\]\s+)(?P<num>\d+\.\d+)\s+(?P<text>\S.*)$")

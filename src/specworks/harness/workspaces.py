@@ -15,15 +15,15 @@ from chatinho.workspaces import GitWorktrees, Tree, Workspace, WorkspaceView, op
 from chatinho.workspaces.git import BRANCH_PREFIX, WORKTREES
 from chatinho.workspaces.tree import run_git
 
-from ..core.errors import SpecworksError
-from ..core.git import git_text
-from ..core.workspace import Workspace as SpecworksProject
-from ..workflow.merge import BranchMergeError, merge_branch
-from .confine import refuses, shell_env
-from .peers import worktree_peers
+from specworks.core.errors import SpecworksError
+from specworks.core.git import git_text
+from specworks.core.workspace import Workspace as SpecworksProject
+from specworks.harness.confine import refuses, shell_env
+from specworks.harness.peers import worktree_peers
+from specworks.workflow.merge import BranchMergeError, merge_branch
 
 if TYPE_CHECKING:
-    from .backend import GitBackend
+    from specworks.harness.backend import GitBackend
 
 #: How long ``run`` waits for a command, in seconds, before it stops it (read at call time).
 RUN_TIMEOUT: float = 600.0

@@ -8,12 +8,12 @@ test, lint and typecheck commands.
 
 from __future__ import annotations
 
-from ..specs.capabilities import SPECS_DIR
-from ..specs.check import PROPOSAL_FILE
-from ..specs.tasks import TASKS_FILE
-from ..tools.diagrams import diagrams_in, state
-from . import checks as c
-from .checks import Check, CheckFn, GateContext
+from specworks.specs.capabilities import SPECS_DIR
+from specworks.specs.check import PROPOSAL_FILE
+from specworks.specs.tasks import TASKS_FILE
+from specworks.tools.diagrams import diagrams_in, state
+from specworks.workflow import checks as c
+from specworks.workflow.checks import Check, CheckFn, GateContext
 
 COMPLETENESS, CORRECTNESS, COHERENCE = "completeness", "correctness", "coherence"
 GROUPS = (COMPLETENESS, CORRECTNESS, COHERENCE)
