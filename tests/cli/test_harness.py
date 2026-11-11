@@ -97,7 +97,7 @@ def test_ac_cli_022_6_the_command_says_nothing(harness_project, monkeypatch):
     import specworks.harness.session as session_module
     from harness.scripted import ScriptedModel
 
-    monkeypatch.setattr(session_module, "model_from_env", lambda: ScriptedModel())
+    monkeypatch.setattr(session_module, "model_from_env", lambda **_: ScriptedModel())
     opened = opened_sessions(monkeypatch)
     result = runner.invoke(app, ["harness"])
     assert result.exit_code == 0, result.output

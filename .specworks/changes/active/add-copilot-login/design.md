@@ -50,6 +50,8 @@ Files are in the user's config dir (`$XDG_CONFIG_HOME` or `~/.config`, `%APPDATA
 
 ## Interfaces
 
+Agreed with the user
+
 - `src/specworks/harness/logins.py`:
   - `Scope = Literal["global", "local"]`
   - `Login(oauth_token: str, ghe_host: str = "")`, frozen dataclass, token hidden from `repr`.

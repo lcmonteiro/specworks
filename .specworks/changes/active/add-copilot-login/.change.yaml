@@ -1,3 +1,9 @@
 name: add-copilot-login
 created: '2026-11-11T16:11:38'
-phase: specify
+phase: design
+specified:
+  REQ-CLI-023: cf9006998226
+  REQ-CLI-022: e48f0a9118a6
+  REQ-HARNESS-011: 298526df079b
+  REQ-HARNESS-012: 2b19ed48185a
+  REQ-HARNESS-010: 54d9f6dbd8cb

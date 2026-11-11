@@ -4,10 +4,13 @@ from __future__ import annotations
 
 import os
 from collections.abc import Mapping
+from pathlib import Path
 
+import httpx
 from langchain_core.language_models import BaseChatModel
 
 from specworks.core.errors import SpecworksError
+from specworks.harness.logins import LoginStore
 
 MODEL_KEY = "SPECWORKS_MODEL_API_KEY"
 MODEL_NAME = "SPECWORKS_MODEL_MODEL"
@@ -24,10 +27,18 @@ class ModelSettingsError(SpecworksError):
 
 
 # @req REQ-HARNESS-010
-def model_from_env(env: Mapping[str, str] | None = None) -> BaseChatModel:
+def model_from_env(
+    env: Mapping[str, str] | None = None,
+    *,
+    root: Path | None = None,
+    store: LoginStore | None = None,
+    client: httpx.Client | None = None,
+) -> BaseChatModel:
     """An OpenAI-compatible chat model from ``env`` (``os.environ`` when None).
 
-    Raises ``ModelSettingsError`` for the first of ``MODEL_KEY``, ``MODEL_NAME`` missing or empty. Implements REQ-HARNESS-010.
+    Raises ``ModelSettingsError`` for the first of ``MODEL_KEY``, ``MODEL_NAME`` missing or empty. When the key is missing or empty, the stored
+    Copilot login of ``root`` (``store``, ``client``) is used instead, and the error says to run ``specworks login copilot``.
+    Implements REQ-HARNESS-010, REQ-HARNESS-012.
     """
     env = os.environ if env is None else env
     for variable in (MODEL_KEY, MODEL_NAME):

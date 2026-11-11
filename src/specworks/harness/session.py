@@ -44,5 +44,5 @@ def build_harness(ws: Workspace, model: BaseChatModel, *, frontend: Any = None) 
 # @req REQ-CLI-022
 def run_harness(ws: Workspace) -> None:
     """Read the model (``model_from_env()``, before anything opens), then build and run the harness. Implements REQ-CLI-022."""
-    model = model_from_env()
+    model = model_from_env(root=ws.root)
     build_harness(ws, model).run()

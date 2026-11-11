@@ -26,6 +26,7 @@ from specworks.cli import specs  # noqa: E402, F401
 from specworks.cli import workflow  # noqa: E402, F401
 from specworks.cli import telemetry  # noqa: E402, F401
 from specworks.cli import harness  # noqa: E402, F401
+from specworks.cli import login  # noqa: E402, F401
 # isort: on
 
 __all__ = ["app", "main"]
