@@ -51,9 +51,11 @@ def test_ac_cli_022_1_without_the_extra(tmp_path, monkeypatch):
 
 
 # @ac AC-CLI-022.2
-def test_ac_cli_022_2_no_key(harness_project, monkeypatch):
+def test_ac_cli_022_2_no_key(harness_project, tmp_path, monkeypatch):
     import chatinho
 
+    for variable in ("XDG_CONFIG_HOME", "APPDATA", "HOME", "USERPROFILE"):
+        monkeypatch.setenv(variable, str(tmp_path / "no-logins"))  # no stored login
     monkeypatch.delenv("SPECWORKS_MODEL_API_KEY", raising=False)
     monkeypatch.setenv("SPECWORKS_MODEL_MODEL", "gpt-test")
     opened = []
@@ -62,6 +64,7 @@ def test_ac_cli_022_2_no_key(harness_project, monkeypatch):
     result = runner.invoke(app, ["harness"])
     assert result.exit_code == 1
     assert "SPECWORKS_MODEL_API_KEY" in result.stderr
+    assert "specworks login copilot" in result.stderr
     assert result.stderr.startswith("error: ")
     assert opened == []
 
