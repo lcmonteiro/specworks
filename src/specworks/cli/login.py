@@ -7,11 +7,13 @@ from typing import TYPE_CHECKING
 import typer
 
 from specworks.cli.app import app
-from specworks.cli.harness import EXTRA_MISSING
 from specworks.cli.output import emit, fail, workspace
 
 if TYPE_CHECKING:
     from specworks.harness.logins import Scope
+
+#: Why the command cannot run without its extra.
+EXTRA_MISSING = "specworks login needs the harness extra: install specworks[harness]"
 
 
 # @req REQ-CLI-023
