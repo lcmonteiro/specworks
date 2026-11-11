@@ -4,10 +4,11 @@ Base: `origin/main`
 
 ## Findings
 
-- [ ] R1 **design-gap** design.md Decision 'Lazy imports stay lazy' says both indented imports are inside functions and keep `import specworks` working without the harness extra; only `src/specworks/cli/harness.py:24` is a function-level lazy import. `src/specworks/harness/workspaces.py:26` (`from specworks.harness.backend import GitBackend`) sits under `if TYPE_CHECKING:` at module level, in a module that is itself harness-only (design.md Decisions; tasks.md 2.2 repeats it). The code is right: both stay where they were.
+- [x] R1 **design-gap** design.md Decision 'Lazy imports stay lazy' says both indented imports are inside functions and keep `import specworks` working without the harness extra; only `src/specworks/cli/harness.py:24` is a function-level lazy import. `src/specworks/harness/workspaces.py:26` (`from specworks.harness.backend import GitBackend`) sits under `if TYPE_CHECKING:` at module level, in a module that is itself harness-only (design.md Decisions; tasks.md 2.2 repeats it). The code is right: both stay where they were.
   - **Proposal**: back to design only: in design.md's Decision, say that `cli/harness.py`'s `from specworks.harness import run_harness` stays inside `harness()` (the lazy import architecture.md requires), and that `harness/workspaces.py`'s `GitBackend` import stays under `if TYPE_CHECKING:` (type-only, not run at import time); no code or test change
   - **Decision**: back to design only: reword the Decision 'Lazy imports stay lazy': cli/harness.py's run_harness import stays inside harness(); harness/workspaces.py's GitBackend import stays under if TYPE_CHECKING:, so it never runs at import time. No code or test change.
   - done in design: reworded the Decision 'Lazy imports stay lazy': cli/harness.py's run_harness import stays inside harness(); harness/workspaces.py's GitBackend import stays under if TYPE_CHECKING: and never runs at import time
+  - confirmed in review: confirmed: design.md's Decision 'Lazy imports stay lazy' now says cli/harness.py's run_harness import stays inside harness() and harness/workspaces.py's GitBackend import stays under if TYPE_CHECKING:, matching src/specworks/cli/harness.py:24 and src/specworks/harness/workspaces.py:26; no code changed since the last review
 
 ## Changed files without tags
 
@@ -37,4 +38,10 @@ as removed) and `pyproject.toml`'s ruff config. No relative import is left in
 under `# isort: off`, the lazy `specworks.harness` import in
 `cli/harness.py` stays inside its function, and the full suite passes (1135
 tests). One design-gap: design.md misdescribes the second "lazy" import
-(R1), sent back to design only. No spec, API or code change.
+(R1), sent back to design only.
+
+Cycle 2 (design only): design.md's Decision now describes both imports as
+the code has them; R1 is closed. The code is unchanged since cycle 1, and the
+suite passes again. tasks.md 2.2 (ticked) still calls both imports "inside
+their functions"; it is a done task's wording, left as it is. No spec, API or
+code change.
