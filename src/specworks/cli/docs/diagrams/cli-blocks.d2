@@ -8,6 +8,7 @@ cli: cli (src/specworks/cli) {
   project_cmds: "project.py (context)"
   output: "output.py (status: telemetry IDs)"
   harness_cmd: "harness.py (harness, lazy import)"
+  login_cmd: "login.py (login, lazy import)"
 
   commands -> telemetry: event name, fields, start time
   project_cmds -> telemetry: telemetry state
@@ -21,3 +22,5 @@ harness: "harness (optional extra)"
 cli.telemetry -> project: record event, trace ID
 cli.telemetry -> integrations: settings, send unsent events
 cli.harness_cmd -> harness: "request, change (imported only when run)"
+cli.login_cmd -> harness: "scope, project root, flags in; result out (imported only when run)"
+cli.login_cmd -> project: "workspace root (--local)"
