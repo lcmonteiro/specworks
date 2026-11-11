@@ -9,7 +9,7 @@ from pathlib import Path
 
 import yaml
 
-from .config import (
+from specworks.core.config import (
     COMMAND_KEYS,
     CONFIG_FILE,
     MAX_CONTEXT_BYTES,
@@ -24,8 +24,8 @@ from .config import (
     theme_id,
     theme_name,
 )
-from .files import read_text
-from .validators import validate_capability_name, validate_module_name, validate_prefix, validate_relative
+from specworks.core.files import read_text
+from specworks.core.validators import validate_capability_name, validate_module_name, validate_prefix, validate_relative
 
 SETTABLE_KEYS: tuple[str, ...] = ("context", *(f"commands.{key}" for key in COMMAND_KEYS), "branch_per_change", *(f"telemetry.{key}" for key in TELEMETRY_KEYS))
 """The keys `specworks config set` writes, in the order an error names them. Implements REQ-PROJ-025."""

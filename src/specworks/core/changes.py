@@ -11,10 +11,10 @@ from pathlib import Path
 
 import yaml
 
-from .config import Config
-from .errors import SpecworksError
-from .git import GitError, commit, dirty_files
-from .validators import validate_kebab
+from specworks.core.config import Config
+from specworks.core.errors import SpecworksError
+from specworks.core.git import GitError, commit, dirty_files
+from specworks.core.validators import validate_kebab
 
 META_FILE = ".change.yaml"
 ARCHIVE_DIR = "archive"

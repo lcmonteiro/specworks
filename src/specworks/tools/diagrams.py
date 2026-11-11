@@ -25,8 +25,8 @@ from pathlib import Path
 
 import pyd2
 
-from ..core.config import DiagramSettings
-from ..core.errors import SpecworksError
+from specworks.core.config import DiagramSettings
+from specworks.core.errors import SpecworksError
 
 DIAGRAMS_DIR = "diagrams"
 STAMP = "<!-- specworks:d2 sha256={} -->"

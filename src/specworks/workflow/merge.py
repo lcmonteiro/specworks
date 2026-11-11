@@ -10,12 +10,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from ..core.changes import Change
-from ..core.errors import SpecworksError
-from ..core.git import GitError, git, git_text, require_repo
-from ..core.workspace import Module, Workspace
-from ..specs.tasks import TASK_RE, TASKS_FILE
-from ..specs.trace import Analysis, to_markdown, write_traceability
+from specworks.core.changes import Change
+from specworks.core.errors import SpecworksError
+from specworks.core.git import GitError, git, git_text, require_repo
+from specworks.core.workspace import Module, Workspace
+from specworks.specs.tasks import TASK_RE, TASKS_FILE
+from specworks.specs.trace import Analysis, to_markdown, write_traceability
 
 TRACE_FILE = "traceability.md"
 

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from chatinho import connector
 
-from .base import MERGE_RULE, SkillPeer
+from specworks.harness.peers.base import MERGE_RULE, SkillPeer
 
 
 # @req REQ-HARNESS-004

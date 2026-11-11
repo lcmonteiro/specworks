@@ -21,12 +21,12 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from ..core.changes import Change, list_changes
-from ..core.config import Capability, ConfigError
-from ..core.files import read_text
-from ..core.validators import validate_capability_name
-from ..core.workspace import Module, Workspace, capability_prefix
-from .specfile import REQ_ID_RE, SpecDoc, blank_comments, find_ids, id_prefix, parse_spec, requirement_number
+from specworks.core.changes import Change, list_changes
+from specworks.core.config import Capability, ConfigError
+from specworks.core.files import read_text
+from specworks.core.validators import validate_capability_name
+from specworks.core.workspace import Module, Workspace, capability_prefix
+from specworks.specs.specfile import REQ_ID_RE, SpecDoc, blank_comments, find_ids, id_prefix, parse_spec, requirement_number
 
 SPECS_DIR = "specs"
 SPEC_FILE = "spec.md"

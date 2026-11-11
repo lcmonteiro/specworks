@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from ..core.errors import SpecworksError
-from .app import app
-from .output import workspace
+from specworks.cli.app import app
+from specworks.cli.output import workspace
+from specworks.core.errors import SpecworksError
 
 #: Why the command cannot run without its extra.
 EXTRA_MISSING = "specworks harness needs the harness extra: install specworks[harness]"
@@ -21,7 +21,7 @@ def harness() -> None:
     """
     # The harness is imported here only, so no other command loads chatinho or deepagents.
     try:
-        from ..harness import run_harness
+        from specworks.harness import run_harness
     except ImportError:
         raise SpecworksError(EXTRA_MISSING) from None
     ws = workspace(False)

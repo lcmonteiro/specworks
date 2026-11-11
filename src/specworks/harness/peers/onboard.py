@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from chatinho import connector
 
-from .base import SkillPeer
+from specworks.harness.peers.base import SkillPeer
 
 
 @connector("onboard")

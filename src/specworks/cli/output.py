@@ -7,10 +7,10 @@ from typing import NoReturn
 
 import typer
 
-from ..core.changes import ARCHIVE_DIR, Change, ChangeError, ChangeNotFound, archived_as, list_changes, load_change
-from ..core.config import CONFIG_FILE, WORKFLOW_DIR
-from ..core.workspace import Module, Workspace, load_workspace
-from ..tools.skills import TOOLS
+from specworks.core.changes import ARCHIVE_DIR, Change, ChangeError, ChangeNotFound, archived_as, list_changes, load_change
+from specworks.core.config import CONFIG_FILE, WORKFLOW_DIR
+from specworks.core.workspace import Module, Workspace, load_workspace
+from specworks.tools.skills import TOOLS
 
 JsonOpt = typer.Option(False, "--json", help="Machine-readable output.")
 

@@ -7,7 +7,7 @@ from collections.abc import Mapping
 
 from langchain_core.language_models import BaseChatModel
 
-from ..core.errors import SpecworksError
+from specworks.core.errors import SpecworksError
 
 MODEL_KEY = "SPECWORKS_MODEL_API_KEY"
 MODEL_NAME = "SPECWORKS_MODEL_MODEL"

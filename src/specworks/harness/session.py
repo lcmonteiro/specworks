@@ -8,11 +8,11 @@ from chatinho import ChatSession, WorkspaceCommand
 from chatinho.routers import SimpleRouter
 from langchain_core.language_models import BaseChatModel
 
-from ..core.workspace import Workspace
-from .backend import GitBackend
-from .model import model_from_env
-from .peers import PEERS, worktree_peers
-from .workspaces import MergeCommand, SpecworksWorktrees
+from specworks.core.workspace import Workspace
+from specworks.harness.backend import GitBackend
+from specworks.harness.model import model_from_env
+from specworks.harness.peers import PEERS, worktree_peers
+from specworks.harness.workspaces import MergeCommand, SpecworksWorktrees
 
 
 # @req REQ-HARNESS-001

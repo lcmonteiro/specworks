@@ -13,7 +13,7 @@ from chatinho.connectors.deep import DeepAgentConnector
 from langchain_core.language_models import BaseChatModel
 from langchain_core.tools import StructuredTool
 
-from ...tools.skills import read_skill
+from specworks.tools.skills import read_skill
 
 logger = logging.getLogger(__name__)
 

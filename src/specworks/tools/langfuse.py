@@ -18,9 +18,9 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from typing import Literal
 
-from ..core.changes import Change
-from ..core.config import TelemetryConfig
-from ..core.events import mark_sent, read_unsent
+from specworks.core.changes import Change
+from specworks.core.config import TelemetryConfig
+from specworks.core.events import mark_sent, read_unsent
 
 DEFAULT_HOST = "https://cloud.langfuse.com"
 TIMEOUT = 5.0  # seconds per request

@@ -75,6 +75,10 @@ never import higher ones.
   extra (harness) is imported only inside the command that runs it, so
   `import specworks` and every other command work without the extra, and the
   command says which extra to install. (add-chatinho-harness)
+- **Absolute imports only**: the package imports its own modules as
+  `specworks.<...>`, never relatively; ruff's `TID252` with
+  `ban-relative-imports = "all"` makes lint fail on a relative import in
+  `src` or `tests`. (absolute-imports)
 
 ## Glossary
 

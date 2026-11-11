@@ -20,13 +20,13 @@ from dataclasses import dataclass, field
 from datetime import date, datetime
 from pathlib import Path
 
-from ..core.changes import Change
-from ..core.errors import SpecworksError
-from ..core.files import read_text
-from ..core.workspace import Workspace
-from .capabilities import HISTORY_HEADING, REQUIREMENTS_FILE, CapabilityRef, history_lines, own_ids
-from .check import ChangeSpecs, Delta
-from .specfile import LIVING_SECTION, Requirement, living_problems, parse_spec, section_kind, table_cell
+from specworks.core.changes import Change
+from specworks.core.errors import SpecworksError
+from specworks.core.files import read_text
+from specworks.core.workspace import Workspace
+from specworks.specs.capabilities import HISTORY_HEADING, REQUIREMENTS_FILE, CapabilityRef, history_lines, own_ids
+from specworks.specs.check import ChangeSpecs, Delta
+from specworks.specs.specfile import LIVING_SECTION, Requirement, living_problems, parse_spec, section_kind, table_cell
 
 
 class MergeError(SpecworksError):

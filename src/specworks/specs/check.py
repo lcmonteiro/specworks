@@ -8,14 +8,14 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal
 
-from ..core.changes import Change, archived_as, list_changes
-from ..core.config import ConfigError
-from ..core.files import read_text
-from ..core.workspace import Workspace
-from ..tools.diagrams import diagrams_in, referenced_images, state
-from .capabilities import SPECS_DIR, CapabilityRef, delta_files, modified_since, own_ids, read_spec, resolve_delta, retired_ids
-from .specfile import DELTA_SECTIONS, LIVING_SECTION, NORMATIVE_RE, Requirement, Scenario, SpecDoc, ac_parent, h2_titles, living_problems, parse_spec
-from .tasks import TASKS_FILE, Task, parse_tasks
+from specworks.core.changes import Change, archived_as, list_changes
+from specworks.core.config import ConfigError
+from specworks.core.files import read_text
+from specworks.core.workspace import Workspace
+from specworks.specs.capabilities import SPECS_DIR, CapabilityRef, delta_files, modified_since, own_ids, read_spec, resolve_delta, retired_ids
+from specworks.specs.specfile import DELTA_SECTIONS, LIVING_SECTION, NORMATIVE_RE, Requirement, Scenario, SpecDoc, ac_parent, h2_titles, living_problems, parse_spec
+from specworks.specs.tasks import TASKS_FILE, Task, parse_tasks
+from specworks.tools.diagrams import diagrams_in, referenced_images, state
 
 PROPOSAL_FILE, DESIGN_FILE = "proposal.md", "design.md"
 PROPOSAL_SECTIONS = ("Why", "What Changes", "Capabilities")

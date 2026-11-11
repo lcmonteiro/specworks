@@ -7,13 +7,13 @@ import time
 
 import typer
 
-from ..core.changes import Change, ChangeNotFound
-from ..core.config import TelemetryConfig
-from ..core.events import record_event, session_id, trace_id
-from ..core.workspace import Module, Workspace
-from ..tools.langfuse import SendResult, langfuse_settings, send_events
-from .app import telemetry_app
-from .output import ChangeOpt, JsonOpt, emit, fail, resolve_archived, resolve_change, workspace
+from specworks.cli.app import telemetry_app
+from specworks.cli.output import ChangeOpt, JsonOpt, emit, fail, resolve_archived, resolve_change, workspace
+from specworks.core.changes import Change, ChangeNotFound
+from specworks.core.config import TelemetryConfig
+from specworks.core.events import record_event, session_id, trace_id
+from specworks.core.workspace import Module, Workspace
+from specworks.tools.langfuse import SendResult, langfuse_settings, send_events
 
 
 # @req REQ-CLI-017

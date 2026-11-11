@@ -9,20 +9,20 @@ from pathlib import Path
 
 import typer
 
-from ..core.changes import PHASES, Change
-from ..core.runner import cached_run
-from ..core.workspace import Workspace
-from ..specs.merge import archive_target, close_change, plan_merge
-from ..specs.trace import GAP_LABELS, Analysis
-from ..workflow.checks import Check, GateContext, passed
-from ..workflow.cycle import next_cycle
-from ..workflow.gate import GATES, run_gate, start_phase
-from ..workflow.merge import BranchMergeError, merge_branch
-from ..workflow.review import REVIEW_FILE, Finding, FindingError, add_finding, close_finding, decide_finding, mark_finding_done, review_change
-from ..workflow.validate import GROUPS, summary, validate_change
-from .app import app, finding_app
-from .output import ChangeOpt, FreshOpt, JsonOpt, change_dict, emit, fail, require_change, workspace
-from .telemetry import record
+from specworks.cli.app import app, finding_app
+from specworks.cli.output import ChangeOpt, FreshOpt, JsonOpt, change_dict, emit, fail, require_change, workspace
+from specworks.cli.telemetry import record
+from specworks.core.changes import PHASES, Change
+from specworks.core.runner import cached_run
+from specworks.core.workspace import Workspace
+from specworks.specs.merge import archive_target, close_change, plan_merge
+from specworks.specs.trace import GAP_LABELS, Analysis
+from specworks.workflow.checks import Check, GateContext, passed
+from specworks.workflow.cycle import next_cycle
+from specworks.workflow.gate import GATES, run_gate, start_phase
+from specworks.workflow.merge import BranchMergeError, merge_branch
+from specworks.workflow.review import REVIEW_FILE, Finding, FindingError, add_finding, close_finding, decide_finding, mark_finding_done, review_change
+from specworks.workflow.validate import GROUPS, summary, validate_change
 
 
 @app.command()

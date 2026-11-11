@@ -12,13 +12,13 @@ from dataclasses import dataclass, field
 from functools import cached_property
 from pathlib import Path
 
-from ..core.changes import Change
-from ..core.config import SCOPED_TEST_KEY
-from ..core.runner import CommandError, cached_run, run_scoped
-from ..core.workspace import Module, Workspace
-from ..specs.tasks import TASKS_FILE
-from ..specs.trace import Analysis
-from .review import REVIEW_FILE, ReviewDoc, ReviewReport, read_review, review_change
+from specworks.core.changes import Change
+from specworks.core.config import SCOPED_TEST_KEY
+from specworks.core.runner import CommandError, cached_run, run_scoped
+from specworks.core.workspace import Module, Workspace
+from specworks.specs.tasks import TASKS_FILE
+from specworks.specs.trace import Analysis
+from specworks.workflow.review import REVIEW_FILE, ReviewDoc, ReviewReport, read_review, review_change
 
 
 @dataclass
