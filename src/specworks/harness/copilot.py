@@ -151,13 +151,29 @@ class CopilotSession:
         """
         return self._api_base
 
+    # @req REQ-HARNESS-013
     def default_model(self) -> str | None:
         """
         The id of the model the Copilot API marks as its default chat model, or None when it cannot tell.
 
         Asks ``<api base>/models`` with the session token. Implements REQ-HARNESS-013.
         """
-        raise NotImplementedError
+        token = self.token()
+        headers = {"Authorization": f"Bearer {token}", "Accept": "application/json", **EDITOR_HEADERS}
+        # The list is undocumented: any answer other than the expected shape means "no default", never an error with its text.
+        with _http(self._client) as client:
+            try:
+                response = client.get(f"{self.api_base.rstrip('/')}/models", headers=headers)
+                data = response.json().get("data") if response.status_code == 200 else None
+            except (httpx.HTTPError, ValueError, AttributeError):
+                return None
+        if not isinstance(data, list):
+            return None
+        for entry in data:
+            if isinstance(entry, dict) and entry.get("is_chat_default") is True:
+                model = entry.get("id")
+                return model if isinstance(model, str) and model.strip() else None
+        return None
 
 
 # @req REQ-HARNESS-011

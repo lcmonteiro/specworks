@@ -11,6 +11,7 @@ from pathlib import Path
 import httpx
 from langchain_core.language_models import BaseChatModel
 
+from specworks.core.config import CONFIG_FILE, WORKFLOW_DIR, is_config_file, load_config
 from specworks.core.errors import SpecworksError
 from specworks.harness.copilot import EDITOR_HEADERS, CopilotSession
 from specworks.harness.logins import LoginStore
@@ -28,13 +29,27 @@ class ModelSettingsError(SpecworksError):
     """
 
     def __init__(self, variable: str) -> None:
-        hint = " (or run `specworks login copilot`)" if variable == MODEL_KEY else ""
-        super().__init__(f"{variable} is not set{hint}")
+        if variable == MODEL_NAME:
+            message = f"{MODEL_NAME} is not set and the config has no {MODEL_CONFIG_KEY}"
+        else:
+            message = f"{variable} is not set" + (" (or run `specworks login copilot`)" if variable == MODEL_KEY else "")
+        super().__init__(message)
         self.variable = variable
+
+
+def _config_model(root: Path | None) -> str:
+    """
+    ``harness.model`` of the config at ``root``; empty when there is no root, no config or no model.
+    """
+    if root is None or not is_config_file(root / WORKFLOW_DIR / CONFIG_FILE):
+        return ""
+    harness = load_config(root).harness
+    return harness.model if harness is not None else ""
 
 
 # @req REQ-HARNESS-010
 # @req REQ-HARNESS-012
+# @req REQ-HARNESS-013
 def model_from_env(
     env: Mapping[str, str] | None = None,
     *,
@@ -45,9 +60,10 @@ def model_from_env(
     """
     An OpenAI-compatible chat model from ``env`` (``os.environ`` when None).
 
-    Raises ``ModelSettingsError`` for the first of ``MODEL_KEY``, ``MODEL_NAME`` missing or empty. When the key is missing or empty, the stored
-    Copilot login of ``root`` (``store``, ``client``) is used instead, and the error says to run ``specworks login copilot``.
-    Implements REQ-HARNESS-010, REQ-HARNESS-012.
+    The model is ``MODEL_NAME``, else ``harness.model`` of the config at ``root``, else, with a stored login, Copilot's default chat model.
+    Raises ``ModelSettingsError`` for a missing or empty ``MODEL_KEY`` with no stored login, then for no model from any of these. When the
+    key is missing or empty, the stored Copilot login of ``root`` (``store``, ``client``) is used instead, and the error says to run
+    ``specworks login copilot``. Implements REQ-HARNESS-010, REQ-HARNESS-012, REQ-HARNESS-013.
     """
     env = os.environ if env is None else env
     explicit_key = bool(env.get(MODEL_KEY, "").strip())
@@ -55,7 +71,8 @@ def model_from_env(
     login = None if explicit_key else (LoginStore() if store is None else store).find(root)
     if not explicit_key and login is None:
         raise ModelSettingsError(MODEL_KEY)
-    if not env.get(MODEL_NAME, "").strip():
+    name = env.get(MODEL_NAME, "").strip() or _config_model(root)
+    if not name and login is None:
         raise ModelSettingsError(MODEL_NAME)
     from langchain_openai import ChatOpenAI  # here, so building the model is the only place that needs it
     from pydantic import SecretStr
@@ -63,7 +80,10 @@ def model_from_env(
     base_url = env.get(MODEL_BASE_URL) or None
     if login is None:
         # The key is a SecretStr, so the model's repr and its errors never show it.
-        return ChatOpenAI(model=env[MODEL_NAME], api_key=SecretStr(env[MODEL_KEY]), base_url=base_url)
+        return ChatOpenAI(model=name, api_key=SecretStr(env[MODEL_KEY]), base_url=base_url)
     session = CopilotSession(login, client=client)
     session.token()  # the first exchange gives the API base, and fails now, not mid-chat, for a login GitHub no longer accepts
-    return ChatOpenAI(model=env[MODEL_NAME], api_key=session.token, base_url=base_url or session.api_base, default_headers=EDITOR_HEADERS)
+    name = name or session.default_model() or ""
+    if not name:
+        raise ModelSettingsError(MODEL_NAME)
+    return ChatOpenAI(model=name, api_key=session.token, base_url=base_url or session.api_base, default_headers=EDITOR_HEADERS)

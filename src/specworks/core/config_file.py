@@ -243,7 +243,7 @@ def save_tools(root: Path, ids: list[str]) -> None:
         raise ConfigError(f"could not save the tools in {WORKFLOW_DIR}/{CONFIG_FILE} automatically; set them by hand:\n{entry}")
 
 
-# @req REQ-PROJ-025
+# @req REQ-PROJ-025, REQ-PROJ-035
 def set_config_value(root: Path, key: str, value: str) -> None:
     """
     Set ``key`` (one of ``SETTABLE_KEYS``) to ``value`` in the config at ``root``, keeping the user's comments.
@@ -281,6 +281,8 @@ def set_config_value(root: Path, key: str, value: str) -> None:
         _set_context(lines, text)
     elif key == "branch_per_change":
         _set_top_line(lines, key, value)
+    elif key == "harness.model" and not value:
+        _remove_block_entry(lines, "harness", "model")
     else:
         field, name = key.split(".")
         _set_block_line(lines, field, name, value, literal=key == "telemetry.langfuse")
@@ -289,9 +291,10 @@ def set_config_value(root: Path, key: str, value: str) -> None:
         expected = {**(block if isinstance(block, dict) else {}), name: written}
     config_file.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
+    after = {k: v for k, v in before.items() if k != "harness"} if key == "harness.model" and not value else {**before, field: expected}
     try:
         load_config(root)
-        ok = yaml.safe_load(read_text(config_file)) == {**before, field: expected}
+        ok = yaml.safe_load(read_text(config_file)) == after
     except (ConfigError, yaml.YAMLError):
         ok = False
     if not ok:
@@ -339,6 +342,23 @@ def _set_block_line(lines: list[str], block: str, name: str, value: str, literal
             lines.insert(end, f"  {entry}")
             return
     lines += ["", f"{block}:", f"  {entry}"]
+
+
+# @req REQ-PROJ-035
+def _remove_block_entry(lines: list[str], block: str, name: str) -> None:
+    """
+    Remove ``name``'s line from the ``block:`` mapping, and the ``block:`` line too once it holds nothing else.
+    """
+    header = re.compile(rf"^{re.escape(block)}:\s*(#.*)?$")
+    for i, line in enumerate(lines):
+        if header.match(line):
+            end = _block_end(lines, i)
+            kept = [entry for entry in lines[i + 1 : end] if not re.match(rf"^[ \t]+{re.escape(name)}:(\s|$)", entry)]
+            if any(entry.strip() and not entry.lstrip().startswith("#") for entry in kept):
+                lines[i + 1 : end] = kept
+            else:
+                del lines[i:end]
+            return
 
 
 # @req REQ-PROJ-025

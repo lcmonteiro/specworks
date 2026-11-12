@@ -391,7 +391,7 @@ def capability_add(
 def config_set(
     key: str = typer.Argument(
         ...,
-        help="context, commands.<test|lint|typecheck|build|format>, or branch_per_change (true|false) and telemetry.<langfuse|host> (always in the top level's config).",
+        help="context, commands.<test|lint|typecheck|build|format>, or branch_per_change (true|false), telemetry.<langfuse|host> and harness.model (always in the top level's config).",
     ),
     value: str | None = typer.Argument(None, help="The value (empty clears the key); or use --file."),
     file: str | None = typer.Option(None, "--file", help="Read the value from this file (- for standard input)."),
@@ -399,7 +399,7 @@ def config_set(
     as_json: bool = JsonOpt,
 ) -> None:
     """
-    Set a command or the context in a module's config, or branch_per_change or telemetry in the top level's, keeping its comments. Implements REQ-CLI-013.
+    Set a command or the context in a module's config, or branch_per_change, telemetry or the harness model in the top level's, keeping its comments. Implements REQ-CLI-013.
     """
     if value is not None and file is not None:
         fail("give the value as an argument or with --file, not both", as_json)
@@ -407,7 +407,7 @@ def config_set(
         fail("give a value, or --file <path> (- for standard input)", as_json)
     ws = workspace(as_json)
     target = ws.module(module) if module is not None else ws.current
-    if key == "branch_per_change" or key.startswith("telemetry."):  # only the top level's value is read (REQ-PROJ-026, REQ-PROJ-003), so it is written there whatever the module
+    if key == "branch_per_change" or key.startswith(("telemetry.", "harness.")):  # only the top level's value is read (REQ-PROJ-026, REQ-PROJ-003), so it is written there whatever the module
         target = ws.top
     if file is None:
         text = value or ""
