@@ -47,11 +47,22 @@ relative to the working directory: they name a folder where the user stands.
 ### A change reference is forgiving but never ambiguous
 
 `module:name` is exact. A bare name prefers the current module, then the only
-module that has it. Archived changes are readable only through `status` and
-`reopen` (`resolve_archived`: name, `module:name` or `<date>-<name>`), and
-every other command says where the change was archived. `reopen` asks
-`resolve_change` when no archive holds the name, so an active change is told
-it is active instead of "not found". (baseline-cli, add-reopen-change)
+module that has it. Archived changes are readable only through `status`,
+`reopen` (`resolve_archived`: name, `module:name` or `<date>-<name>`),
+`trace` and `finding`, and every other command says where the change was
+archived. `reopen` asks `resolve_change` when no archive holds the name, so
+an active change is told it is active instead of "not found".
+(baseline-cli, add-reopen-change)
+
+`trace` and `finding` use `require_change_or_archived` (the active change,
+else the archived one) so `/specworks-inspect` can read a closed change and
+leave its notes there. `trace` reads one but refuses `--write`; `finding`
+writes into one only its inspection.md (`ARCHIVED_FINDINGS`, by `--artifact`
+or by the ID's letter), and any other write to an archived change is refused
+with `refuse_archived`, naming where it is archived. `trace` of an archived
+change adds `changedSinceClose` under `--json` (`{"commit", "files"}`, or
+`{"note"}` when it cannot tell) and the comparison line in text.
+(add-inspect-skill)
 
 ### `reopen` records the way back, the skill decides it
 
@@ -177,7 +188,10 @@ means the step). A `FindingError` reaches the `App` wrapper like any other
 error. Under `--json` each prints the change, the finding as `specworks
 cycle` sees it plus `done`, and `path` (the artifact written); `done` is
 added here rather than to `Finding.to_dict()`, so `cycle`'s output is
-unchanged. (finding-commands, unify-check-findings)
+unchanged. (finding-commands, unify-check-findings) `finding add` takes a
+multi-line suggestion from a file (`--suggestion <file>`, `-` for standard
+input, read as utf-8) with the language of its fence (`--lang`, default
+`text`); an unreadable file is an error before any write. (add-inspect-skill)
 
 ### `validate` writes only with `--write`
 
@@ -266,7 +280,10 @@ a second config format exists. (upgrade-project, dedupe-copilot-skills)
 - `src/specworks/cli/__init__.py`: `app`, `main()` (the `specworks` entry
   point).
 - `src/specworks/cli/output.py`: `emit`, `fail`, `workspace`,
-  `resolve_change`, `resolve_archived`, `require_change`, `ToolsOpt`
+  `resolve_change`, `resolve_archived`, `require_change`,
+  `require_change_or_archived(ref, as_json) -> tuple[Workspace, Module,
+  Change]`, `is_archived(change)`, `refuse_archived(ws, module, change, why)`,
+  `ToolsOpt`
   (`--tools`, default `None`: the saved choice).
 - `src/specworks/cli/project.py`: `is_terminal() -> bool`.
 - `context --json`: each capability entry holds `docsPath` and `testsPath`
@@ -300,8 +317,13 @@ a second config format exists. (upgrade-project, dedupe-copilot-skills)
   `sessionId`).
 - `commit --json` and `telemetry push --change <ref> [--json]` add
   `telemetry: {"sent", "queued", "reason"}`.
-- `finding add TYPE TEXT --proposal TEXT [--artifact ID]` (default
-  `review`; an unknown one is an error naming the check artifacts),
+- `trace --change <ref> [--write] [--json]`: an archived change without
+  `--write`; `--json` adds `changed` to each row and `changedSinceClose` for
+  an archived change only (REQ-CLI-002, REQ-SPECS-018).
+- `finding add TYPE TEXT --proposal TEXT [--artifact ID] [--suggestion
+  FILE|-] [--lang LANG]` (default
+  `review`; an unknown one is an error naming the check artifacts; on an
+  archived change only `inspection`),
   `finding decide ID DECISION`, `finding done ID TEXT --in STEP`,
   `finding close ID TEXT`, each with `--change <ref> [--json]`: `--json`
   prints the change's fields plus `finding` (`id`, `type`, `text`, `phase`,

@@ -36,8 +36,11 @@ exit 1. Paths in the output SHALL be relative to the workspace root.
 A change SHALL be named as `module:name` (exact) or by its bare name: the
 current module's first, else the only module that has one. A bare name in
 several other modules SHALL be refused, listing the qualified names. An archived
-change SHALL be refused by every command but `status` and `reopen`, which read
-it by name or by archive folder. A path into the archive is not a change name.
+change SHALL be refused by every command but `status`, `reopen`, `trace`
+without `--write`, and `finding` on its inspection.md (`finding add
+--artifact inspection`, or an `I<n>` ID), which read it by name or by archive
+folder; `finding` on any other check artifact of an archived change, and
+`trace --write`, SHALL be refused saying where the change is archived. A path into the archive is not a change name.
 
 #### Scenario: AC-CLI-002.1 A bare name in another module
 
@@ -56,7 +59,7 @@ it by name or by archive folder. A path into the archive is not a change name.
 
 #### Scenario: AC-CLI-002.4 An archived change
 
-- **WHEN** a command other than `status` or `reopen` names an archived change, or a name no module has
+- **WHEN** a command other than `status`, `reopen`, `trace` or `finding` names an archived change, or a name no module has
 - **THEN** it fails saying where the change is archived, or that it is not found, active or archived
 
 #### Scenario: AC-CLI-002.5 Status of an archived change
@@ -73,6 +76,16 @@ it by name or by archive folder. A path into the archive is not a change name.
 
 - **WHEN** `reopen` names a closed change by its name or by its archive folder `<date>-<name>`
 - **THEN** that change is the one reopened
+
+#### Scenario: AC-CLI-002.8 Trace of an archived change
+
+- **WHEN** `trace --change <name> --json` names a closed change, then `trace --write` does
+- **THEN** the first exits 0 with the change's matrix; the second is refused saying where the change is archived, and no file changes
+
+#### Scenario: AC-CLI-002.9 Inspection notes on an archived change
+
+- **WHEN** `finding add question "x" --proposal "back to review: y" --artifact inspection --change <name> --json` names a closed change, then the same with `--artifact review`
+- **THEN** the first exits 0 and writes I1 to inspection.md in the change's archive folder; the second is refused saying where the change is archived, and no file changes
 
 ### Requirement: REQ-CLI-003 init
 
@@ -451,12 +464,15 @@ repository SHALL be refused saying so.
 ### Requirement: REQ-CLI-011 finding
 
 `specworks finding` SHALL write a change's findings (REQ-FLOW-016)
-through `add <type> <text> --proposal <proposal> [--artifact <check artifact>]`,
+through `add <type> <text> --proposal <proposal> [--artifact <check artifact>]
+[--suggestion <file> --lang <language>]`,
 `decide <id> <decision>`, `done <id> --in <step> <text>` and
 `close <id> <text>`, each with `--change` (the change's ref) and `--json`.
 `add` SHALL write to the check artifact named by `--artifact` (`review` when
 omitted); `decide`, `done` and `close` SHALL write to the check artifact
-whose letter the ID starts with. Each SHALL print the finding as `specworks
+whose letter the ID starts with. `--suggestion` SHALL read the suggestion
+from the file (`-` for standard input), `--lang` naming its fence's language
+(`text` when omitted); a missing file SHALL be refused. Each SHALL print the finding as `specworks
 cycle` reads it afterwards (its ID, open or done, and the step it is routed
 to) and the path of the artifact it wrote, relative to the workspace root; a refusal
 SHALL be an error (`{"error": …}` with exit 1 under `--json`) and change no
@@ -481,6 +497,11 @@ file.
 
 - **WHEN** `finding add code-gap "x" --proposal "back to code: y" --artifact tasks --json` runs
 - **THEN** it prints `{"error": …}` naming the check artifacts, exits 1, and no file changes
+
+#### Scenario: AC-CLI-011.5 A suggestion from a file
+
+- **WHEN** `finding add code-gap "x" --proposal "back to code: y" --artifact inspection --suggestion fix.diff --lang diff --json` runs, then the same with a file that does not exist
+- **THEN** the first exits 0 and inspection.md holds the file's text under `**Suggestion**:` in a `diff` fence; the second prints `{"error": …}` naming the file, exits 1, and no file changes
 
 ### Requirement: REQ-CLI-012 commit
 
