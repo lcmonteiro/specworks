@@ -27,9 +27,12 @@ finding that covers it. -->
 
 - `tests/support/findings.py`: shared test helper (paths, check artifacts and writers for review.md and validation.md) used by the tagged tests of REQ-FLOW-010, 016, 018 and 019; no criterion of its own
 - `tests/test_skills.py`: skill-wording test (validate now writes validation.md and commits); skills have no capability, so their tests stay untagged (CLAUDE.md)
+- `src/specworks/harness/peers/inspect.py`: the `inspect` chat peer of add-inspect-skill (closed, on this branch but not yet on origin/main, so it shows in this diff); not part of this change, and like the other peers it names REQ-HARNESS-001 in its docstring
 
 ## Summary
 
 <!-- Two or three lines: what was found, what changed in code, specs and design, and anything sent back to an earlier phase. -->
 
 The code matches the delta specs and design.md's Interfaces; every requirement has code and every criterion a test. Cycle 1 found two findings: R1 (test-gap, AC-FLOW-019.1 hard-coded 2 critical where the verdict after the write is 3) went back to test, and R2 (design-gap, design.md's step 1 of write_validation narrower than the spec and the code) went back to design only. Cycle 2 confirmed both carried out and closed them: the test now checks the verdict against summary(checks), design.md matches the code, and the suite passes. No code or spec changed in cycle 2; no new findings.
+
+Reopened for inspection.md I1 (validate linked a V finding to its check by the check's name, which carries the base): the review after the reopen confirmed that a V finding is now linked by its check's key (the check function's name; all 25 validate checks have distinct keys), the new AC-FLOW-019.3 test reruns validate with another base without a duplicate, design.md says the key, and the delta specs, recopied from the living spec after add-inspect-skill, match it block for block. I1 is marked `done in review:` for inspect to confirm; no new findings. Out of scope, for a later change: no test asserts that every validate check has a distinct key, so a future unnamed lambda row would share `<lambda>` with another.
