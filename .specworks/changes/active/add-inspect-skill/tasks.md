@@ -31,6 +31,12 @@
 - [x] 5.1 [code] Write `src/specworks/skills/specworks-inspect/SKILL.md` as design.md's seven steps with its pinned wording, read-only but for `specworks finding ... --artifact inspection` and the commit; add the harness peer `peers/inspect.py` (`InspectPeer`); have the review skill mark each `I` finding it checked `done in review:`; run `uv run specworks skills` (the harness asks one peer per skill); verify `uv run pytest tests/test_skills.py tests/harness`
 - [x] 5.2 [code] Add skill wording tests to `tests/test_skills.py`: the pinned phrases of design.md, the allowed commands (read-only git, `specworks finding`, `specworks commit`), and the hand-over to `/specworks-review` or `/specworks-reopen` (no capability: untagged); verify `uv run pytest tests/test_skills.py`
 
+## 6. Removed criteria of a closed change (reopened: inspection.md I1)
+
+- [ ] 6.1 Add `living_spec_at(ws, change, cap, commit)` in `specs/trace.py` as a stub per design.md Interfaces (REQ-SPECS-018); verify `uv run ruff check src tests && uv run mypy`
+- [ ] 6.2 [test] Write failing tests for a criterion added after the close (not removed) next to one the change left out and still tagged (still removed), and for no close commit (nothing removed), tagged `@ac AC-SPECS-018.4`, `@ac AC-SPECS-018.5`; keep AC-SPECS-018.1 to 018.3 passing; verify they fail on the stub
+- [ ] 6.3 [code] Implement the living spec at the close commit and `dropped_criteria` compared with it for an archived change, none without the commit (REQ-SPECS-018) tagged `@req REQ-SPECS-018`; verify by typecheck and `uv run specworks trace --change unify-check-findings --json` showing no removedStillTagged
+
 ## Workflow follow-up
 
 - `unify-check-findings` left four clean-ups for a `fix-` change: validate described as read-only in the done and onboard skills, `DECISION_FORM` not naming `back to review:`, the private `_new_artifact` import, and `1 warnings` in the validation Summary.

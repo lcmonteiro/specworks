@@ -13,6 +13,7 @@
     -        for sc in delta.dropped_criteria(req):
     +        for sc in ([] if archived else delta.dropped_criteria(req)):
     ```
+  - done in specify: added AC-SPECS-018.4 and AC-SPECS-018.5 to REQ-SPECS-018: removed criteria of a closed change come from the living spec at its close commit, none without it
 
 ## Summary
 

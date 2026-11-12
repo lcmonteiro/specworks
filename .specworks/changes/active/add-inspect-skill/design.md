@@ -89,6 +89,20 @@ close)` after each; `--json` adds `"changedSinceClose": {"commit": ...,
 "files": [...]}` or `{"note": ...}`. Only for an archived change; an active
 one has neither. Serves: REQ-SPECS-018.
 
+### A closed change's removed criteria come from the spec at its close
+
+Reopened for inspection.md I1: the trace of a closed change compared its
+MODIFIED blocks with today's living spec, so every criterion a later change
+added showed as removed but still tagged. For an archived change,
+`dropped_criteria` now compares with the living spec as it was at the close
+commit (the one `changed_since_close` finds), read with
+`git show <commit>:<living spec>`: a criterion the change itself left out
+and still tagged is still reported; one added later is not. Without that
+commit (no git, history rewritten) no criterion is reported as removed,
+rather than guessing from today's spec. Skipping the check for every
+closed change was rejected: it would hide real leftover tags. Serves:
+REQ-SPECS-018.
+
 ### The skill orders, the reviewer breaks the circle
 
 `specworks-inspect` (read-only but for inspection.md, like onboard plus
@@ -141,7 +155,9 @@ Agreed with the user
 - `src/specworks/workflow/cycle.py`: `WAITING_STEPS = ("validate",
   "inspect")`; `next_cycle` leaves findings routed there out of the cycle
   (REQ-FLOW-012)
-- `src/specworks/specs/trace.py`: `ChangedSince(commit: str | None, files:
+- `src/specworks/specs/trace.py`: `living_spec_at(ws, change, cap, commit) -> str | None`
+  (the capability's living spec text at that commit; None without it) (REQ-SPECS-018);
+  `src/specworks/specs/trace.py`: `ChangedSince(commit: str | None, files:
   frozenset[str], note: str = "")`; `changed_since_close(ws, change) ->
   ChangedSince`; `Row.changed: list[str]` (REQ-SPECS-018)
 - `src/specworks/cli/output.py`: `require_change_or_archived(ref, as_json)
