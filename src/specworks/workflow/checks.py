@@ -1,4 +1,5 @@
-"""The checks behind the phase gates and validate, each defined once.
+"""
+The checks behind the phase gates and validate, each defined once.
 
 A check is a function of a ``GateContext``: what it reads (specs, tags, git, review.md)
 is computed on first use and shared by every check of the same run. A check returns
@@ -68,7 +69,9 @@ class GateContext:
 
     @cached_property
     def test_plan(self) -> TestPlan:
-        """The tests the review gate runs (``test_plan``), computed once per run."""
+        """
+        The tests the review gate runs (``test_plan``), computed once per run.
+        """
         return test_plan(self)
 
     def has_command(self, key: str) -> bool:
@@ -80,7 +83,9 @@ CheckFn = Callable[[GateContext], "Check | None"]
 
 # @req REQ-FLOW-003
 def passed(checks: list[Check]) -> bool:
-    """A gate passes when none of its blocking checks fails; warnings never block."""
+    """
+    A gate passes when none of its blocking checks fails; warnings never block.
+    """
     return all(c.ok for c in checks if c.blocking)
 
 
@@ -90,7 +95,9 @@ def run_checks(ctx: GateContext, checks: Iterable[CheckFn]) -> list[Check]:
 
 
 def _listed(name: str, missing: list[str], blocking: bool = True) -> Check:
-    """Passes when nothing is listed; the listed items are the details."""
+    """
+    Passes when nothing is listed; the listed items are the details.
+    """
     return Check(name, not missing, missing, blocking=blocking)
 
 
@@ -104,7 +111,9 @@ def specs_valid(ctx: GateContext) -> Check:
 
 # @req REQ-FLOW-003
 def specs_warnings(ctx: GateContext) -> Check:
-    """`specworks check`'s warnings, shown in every gate and validate without blocking."""
+    """
+    `specworks check`'s warnings, shown in every gate and validate without blocking.
+    """
     return _listed("specworks check has no warnings", ctx.analysis.spec_warnings, blocking=False)
 
 
@@ -116,7 +125,9 @@ def tasks_written(ctx: GateContext) -> Check:
 
 # @req REQ-FLOW-007, REQ-FLOW-008
 def half_tasks_done(half: str) -> CheckFn:
-    """A check that every task of ``half`` (``test`` or ``code``) is done, listing only that half's open tasks."""
+    """
+    A check that every task of ``half`` (``test`` or ``code``) is done, listing only that half's open tasks.
+    """
 
     def check(ctx: GateContext) -> Check:
         specs = ctx.analysis.specs
@@ -128,7 +139,9 @@ def half_tasks_done(half: str) -> CheckFn:
 
 # @req REQ-FLOW-013
 def unmarked_tasks_done(ctx: GateContext) -> Check:
-    """Every task with neither a ``[test]`` nor a ``[code]`` marker (design's stub tasks) is done, listing the open ones."""
+    """
+    Every task with neither a ``[test]`` nor a ``[code]`` marker (design's stub tasks) is done, listing the open ones.
+    """
     specs = ctx.analysis.specs
     pending = [f"{t.num} {t.text}" for t in specs.tasks if not t.half and not t.done]
     return Check("every task with no [test] or [code] marker is done (specworks task list --pending)", specs.tasks_found and not pending, pending)
@@ -136,7 +149,9 @@ def unmarked_tasks_done(ctx: GateContext) -> Check:
 
 # @req REQ-FLOW-005
 def specs_as_specified(ctx: GateContext) -> Check | None:
-    """The delta specs are the ones `gate specify` passed with when `start` last left specify (not checked without one)."""
+    """
+    The delta specs are the ones `gate specify` passed with when `start` last left specify (not checked without one).
+    """
     agreed = ctx.change.specified
     if not agreed:
         return None
@@ -154,7 +169,9 @@ def specs_as_specified(ctx: GateContext) -> Check | None:
 
 
 def _gap(name: str, key: str, blocking: bool = True) -> CheckFn:
-    """A check that passes when the traceability gap ``key`` (trace.gaps) is empty."""
+    """
+    A check that passes when the traceability gap ``key`` (trace.gaps) is empty.
+    """
     return lambda ctx: _listed(name, ctx.analysis.gaps[key], blocking)
 
 
@@ -178,7 +195,9 @@ def acs_in_test_files(ctx: GateContext) -> Check:
 
 
 def change_ids(ctx: GateContext) -> set[str]:
-    """Every requirement and acceptance-criterion ID in the change's delta specs."""
+    """
+    Every requirement and acceptance-criterion ID in the change's delta specs.
+    """
     return {i for d in ctx.analysis.specs.deltas for i in d.doc.ids()}
 
 
@@ -193,20 +212,26 @@ def review_written(ctx: GateContext) -> Check:
 
 # @req REQ-FLOW-010
 def review_readable(ctx: GateContext) -> Check:
-    """A checkbox the parser cannot read may be an open finding, so it never passes silently."""
+    """
+    A checkbox the parser cannot read may be an open finding, so it never passes silently.
+    """
     return _listed(f"every finding in {REVIEW_FILE} is readable (- [ ] R<n> ...)", ctx.review.problems)
 
 
 # @req REQ-FLOW-011
 def review_closed(ctx: GateContext) -> Check:
-    """In a build (--allow-open), open findings are the hand-off to the next cycle (`specworks cycle`), not a failure."""
+    """
+    In a build (--allow-open), open findings are the hand-off to the next cycle (`specworks cycle`), not a failure.
+    """
     open_findings = [f"{f.id} {f.text}" for f in ctx.review.open]
     return Check(f"no open finding in {REVIEW_FILE}", ctx.review.exists and not open_findings, open_findings, blocking=not ctx.allow_open)
 
 
 # @req REQ-FLOW-011
 def files_accounted(ctx: GateContext) -> Check:
-    """Every changed file without tags, and every deleted source or test file, is listed under "Changed files without tags" in review.md."""
+    """
+    Every changed file without tags, and every deleted source or test file, is listed under "Changed files without tags" in review.md.
+    """
     report = ctx.report
     if report.changed is None:
         return Check("changed files without tags are accounted for", False, [report.note], blocking=False)
@@ -217,7 +242,9 @@ def files_accounted(ctx: GateContext) -> Check:
 
 # @req REQ-FLOW-011
 def modified_tests_changed(ctx: GateContext) -> Check | None:
-    """Each MODIFIED requirement whose behaviour changes has a test file changed on the branch: old tests only check the old one."""
+    """
+    Each MODIFIED requirement whose behaviour changes has a test file changed on the branch: old tests only check the old one.
+    """
     report = ctx.report
     if report.changed is None:
         return None
@@ -236,7 +263,9 @@ def modified_tests_changed(ctx: GateContext) -> Check | None:
 
 # @req REQ-FLOW-011
 def diff_base(ctx: GateContext) -> Check | None:
-    """Warns when the changed files may be incomplete: HEAD is on the base branch and nothing marks where the change started."""
+    """
+    Warns when the changed files may be incomplete: HEAD is on the base branch and nothing marks where the change started.
+    """
     report = ctx.report
     return Check("the change's commits are compared with its base", False, [report.note], blocking=False) if report.on_base else None
 
@@ -246,7 +275,9 @@ def diff_base(ctx: GateContext) -> Check | None:
 
 # @req REQ-FLOW-003
 def command_check(ctx: GateContext, key: str, name: str, optional: bool = False) -> Check:
-    """Run ``commands.<key>``; ``optional`` commands pass (as a warning) when not configured."""
+    """
+    Run ``commands.<key>``; ``optional`` commands pass (as a warning) when not configured.
+    """
     if optional and not ctx.has_command(key):
         return Check(name, True, ["not configured"], blocking=False)
     if not ctx.run_tests:
@@ -267,7 +298,8 @@ def tests_pass(ctx: GateContext) -> Check:
 
 
 def not_blocking(ctx: GateContext, tests: Check, why: str, at: int = 1, configured: bool | None = None) -> Check:
-    """A failing run of the suite (not a missing command) as a warning, saying why at ``at`` in the details (after the command line).
+    """
+    A failing run of the suite (not a missing command) as a warning, saying why at ``at`` in the details (after the command line).
 
     ``configured``: whether the command that ran is configured; by default, whether ``commands.test`` is.
     """
@@ -279,7 +311,8 @@ def not_blocking(ctx: GateContext, tests: Check, why: str, at: int = 1, configur
 
 @dataclass
 class TestPlan:
-    """What the review gate's test check runs.
+    """
+    What the review gate's test check runs.
 
     ``full``: the whole suite (``commands.test``); otherwise ``runs``, one per module (in workspace order)
     with its touched capabilities' test folders, sorted, for its ``commands.test_scoped``.
@@ -294,7 +327,8 @@ class TestPlan:
 
 # @req REQ-FLOW-017
 def test_plan(ctx: GateContext) -> TestPlan:
-    """The touched capabilities' test runs, or the full suite (see ``TestPlan``). Implements REQ-FLOW-017.
+    """
+    The touched capabilities' test runs, or the full suite (see ``TestPlan``). Implements REQ-FLOW-017.
 
     Touched: every delta's capability, and every capability whose code path or test folder holds a
     changed file (deleted ones included; without git, only the deltas count).
@@ -326,7 +360,8 @@ def test_plan(ctx: GateContext) -> TestPlan:
 
 # @req REQ-FLOW-017
 def test_folders_exist(ctx: GateContext) -> Check | None:
-    """A warning naming each touched test folder that does not exist (the full suite runs instead); ``None``
+    """
+    A warning naming each touched test folder that does not exist (the full suite runs instead); ``None``
     when none is missing or ``commands.test_scoped`` is not configured. Implements REQ-FLOW-017.
     """
     missing = ctx.test_plan.missing  # only computed when every touched capability's module has test_scoped
@@ -341,7 +376,9 @@ SCOPED_TESTS = f"the touched capabilities' tests pass (commands.{SCOPED_TEST_KEY
 
 # @req REQ-FLOW-017
 def scoped_tests_pass(ctx: GateContext, plan: TestPlan) -> Check:
-    """One run of ``commands.test_scoped`` per module of ``plan``, passing only when every run passes."""
+    """
+    One run of ``commands.test_scoped`` per module of ``plan``, passing only when every run passes.
+    """
     if not ctx.run_tests:
         return Check(SCOPED_TESTS, False, ["not run (--no-run); `specworks gate review` runs them"], blocking=False)
     details: list[str] = []
@@ -363,7 +400,9 @@ def scoped_tests_pass(ctx: GateContext, plan: TestPlan) -> Check:
 
 # @req REQ-FLOW-011, REQ-FLOW-017
 def review_tests_pass(ctx: GateContext) -> Check:
-    """The review gate's tests (``test_plan``): a warning under ``--allow-open`` while review.md has an open finding."""
+    """
+    The review gate's tests (``test_plan``): a warning under ``--allow-open`` while review.md has an open finding.
+    """
     plan = ctx.test_plan
     tests = tests_pass(ctx) if plan.full else scoped_tests_pass(ctx, plan)
     if not (ctx.allow_open and ctx.review.open):
@@ -381,13 +420,17 @@ CODE_COMMANDS = ("build", "typecheck", "lint")
 
 # @req REQ-FLOW-008
 def code_command(key: str, name: str) -> CheckFn:
-    """The code gate's run of ``commands.<key>`` (blocking when it fails), or ``None`` when it is not configured."""
+    """
+    The code gate's run of ``commands.<key>`` (blocking when it fails), or ``None`` when it is not configured.
+    """
     return lambda ctx: command_check(ctx, key, name) if ctx.has_command(key) else None
 
 
 # @req REQ-FLOW-008
 def no_code_commands(ctx: GateContext) -> Check | None:
-    """The code gate's warning when none of build, typecheck and lint is configured (the tests run in review), else ``None``."""
+    """
+    The code gate's warning when none of build, typecheck and lint is configured (the tests run in review), else ``None``.
+    """
     if any(ctx.has_command(key) for key in CODE_COMMANDS):
         return None
     return Check("build, typecheck and lint", False, ["no build, typecheck or lint command configured: the tests run in review"], blocking=False)

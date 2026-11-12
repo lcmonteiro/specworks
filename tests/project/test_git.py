@@ -1,4 +1,6 @@
-"""The git repository and a change's branch: requiring a repo, naming the branch, planning and creating it."""
+"""
+The git repository and a change's branch: requiring a repo, naming the branch, planning and creating it.
+"""
 
 import pytest
 
@@ -14,7 +16,9 @@ def identity(monkeypatch):
 
 @pytest.fixture
 def repo(tmp_path):
-    """A repository on main with one commit."""
+    """
+    A repository on main with one commit.
+    """
     init_repo(tmp_path)
     (tmp_path / "base.txt").write_text("base\n")
     git(tmp_path, "add", "-A")

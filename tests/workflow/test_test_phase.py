@@ -1,4 +1,6 @@
-"""Test phase support: commands config, task ticking and the specify/test gates."""
+"""
+Test phase support: commands config, task ticking and the specify/test gates.
+"""
 
 from helpers import REF, run_json, write_tests
 
@@ -59,7 +61,9 @@ def test_ac_tag_in_source_file_is_a_warning(project):
 
 
 def task_checks(data):
-    """The gate's checks on open tasks (not `specworks check`)."""
+    """
+    The gate's checks on open tasks (not `specworks check`).
+    """
     return [c for c in data["checks"] if "task" in c["name"] and "done" in c["name"]]
 
 

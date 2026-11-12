@@ -1,4 +1,6 @@
-"""The Copilot login: the device flow, its scopes, reuse, and no token shown (REQ-HARNESS-011), on a fake GitHub with no network and no waiting."""
+"""
+The Copilot login: the device flow, its scopes, reuse, and no token shown (REQ-HARNESS-011), on a fake GitHub with no network and no waiting.
+"""
 
 import logging
 import os
@@ -16,7 +18,9 @@ SESSION = "tid=secret"
 
 
 class Flow:
-    """A login run against a fake GitHub, a store in a temporary folder and a clock that sleeps by advancing."""
+    """
+    A login run against a fake GitHub, a store in a temporary folder and a clock that sleeps by advancing.
+    """
 
     def __init__(self, tmp_path, **github):
         self.base = tmp_path / "config"
@@ -162,7 +166,9 @@ def test_ac_harness_011_7_github_enterprise(flow):
 
 
 def run_and_collect(flow, capsys, caplog, run):
-    """Everything a run shows: its output, log lines, result, error and the error's traceback."""
+    """
+    Everything a run shows: its output, log lines, result, error and the error's traceback.
+    """
     shown = []
     with caplog.at_level(logging.DEBUG):
         try:

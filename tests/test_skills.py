@@ -218,7 +218,9 @@ def test_start_refuses_a_set_up_project_and_hands_existing_code_to_adopt():
 
 
 def start_step(text, start, end):
-    """One step of the start skill, from its heading up to the next one's."""
+    """
+    One step of the start skill, from its heading up to the next one's.
+    """
     return text.split(f"**{start}**", 1)[1].split(f"**{end}**", 1)[0]
 
 
@@ -270,7 +272,9 @@ ONBOARD_LINE = "New to specworks? Run **`/specworks-onboard`**: it tells you whe
 
 
 def raw_skill(name):
-    """A packaged skill's SKILL.md as written, its include lines not filled in."""
+    """
+    A packaged skill's SKILL.md as written, its include lines not filled in.
+    """
     return resources.files("specworks").joinpath("skills", name, "SKILL.md").read_text(encoding="utf-8")
 
 
@@ -371,7 +375,9 @@ def flat(text):
 
 
 def step(text, number):
-    """One numbered step of a skill's Steps, up to the next one."""
+    """
+    One numbered step of a skill's Steps, up to the next one.
+    """
     return text.split("## Steps", 1)[1].split(f"\n{number}. **", 1)[1].split(f"\n{number + 1}. **", 1)[0]
 
 
@@ -500,7 +506,9 @@ KNOWN_VALUES = {
 
 
 def code_in(text):
-    """The code spans and fenced-block lines of a markdown text."""
+    """
+    The code spans and fenced-block lines of a markdown text.
+    """
     code, inside = [], False
     for line in text.splitlines():
         if line.lstrip().startswith("```"):
@@ -594,7 +602,9 @@ def test_the_shared_committing_text_commits_with_specworks_commit():
 
 
 def raw_skill_file(path):
-    """A packaged skill file as written (no shared parts filled in), with its line wraps folded into spaces."""
+    """
+    A packaged skill file as written (no shared parts filled in), with its line wraps folded into spaces.
+    """
     return " ".join(resources.files("specworks").joinpath("skills", *path.split("/")).read_text(encoding="utf-8").split())
 
 

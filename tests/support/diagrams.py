@@ -1,4 +1,6 @@
-"""Helpers shared by the diagrams tests of several capabilities."""
+"""
+Helpers shared by the diagrams tests of several capabilities.
+"""
 
 import json
 
@@ -18,7 +20,9 @@ def run_json(*args):
 
 
 def make_fake_d2(tmp_path_factory, monkeypatch):
-    """A stand-in for d2 that records its arguments and writes a small SVG."""
+    """
+    A stand-in for d2 that records its arguments and writes a small SVG.
+    """
     folder = tmp_path_factory.mktemp("bin")
     script = fake_executable(
         folder,

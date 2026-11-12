@@ -1,4 +1,6 @@
-"""Helpers shared by the config_set tests of several capabilities."""
+"""
+Helpers shared by the config_set tests of several capabilities.
+"""
 
 from typer.testing import CliRunner
 
@@ -10,7 +12,9 @@ CONFIG = ".specworks/config.yml"
 
 
 def make_project(tmp_path, monkeypatch):
-    """A project with the default config written by `init`."""
+    """
+    A project with the default config written by `init`.
+    """
     monkeypatch.chdir(tmp_path)
     init_repo(tmp_path)
     result = runner.invoke(app, ["init", "--no-skills"])
@@ -23,7 +27,9 @@ def read(root):
 
 
 def entries(text, key):
-    """The uncommented lines of ``text`` that hold ``key:`` (at any indent)."""
+    """
+    The uncommented lines of ``text`` that hold ``key:`` (at any indent).
+    """
     return [line for line in text.splitlines() if line.strip().startswith(f"{key}:")]
 
 

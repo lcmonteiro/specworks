@@ -1,4 +1,6 @@
-"""The harness tests need the ``harness`` extra (chatinho and deepagents, Python 3.12+): without it the folder is skipped."""
+"""
+The harness tests need the ``harness`` extra (chatinho and deepagents, Python 3.12+): without it the folder is skipped.
+"""
 
 import importlib.util
 
@@ -15,7 +17,9 @@ else:
 
     @pytest.fixture
     def project(tmp_path, monkeypatch):
-        """A specworks project committed on `main`, checked out on the branch `add-x`, with no change yet."""
+        """
+        A specworks project committed on `main`, checked out on the branch `add-x`, with no change yet.
+        """
         return make_project(tmp_path, monkeypatch)
 
     @pytest.fixture
@@ -28,5 +32,7 @@ else:
 
     @pytest.fixture
     def change(project):
-        """The change `add-x` in phase refine, committed."""
+        """
+        The change `add-x` in phase refine, committed.
+        """
         return new_change(project)

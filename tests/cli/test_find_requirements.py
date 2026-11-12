@@ -1,4 +1,6 @@
-"""Finding living requirements by term: `find_requirements` and `spec find`."""
+"""
+Finding living requirements by term: `find_requirements` and `spec find`.
+"""
 
 import json
 

@@ -1,4 +1,6 @@
-"""Finding living requirements by term: `find_requirements` and `spec find`."""
+"""
+Finding living requirements by term: `find_requirements` and `spec find`.
+"""
 
 import pytest
 
@@ -144,7 +146,9 @@ MARKUP_WHEN = "The system SHALL refuse a reset link when the link expires."
 
 @pytest.fixture
 def markup_project(tmp_path, monkeypatch):
-    """user-auth only: its words say "requirement", "scenario" or "when" only in the markup, except REQ-AUTH-002's text."""
+    """
+    user-auth only: its words say "requirement", "scenario" or "when" only in the markup, except REQ-AUTH-002's text.
+    """
     monkeypatch.chdir(tmp_path)
     init_repo(tmp_path)
     assert runner.invoke(app, ["init", "--no-skills"]).exit_code == 0

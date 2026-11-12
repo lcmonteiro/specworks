@@ -1,4 +1,6 @@
-"""Writing review findings: the review.md writers and `specworks finding`."""
+"""
+Writing review findings: the review.md writers and `specworks finding`.
+"""
 
 import difflib
 
@@ -12,7 +14,9 @@ DECISION_FORM = "a decision starts with 'back to <step>:' (specify, design, impl
 
 
 def added_lines(old, new):
-    """The lines ``new`` adds to ``old``; fails if any line of ``old`` was changed or removed."""
+    """
+    The lines ``new`` adds to ``old``; fails if any line of ``old`` was changed or removed.
+    """
     a, b = old.splitlines(keepends=True), new.splitlines(keepends=True)
     added = []
     for tag, i1, i2, j1, j2 in difflib.SequenceMatcher(a=a, b=b, autojunk=False).get_opcodes():

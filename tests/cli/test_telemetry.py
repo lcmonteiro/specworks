@@ -1,4 +1,6 @@
-"""Telemetry in the CLI: the events commands record, `telemetry push`, and telemetry in `commit`, `context` and `status`."""
+"""
+Telemetry in the CLI: the events commands record, `telemetry push`, and telemetry in `commit`, `context` and `status`.
+"""
 
 import json
 import re
@@ -40,7 +42,9 @@ def write_events(folder, count):
 
 
 def make_planned(tmp_path, monkeypatch):
-    """The planned project opted in, as a git repo on its feature branch."""
+    """
+    The planned project opted in, as a git repo on its feature branch.
+    """
     project = make_planned_project(tmp_path, monkeypatch)
     opt_in(project)
     return make_repo(project, monkeypatch)
@@ -48,7 +52,9 @@ def make_planned(tmp_path, monkeypatch):
 
 @pytest.fixture
 def opted_in(tmp_path, monkeypatch):
-    """The commit project (change `add-login`) opted in, the config committed on the feature branch."""
+    """
+    The commit project (change `add-login`) opted in, the config committed on the feature branch.
+    """
     root = make_commit_project(tmp_path, monkeypatch)
     opt_in(root)
     subprocess.run(["git", "commit", "-q", "-am", "opt in"], cwd=root, check=True)
@@ -80,7 +86,9 @@ def test_ac_cli_017_2_each_commands_event(tmp_path, monkeypatch):
     counts: dict[str, int] = {}
 
     def step(folder_of, event, fields, *args):
-        """Run ``args``; the change's folder (``folder_of(data)``) gains exactly one ``event`` event with ``fields``."""
+        """
+        Run ``args``; the change's folder (``folder_of(data)``) gains exactly one ``event`` event with ``fields``.
+        """
         code, data = run_json(*args)
         assert code == 0, data
         folder = folder_of(data)

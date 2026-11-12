@@ -1,4 +1,6 @@
-"""GitHub Copilot: the device-flow login, the exchange for a session token that renews itself, and ``log_in``."""
+"""
+GitHub Copilot: the device-flow login, the exchange for a session token that renews itself, and ``log_in``.
+"""
 
 from __future__ import annotations
 
@@ -31,7 +33,8 @@ FALLBACK_LIFETIME = 1500.0
 
 # @req REQ-HARNESS-011
 class CopilotLoginError(SpecworksError):
-    """The login or the token exchange failed; the message carries a status code at most, never a token.
+    """
+    The login or the token exchange failed; the message carries a status code at most, never a token.
 
     ``login_again`` is True when the token was rejected (401/403). Implements REQ-HARNESS-011.
     """
@@ -43,7 +46,9 @@ class CopilotLoginError(SpecworksError):
 
 @contextmanager
 def _http(client: httpx.Client | None) -> Iterator[httpx.Client]:
-    """``client`` when given, else a client that lives for the block."""
+    """
+    ``client`` when given, else a client that lives for the block.
+    """
     if client is not None:
         yield client
         return
@@ -52,13 +57,17 @@ def _http(client: httpx.Client | None) -> Iterator[httpx.Client]:
 
 
 def _host(ghe_host: str) -> str:
-    """A bare host from a GitHub Enterprise host or URL; empty for github.com."""
+    """
+    A bare host from a GitHub Enterprise host or URL; empty for github.com.
+    """
     host = ghe_host.strip().rstrip("/")
     return host.split("://", 1)[1].split("/", 1)[0] if "://" in host else host
 
 
 def _expiry(value: Any, now: float) -> float:
-    """The epoch second a session token expires: ``value`` as given by the exchange (epoch or ISO 8601), else a fallback."""
+    """
+    The epoch second a session token expires: ``value`` as given by the exchange (epoch or ISO 8601), else a fallback.
+    """
     if isinstance(value, bool):
         return now + FALLBACK_LIFETIME
     if isinstance(value, (int, float)):
@@ -73,7 +82,8 @@ def _expiry(value: Any, now: float) -> float:
 
 # @req REQ-HARNESS-012
 class CopilotSession:
-    """The Copilot session token of a login, exchanged on demand and renewed 60 seconds before it expires.
+    """
+    The Copilot session token of a login, exchanged on demand and renewed 60 seconds before it expires.
 
     Implements REQ-HARNESS-012.
     """
@@ -92,7 +102,9 @@ class CopilotSession:
         return f"https://{host}/api/v3/copilot_internal/v2/token" if host else "https://api.github.com/copilot_internal/v2/token"
 
     def _exchange(self) -> None:
-        """Exchange the OAuth token for a session token. A rejected OAuth token is ``CopilotLoginError(login_again=True)``."""
+        """
+        Exchange the OAuth token for a session token. A rejected OAuth token is ``CopilotLoginError(login_again=True)``.
+        """
         rejected = False
         with _http(self._client) as client:
             for scheme in ("token", "Bearer"):
@@ -124,7 +136,9 @@ class CopilotSession:
         raise CopilotLoginError("GitHub's Copilot token exchange failed")  # pragma: no cover - the loop always returns or sets rejected
 
     def token(self) -> str:
-        """The cached session token, exchanged again when it is within 60 seconds of expiry. Implements REQ-HARNESS-012."""
+        """
+        The cached session token, exchanged again when it is within 60 seconds of expiry. Implements REQ-HARNESS-012.
+        """
         with self._lock:
             if not self._token or self._now() >= self._expires_at - REFRESH_MARGIN:
                 self._exchange()
@@ -132,7 +146,9 @@ class CopilotSession:
 
     @property
     def api_base(self) -> str:
-        """The API base from the last exchange (``https://api.githubcopilot.com`` when absent). Implements REQ-HARNESS-012."""
+        """
+        The API base from the last exchange (``https://api.githubcopilot.com`` when absent). Implements REQ-HARNESS-012.
+        """
         return self._api_base
 
 
@@ -145,7 +161,8 @@ def device_login(
     sleep: Callable[[float], None] = time.sleep,
     now: Callable[[], float] = time.time,
 ) -> Login:
-    """Run GitHub's device flow, calling ``prompt(uri, code)`` once; polls until authorised, denied or expired.
+    """
+    Run GitHub's device flow, calling ``prompt(uri, code)`` once; polls until authorised, denied or expired.
 
     Raises ``CopilotLoginError``. Implements REQ-HARNESS-011.
     """
@@ -198,7 +215,9 @@ def device_login(
 
 @dataclass(frozen=True)
 class LoginResult:
-    """Where a login was stored and whether a working one was reused."""
+    """
+    Where a login was stored and whether a working one was reused.
+    """
 
     scope: Scope
     reused: bool
@@ -217,7 +236,8 @@ def log_in(
     sleep: Callable[[float], None] = time.sleep,
     now: Callable[[], float] = time.time,
 ) -> LoginResult:
-    """Reuse the ``scope`` login when it still exchanges (unless ``force``), else run the device flow and store it.
+    """
+    Reuse the ``scope`` login when it still exchanges (unless ``force``), else run the device flow and store it.
 
     Raises ``CopilotLoginError``. Implements REQ-HARNESS-011.
     """

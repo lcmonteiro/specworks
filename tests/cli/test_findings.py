@@ -1,4 +1,6 @@
-"""Writing review findings: the review.md writers and `specworks finding`."""
+"""
+Writing review findings: the review.md writers and `specworks finding`.
+"""
 
 from helpers import REF, run_json, runner
 from specworks.cli import app

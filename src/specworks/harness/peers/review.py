@@ -1,4 +1,6 @@
-"""The peer ``review``: the ``specworks-review`` skill, comparing a change's code with its specs."""
+"""
+The peer ``review``: the ``specworks-review`` skill, comparing a change's code with its specs.
+"""
 
 from __future__ import annotations
 
@@ -9,4 +11,6 @@ from specworks.harness.peers.base import SkillPeer
 
 @connector("review")
 class ReviewPeer(SkillPeer):
-    """The ``specworks-review`` skill as a chat peer. Implements REQ-HARNESS-001."""
+    """
+    The ``specworks-review`` skill as a chat peer. Implements REQ-HARNESS-001.
+    """

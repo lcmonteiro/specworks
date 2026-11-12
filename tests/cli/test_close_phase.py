@@ -1,4 +1,6 @@
-"""Close phase: capability registration, delta merge into living specs, requirements index, archive."""
+"""
+Close phase: capability registration, delta merge into living specs, requirements index, archive.
+"""
 
 import json
 import re
@@ -58,7 +60,9 @@ def test_close_refuses_when_verify_fails(repo):
 
 @pytest.fixture
 def no_architecture(ready, tmp_path_factory):
-    """The ready change with its module's `docs/architecture.md` removed, and a test command that counts its runs outside the repo."""
+    """
+    The ready change with its module's `docs/architecture.md` removed, and a test command that counts its runs outside the repo.
+    """
     (ready / "docs/architecture.md").unlink()
     counter = tmp_path_factory.mktemp("runs") / "count"
     counter.write_text("")

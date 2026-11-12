@@ -1,4 +1,5 @@
-"""Run the project's own commands (``commands:`` in the config) from the right folder.
+"""
+Run the project's own commands (``commands:`` in the config) from the right folder.
 
 Gates and validate run the same commands again and again on the same code (each
 skill checks the previous phase's gate, then its own). ``cached_run`` reuses the
@@ -33,7 +34,9 @@ TAIL_LINES = 40
 
 
 class CommandError(SpecworksError):
-    """Raised when a command is not configured."""
+    """
+    Raised when a command is not configured.
+    """
 
 
 @dataclass
@@ -55,7 +58,8 @@ class RunResult:
 
 # @req REQ-PROJ-013, REQ-PROJ-028
 def run_command(ws: Workspace, module: Module, key: str, capture: bool = True, *, command: str | None = None) -> RunResult:
-    """Run ``commands.<key>`` (merged top level -> module) in the module's folder, through the shell.
+    """
+    Run ``commands.<key>`` (merged top level -> module) in the module's folder, through the shell.
 
     ``command``: an explicit command line to run under ``key`` instead of the configured one (the scoped
     tests, their ``{paths}`` filled in); without one, key ``test_scoped`` is refused before anything runs.
@@ -89,7 +93,9 @@ CACHE_SIZE = 50
 
 
 def _untracked_in_submodule(root: Path, excluded: list[str]) -> bool:
-    """A submodule holds untracked files: git lists none of them, so the tree cannot be fingerprinted."""
+    """
+    A submodule holds untracked files: git lists none of them, so the tree cannot be fingerprinted.
+    """
     if not (root / ".gitmodules").is_file():
         return False
     status = git(root, "status", "--porcelain=v2", "--ignore-submodules=none", "--", ".", *excluded)
@@ -99,7 +105,9 @@ def _untracked_in_submodule(root: Path, excluded: list[str]) -> bool:
 
 # @req REQ-PROJ-014
 def tree_fingerprint(ws: Workspace, module: Module, command: str) -> tuple[str, Path] | None:
-    """(digest of the command and the working tree, cache file), or None when git cannot tell or an untracked file cannot be read."""
+    """
+    (digest of the command and the working tree, cache file), or None when git cannot tell or an untracked file cannot be read.
+    """
     try:
         root = Path(git_text(module.root, "rev-parse", "--show-toplevel").strip())
         head = git_text(module.root, "rev-parse", "HEAD").strip()
@@ -135,7 +143,8 @@ def _load(cache: Path) -> dict:
 
 # @req REQ-PROJ-014, REQ-PROJ-028
 def cached_run(ws: Workspace, module: Module, key: str, reuse: bool = True, capture: bool = True, *, command: str | None = None) -> RunResult:
-    """``run_command``, reusing the result of a run on an identical working tree when there is one.
+    """
+    ``run_command``, reusing the result of a run on an identical working tree when there is one.
 
     ``reuse=False`` always runs, and records the result for the next caller on this tree.
     ``command``: an explicit command line to run under ``key`` (as ``run_command``); the reuse is keyed on it.
@@ -166,13 +175,16 @@ def cached_run(ws: Workspace, module: Module, key: str, reuse: bool = True, capt
 
 
 def _quote(arg: str) -> str:
-    """``arg`` quoted for the shell ``subprocess`` runs: cmd.exe on Windows (no single quotes there), sh elsewhere."""
+    """
+    ``arg`` quoted for the shell ``subprocess`` runs: cmd.exe on Windows (no single quotes there), sh elsewhere.
+    """
     return subprocess.list2cmdline([arg]) if os.name == "nt" else shlex.quote(arg)
 
 
 # @req REQ-PROJ-028
 def scoped_command(ws: Workspace, module: Module, folders: Sequence[Path]) -> str:
-    """The module's ``commands.test_scoped`` with every ``{paths}`` replaced by ``folders``.
+    """
+    The module's ``commands.test_scoped`` with every ``{paths}`` replaced by ``folders``.
 
     Each folder is made relative to the module's folder (POSIX separators) and quoted for the
     platform's shell, separated by spaces. Implements REQ-PROJ-028.
@@ -182,8 +194,10 @@ def scoped_command(ws: Workspace, module: Module, folders: Sequence[Path]) -> st
 
 
 def _relative_to_module(module: Module, folder: Path) -> str:
-    """``folder`` relative to the module's folder, POSIX separators, without resolving symlinks (a symlinked
-    test folder keeps its own path in the module), falling back to ``os.path.relpath`` when it is not under it."""
+    """
+    ``folder`` relative to the module's folder, POSIX separators, without resolving symlinks (a symlinked
+    test folder keeps its own path in the module), falling back to ``os.path.relpath`` when it is not under it.
+    """
     try:
         return folder.relative_to(module.root).as_posix()
     except ValueError:
@@ -192,7 +206,8 @@ def _relative_to_module(module: Module, folder: Path) -> str:
 
 # @req REQ-PROJ-028
 def run_scoped(ws: Workspace, module: Module, folders: Sequence[Path], reuse: bool = True) -> RunResult:
-    """Run the module's scoped tests for ``folders`` (``scoped_command``) in its folder, through ``cached_run``.
+    """
+    Run the module's scoped tests for ``folders`` (``scoped_command``) in its folder, through ``cached_run``.
 
     A result is reused only for the same folders on an identical tree. Implements REQ-PROJ-028.
     """

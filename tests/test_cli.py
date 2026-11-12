@@ -10,7 +10,9 @@ def project(tmp_path, monkeypatch):
 
 
 def test_cli_output_is_plain_even_when_ci_forces_colour(tmp_path, monkeypatch):
-    """CI's GITHUB_ACTIONS=true (or FORCE_COLOR=1) makes rich colour typer's errors, which splits text such as `--dir`."""
+    """
+    CI's GITHUB_ACTIONS=true (or FORCE_COLOR=1) makes rich colour typer's errors, which splits text such as `--dir`.
+    """
     monkeypatch.setenv("GITHUB_ACTIONS", "true")
     monkeypatch.setenv("FORCE_COLOR", "1")
     monkeypatch.chdir(tmp_path)

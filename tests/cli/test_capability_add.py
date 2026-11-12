@@ -1,4 +1,6 @@
-"""`capability add --create`: the capability's code folder created with an empty `.gitkeep`."""
+"""
+`capability add --create`: the capability's code folder created with an empty `.gitkeep`.
+"""
 
 import pytest
 from typer.testing import CliRunner
@@ -13,7 +15,9 @@ CONFIG = ".specworks/config.yml"
 
 @pytest.fixture
 def project(tmp_path, monkeypatch):
-    """A project with the default config written by `init` and no capability."""
+    """
+    A project with the default config written by `init` and no capability.
+    """
     monkeypatch.chdir(tmp_path)
     init_repo(tmp_path)
     result = runner.invoke(app, ["init", "--no-skills"])
@@ -22,7 +26,9 @@ def project(tmp_path, monkeypatch):
 
 
 def registered(root, module=None):
-    """The capability names of a module's config (the top level by default)."""
+    """
+    The capability names of a module's config (the top level by default).
+    """
     ws = load_workspace(root)
     target = ws.module(module) if module is not None else ws.current
     return set(target.config.capabilities)

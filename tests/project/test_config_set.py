@@ -16,7 +16,9 @@ def write(root, text):
 
 
 def with_commands(root, test, lint):
-    """The default config with `test` and `lint` set, as text."""
+    """
+    The default config with `test` and `lint` set, as text.
+    """
     write(root, read(root).replace("commands:\n  test:\n  lint:\n", f"commands:\n  test: {test}\n  lint: {lint}\n"))
 
 

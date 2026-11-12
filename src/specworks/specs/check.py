@@ -1,4 +1,6 @@
-"""`specworks check`: the planning artifacts of a change are well formed (proposal, delta specs, tasks)."""
+"""
+`specworks check`: the planning artifacts of a change are well formed (proposal, delta specs, tasks).
+"""
 
 from __future__ import annotations
 
@@ -53,12 +55,16 @@ class Delta:
     living: SpecDoc | None
 
     def behaviour_changed(self, req: Requirement) -> bool:
-        """A MODIFIED block says something else than the living one, beyond its title."""
+        """
+        A MODIFIED block says something else than the living one, beyond its title.
+        """
         old = self.living.by_id().get(req.id or "") if self.living else None
         return req.section == "MODIFIED" and old is not None and _behaviour(old) != _behaviour(req)
 
     def dropped_criteria(self, req: Requirement) -> list[Scenario]:
-        """Living criteria that go with ``req`` at close: those a MODIFIED block leaves out, every one of a REMOVED requirement."""
+        """
+        Living criteria that go with ``req`` at close: those a MODIFIED block leaves out, every one of a REMOVED requirement.
+        """
         if req.section not in ("MODIFIED", "REMOVED") or self.living is None:
             return []
         old = self.living.by_id().get(req.id or "")
@@ -68,7 +74,9 @@ class Delta:
 
 @dataclass
 class ChangeSpecs:
-    """Everything parsed from a change, shared by validate and trace."""
+    """
+    Everything parsed from a change, shared by validate and trace.
+    """
 
     deltas: list[Delta] = field(default_factory=list)
     tasks: list[Task] = field(default_factory=list)
@@ -76,7 +84,9 @@ class ChangeSpecs:
     issues: list[Issue] = field(default_factory=list)
 
     def known_ids(self) -> set[str]:
-        """Every ID in the deltas and in the living specs they change."""
+        """
+        Every ID in the deltas and in the living specs they change.
+        """
         return {i for d in self.deltas for doc in (d.doc, d.living) if doc for i in doc.ids()}
 
     def requirements(self, *sections: str) -> list[tuple[Delta, Requirement]]:
@@ -84,7 +94,9 @@ class ChangeSpecs:
         return [(d, r) for d in self.deltas for r in d.doc.requirements if r.section in wanted]
 
     def fingerprints(self) -> dict[str, str]:
-        """Requirement ID -> a hash of its block (section, title, text, criteria), blank lines and spacing aside."""
+        """
+        Requirement ID -> a hash of its block (section, title, text, criteria), blank lines and spacing aside.
+        """
         return {
             req.id: hashlib.sha256(f"{req.section}\n{_normalized(req.markdown())}".encode()).hexdigest()[:12]
             for _, req in self.requirements()
@@ -136,7 +148,9 @@ def _active_others(ws: Workspace, change: Change) -> list[tuple[str, Change]]:
 
 @dataclass
 class Claim:
-    """An ID that another active change also puts in a delta section."""
+    """
+    An ID that another active change also puts in a delta section.
+    """
 
     change: str
     earlier: bool  # that change started before this one
@@ -144,7 +158,9 @@ class Claim:
 
 # @req REQ-SPECS-007
 def _other_changes(ws: Workspace, change: Change, cap: CapabilityRef) -> dict[str, dict[str, Claim]]:
-    """For each delta section, the IDs that other active changes put there for the same capability -> their claim."""
+    """
+    For each delta section, the IDs that other active changes put there for the same capability -> their claim.
+    """
     claimed: dict[str, dict[str, Claim]] = {section: {} for section in DELTA_SECTIONS}
     for name, other in _active_others(ws, change):
         doc = read_spec(other.path / cap.delta_path)
@@ -155,7 +171,9 @@ def _other_changes(ws: Workspace, change: Change, cap: CapabilityRef) -> dict[st
 
 
 def other_deltas(ws: Workspace, change: Change) -> list[tuple[CapabilityRef, SpecDoc]]:
-    """The delta specs of every other active change (those whose capability cannot be resolved are left out)."""
+    """
+    The delta specs of every other active change (those whose capability cannot be resolved are left out).
+    """
     found = []
     for _, other in _active_others(ws, change):
         for path in delta_files(other):
@@ -170,7 +188,9 @@ REMOVAL_FIELDS = ("Reason", "Migration")
 
 
 def _removal_fields(description: str) -> set[str]:
-    """Labels of the ``Reason: ...`` / ``**Migration**: ...`` lines (bold and a bullet allowed) that have text after them."""
+    """
+    Labels of the ``Reason: ...`` / ``**Migration**: ...`` lines (bold and a bullet allowed) that have text after them.
+    """
     found = set()
     for line in description.splitlines():
         label, colon, text = line.replace("*", "").strip().removeprefix("- ").partition(":")
@@ -218,7 +238,9 @@ def _check_registration(ws: Workspace, delta: Delta, file: str, issues: list[Iss
 
 # @req REQ-SPECS-005
 def _check_header(delta: Delta, req: Requirement, file: str, seen: dict[str, str], issues: list[Issue]) -> str | None:
-    """The requirement's ID once its header is sound, None when it has no ID (nothing else can be checked)."""
+    """
+    The requirement's ID once its header is sound, None when it has no ID (nothing else can be checked).
+    """
     cap = delta.cap
     if req.id is None:
         issues.append(Issue.error(file, req.line, f"requirement header must be '### Requirement: REQ-{cap.prefix}-NNN <title>'"))
@@ -401,7 +423,9 @@ SUITE_COMMAND = "specworks run test"
 
 # @req REQ-SPECS-015
 def _check_code_tasks_wait(tasks: list[Task], file: str, issues: list[Issue]) -> None:
-    """Warn about a [code] task whose verification waits on the test half: it names a [test] task's number, or the suite."""
+    """
+    Warn about a [code] task whose verification waits on the test half: it names a [test] task's number, or the suite.
+    """
     test_nums = [task.num for task in tasks if task.half == "test"]
     for task in tasks:
         if task.half != "code":

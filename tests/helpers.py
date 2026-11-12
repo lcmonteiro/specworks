@@ -1,4 +1,6 @@
-"""Shared helpers for tests that need a planned change (proposal, delta spec and tasks)."""
+"""
+Shared helpers for tests that need a planned change (proposal, delta spec and tasks).
+"""
 
 import json
 import os
@@ -31,12 +33,16 @@ def git(root, *args):
 
 
 def init_repo(root):
-    """An empty git repository on `main`: a project must be inside one."""
+    """
+    An empty git repository on `main`: a project must be inside one.
+    """
     git(root, "init", "-q", "-b", "main")
 
 
 def remove_repo(root):
-    """Take the folder out of its repository, for the tests of behaviour without git."""
+    """
+    Take the folder out of its repository, for the tests of behaviour without git.
+    """
 
     def writable(func, path, _excinfo):
         os.chmod(path, stat.S_IWRITE)  # git's object files are read-only on Windows
@@ -46,7 +52,9 @@ def remove_repo(root):
 
 
 def on_a_branch(root, monkeypatch):
-    """Commit everything on `main` as the baseline and go on on a feature branch: files changed from here on are the change's."""
+    """
+    Commit everything on `main` as the baseline and go on on a feature branch: files changed from here on are the change's.
+    """
     for key, value in {"GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t", "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@t"}.items():
         monkeypatch.setenv(key, value)
     git(root, "add", "-A")
@@ -78,7 +86,9 @@ def write_tests(root, *acs):
 
 
 def set_saved_tools(root, value):
-    """Write ``tools: <value>`` as the only ``tools:`` entry of the config at ``root`` (``None`` removes it), as text, without save_tools."""
+    """
+    Write ``tools: <value>`` as the only ``tools:`` entry of the config at ``root`` (``None`` removes it), as text, without save_tools.
+    """
     config = root / ".specworks/config.yml"
     text = re.sub(r"^tools:.*\n(?:[ \t]+-.*\n)*", "", config.read_text(encoding="utf-8"), flags=re.MULTILINE)
     config.write_text(text if value is None else text + f"tools: {value}\n", encoding="utf-8")
@@ -88,7 +98,9 @@ PASS = f'"{sys.executable}" -c "print(\'ok\')"'
 
 
 def make_repo(project, monkeypatch):
-    """The planned project as a git repo: baseline on main, the change's work on a feature branch."""
+    """
+    The planned project as a git repo: baseline on main, the change's work on a feature branch.
+    """
     for key, value in {"GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t", "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@t"}.items():
         monkeypatch.setenv(key, value)
     cfg = project / ".specworks/config.yml"
@@ -109,7 +121,8 @@ def make_repo(project, monkeypatch):
 
 
 def fake_executable(folder, name, script):
-    """A program ``folder/name`` that runs the Python ``script`` with this interpreter, on any OS.
+    """
+    A program ``folder/name`` that runs the Python ``script`` with this interpreter, on any OS.
 
     POSIX runs a shebang file; Windows does not, so there it is a ``name.cmd`` wrapper.
     """

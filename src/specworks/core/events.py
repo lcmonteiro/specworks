@@ -1,4 +1,5 @@
-"""A change's event log: one JSON line per command that acted on it, kept git-ignored in the change's folder.
+"""
+A change's event log: one JSON line per command that acted on it, kept git-ignored in the change's folder.
 
 ``events.jsonl`` holds the events, ``events.sent`` how many of its lines were already sent,
 and a ``.gitignore`` there names both. Sending them is ``tools/langfuse.py``'s business.
@@ -21,7 +22,8 @@ IGNORE_FILE = ".gitignore"
 
 # @req REQ-PROJ-030
 def record_event(change: Change, enabled: bool, event: str, **fields: object) -> None:
-    """Append one event line (``at`` in UTC, ``event``, the change's ``phase``, then ``fields``) to the change's log.
+    """
+    Append one event line (``at`` in UTC, ``event``, the change's ``phase``, then ``fields``) to the change's log.
 
     Writes nothing when ``enabled`` is false; never raises. Implements REQ-PROJ-030.
     """
@@ -39,7 +41,8 @@ def record_event(change: Change, enabled: bool, event: str, **fields: object) ->
 
 # @req REQ-PROJ-030
 def ensure_ignored(folder: Path, names: Sequence[str]) -> None:
-    """Make ``folder``'s ``.gitignore`` name each of ``names``: created when missing, each missing name added on its own line.
+    """
+    Make ``folder``'s ``.gitignore`` name each of ``names``: created when missing, each missing name added on its own line.
 
     Keeps the file's other lines; never raises. Implements REQ-PROJ-030.
     """
@@ -59,7 +62,8 @@ def ensure_ignored(folder: Path, names: Sequence[str]) -> None:
 
 # @req REQ-INTEG-009
 def read_unsent(change: Change) -> tuple[int, list[dict]]:
-    """The number of lines already sent, and the unsent events in order, each with its line number as ``line``.
+    """
+    The number of lines already sent, and the unsent events in order, each with its line number as ``line``.
 
     A line that is not a JSON object is skipped. Implements REQ-INTEG-009.
     """
@@ -82,12 +86,16 @@ def read_unsent(change: Change) -> tuple[int, list[dict]]:
 
 # @req REQ-INTEG-009
 def mark_sent(change: Change, count: int) -> None:
-    """Add ``count`` to the change's ``events.sent``. Implements REQ-INTEG-009."""
+    """
+    Add ``count`` to the change's ``events.sent``. Implements REQ-INTEG-009.
+    """
     (change.path / SENT_FILE).write_text(f"{_sent_count(change) + count}\n", encoding="utf-8")
 
 
 def _sent_count(change: Change) -> int:
-    """The number in ``events.sent``; 0 when it is missing or not a number."""
+    """
+    The number in ``events.sent``; 0 when it is missing or not a number.
+    """
     try:
         return max(int((change.path / SENT_FILE).read_text(encoding="utf-8").strip()), 0)
     except (OSError, ValueError):
@@ -96,11 +104,15 @@ def _sent_count(change: Change) -> int:
 
 # @req REQ-PROJ-031
 def trace_id(module_label: str, change: Change) -> str:
-    """The change's stable trace ID: 32 hex characters from its module label, name and creation time. Implements REQ-PROJ-031."""
+    """
+    The change's stable trace ID: 32 hex characters from its module label, name and creation time. Implements REQ-PROJ-031.
+    """
     return hashlib.sha256(f"{module_label}\n{change.name}\n{change.created}".encode()).hexdigest()[:32]
 
 
 # @req REQ-PROJ-031
 def session_id(ref: str) -> str:
-    """The change's session ID: its ref. Implements REQ-PROJ-031."""
+    """
+    The change's session ID: its ref. Implements REQ-PROJ-031.
+    """
     return ref

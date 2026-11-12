@@ -1,4 +1,5 @@
-"""Install the packaged agent skills into a project, for each supported AI tool.
+"""
+Install the packaged agent skills into a project, for each supported AI tool.
 
 Skills follow the Agent Skills format (``<name>/SKILL.md`` with ``name`` and
 ``description`` frontmatter), which Claude Code and GitHub Copilot both read:
@@ -67,7 +68,9 @@ PROMPTS_DIR = ".github/prompts"
 
 
 class ToolError(SpecworksError):
-    """Raised for unknown tool ids, or a skill that cannot be filled in."""
+    """
+    Raised for unknown tool ids, or a skill that cannot be filled in.
+    """
 
 
 def packaged_skills() -> list[str]:
@@ -86,7 +89,8 @@ PLACEHOLDER_RE = re.compile(r"\{\{(?P<key>\w+)\}\}")
 
 # @req REQ-INTEG-007
 def fill_includes(text: str, skill: str, shared: Callable[[str], str]) -> str:
-    """``text`` (the SKILL.md of ``skill``) with each include line replaced by ``shared(name)``, its ``{{key}}`` filled in.
+    """
+    ``text`` (the SKILL.md of ``skill``) with each include line replaced by ``shared(name)``, its ``{{key}}`` filled in.
 
     Raises ``ToolError`` naming the skill, the include and the key for a ``{{key}}`` left unfilled,
     a key the shared file does not use, or a key given twice. Implements REQ-INTEG-007.
@@ -116,7 +120,9 @@ def fill_includes(text: str, skill: str, shared: Callable[[str], str]) -> str:
 
 # @req REQ-INTEG-005, REQ-INTEG-007
 def read_skill(name: str) -> str:
-    """A packaged skill's SKILL.md with its shared parts filled in."""
+    """
+    A packaged skill's SKILL.md with its shared parts filled in.
+    """
     skills = resources.files("specworks").joinpath("skills")
     text = skills.joinpath(name, "SKILL.md").read_text(encoding="utf-8")
     return fill_includes(text, name, lambda include: skills.joinpath("_shared", f"{include}.md").read_text(encoding="utf-8"))
@@ -124,7 +130,8 @@ def read_skill(name: str) -> str:
 
 # @req REQ-INTEG-005
 def split_frontmatter(text: str) -> tuple[list[tuple[str, str]], str]:
-    """``---``-delimited frontmatter as ordered (key, lines) pairs, and the body after it.
+    """
+    ``---``-delimited frontmatter as ordered (key, lines) pairs, and the body after it.
 
     An indented line continues the key above it (a folded ``description: >``), so a key is kept or dropped whole.
     """
@@ -149,7 +156,8 @@ def render_skill(text: str, tool: Tool) -> str:
 
 # @req REQ-INTEG-004
 def parse_tools(value: str, root: Path) -> list[Tool]:
-    """``auto`` (default), ``all`` or a comma list such as ``claude,copilot``.
+    """
+    ``auto`` (default), ``all`` or a comma list such as ``claude,copilot``.
 
     ``auto`` picks the tools the project already uses; when none is detected it
     installs for every supported tool.
@@ -172,7 +180,8 @@ def parse_tools(value: str, root: Path) -> list[Tool]:
 
 # @req REQ-INTEG-004, REQ-CLI-009
 def resolve_tools(root: Path, saved: list[str] | None, given: str | None) -> tuple[list[Tool], bool]:
-    """The tools to install for, in ``TOOLS`` order, and whether to save them in the config.
+    """
+    The tools to install for, in ``TOOLS`` order, and whether to save them in the config.
 
     ``given`` (``--tools``) wins and is saved; else the ``saved`` tool IDs; else the
     installed tools, else ``auto``, saved.
@@ -188,7 +197,8 @@ def resolve_tools(root: Path, saved: list[str] | None, given: str | None) -> tup
 
 # @req REQ-INTEG-005
 def skill_folders(tools: list[Tool]) -> list[tuple[Tool, str]]:
-    """The fewest skills folders every tool in ``tools`` reads, each with the tool whose frontmatter keys its copies keep.
+    """
+    The fewest skills folders every tool in ``tools`` reads, each with the tool whose frontmatter keys its copies keep.
 
     Tools are taken in ``TOOLS`` order; a tool gets its preferred folder only when no folder
     picked so far is in its ``reads``.
@@ -205,13 +215,17 @@ RETIRED_NAMES: tuple[str, ...] = ("sw-refine",)
 
 
 def _stale(name: str, shipped: set[str]) -> bool:
-    """A specworks skill name (its prefix, or a retired one) that this version does not ship; any other name is not ours."""
+    """
+    A specworks skill name (its prefix, or a retired one) that this version does not ship; any other name is not ours.
+    """
     return (name.startswith("specworks-") or name in RETIRED_NAMES) and name not in shipped
 
 
 # @req REQ-INTEG-005
 def remove_stale_skills(root: Path, tools: list[Tool]) -> list[Path]:
-    """Delete the specworks skills ``tools`` no longer need (not shipped, or in an unused folder) and specworks prompt files; return what was deleted."""
+    """
+    Delete the specworks skills ``tools`` no longer need (not shipped, or in an unused folder) and specworks prompt files; return what was deleted.
+    """
     removed = []
     for rel in _stale_files(root, tools):
         path = root / rel
@@ -225,7 +239,9 @@ def remove_stale_skills(root: Path, tools: list[Tool]) -> list[Path]:
 
 # @req REQ-INTEG-005
 def install_skills(root: Path, tools: list[Tool]) -> list[Path]:
-    """Write every packaged skill to the folders ``tools`` read; return written files."""
+    """
+    Write every packaged skill to the folders ``tools`` read; return written files.
+    """
     written = []
     for rel, text in expected_skills(tools).items():
         dest = root / rel
@@ -237,7 +253,9 @@ def install_skills(root: Path, tools: list[Tool]) -> list[Path]:
 
 @dataclass(frozen=True)
 class SkillFile:
-    """An installed skill (or a prompt file left by an older version) that differs from what this version installs."""
+    """
+    An installed skill (or a prompt file left by an older version) that differs from what this version installs.
+    """
 
     path: str  # relative to the workspace root, with /
     reason: Literal["changed", "missing", "stale"]
@@ -245,7 +263,9 @@ class SkillFile:
 
 @dataclass(frozen=True)
 class SkillsState:
-    """How the installed skills compare with this version's: current, outdated (with the files) or none installed."""
+    """
+    How the installed skills compare with this version's: current, outdated (with the files) or none installed.
+    """
 
     state: Literal["current", "outdated", "none"]
     files: list[SkillFile] = field(default_factory=list)
@@ -253,7 +273,9 @@ class SkillsState:
 
 # @req REQ-INTEG-005, REQ-INTEG-006
 def expected_skills(tools: list[Tool]) -> dict[str, str]:
-    """Every skill file this version installs for ``tools``, one copy per folder of ``skill_folders``: relative path -> text."""
+    """
+    Every skill file this version installs for ``tools``, one copy per folder of ``skill_folders``: relative path -> text.
+    """
     files = {}
     for tool, folder in skill_folders(tools):
         for name in packaged_skills():
@@ -267,7 +289,9 @@ def _ours(name: str) -> bool:
 
 # @req REQ-INTEG-006
 def installed_tools(root: Path) -> list[Tool]:
-    """The tools whose skills folder holds a specworks skill."""
+    """
+    The tools whose skills folder holds a specworks skill.
+    """
     def has_skills(tool: Tool) -> bool:
         folder = root / tool.skills_dir
         return folder.is_dir() and any(p.is_dir() and _ours(p.name) for p in folder.iterdir())
@@ -277,7 +301,8 @@ def installed_tools(root: Path) -> list[Tool]:
 
 # @req REQ-INTEG-005, REQ-INTEG-006
 def _stale_files(root: Path, tools: list[Tool]) -> list[str]:
-    """Relative paths of the specworks skill folders ``tools`` no longer need, and of every specworks prompt file.
+    """
+    Relative paths of the specworks skill folders ``tools`` no longer need, and of every specworks prompt file.
 
     Every tool's folder is searched: a specworks skill is stale when this version does not ship it,
     or when its folder is not one ``skill_folders`` picks for ``tools``. Other names are never listed.
@@ -297,7 +322,9 @@ def _stale_files(root: Path, tools: list[Tool]) -> list[str]:
 
 
 def _differs(path: Path, text: str) -> Literal["changed", "missing"] | None:
-    """``missing`` or ``changed`` when the file at ``path`` is not ``text``; None when it is."""
+    """
+    ``missing`` or ``changed`` when the file at ``path`` is not ``text``; None when it is.
+    """
     if not path.is_file():
         return "missing"
     return None if path.read_text(encoding="utf-8") == text else "changed"
@@ -305,7 +332,8 @@ def _differs(path: Path, text: str) -> Literal["changed", "missing"] | None:
 
 # @req REQ-INTEG-006
 def skills_state(root: Path, saved: list[str] | None = None) -> SkillsState:
-    """Compare the installed skills of the project's tools with what this version installs.
+    """
+    Compare the installed skills of the project's tools with what this version installs.
 
     The tools are the ``saved`` tool IDs of the config, else every tool that has skills installed;
     with no specworks skill installed in any tool's folder, the state is ``none``.
@@ -322,7 +350,8 @@ def skills_state(root: Path, saved: list[str] | None = None) -> SkillsState:
 
 # @req REQ-CLI-009
 def update_skills(root: Path, tools: list[Tool]) -> tuple[list[Path], list[Path]]:
-    """Write the skill files of ``tools`` that differ or are missing and remove the stale ones; return (updated, removed).
+    """
+    Write the skill files of ``tools`` that differ or are missing and remove the stale ones; return (updated, removed).
 
     Every skill is filled in before anything is removed or written, so a skill that cannot be filled in changes nothing.
     """

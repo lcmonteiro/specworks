@@ -1,4 +1,6 @@
-"""Telemetry in the project: the config block, the change's event log and its trace identity."""
+"""
+Telemetry in the project: the config block, the change's event log and its trace identity.
+"""
 
 import json
 import re

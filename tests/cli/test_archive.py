@@ -1,4 +1,6 @@
-"""Archived changes: abandon, list --archived, status, and names an archived change keeps."""
+"""
+Archived changes: abandon, list --archived, status, and names an archived change keeps.
+"""
 
 import shutil
 

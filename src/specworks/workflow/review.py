@@ -1,4 +1,5 @@
-"""Drift between a change's specs and its code, as far as the CLI can see it.
+"""
+Drift between a change's specs and its code, as far as the CLI can see it.
 
 Two directions:
 
@@ -71,7 +72,9 @@ class ReviewReport:
 
     @property
     def deleted_files(self) -> list[str]:
-        """Source and test files deleted on the branch: deleted code is reviewed like changed code."""
+        """
+        Source and test files deleted on the branch: deleted code is reviewed like changed code.
+        """
         return [f.path for f in self.changed or [] if f.kind == "deleted" and f.was in ("source", "test")]
 
     def findings(self) -> dict[str, list[str]]:
@@ -116,7 +119,9 @@ def detect_base(cwd: Path) -> str:
 
 # @req REQ-FLOW-009
 def change_start(ws: Workspace, change: Change) -> str | None:
-    """The parent of the newest commit that added the change's metadata (an archived change may have had its name), if any."""
+    """
+    The parent of the newest commit that added the change's metadata (an archived change may have had its name), if any.
+    """
     meta = (change.path / META_FILE).relative_to(ws.root).as_posix()
     added = git_text(ws.root, "log", "--diff-filter=A", "--format=%H", "-1", "--", meta).strip()
     if not added:
@@ -129,7 +134,9 @@ def change_start(ws: Workspace, change: Change) -> str | None:
 
 # @req REQ-FLOW-009
 def _changed_names(ws: Workspace, since: str) -> list[Path]:
-    """Every path git reports as changed since the commit ``since`` (committed, uncommitted, untracked), resolved."""
+    """
+    Every path git reports as changed since the commit ``since`` (committed, uncommitted, untracked), resolved.
+    """
     git_root = Path(git_text(ws.root, "rev-parse", "--show-toplevel").strip()).resolve()
     # -z: NUL-separated and never quoted, so names with non-ASCII characters or newlines come through as they are.
     names = set(git_text(ws.root, "diff", "--name-only", "-z", since).split("\0"))
@@ -138,18 +145,24 @@ def _changed_names(ws: Workspace, since: str) -> list[Path]:
 
 
 def changed_paths(ws: Workspace, since: str) -> list[str]:
-    """Files changed since the commit ``since`` (committed, uncommitted, untracked), relative to the workspace."""
+    """
+    Files changed since the commit ``since`` (committed, uncommitted, untracked), relative to the workspace.
+    """
     return [ws.rel(path) for path in _changed_names(ws, since) if path.is_file() and path.is_relative_to(ws.root)]
 
 
 # @req REQ-FLOW-009
 def deleted_paths(ws: Workspace, since: str) -> list[str]:
-    """Files changed since the commit ``since`` that no longer exist, relative to the workspace."""
+    """
+    Files changed since the commit ``since`` that no longer exist, relative to the workspace.
+    """
     return [ws.rel(path) for path in _changed_names(ws, since) if not path.exists() and path.is_relative_to(ws.root)]
 
 
 def changed_file_kind(ws: Workspace, rel: str) -> str | None:
-    """The ``ChangedFile.kind`` of a changed file (``source``, ``test`` or ``other``); None inside a workflow folder (specs, changes)."""
+    """
+    The ``ChangedFile.kind`` of a changed file (``source``, ``test`` or ``other``); None inside a workflow folder (specs, changes).
+    """
     path = ws.root / rel
     for module in ws.modules():
         if path.is_relative_to(module.root / module.config.dir):
@@ -162,7 +175,9 @@ def changed_file_kind(ws: Workspace, rel: str) -> str | None:
 
 # @req REQ-FLOW-009
 def review_change(analysis: Analysis, base: str | None = None) -> ReviewReport:
-    """Drift candidates of the analysed change; changed files come from git against ``base``."""
+    """
+    Drift candidates of the analysed change; changed files come from git against ``base``.
+    """
     ws = analysis.ws
     report = ReviewReport(analysis)
     try:
@@ -240,7 +255,9 @@ LINE_STARTS = (re.compile(_BULLET), re.compile(_BULLET + r"\*\*[A-Za-z][\w' -]*(
 
 # @req REQ-FLOW-010
 def _line_start(line: str, form: re.Pattern[str]) -> re.Match[str] | None:
-    """``form`` where ``line``'s text starts (after the bullet, or after a bold label), else None: later on the line it is text."""
+    """
+    ``form`` where ``line``'s text starts (after the bullet, or after a bold label), else None: later on the line it is text.
+    """
     for start in LINE_STARTS:
         if (prefix := start.match(line)) and (found := form.match(line, prefix.end())):
             return found
@@ -249,8 +266,10 @@ def _line_start(line: str, form: re.Pattern[str]) -> re.Match[str] | None:
 
 # @req REQ-FLOW-010
 def _route(line: str) -> tuple[str, bool] | None:
-    """The step a ``back to <step>:`` starting ``line``'s text routes to, and whether it is ``back to design only:``;
-    None when it has none. ``only`` after any other step is not a route."""
+    """
+    The step a ``back to <step>:`` starting ``line``'s text routes to, and whether it is ``back to design only:``;
+    None when it has none. ``only`` after any other step is not a route.
+    """
     back = _line_start(line, BACK_RE)
     if back is None:
         return None
@@ -260,14 +279,18 @@ def _route(line: str) -> tuple[str, bool] | None:
 
 # @req REQ-FLOW-010
 def _done_in(line: str) -> str | None:
-    """The step of a ``done in <step>:`` starting ``line``'s text, else None."""
+    """
+    The step of a ``done in <step>:`` starting ``line``'s text, else None.
+    """
     carried = _line_start(line, DONE_RE)
     return carried.group("phase").lower() if carried else None
 
 
 # @req REQ-FLOW-010
 def _next_step(done_in: str, design_only: bool = False) -> str:
-    """The step a finding needs once ``done_in`` carried out its proposal: review after design for a design-only finding."""
+    """
+    The step a finding needs once ``done_in`` carried out its proposal: review after design for a design-only finding.
+    """
     return "review" if design_only and done_in == "design" else NEXT_STEP[done_in]
 
 ACCOUNTED_SECTION = "changed files without tags"
@@ -305,13 +328,17 @@ class ReviewDoc:
         return [f for f in self.findings if not f.done]
 
     def accounts_for(self, path: str) -> bool:
-        """``path`` appears as a whole path under "Changed files without tags" (``src/a.py``, not ``src/a.py.bak``)."""
+        """
+        ``path`` appears as a whole path under "Changed files without tags" (``src/a.py``, not ``src/a.py.bak``).
+        """
         return re.search(rf"(?<![\w./-]){re.escape(path)}(?![\w./-])", self.accounted) is not None
 
 
 # @req REQ-FLOW-010
 def parse_review(text: str) -> ReviewDoc:
-    """Findings and the "Changed files without tags" section of review.md; HTML comments and code fences are ignored."""
+    """
+    Findings and the "Changed files without tags" section of review.md; HTML comments and code fences are ignored.
+    """
     doc = ReviewDoc(exists=True)
     current: Finding | None = None
     section = ""
@@ -389,8 +416,10 @@ CHECKBOX_MARK_RE = re.compile(r"\[[ xX]?\]")
 
 
 class FindingError(SpecworksError):
-    """A refused write to review.md: an unknown finding, type or step, an empty text, a decision in another form,
-    or an edit that does not read back; review.md is left as it was."""
+    """
+    A refused write to review.md: an unknown finding, type or step, an empty text, a decision in another form,
+    or an edit that does not read back; review.md is left as it was.
+    """
 
 
 @dataclass
@@ -402,7 +431,9 @@ class _Block:
 
 @dataclass
 class _Review:
-    """review.md split into lines (each with its own ending), where its findings and the Findings section are."""
+    """
+    review.md split into lines (each with its own ending), where its findings and the Findings section are.
+    """
 
     path: Path
     lines: list[str]
@@ -418,7 +449,9 @@ class _Review:
 
 # @req REQ-FLOW-016
 def _locate(path: Path, text: str) -> _Review:
-    """Where each finding's block is, read the way ``parse_review`` reads it (comments blanked, fences ignored)."""
+    """
+    Where each finding's block is, read the way ``parse_review`` reads it (comments blanked, fences ignored).
+    """
     review = _Review(path, text.splitlines(keepends=True), "\r\n" if "\r\n" in text else "\n")
     lines = blank_comments(text).splitlines()
     current: _Block | None = None
@@ -473,7 +506,9 @@ def _find(review: _Review, finding_id: str) -> tuple[str, _Block]:
 
 
 def _insert(review: _Review, at: int, new: list[str]) -> None:
-    """Insert ``new`` lines before line ``at``, each ending with the file's own newline."""
+    """
+    Insert ``new`` lines before line ``at``, each ending with the file's own newline.
+    """
     if at > 0 and not review.lines[at - 1].endswith(("\n", "\r")):
         review.lines[at - 1] += review.newline
     review.lines[at:at] = [line + review.newline for line in new]
@@ -484,7 +519,9 @@ def _tick(review: _Review, block: _Block) -> None:
 
 
 def _write(review: _Review, original: str, fid: str, expect: dict[str, object]) -> Finding:
-    """Write the edited review.md only when ``fid`` reads back as ``expect`` and every other finding as before."""
+    """
+    Write the edited review.md only when ``fid`` reads back as ``expect`` and every other finding as before.
+    """
     before, after = parse_review(original) if original else ReviewDoc(exists=False), parse_review(review.text)
     others_before = [(f.id, f.done, f.type, f.text, f.phase, f.done_in, f.design_only) for f in before.findings if f.id != fid]
     others_after = [(f.id, f.done, f.type, f.text, f.phase, f.done_in, f.design_only) for f in after.findings if f.id != fid]
@@ -505,7 +542,9 @@ def _write(review: _Review, original: str, fid: str, expect: dict[str, object]) 
 
 
 def _new_review(change: Change) -> str:
-    """The review.md template with the change's name, its headings and guidance comments, without its example lines."""
+    """
+    The review.md template with the change's name, its headings and guidance comments, without its example lines.
+    """
     template = read_template(REVIEW_FILE).replace("<!-- change ref -->", change.name, 1)
     lines = template.splitlines(keepends=True)
     kept = [line for line, blanked in zip(lines, blank_comments(template).splitlines(), strict=True) if not LIST_ITEM_RE.match(blanked)]
@@ -514,7 +553,8 @@ def _new_review(change: Change) -> str:
 
 # @req REQ-FLOW-016
 def add_finding(change: Change, kind: str, text: str, proposal: str) -> Finding:
-    """Add an open finding of type ``kind`` (one of ``TYPE_PHASE``) with the next free ID and its Proposal line under
+    """
+    Add an open finding of type ``kind`` (one of ``TYPE_PHASE``) with the next free ID and its Proposal line under
     ``## Findings``, creating review.md from its template when missing; the finding as ``read_review`` reads it after.
 
     Implements REQ-FLOW-016.
@@ -544,7 +584,8 @@ def add_finding(change: Change, kind: str, text: str, proposal: str) -> Finding:
 
 # @req REQ-FLOW-016
 def decide_finding(change: Change, finding_id: str, decision: str) -> Finding:
-    """Write the finding's Decision (``back to <step>: ...``, ``back to design only: ...`` or ``accepted: ...``), replacing the one it has;
+    """
+    Write the finding's Decision (``back to <step>: ...``, ``back to design only: ...`` or ``accepted: ...``), replacing the one it has;
     ``accepted`` ticks it. The finding as ``read_review`` reads it after.
 
     Implements REQ-FLOW-016.
@@ -577,7 +618,8 @@ def decide_finding(change: Change, finding_id: str, decision: str) -> Finding:
 
 # @req REQ-FLOW-016
 def mark_finding_done(change: Change, finding_id: str, step: str, text: str) -> Finding:
-    """Add ``done in <step>: <text>`` to the finding (``step``: specify, design, implement, test or code);
+    """
+    Add ``done in <step>: <text>`` to the finding (``step``: specify, design, implement, test or code);
     the finding as ``read_review`` reads it after.
 
     Implements REQ-FLOW-016.
@@ -596,7 +638,8 @@ def mark_finding_done(change: Change, finding_id: str, step: str, text: str) -> 
 
 # @req REQ-FLOW-016
 def close_finding(change: Change, finding_id: str, text: str) -> Finding:
-    """Tick the finding and add ``confirmed in review: <text>``; the finding as ``read_review`` reads it after.
+    """
+    Tick the finding and add ``confirmed in review: <text>``; the finding as ``read_review`` reads it after.
 
     Implements REQ-FLOW-016.
     """

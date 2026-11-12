@@ -1,4 +1,6 @@
-"""Helpers shared by the propose tests of several capabilities."""
+"""
+Helpers shared by the propose tests of several capabilities.
+"""
 
 import json
 

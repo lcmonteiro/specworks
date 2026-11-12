@@ -1,4 +1,6 @@
-"""Helpers shared by the findings tests of several capabilities."""
+"""
+Helpers shared by the findings tests of several capabilities.
+"""
 
 from helpers import REF
 from specworks.cli.output import resolve_change

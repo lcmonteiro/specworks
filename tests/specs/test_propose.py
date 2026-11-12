@@ -480,7 +480,9 @@ REQUIRES_THE_SUITE = (
 
 
 def check_tasks(change, text):
-    """Write tasks.md, run `check`, and return (exit code, error messages, warnings as (line, message))."""
+    """
+    Write tasks.md, run `check`, and return (exit code, error messages, warnings as (line, message)).
+    """
     (change / "tasks.md").write_text(text)
     code, data = run_json("check", "--change", "add-password-reset")
     warnings = [(i["line"], i["message"]) for i in data["issues"] if i["level"] == "warning" and i["file"] == TASKS_FILE_REL]

@@ -1,4 +1,6 @@
-"""Close phase: capability registration, delta merge into living specs, requirements index, archive."""
+"""
+Close phase: capability registration, delta merge into living specs, requirements index, archive.
+"""
 
 import re
 import shutil

@@ -1,4 +1,5 @@
-"""Capabilities as seen by specs: references, ID prefixes, delta paths and living specs.
+"""
+Capabilities as seen by specs: references, ID prefixes, delta paths and living specs.
 
 A change writes one delta spec per capability it touches, at
 ``specs/<module>/<capability>/spec.md`` inside the change folder, where
@@ -54,7 +55,9 @@ class CapabilityRef:
 
     @property
     def delta_path(self) -> str:
-        """Path of this capability's delta spec, relative to a change folder."""
+        """
+        Path of this capability's delta spec, relative to a change folder.
+        """
         module = f"{self.module.name}/" if self.module.name else ""
         return f"{SPECS_DIR}/{module}{self.name}/{SPEC_FILE}"
 
@@ -69,7 +72,9 @@ class CapabilityRef:
 
 @dataclass
 class RequirementMatch:
-    """A living requirement that mentions a searched term (REQ-SPECS-016)."""
+    """
+    A living requirement that mentions a searched term (REQ-SPECS-016).
+    """
 
     capability: str  # the capability's ref, ``billing:<name>`` in a module
     id: str | None
@@ -81,7 +86,9 @@ class RequirementMatch:
 
 @dataclass
 class BroadTerm:
-    """A searched term that matches more than half of the living requirements searched (REQ-SPECS-016)."""
+    """
+    A searched term that matches more than half of the living requirements searched (REQ-SPECS-016).
+    """
 
     term: str  # as given
     matches: int  # requirements it matched
@@ -90,7 +97,9 @@ class BroadTerm:
 
 @dataclass
 class RequirementSearch:
-    """The result of searching the living requirements by term (REQ-SPECS-016)."""
+    """
+    The result of searching the living requirements by term (REQ-SPECS-016).
+    """
 
     matches: list[RequirementMatch]
     broad: list[BroadTerm]  # in the order of the terms
@@ -104,7 +113,8 @@ def capability_ref(module: Module, name: str) -> CapabilityRef:
 
 # @req REQ-SPECS-010
 def resolve_ref(ws: Workspace, ref: str) -> CapabilityRef:
-    """``billing:invoices`` is exact; a bare name prefers the current module, then a unique match.
+    """
+    ``billing:invoices`` is exact; a bare name prefers the current module, then a unique match.
 
     A bare name found nowhere is a new capability of the current module.
     """
@@ -122,7 +132,9 @@ def resolve_ref(ws: Workspace, ref: str) -> CapabilityRef:
 
 # @req REQ-SPECS-008
 def resolve_delta(ws: Workspace, change: Change, spec_file: Path) -> CapabilityRef:
-    """Capability a delta spec file belongs to, from its path under ``specs/``."""
+    """
+    Capability a delta spec file belongs to, from its path under ``specs/``.
+    """
     parts = spec_file.relative_to(change.path / SPECS_DIR).parts
     if len(parts) < 2 or parts[-1] != SPEC_FILE:
         raise ConfigError(f"delta specs must be at {SPECS_DIR}/[<module>/]<capability>/{SPEC_FILE}")
@@ -149,7 +161,9 @@ def read_spec(path: Path | None) -> SpecDoc | None:
 
 
 def history_lines(path: Path | None) -> list[str]:
-    """The ``- ...`` lines under ``## History`` in a requirements.md (none when it does not exist)."""
+    """
+    The ``- ...`` lines under ``## History`` in a requirements.md (none when it does not exist).
+    """
     if path is None or not path.is_file():
         return []
     text = read_text(path)
@@ -160,7 +174,9 @@ def history_lines(path: Path | None) -> list[str]:
 
 
 def history_ids(cap: CapabilityRef) -> set[str]:
-    """Requirement IDs of ``cap`` that its requirements.md History says were ever added, modified or removed."""
+    """
+    Requirement IDs of ``cap`` that its requirements.md History says were ever added, modified or removed.
+    """
     living = cap.living_spec()
     lines = history_lines(living.parent / REQUIREMENTS_FILE if living else None)
     return {i for line in lines for i in find_ids(line) if cap.id_matches(i)}
@@ -172,7 +188,8 @@ HISTORY_LINE_RE = re.compile(r"^- (?P<date>\d{4}-\d{2}-\d{2})(?: (?P<time>\d{2}:
 # @req REQ-SPECS-006
 # @req REQ-SPECS-017
 def modified_since(cap: CapabilityRef, since: str, exclude: str = "") -> dict[str, str]:
-    """IDs a close at or after ``since`` (YYYY-MM-DD, a time may follow) MODIFIED, per requirements.md History -> ``<change> on <date>``.
+    """
+    IDs a close at or after ``since`` (YYYY-MM-DD, a time may follow) MODIFIED, per requirements.md History -> ``<change> on <date>``.
 
     A History line and ``since`` are compared by date and time when both have a time, else by day.
     The History lines of the change ``exclude`` are skipped (REQ-SPECS-017).
@@ -198,7 +215,8 @@ def modified_since(cap: CapabilityRef, since: str, exclude: str = "") -> dict[st
 
 # @req REQ-SPECS-017
 def own_ids(cap: CapabilityRef, change_ref: str) -> set[str]:
-    """IDs of ``cap`` that a History line naming ``change_ref`` lists as ADDED, MODIFIED or REMOVED: the change merged them at an earlier close.
+    """
+    IDs of ``cap`` that a History line naming ``change_ref`` lists as ADDED, MODIFIED or REMOVED: the change merged them at an earlier close.
 
     Implements REQ-SPECS-017.
     """
@@ -213,13 +231,17 @@ def own_ids(cap: CapabilityRef, change_ref: str) -> set[str]:
 
 # @req REQ-SPECS-006
 def retired_ids(cap: CapabilityRef) -> set[str]:
-    """IDs that were used by ``cap`` and removed: never to be added again."""
+    """
+    IDs that were used by ``cap`` and removed: never to be added again.
+    """
     living = read_spec(cap.living_spec())
     return history_ids(cap) - (set(living.by_id()) if living else set())
 
 
 def used_numbers(ws: Workspace, cap: CapabilityRef) -> set[int]:
-    """Requirement numbers taken by the living spec, its History (removed ones too) and every active change's delta."""
+    """
+    Requirement numbers taken by the living spec, its History (removed ones too) and every active change's delta.
+    """
     numbers: set[int] = {requirement_number(i) for i in history_ids(cap)}
     docs = [read_spec(cap.living_spec())]
     for module in ws.modules():
@@ -238,7 +260,9 @@ def next_id(ws: Workspace, cap: CapabilityRef) -> str:
 
 
 def describe(ws: Workspace, cap: CapabilityRef, with_scenarios: bool = True) -> dict:
-    """Capability summary for agents: where its delta goes, its ID prefix and current requirements."""
+    """
+    Capability summary for agents: where its delta goes, its ID prefix and current requirements.
+    """
     living = cap.living_spec()
     doc = read_spec(living)
     data: dict[str, Any] = {
@@ -274,7 +298,8 @@ _MARKUP_RE = re.compile(r"^\s*(?:###\s+Requirement:|####\s+Scenario:|(?:[-*]\s+)
 
 # @req REQ-SPECS-016
 def search_requirements(ws: Workspace, terms: list[str]) -> RequirementSearch:
-    """Search the living requirements for ``terms``, leaving the spec's markup out, and report the broad terms.
+    """
+    Search the living requirements for ``terms``, leaving the spec's markup out, and report the broad terms.
 
     Implements REQ-SPECS-016. Every living requirement whose title, text or scenarios contain any of ``terms``,
     literal and ignoring case, in capability order, then requirement order, each listed once with its first matching
@@ -315,5 +340,7 @@ def search_requirements(ws: Workspace, terms: list[str]) -> RequirementSearch:
 
 # @req REQ-SPECS-016
 def find_requirements(ws: Workspace, terms: list[str]) -> list[RequirementMatch]:
-    """The matches of ``search_requirements``: every living requirement that mentions any of ``terms``, markup left out."""
+    """
+    The matches of ``search_requirements``: every living requirement that mentions any of ``terms``, markup left out.
+    """
     return search_requirements(ws, terms).matches

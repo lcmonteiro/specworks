@@ -1,4 +1,6 @@
-"""A capability's test folder, the scoped test command, and the review gate running only the touched capabilities' tests."""
+"""
+A capability's test folder, the scoped test command, and the review gate running only the touched capabilities' tests.
+"""
 
 import pytest
 
@@ -78,7 +80,9 @@ TASKS_INVOICES = TASKS + """
 
 
 def tag(kind, ids):
-    """A tag line for a sample project's file, built here so this repo's own trace does not read it."""
+    """
+    A tag line for a sample project's file, built here so this repo's own trace does not read it.
+    """
     return f"# @{kind} {ids}\n"
 
 
@@ -91,7 +95,8 @@ AUTH_AND_BILLING = "  auth:\n    path: src/auth\n    prefix: AUTH\n  billing:\n 
 
 
 def make_project(root, monkeypatch, log, *, scoped=True, auth_folder=True, billing_fails=True):
-    """Capabilities auth (src/auth) and billing (src/billing), each with a test folder under tests/, committed on main;
+    """
+    Capabilities auth (src/auth) and billing (src/billing), each with a test folder under tests/, committed on main;
     on a feature branch, a change with a delta spec for auth, its code in src/auth and its test in tests/auth
     (in tests/ when ``auth_folder`` is false, and then tests/auth does not exist). billing's committed test fails
     when ``billing_fails``.

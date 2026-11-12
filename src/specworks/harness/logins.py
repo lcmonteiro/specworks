@@ -1,4 +1,6 @@
-"""The stored Copilot login: one global file and one file per project, in the user's config dir, never in a project."""
+"""
+The stored Copilot login: one global file and one file per project, in the user's config dir, never in a project.
+"""
 
 from __future__ import annotations
 
@@ -16,7 +18,8 @@ Scope = Literal["global", "local"]
 
 @dataclass(frozen=True)
 class Login:
-    """A GitHub OAuth token and its GitHub Enterprise host (empty for github.com); the token is hidden from ``repr``.
+    """
+    A GitHub OAuth token and its GitHub Enterprise host (empty for github.com); the token is hidden from ``repr``.
 
     Implements REQ-HARNESS-011.
     """
@@ -27,7 +30,8 @@ class Login:
 
 # @req REQ-HARNESS-011
 def config_dir(env: Mapping[str, str] | None = None) -> Path:
-    """The folder of the stored logins: ``$XDG_CONFIG_HOME`` or ``~/.config`` (``%APPDATA%`` on Windows), then ``specworks/copilot``.
+    """
+    The folder of the stored logins: ``$XDG_CONFIG_HOME`` or ``~/.config`` (``%APPDATA%`` on Windows), then ``specworks/copilot``.
 
     ``env`` is ``os.environ`` when None. Implements REQ-HARNESS-011.
     """
@@ -42,7 +46,9 @@ def config_dir(env: Mapping[str, str] | None = None) -> Path:
 
 # @req REQ-HARNESS-011
 class LoginStore:
-    """Reads and writes the logins under ``base`` (``config_dir()`` when None). Implements REQ-HARNESS-011."""
+    """
+    Reads and writes the logins under ``base`` (``config_dir()`` when None). Implements REQ-HARNESS-011.
+    """
 
     def __init__(self, base: Path | None = None) -> None:
         self.base = config_dir() if base is None else base
@@ -56,7 +62,9 @@ class LoginStore:
         return self.base / "projects" / f"{key}.json"
 
     def save(self, scope: Scope, root: Path | None, login: Login) -> None:
-        """Write the ``scope`` login (``root`` is the project root, used by ``local``), owner-only, by rename. Implements REQ-HARNESS-011."""
+        """
+        Write the ``scope`` login (``root`` is the project root, used by ``local``), owner-only, by rename. Implements REQ-HARNESS-011.
+        """
         path = self._path(scope, root)
         path.parent.mkdir(parents=True, exist_ok=True)
         for folder in (self.base, path.parent):
@@ -72,7 +80,9 @@ class LoginStore:
             raise
 
     def load(self, scope: Scope, root: Path | None) -> Login | None:
-        """The ``scope`` login, or None when there is none. Implements REQ-HARNESS-011."""
+        """
+        The ``scope`` login, or None when there is none. Implements REQ-HARNESS-011.
+        """
         try:
             data = json.loads(self._path(scope, root).read_text(encoding="utf-8"))
         except (OSError, ValueError):
@@ -84,6 +94,8 @@ class LoginStore:
         return Login(token, host if isinstance(host, str) else "")
 
     def find(self, root: Path | None) -> Login | None:
-        """The local login of ``root`` when there is one, else the global one, else None. Implements REQ-HARNESS-011."""
+        """
+        The local login of ``root`` when there is one, else the global one, else None. Implements REQ-HARNESS-011.
+        """
         local = self.load("local", root) if root is not None else None
         return local or self.load("global", None)

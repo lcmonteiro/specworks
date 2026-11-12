@@ -1,4 +1,6 @@
-"""The peer ``design``: the ``specworks-design`` skill, agreeing a change's API and creating it as stubs."""
+"""
+The peer ``design``: the ``specworks-design`` skill, agreeing a change's API and creating it as stubs.
+"""
 
 from __future__ import annotations
 
@@ -9,4 +11,6 @@ from specworks.harness.peers.base import SkillPeer
 
 @connector("design")
 class DesignPeer(SkillPeer):
-    """The ``specworks-design`` skill as a chat peer. Implements REQ-HARNESS-001."""
+    """
+    The ``specworks-design`` skill as a chat peer. Implements REQ-HARNESS-001.
+    """

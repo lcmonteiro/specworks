@@ -1,4 +1,6 @@
-"""The harness's model, read from the SPECWORKS_MODEL_* variables, and a key that is never shown (REQ-HARNESS-010)."""
+"""
+The harness's model, read from the SPECWORKS_MODEL_* variables, and a key that is never shown (REQ-HARNESS-010).
+"""
 
 import asyncio
 import logging
@@ -56,7 +58,9 @@ def test_ac_harness_010_2_a_missing_variable(variable, value, tmp_path):
 
 
 def auth_error():
-    """The error an OpenAI-compatible API raises for a bad key, with the key in its message as some APIs echo it."""
+    """
+    The error an OpenAI-compatible API raises for a bad key, with the key in its message as some APIs echo it.
+    """
     import httpx
 
     response = httpx.Response(401, request=httpx.Request("POST", "http://127.0.0.1:9/v1/chat/completions"))
@@ -108,7 +112,9 @@ LOGIN_SETTINGS = {MODEL_NAME: "gpt-test"}
 
 
 class StoredLogin:
-    """A fake GitHub, a store in a temporary folder and a project root, for building a model from a stored login."""
+    """
+    A fake GitHub, a store in a temporary folder and a project root, for building a model from a stored login.
+    """
 
     def __init__(self, tmp_path, **github):
         self.base = tmp_path / "config"
@@ -203,7 +209,9 @@ def test_ac_harness_010_4_a_logins_tokens_never_shown(project, ws, login, caplog
     assert OAUTH not in repr(model) and session_token not in repr(model)
 
     def echoing_error():
-        """An API error that repeats both tokens, as some APIs echo the credentials they got."""
+        """
+        An API error that repeats both tokens, as some APIs echo the credentials they got.
+        """
         import httpx
 
         response = httpx.Response(401, request=httpx.Request("POST", "http://127.0.0.1:9/v1/chat/completions"))

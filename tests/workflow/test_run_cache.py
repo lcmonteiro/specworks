@@ -1,4 +1,6 @@
-"""Gates reuse the result of a project command run on an identical working tree."""
+"""
+Gates reuse the result of a project command run on an identical working tree.
+"""
 
 import pytest
 
