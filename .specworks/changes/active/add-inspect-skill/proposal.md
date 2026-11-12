@@ -18,8 +18,18 @@ change scenario by scenario and leave its notes as findings the flow follows.
     file changed since the close;
   - up to three one-line hints per step, only when there is something to say
     (a question to ask, an unclear or ambiguous spot, alternative hypotheses);
-  - every step ends with the next options (next scenario, add a note, show
-    more, jump to a requirement);
+  - the blocks (scenarios, tasks, or a doubt spanning several) are walked
+    from the most to the least uncertain and important, each step saying in
+    one line why it is where it is (uncertainty: hints, a weak-looking test,
+    code changed since the close, a design decision not obviously followed;
+    importance: ADDED or MODIFIED behaviour, error and security paths, how
+    much code depends on it);
+  - every step ends with the next options (next block, add a note, show
+    more, come back later, jump to a requirement, stop here);
+  - a circle the reviewer breaks when they want: after the last block it
+    returns to the deferred ones (`come back later`), with what was learned
+    since, until none is left or the reviewer stops; stopping is a normal
+    end, and the summary says how many blocks were walked out of how many;
   - for a change marked skip-specs, it walks the tasks instead, each with the
     part of the diff that carries it out.
 - A third check artifact, **inspection** (`inspection.md`, letter `I`,
