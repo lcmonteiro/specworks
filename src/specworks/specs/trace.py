@@ -41,7 +41,8 @@ from functools import cached_property
 from pathlib import Path
 from typing import Any
 
-from specworks.core.changes import Change
+from specworks.core.changes import ARCHIVE_DIR, META_FILE, Change
+from specworks.core.git import GitError, git_text
 from specworks.core.workspace import Module, Workspace
 from specworks.specs.check import ChangeSpecs, Issue, check_change, other_deltas
 from specworks.specs.specfile import id_prefix, table_cell
@@ -105,13 +106,33 @@ class ChangedSince:
     note: str = ""
 
 
+# @req REQ-SPECS-018
 def changed_since_close(ws: Workspace, change: Change) -> ChangedSince:
     """The files changed since the close of the archived ``change``: the close commit is the last commit that added its
-    archive folder, and the files are those ``git diff --name-only <commit>`` lists.
+    archive folder (its ``.change.yaml``, which only the close adds: an inspection.md written later adds a file to the
+    folder too), and the files are those ``git diff --name-only <commit>`` lists, with the untracked ones.
 
     Implements REQ-SPECS-018.
     """
-    raise NotImplementedError("changed_since_close")
+    meta = f"{ws.rel(change.path)}/{META_FILE}"
+    try:
+        # --no-renames: the close moves the folder, which git would otherwise read as a rename, not an addition.
+        commit = git_text(ws.root, "log", "-1", "--no-renames", "--diff-filter=A", "--format=%H", "--", meta).strip()
+        if not commit:
+            return ChangedSince(None, frozenset(), f"no commit adds {meta}: cannot tell what changed since the close")
+        changed = git_text(ws.root, "-c", "core.quotepath=off", "diff", "--name-only", "--relative", commit, "--")
+        untracked = git_text(ws.root, "-c", "core.quotepath=off", "ls-files", "--others", "--exclude-standard")
+    except GitError as exc:
+        reason = str(exc).splitlines()[0] if str(exc) else "git failed"
+        return ChangedSince(None, frozenset(), f"cannot tell what changed since the close ({reason})")
+    return ChangedSince(commit, frozenset(line for line in (changed + "\n" + untracked).splitlines() if line.strip()))
+
+
+# @req REQ-SPECS-018
+def mark_changed(rows: list[Row], since: ChangedSince) -> None:
+    """Set each row's ``changed``: its test and code locations (``file:line``) whose file is in ``since.files``."""
+    for row in rows:
+        row.changed = [where for where in row.tests + row.code if where.rsplit(":", 1)[0] in since.files]
 
 
 # @req REQ-SPECS-011
@@ -288,8 +309,11 @@ def unknown_tags(specs: ChangeSpecs, tags: list[Tag], others: set[str], prefixes
 
 # @req REQ-SPECS-012
 def to_markdown(change_ref: str, rows: list[Row], found: dict[str, list[str]]) -> str:
+    """The matrix as markdown; a location in its row's ``changed`` (a closed change's, REQ-SPECS-018) is marked ``(changed since close)``."""
+    changed = {where for r in rows for where in r.changed}
+
     def cell(items: list[str]) -> str:
-        return "<br>".join(f"`{i}`" for i in items) if items else "—"
+        return "<br>".join(f"`{i}`" + (" (changed since close)" if i in changed else "") for i in items) if items else "—"
 
     out = [
         f"# Traceability: {change_ref}",
@@ -357,9 +381,23 @@ class Analysis:
     def tags(self) -> list[Tag]:
         return scan_tags(self.ws)
 
+    @property
+    def archived(self) -> bool:
+        """The change is in its module's archive folder (closed or abandoned): its trace marks what changed since."""
+        return self.change.path.parent.name == ARCHIVE_DIR
+
+    # @req REQ-SPECS-018
+    @cached_property
+    def changed_since(self) -> ChangedSince | None:
+        """What changed since an archived change's close; None for an active change."""
+        return changed_since_close(self.ws, self.change) if self.archived else None
+
     @cached_property
     def rows(self) -> list[Row]:
-        return build_matrix(self.specs, self.tags)
+        rows = build_matrix(self.specs, self.tags)
+        if self.changed_since is not None:
+            mark_changed(rows, self.changed_since)
+        return rows
 
     @cached_property
     def gaps(self) -> dict[str, list[str]]:

@@ -858,3 +858,45 @@ def test_the_reopen_skill_carries_its_pinned_wording(phrase):
 @pytest.mark.parametrize("name", ["specworks-refine", "specworks-specify"])
 def test_refine_and_specify_start_from_the_latest_reopen_reason(name):
     assert REOPEN_LINE in flat(read_skill(name))
+
+
+# --- inspect: walk a change, open or closed, with a reviewer, and keep the notes as findings (add-inspect-skill) -----------
+# The skills have no capability, so these tests are untagged and assert only the pinned phrases of design.md, verbatim.
+INSPECT = "specworks-inspect"
+
+
+def test_inspect_is_a_packaged_skill_scoped_to_specworks():
+    assert INSPECT in packaged_skills()
+    meta = raw_skill(INSPECT).split("---\n")[1]
+    assert f"name: {INSPECT}\n" in meta
+    use_when = flat(meta.split("description:", 1)[1].split("allowed-tools:", 1)[0]).split("Use ", 1)[1]
+    assert "specworks" in use_when and '"specworks inspect"' in use_when
+
+
+@pytest.mark.parametrize("phrase", ["come back later", "stop here", "most uncertain and important first", "at most three hints", "No notes: nothing is written"])
+def test_the_inspect_skill_carries_its_pinned_wording(phrase):
+    assert phrase in flat(read_skill(INSPECT)).replace("**", "")
+
+
+def test_inspect_writes_only_through_specworks_finding_and_commit():
+    # Read-only git, no Write or Edit: the reviewer's notes reach inspection.md only through the read-back finding writers.
+    allowed = re.search(r"^allowed-tools: (.*)$", raw_skill(INSPECT), re.MULTILINE).group(1)
+    tools = {tool.strip() for tool in allowed.split(",")}
+    assert set(allowed_commands(INSPECT)) == {"specworks", "uv run specworks", UVX, "git diff", "git log", "git status"}
+    assert not tools & {"Write", "Edit"}
+    text = flat(read_skill(INSPECT))
+    assert "--artifact inspection" in text and "specworks finding close I<n>" in text
+    assert 'specworks commit --change "<ref>" --message "<ref>: inspect"' in text
+    assert "trace --write" in text and "Never run `trace --write`" in text
+
+
+def test_inspect_hands_its_notes_to_review_or_reopen():
+    text = flat(read_skill(INSPECT))
+    assert "1. /specworks-review <ref> (recommended)" in text
+    assert "1. /specworks-reopen <ref> (recommended): with inspection.md as the problem" in text
+
+
+def test_review_marks_the_inspection_findings_it_checked_done_in_review():
+    # Without the mark an I finding never reaches inspect, and review must never tick it: inspect confirms it.
+    text = flat(read_skill("specworks-review"))
+    assert 'specworks finding done I<n> --in review --change "<ref>"' in text

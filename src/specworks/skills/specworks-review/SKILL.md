@@ -157,6 +157,17 @@ design alone.
    it no build cycle and says `next: validate`. A `V<n>` finding whose work
    is not done yet is a finding of this review: add it to review.md as usual.
 
+   **Findings of inspection.md**: an `I<n>` finding is a reviewer's note from
+   `/specworks-inspect`. Treat it as a `V<n>`: answer a `question` (or turn
+   it into a finding of this review), check the work a step marked `done in
+   <step>:` under the others, and record what you checked, never ticking it:
+   ```bash
+   specworks finding done I<n> --in review --change "<ref>" "<what was checked or answered>"
+   ```
+   It is then routed to inspect, which confirms and ticks it on its next
+   run; `cycle` gives it no build cycle. An `I<n>` finding whose work is not
+   done yet is a finding of this review: add it to review.md as usual.
+
 5. **Write `review.md`**
 
    ```bash

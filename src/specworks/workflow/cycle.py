@@ -1,7 +1,7 @@
 """Build cycles: after a review or a validate, the steps the next cycle runs, and the change's next state.
 
 Each open finding of a check artifact (``- [ ] R<n> **<type>** ...`` in review.md,
-``V<n>`` in validation.md) needs work in
+``V<n>`` in validation.md, ``I<n>`` in inspection.md) needs work in
 one step: its Decision's ``back to <step>:`` when it says so, otherwise the
 step its type belongs to (see ``findings.parse_findings``). A finding for design
 needs design and then both halves of implement (test and code, in parallel),
@@ -26,13 +26,17 @@ WAITING_STEPS = ("validate", "inspect")
 def next_cycle(change: Change) -> dict:
     """The next build cycle for a reviewed change: the phase it starts at and the steps it runs, from the open findings
     of every check artifact, and ``next``, the change's next state (the phase the cycle starts at; with no cycle, validate
-    while a finding waits for it, else the phase after the change's current one; None after close)."""
+    while a finding waits for it, else the phase after the change's current one; None after close). A finding waiting
+    for inspect starts no cycle and leaves the next state as it is: inspection is not a phase.
+
+    Implements REQ-FLOW-012.
+    """
     docs = read_all_findings(change)
     review = next(doc for doc in docs if doc.artifact.id == "review")
     pending = [f for doc in docs for f in doc.open]
     found = [f.to_dict() for f in pending]
-    # A finding routed to validate (``done in review:``) waits for validate to confirm it: no cycle runs for it.
-    work = [f for f in pending if f.phase != "validate"]
+    # A finding routed to validate or inspect (``done in review:``) waits for that step to confirm it: no cycle runs for it.
+    work = [f for f in pending if f.phase not in WAITING_STEPS]
     needed = {f.phase for f in work}
     steps: list[str] = []
     start = None
@@ -48,7 +52,7 @@ def next_cycle(change: Change) -> dict:
     after: str | None
     if start is not None:
         after = start
-    elif len(work) < len(pending):
+    elif any(f.phase == "validate" for f in pending):
         after = "validate"
     else:
         later = PHASES[PHASES.index(change.phase) + 1 :] if change.phase in PHASES else ()

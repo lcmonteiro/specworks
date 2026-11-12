@@ -1,7 +1,7 @@
-"""Findings of a change's check artifacts (review.md, validation.md): reading them, routing them, and writing them.
+"""Findings of a change's check artifacts (review.md, validation.md, inspection.md): reading them, routing them, and writing them.
 
 A check artifact (``artifacts.CheckArtifact``) holds findings whose IDs start with its letter (``R1`` in review.md,
-``V1`` in validation.md). Every one is read the same way and written by the same commands, which read their edit
+``V1`` in validation.md, ``I1`` in inspection.md). Every one is read the same way and written by the same commands, which read their edit
 back before the file is written.
 """
 
@@ -63,7 +63,7 @@ CHECK_LINE_RE = re.compile(r"^\s*(?:[-*+]|\d+[.)])\s+\*\*Check\*\*\s*:\s*(?P<che
 # The steps a finding can be routed to, in workflow order: implement is both halves, test and code one each.
 FINDING_STEPS = ("specify", "design", "implement", "test", "code", "review")
 # The step a finding needs once a step carried out its proposal (``done in <step>:``).
-# After review, a finding another check artifact holds waits for the step that found it (validate).
+# After review, a finding another check artifact holds waits for the step that found it (validate, inspect: ``_next_step``).
 NEXT_STEP = {"specify": "design", "design": "implement", "implement": "review", "test": "review", "code": "review", "review": "validate"}
 
 
@@ -108,8 +108,8 @@ def _next_step(done_in: str, design_only: bool = False, artifact: CheckArtifact 
 
     Implements REQ-FLOW-010.
     """
-    if artifact is not None:
-        raise NotImplementedError("_next_step(artifact=...)")
+    if done_in == "review" and artifact is not None and artifact.phase != "review":
+        return artifact.phase
     return "review" if design_only and done_in == "design" else NEXT_STEP[done_in]
 
 ACCOUNTED_SECTION = "changed files without tags"
@@ -121,7 +121,7 @@ class Finding:
     done: bool
     type: str  # "" when the finding names none
     text: str  # the finding's line, after its ID
-    phase: str  # the step that resolves it, one of FINDING_STEPS (after ``done_in``, the next one, validate after review)
+    phase: str  # the step that resolves it, one of FINDING_STEPS (after ``done_in``, the next one: after review, validate or inspect)
     routed: bool = True  # False: neither a known type nor a "back to"/"done in" step, so ``phase`` is only a guess
     done_in: str = ""  # the step that carried out its proposal (``done in <step>:``), awaiting review
     design_only: bool = False  # its Decision says ``back to design only:``: after design it goes to review (REQ-FLOW-010)
@@ -209,7 +209,7 @@ def parse_findings(text: str, artifact: CheckArtifact) -> FindingsDoc:
             current.check = check.group("check")
     for finding in doc.findings:
         if finding.done_in:
-            finding.phase = _next_step(finding.done_in, finding.design_only)
+            finding.phase = _next_step(finding.done_in, finding.design_only, artifact)
         if not finding.done and not finding.routed:
             # The next build cycle starts from each open finding's phase, so it is never guessed.
             doc.problems.append(
@@ -386,6 +386,22 @@ def _new_artifact(change: Change, artifact: CheckArtifact) -> str:
 
 
 # @req REQ-FLOW-016
+def _suggestion(text: str, lang: str) -> list[str]:
+    """The lines of a suggestion under a finding: the pinned ``**Suggestion**:`` line, then ``text`` unchanged in a fence
+    indented by four spaces, marked ``lang``, longer than any run of backticks in it, so no line of it can close the
+    fence (and, inside it, nothing routes the finding: REQ-FLOW-010). An empty ``text`` or a ``lang`` that is not one
+    word raises ``FindingError``."""
+    lines = text.rstrip("\r\n").splitlines()
+    if not "".join(lines).strip():
+        raise FindingError("the suggestion is empty")
+    lang = lang.strip()
+    if not re.fullmatch(r"[^\s`]+", lang):
+        raise FindingError(f"the suggestion's language {lang!r} is not one word without backticks (diff, markdown, python, ...)")
+    ticks = "`" * max(3, max((len(run) for run in re.findall(r"`+", text)), default=0) + 1)
+    return ["  - **Suggestion**:", f"    {ticks}{lang}", *(f"    {line}" if line else "" for line in lines), f"    {ticks}"]
+
+
+# @req REQ-FLOW-016
 def add_finding(
     change: Change, kind: str, text: str, proposal: str, artifact: str = "review", check: str = "", suggestion: str | None = None, lang: str = "text"
 ) -> Finding:
@@ -400,8 +416,6 @@ def add_finding(
 
     Implements REQ-FLOW-016.
     """
-    if suggestion is not None:
-        raise NotImplementedError("add_finding(suggestion=...)")
     target = _artifact(lambda: check_artifact(artifact))
     kind = kind.strip().lower()
     if kind not in TYPE_PHASE:
@@ -411,7 +425,9 @@ def add_finding(
     path, original = _open(change, target)
     review = _locate(path, original or _new_artifact(change, target), target)
     fid = f"{target.letter}{max((int(f.id[1:]) for f in parse_findings(review.text, target).findings), default=0) + 1}"
-    new = [f"- [ ] {fid} **{kind}** {text}", *([f"  - **Check**: {check}"] if check else []), f"  - **Proposal**: {proposal}"]
+    fence = _suggestion(suggestion, lang) if suggestion is not None else []
+    proposal_line = f"  - **Proposal**: {proposal}"
+    new = [f"- [ ] {fid} **{kind}** {text}", *([f"  - **Check**: {check}"] if check else []), proposal_line, *fence]
     if review.section is None:
         _insert(review, len(review.lines), ["", "## Findings", "", *new])
     else:
@@ -423,7 +439,7 @@ def add_finding(
         if not in_list:
             _insert(review, at, [""])
     # The step the reader gives: the form its Proposal line starts with, else its type; a form quoted in its text is text.
-    phase, design_only = _route(new[-1]) or (TYPE_PHASE[kind], False)
+    phase, design_only = _route(proposal_line) or (TYPE_PHASE[kind], False)
     return _write(review, original, fid, {"done": False, "type": kind, "phase": phase, "design_only": design_only, "check": check})
 
 
@@ -457,7 +473,7 @@ def decide_finding(change: Change, finding_id: str, decision: str) -> Finding:
         step = _route(line)  # read as parse_findings reads the Decision line
         assert step is not None  # DECISION_RE checked the form
         phase, design_only = step
-        expect = {"done": current.done, "phase": _next_step(current.done_in, design_only) if current.done_in else phase, "design_only": design_only}
+        expect = {"done": current.done, "phase": _next_step(current.done_in, design_only, target) if current.done_in else phase, "design_only": design_only}
     return _write(review, original, fid, expect)
 
 
@@ -478,7 +494,7 @@ def mark_finding_done(change: Change, finding_id: str, step: str, text: str) -> 
     fid, block = _find(review, finding_id)
     current = next(f for f in parse_findings(original, target).findings if f.id == fid)
     _insert(review, block.end + 1, [f"{block.indent}  - done in {step}: {text}"])
-    return _write(review, original, fid, {"done": current.done, "done_in": step, "phase": _next_step(step, current.design_only)})
+    return _write(review, original, fid, {"done": current.done, "done_in": step, "phase": _next_step(step, current.design_only, target)})
 
 
 # @req REQ-FLOW-016

@@ -45,10 +45,11 @@ class WorkflowError(SpecworksError):
 
 @dataclass(frozen=True)
 class CheckArtifact:
-    """An artifact that holds findings (review.md, validation.md), as the schema declares it.
+    """An artifact that holds findings (review.md, validation.md, inspection.md), as the schema declares it.
 
-    ``letter`` starts its finding IDs (``R1``, ``V1``), ``phase`` is the step that closes its findings and names the
-    skill of its checks (``/specworks-<phase>``), and ``blocks`` are the gates its open findings fail.
+    ``letter`` starts its finding IDs (``R1``, ``V1``, ``I1``), ``phase`` is the step that closes its findings and names
+    the skill of its checks (``/specworks-<phase>``), and ``blocks`` are the gates its open findings fail (none for
+    inspection).
     Implements REQ-FLOW-018.
     """
 

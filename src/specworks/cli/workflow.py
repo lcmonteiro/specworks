@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import sys
 import time
 from collections.abc import Callable
 from pathlib import Path
@@ -10,14 +11,26 @@ from pathlib import Path
 import typer
 
 from specworks.cli.app import app, finding_app
-from specworks.cli.output import ChangeOpt, FreshOpt, JsonOpt, change_dict, emit, fail, require_change, workspace
+from specworks.cli.output import (
+    ChangeOpt,
+    FreshOpt,
+    JsonOpt,
+    change_dict,
+    emit,
+    fail,
+    is_archived,
+    refuse_archived,
+    require_change,
+    require_change_or_archived,
+    workspace,
+)
 from specworks.cli.telemetry import record
 from specworks.core.changes import PHASES, Change
 from specworks.core.runner import cached_run
 from specworks.core.workspace import Workspace
 from specworks.specs.merge import archive_target, close_change, plan_merge
 from specworks.specs.trace import GAP_LABELS, Analysis
-from specworks.workflow.artifacts import check_artifact_for, check_artifacts
+from specworks.workflow.artifacts import CheckArtifact, check_artifact, check_artifact_for, check_artifacts
 from specworks.workflow.checks import Check, GateContext, passed
 from specworks.workflow.cycle import next_cycle
 from specworks.workflow.findings import Finding, FindingError, add_finding, close_finding, decide_finding, mark_finding_done
@@ -174,6 +187,10 @@ def merge(
     emit(data, as_json, "\n".join(lines))
 
 
+# The check artifact of an archived change that takes findings: the notes of an inspection after the close (REQ-CLI-002).
+ARCHIVED_FINDINGS = "inspection"
+
+
 # @req REQ-CLI-011
 @finding_app.command("add")
 def finding_add(
@@ -192,9 +209,19 @@ def finding_add(
 
     Implements REQ-CLI-011.
     """
+    text_of_suggestion: str | None = None
     if suggestion is not None:
-        raise NotImplementedError("finding add --suggestion")
-    _write_finding(change, as_json, "add", lambda ch: add_finding(ch, kind, text, proposal, artifact=artifact))
+        try:
+            text_of_suggestion = sys.stdin.read() if suggestion == "-" else Path(suggestion).read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError) as exc:
+            fail(f"cannot read the suggestion {suggestion}: {exc}", as_json)
+    _write_finding(
+        change,
+        as_json,
+        "add",
+        lambda ch: add_finding(ch, kind, text, proposal, artifact=artifact, suggestion=text_of_suggestion, lang=lang),
+        lambda: check_artifact(artifact),
+    )
 
 
 # @req REQ-CLI-011
@@ -209,7 +236,7 @@ def finding_decide(
 
     Implements REQ-CLI-011.
     """
-    _write_finding(change, as_json, "decide", lambda ch: decide_finding(ch, finding_id, decision))
+    _write_finding(change, as_json, "decide", lambda ch: decide_finding(ch, finding_id, decision), lambda: check_artifact_for(finding_id))
 
 
 # @req REQ-CLI-011
@@ -225,7 +252,7 @@ def finding_done(
 
     Implements REQ-CLI-011.
     """
-    _write_finding(change, as_json, "done", lambda ch: mark_finding_done(ch, finding_id, step, text))
+    _write_finding(change, as_json, "done", lambda ch: mark_finding_done(ch, finding_id, step, text), lambda: check_artifact_for(finding_id))
 
 
 # @req REQ-CLI-011
@@ -240,14 +267,17 @@ def finding_close(
 
     Implements REQ-CLI-011.
     """
-    _write_finding(change, as_json, "close", lambda ch: close_finding(ch, finding_id, text))
+    _write_finding(change, as_json, "close", lambda ch: close_finding(ch, finding_id, text), lambda: check_artifact_for(finding_id))
 
 
-# @req REQ-CLI-011
-def _write_finding(ref: str, as_json: bool, action: str, write: Callable[[Change], Finding]) -> None:
+# @req REQ-CLI-011, REQ-CLI-002
+def _write_finding(ref: str, as_json: bool, action: str, write: Callable[[Change], Finding], target: Callable[[], CheckArtifact]) -> None:
     """Run one of the finding writers on the change and print the finding as `specworks cycle` reads it, with the path of
-    the check artifact it wrote: the one its ID's letter names."""
-    ws, mod, ch = require_change(ref, as_json)
+    the check artifact it wrote: the one its ID's letter names. An archived change takes findings only in the check
+    artifact ``ARCHIVED_FINDINGS`` (``target`` is the one the command writes to); any other is refused (REQ-CLI-002)."""
+    ws, mod, ch = require_change_or_archived(ref, as_json)
+    if is_archived(ch) and (artifact := target()).id != ARCHIVED_FINDINGS:
+        refuse_archived(ws, mod, ch, f"its {artifact.file} takes no finding; only {ARCHIVED_FINDINGS}.md does (`--artifact {ARCHIVED_FINDINGS}`, or an I<n> ID)")
     started = time.monotonic()
     try:
         finding = write(ch)
