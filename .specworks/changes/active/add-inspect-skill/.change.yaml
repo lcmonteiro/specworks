@@ -1,6 +1,6 @@
 name: add-inspect-skill
 created: '2026-11-11T23:16:38'
-phase: done
+phase: specify
 specified:
   REQ-CLI-002: 09502155daaa
   REQ-CLI-011: 1aee4266086f
@@ -10,3 +10,8 @@ specified:
   REQ-FLOW-012: f5235b33a47e
   REQ-FLOW-016: 462f8fb4ec2f
   REQ-FLOW-018: cccc834700ed
+reopened:
+- at: '2026-11-12T16:52:48'
+  reason: trace of a closed change compares MODIFIED blocks with today's living spec,
+    so criteria added by later changes show as removedStillTagged (inspection.md I1)
+  phase: specify
