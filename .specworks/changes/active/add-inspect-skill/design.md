@@ -103,7 +103,7 @@ rather than guessing from today's spec. Skipping the check for every
 closed change was rejected: it would hide real leftover tags. Serves:
 REQ-SPECS-018.
 
-Proposed: waiting for the user's agreement (code half). The close commit
+Agreed with the user: the close commit's parent. The close commit
 does not hold the living spec from before the close: `close_change`
 (`specs/merge.py`) writes the merged living specs and moves the change to
 the archive together, so that one commit already has each MODIFIED block
