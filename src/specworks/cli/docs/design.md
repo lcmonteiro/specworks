@@ -167,13 +167,26 @@ change; a leftover argument gets the command line's own usage error.
 
 ### Findings are written through `finding`, not by hand
 
-`specworks finding add|decide|done|close` write a change's review.md through
-the `workflow` writers, so the skills never edit it by hand and a malformed
-line is refused when it is written, not when `gate review` runs. A
-`FindingError` reaches the `App` wrapper like any other error. Under `--json`
-each prints the change, the finding as `specworks cycle` sees it plus
-`done`, and `path` (review.md); `done` is added here rather than to
-`Finding.to_dict()`, so `cycle`'s output is unchanged. (finding-commands)
+`specworks finding add|decide|done|close` write a change's check artifacts
+(review.md, validation.md) through the `workflow` writers, so the skills never
+edit them by hand and a malformed line is refused when it is written, not when
+a gate runs. `add` writes to `--artifact` (default `review`); `decide`,
+`done` and `close` take only an ID, whose letter names the artifact, so the
+file is never named twice (`--in` was not reused: `finding done --in` already
+means the step). A `FindingError` reaches the `App` wrapper like any other
+error. Under `--json` each prints the change, the finding as `specworks
+cycle` sees it plus `done`, and `path` (the artifact written); `done` is
+added here rather than to `Finding.to_dict()`, so `cycle`'s output is
+unchanged. (finding-commands, unify-check-findings)
+
+### `validate` writes only with `--write`
+
+`specworks validate` and `gate validate` write nothing. `validate --write`
+calls `write_validation`, prints the verdict after the write and
+validation.md's path (`path` under `--json`), and still exits 1 on FAIL,
+after writing, so the validate skill records its findings in one command.
+`cycle` prints the change's next state as `next: <phase>` (`next` under
+`--json`). (unify-check-findings)
 
 ### Config values are set through `config set`, not by hand
 
@@ -287,12 +300,18 @@ a second config format exists. (upgrade-project, dedupe-copilot-skills)
   `sessionId`).
 - `commit --json` and `telemetry push --change <ref> [--json]` add
   `telemetry: {"sent", "queued", "reason"}`.
-- `finding add TYPE TEXT --proposal TEXT`, `finding decide ID DECISION`,
-  `finding done ID TEXT --in STEP`, `finding close ID TEXT`, each with
-  `--change <ref> [--json]`: `--json` prints the change's fields plus
-  `finding` (`id`, `type`, `text`, `phase`, `doneIn` when set, `done`) and
-  `path` (review.md, workspace-relative); text output is
-  `<id> <type> -> <phase> (open|done)` and the path.
+- `finding add TYPE TEXT --proposal TEXT [--artifact ID]` (default
+  `review`; an unknown one is an error naming the check artifacts),
+  `finding decide ID DECISION`, `finding done ID TEXT --in STEP`,
+  `finding close ID TEXT`, each with `--change <ref> [--json]`: `--json`
+  prints the change's fields plus `finding` (`id`, `type`, `text`, `phase`,
+  `doneIn` when set, `done`) and `path` (the check artifact written,
+  workspace-relative); text output is `<id> <type> -> <phase> (open|done)`
+  and the path (REQ-CLI-011).
+- `validate --change <ref> [--write] [--json]`: with `--write`, adds `path`
+  (validation.md, workspace-relative); exit 1 on FAIL after writing
+  (REQ-CLI-023).
+- `cycle --change <ref> [--json]`: adds `next` (text `next: <phase>`).
 - `capability add <name> --path <folder> [--module/-m <name>] [--prefix P]
   [--description TEXT] [--create] [--json]`: `--json` adds `created` (the
   `.gitkeep` path, workspace-relative, or `null`; present with or without

@@ -1,0 +1,38 @@
+direction: right
+
+schema: "schema.yaml" {
+  review: "review (R, blocks review + validate)"
+  validation: "validation (V, blocks validate)"
+}
+
+workflow: "workflow" {
+  artifacts: "Artifacts (artifacts.py)"
+  findings: "Findings (findings.py)"
+  review: "Review drift (review.py)"
+  checks: "Checks (checks.py)"
+  gate: "Gates (gate.py)"
+  validate: "Validate (validate.py)"
+  cycle: "Cycles (cycle.py)"
+  merge: "Merge (merge.py)"
+}
+
+files: "change folder" {
+  reviewmd: "review.md"
+  validationmd: "validation.md"
+}
+
+cli: "cli (finding, cycle, validate --write)"
+
+schema -> workflow.artifacts: "check artifacts"
+workflow.artifacts -> workflow.findings: "CheckArtifact"
+workflow.findings -> files.reviewmd: "read / write R"
+workflow.findings -> files.validationmd: "read / write V"
+workflow.checks -> workflow.findings: "readable, closed"
+workflow.checks -> workflow.review: "drift report"
+workflow.gate -> workflow.checks: "rows"
+workflow.validate -> workflow.checks: "rows"
+workflow.validate -> workflow.findings: "write_validation"
+workflow.cycle -> workflow.findings: "open findings"
+cli -> workflow.findings: "finding add / decide / done / close"
+cli -> workflow.cycle: "next cycle, next state"
+cli -> workflow.validate: "validate --write"
