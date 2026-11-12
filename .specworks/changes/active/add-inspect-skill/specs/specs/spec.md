@@ -11,8 +11,9 @@ changed since the change was closed (the commit that archived it), and SHALL
 say, without marking anything, when that cannot be told (no git, or no such
 commit). The criteria it reports as removed but still tagged SHALL be those
 the change's MODIFIED and REMOVED blocks leave out of the living spec as it
-was at that commit, so a criterion a later change added is never reported;
-when that commit cannot be found, no criterion SHALL be reported as removed.
+was just before that commit (at its parent, before the close merged the
+change), so a criterion a later change added is never reported; when that
+commit or its parent cannot be read, no criterion SHALL be reported as removed.
 
 #### Scenario: AC-SPECS-018.1 A closed change
 
