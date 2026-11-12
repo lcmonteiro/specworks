@@ -2,8 +2,8 @@
 
 from helpers import REF, run_json, runner
 from specworks.cli import app
-from specworks.workflow.review import read_review
-from support.findings import REVIEW, TWO_FINDINGS, change_of, read, write_review
+from specworks.workflow.findings import read_findings
+from support.findings import REVIEW, REVIEW_ARTIFACT, TWO_FINDINGS, change_of, read, write_review
 
 # --- specworks finding ---------------------------------------------------------
 
@@ -24,7 +24,7 @@ def test_ac_cli_011_1_the_four_commands(project):
         assert got["id"] == "R1" and got["done"] is done, got
         assert got["phase"] == phase, got
     assert data["finding"]["doneIn"] == "design"
-    assert [(f.id, f.done) for f in read_review(change_of(project)).findings] == [("R1", True)]
+    assert [(f.id, f.done) for f in read_findings(change_of(project), REVIEW_ARTIFACT).findings] == [("R1", True)]
 
 
 # @ac AC-CLI-011.1

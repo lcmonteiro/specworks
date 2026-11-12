@@ -18,7 +18,11 @@ from specworks.core.runner import CommandError, cached_run, run_scoped
 from specworks.core.workspace import Module, Workspace
 from specworks.specs.tasks import TASKS_FILE
 from specworks.specs.trace import Analysis
-from specworks.workflow.review import REVIEW_FILE, ReviewDoc, ReviewReport, read_review, review_change
+from specworks.workflow.artifacts import CheckArtifact
+from specworks.workflow.findings import _REVIEW, FindingsDoc, read_findings
+from specworks.workflow.review import ReviewReport, review_change
+
+REVIEW_FILE = _REVIEW.file
 
 
 @dataclass
@@ -63,8 +67,16 @@ class GateContext:
         return review_change(self.analysis, self.base)
 
     @cached_property
-    def review(self) -> ReviewDoc:
-        return read_review(self.change)
+    def review(self) -> FindingsDoc:
+        """review.md's findings."""
+        return read_findings(self.change, _REVIEW)
+
+    def findings(self, artifact: CheckArtifact) -> FindingsDoc:
+        """A check artifact's findings, read once per run and artifact.
+
+        Implements REQ-FLOW-011, REQ-FLOW-013.
+        """
+        raise NotImplementedError
 
     @cached_property
     def test_plan(self) -> TestPlan:
@@ -191,17 +203,37 @@ def review_written(ctx: GateContext) -> Check:
     return Check(f"{REVIEW_FILE} is written", exists, [] if exists else [f"write {REVIEW_FILE} (specworks instructions review)"])
 
 
-# @req REQ-FLOW-010
-def review_readable(ctx: GateContext) -> Check:
-    """A checkbox the parser cannot read may be an open finding, so it never passes silently."""
-    return _listed(f"every finding in {REVIEW_FILE} is readable (- [ ] R<n> ...)", ctx.review.problems)
+def artifact_readable(artifact: CheckArtifact) -> CheckFn:
+    """The check that every finding in the check artifact is readable (``- [ ] <letter><n> ...``): a checkbox the parser
+    cannot read may be an open finding, so it never passes silently. Review's keeps its name and details.
+
+    Implements REQ-FLOW-010, REQ-FLOW-011, REQ-FLOW-013.
+    """
+    if artifact != _REVIEW:
+        raise NotImplementedError  # the readability of another check artifact (REQ-FLOW-013)
+
+    # @req REQ-FLOW-010
+    def review_readable(ctx: GateContext) -> Check:
+        return _listed(f"every finding in {REVIEW_FILE} is readable (- [ ] R<n> ...)", ctx.review.problems)
+
+    return review_readable
 
 
-# @req REQ-FLOW-011
-def review_closed(ctx: GateContext) -> Check:
-    """In a build (--allow-open), open findings are the hand-off to the next cycle (`specworks cycle`), not a failure."""
-    open_findings = [f"{f.id} {f.text}" for f in ctx.review.open]
-    return Check(f"no open finding in {REVIEW_FILE}", ctx.review.exists and not open_findings, open_findings, blocking=not ctx.allow_open)
+def artifact_closed(artifact: CheckArtifact) -> CheckFn:
+    """The check that the check artifact has no open finding. In a build (--allow-open), open findings are the hand-off
+    to the next cycle (`specworks cycle`), not a failure. Review's keeps its name and details.
+
+    Implements REQ-FLOW-011, REQ-FLOW-013.
+    """
+    if artifact != _REVIEW:
+        raise NotImplementedError  # the open findings of another check artifact (REQ-FLOW-013)
+
+    # @req REQ-FLOW-011
+    def review_closed(ctx: GateContext) -> Check:
+        open_findings = [f"{f.id} {f.text}" for f in ctx.review.open]
+        return Check(f"no open finding in {REVIEW_FILE}", ctx.review.exists and not open_findings, open_findings, blocking=not ctx.allow_open)
+
+    return review_closed
 
 
 # @req REQ-FLOW-011

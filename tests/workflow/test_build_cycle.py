@@ -3,11 +3,12 @@
 import pytest
 
 from helpers import REF, run_json
-from specworks.workflow.review import parse_review
+from specworks.workflow.findings import parse_findings
+from support.findings import REVIEW_ARTIFACT
 
 
 def open_findings(text):
-    return [f.to_dict() for f in parse_review(text).open]
+    return [f.to_dict() for f in parse_findings(text, REVIEW_ARTIFACT).open]
 
 
 def write_review(root, body):
@@ -129,7 +130,7 @@ def test_open_findings_parsing():
         "- [x] R2 **design-gap** done\n  - **Decision**: back to design: was done\n"
         "- [ ] R3 untyped finding\n\n## Changed files without tags\n\n- `x.py`: back to code is not a decision here\n"
     )
-    assert [f.to_dict() for f in parse_review(text).open] == [
+    assert [f.to_dict() for f in parse_findings(text, REVIEW_ARTIFACT).open] == [
         {"id": "R1", "type": "test-gap", "text": "**test-gap** weak assert", "phase": "test"},
         {"id": "R3", "type": "", "text": "untyped finding", "phase": "code"},
     ]
@@ -138,7 +139,7 @@ def test_open_findings_parsing():
 # @ac AC-FLOW-010.3
 def test_back_to_on_the_finding_line_is_text():
     text = "- [ ] R1 **code-gap** reset returns None. **Decision**: back to design: return the token\n"
-    assert [f["phase"] for f in [f.to_dict() for f in parse_review(text).open]] == ["code"]
+    assert [f["phase"] for f in [f.to_dict() for f in parse_findings(text, REVIEW_ARTIFACT).open]] == ["code"]
 
 
 # @ac AC-FLOW-010.3
@@ -155,7 +156,7 @@ def test_back_to_needs_the_decision_form_and_stays_in_its_finding():
 # @ac AC-FLOW-010.4
 def test_a_checkbox_inside_a_finding_is_part_of_it():
     text = "## Findings\n\n- [ ] R1 **code-gap** x\n  - **Decision**: back to code: y\n  - [x] sub-step done\n"
-    assert [f["phase"] for f in open_findings(text)] == ["code"] and parse_review(text).problems == []
+    assert [f["phase"] for f in open_findings(text)] == ["code"] and parse_findings(text, REVIEW_ARTIFACT).problems == []
 
 
 # @ac AC-FLOW-010.4
@@ -164,31 +165,31 @@ def test_a_finding_in_a_code_fence_is_an_example():
         "## Findings\n\nNone. A finding looks like:\n\n```markdown\n- [ ] R1 **code-gap** x\n```\n\n"
         "## Changed files without tags\n\n~~~\n- `src/a.py`: config\n~~~\n"
     )
-    doc = parse_review(text)
+    doc = parse_findings(text, REVIEW_ARTIFACT)
     assert doc.findings == [] and doc.problems == [] and doc.accounts_for("src/a.py")
 
 
 # @ac AC-FLOW-010.4
 def test_a_code_fence_under_a_finding_keeps_it_open_and_routed():
     text = "## Findings\n\n- [ ] R1 **design-gap** x\n  ```\n  - [ ] not a finding\n  ```\n  - **Decision**: back to design: y\n"
-    doc = parse_review(text)
+    doc = parse_findings(text, REVIEW_ARTIFACT)
     assert [f["phase"] for f in open_findings(text)] == ["design"] and doc.problems == []
 
 
 # @ac AC-FLOW-010.3
 def test_finding_types_match_in_any_case_and_after_other_bold_words():
     text = "- [ ] R1 **BREAKING** **Spec-Gap** reset changes\n- [ ] R2 **spec_gap** typo\n"
-    found = [(f.type, f.phase, f.routed) for f in parse_review(text).findings]
+    found = [(f.type, f.phase, f.routed) for f in parse_findings(text, REVIEW_ARTIFACT).findings]
     assert found == [("spec-gap", "specify", True), ("spec_gap", "code", False)]
 
 
 # @ac AC-FLOW-010.5
 def test_a_checkbox_indented_outside_any_finding_is_unreadable():
     loose = "## Findings\n\nNone.\n\n- Follow-ups:\n  - [ ] reset still ignores case\n"
-    problems = parse_review(loose).problems
+    problems = parse_findings(loose, REVIEW_ARTIFACT).problems
     assert len(problems) == 1 and "'- [ ] reset still ignores case' is not a finding" in problems[0]
     under_a_finding = "## Findings\n\n- [x] R1 **code-gap** x\n  - **Decision**: code fixed\n  - [ ] reset still ignores case\n"
-    assert parse_review(under_a_finding).problems == []
+    assert parse_findings(under_a_finding, REVIEW_ARTIFACT).problems == []
 
 
 # @ac AC-FLOW-010.6
@@ -197,7 +198,7 @@ def test_findings_are_routed_to_the_halves_or_to_implement():
         "## Findings\n\n- [ ] R1 **test-gap** weak assert\n- [ ] R2 **code-gap** reset ignores case\n"
         "- [ ] R3 **design-gap** reset returns None\n  - **Decision**: Back to Implement: return the token and test it\n"
     )
-    doc = parse_review(text)
+    doc = parse_findings(text, REVIEW_ARTIFACT)
     assert [f["phase"] for f in open_findings(text)] == ["test", "code", "implement"] and doc.problems == []
 
 

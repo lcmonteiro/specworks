@@ -26,6 +26,7 @@ class Artifact:
     template: str = ""
     requires: list[str] = field(default_factory=list)
     optional: bool = False
+    findings: dict | None = None  # a check artifact's ``{letter, blocks}`` (REQ-FLOW-018); None for the others
 
     def skipped(self, change: Change) -> bool:
         """Delta specs of a change with no behaviour change (``skip_specs``) are not written."""
@@ -39,6 +40,47 @@ class Artifact:
 
 class WorkflowError(SpecworksError):
     """Raised for unknown artifacts."""
+
+
+@dataclass(frozen=True)
+class CheckArtifact:
+    """An artifact that holds findings (review.md, validation.md), as the schema declares it.
+
+    ``letter`` starts its finding IDs (``R1``, ``V1``), ``phase`` is the step that closes its findings and names the
+    skill of its checks (``/specworks-<phase>``), and ``blocks`` are the gates its open findings fail.
+    Implements REQ-FLOW-018.
+    """
+
+    id: str
+    file: str
+    letter: str
+    phase: str
+    blocks: tuple[str, ...]
+
+
+def check_artifacts() -> list[CheckArtifact]:
+    """The check artifacts of the schema, in schema order; a letter used twice raises ``WorkflowError`` when the schema loads.
+
+    Implements REQ-FLOW-018.
+    """
+    raise NotImplementedError
+
+
+def check_artifact(artifact_id: str) -> CheckArtifact:
+    """The check artifact with this id; ``WorkflowError`` naming the check artifacts for any other.
+
+    Implements REQ-FLOW-018, REQ-FLOW-016.
+    """
+    raise NotImplementedError
+
+
+def check_artifact_for(finding_id: str) -> CheckArtifact:
+    """The check artifact a finding ID belongs to, by its letter (``V3`` -> validation); ``WorkflowError`` for an ID whose
+    letter is no check artifact's.
+
+    Implements REQ-FLOW-016, REQ-FLOW-018.
+    """
+    raise NotImplementedError
 
 
 @cache

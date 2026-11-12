@@ -1,12 +1,15 @@
-"""Validate phase (`specworks validate`): final, read-only check of a change before it is closed.
+"""Validate phase (`specworks validate`): final check of a change before it is closed.
 
 Every check is grouped (completeness, correctness, coherence) and names the
-phase skill that fixes it. Nothing here writes to the project: it only
-reads specs, tasks, tags, review.md and diagrams, and runs the project's own
-test, lint and typecheck commands.
+phase skill that fixes it. The checks write nothing to the project: they only
+read specs, tasks, tags, the check artifacts and diagrams, and run the project's
+own test, lint and typecheck commands. Only ``write_validation`` (`specworks
+validate --write`) writes, and only validation.md.
 """
 
 from __future__ import annotations
+
+from pathlib import Path
 
 from specworks.specs.capabilities import SPECS_DIR
 from specworks.specs.check import PROPOSAL_FILE
@@ -14,6 +17,7 @@ from specworks.specs.tasks import TASKS_FILE
 from specworks.tools.diagrams import diagrams_in, state
 from specworks.workflow import checks as c
 from specworks.workflow.checks import Check, CheckFn, GateContext
+from specworks.workflow.findings import _REVIEW
 
 COMPLETENESS, CORRECTNESS, COHERENCE = "completeness", "correctness", "coherence"
 GROUPS = (COMPLETENESS, CORRECTNESS, COHERENCE)
@@ -63,8 +67,8 @@ VALIDATE: list[tuple[str, str, CheckFn]] = [
     (COMPLETENESS, CODE, c.reqs_have_code),
     (COMPLETENESS, TEST, c.acs_have_tests),
     (COMPLETENESS, REVIEW, c.review_written),
-    (COMPLETENESS, REVIEW, c.review_readable),
-    (COMPLETENESS, REVIEW, c.review_closed),
+    (COMPLETENESS, REVIEW, c.artifact_readable(_REVIEW)),
+    (COMPLETENESS, REVIEW, c.artifact_closed(_REVIEW)),
     # Correctness: the specs are well-formed and the code does what they say.
     (CORRECTNESS, SPECIFY, c.specs_valid),
     (CORRECTNESS, SPECIFY, c.specs_warnings),
@@ -93,6 +97,16 @@ def validate_change(ctx: GateContext) -> list[Check]:
             result.group, result.fix = group, fix
             checks.append(result)
     return checks
+
+
+def write_validation(ctx: GateContext) -> tuple[list[Check], Path]:
+    """Run validate and keep validation.md in step with its checks: a ``V`` finding (with its ``**Check**`` line) for each
+    failed blocking check that has none open, the ones it wrote before ticked once their check passes, and the Summary
+    rewritten; then the checks run again. The checks after the write, and validation.md's path.
+
+    Implements REQ-FLOW-019, REQ-FLOW-013.
+    """
+    raise NotImplementedError
 
 
 # @req REQ-FLOW-013

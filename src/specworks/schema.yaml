@@ -238,6 +238,8 @@ artifacts:
     generates: review.md
     template: review.md
     requires: [tasks]
+    # A check artifact: its findings are R<n>, and open ones block the review and validate gates.
+    findings: {letter: R, blocks: [review, validate]}
     instruction: |
       Record the review: every place where the code, the specs and the design
       (API) disagree, the change proposed for each, and what was decided. It is the evidence /specworks-validate
@@ -278,3 +280,30 @@ artifacts:
       finding that covers it. `specworks gate review` checks they are all
       mentioned and that no finding is still open.
 
+  - id: validation
+    phase: validate
+    generates: validation.md
+    template: validation.md
+    requires: [review]
+    # Written by `specworks validate --write`; a change that passed validate without it needs none.
+    optional: true
+    # A check artifact: its findings are V<n>, and open ones block the validate gate.
+    findings: {letter: V, blocks: [validate]}
+    instruction: |
+      Record what validate found: one finding per failed blocking check, routed
+      to the phase that fixes it, and the verdict. It is written by
+      `specworks validate --write --change <ref>`, never from scratch: the
+      command adds a finding for each failed blocking check (with its
+      `**Check**` line), ticks the ones it wrote before whose check now passes,
+      and rewrites the Summary.
+
+      Findings (`- [ ] V<n>` open, `- [x] V<n>` confirmed) read like review.md's,
+      with the same types and routes (`back to <step>:`, `done in <step>:`),
+      where a step is specify, design, implement, test, code or review. Add a
+      finding validate cannot see with
+      `specworks finding add <type> "<text>" --proposal "<proposal>" --artifact validation --change <ref>`.
+      The step that carries out a finding marks it with
+      `specworks finding done V<n> --in <step> "<what changed>"`; review marks
+      the V findings it checked `done in review:`, and only validate confirms
+      and ticks them. Write "None." under Findings when there are none; the
+      warnings go in the Summary, never as findings.

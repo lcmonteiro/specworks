@@ -3,8 +3,11 @@
 from helpers import REF
 from specworks.cli.output import resolve_change
 from specworks.core.workspace import load_workspace
+from specworks.workflow.artifacts import CheckArtifact
 
 REVIEW = f".specworks/changes/active/{REF}/review.md"
+# review.md as a check artifact, as the schema declares it (REQ-FLOW-018)
+REVIEW_ARTIFACT = CheckArtifact(id="review", file="review.md", letter="R", phase="review", blocks=("review", "validate"))
 TWO_FINDINGS = (
     f"# Review: {REF}\n\n"
     "## Findings\n\n"

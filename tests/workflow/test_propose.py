@@ -34,6 +34,7 @@ def test_status_after_planning(change):
         "tasks": "done",
         "traceability": "ready",
         "review": "ready",
+        "validation": "blocked",
     }
 
 

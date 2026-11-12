@@ -19,10 +19,11 @@ from specworks.specs.merge import archive_target, close_change, plan_merge
 from specworks.specs.trace import GAP_LABELS, Analysis
 from specworks.workflow.checks import Check, GateContext, passed
 from specworks.workflow.cycle import next_cycle
+from specworks.workflow.findings import _REVIEW, Finding, FindingError, add_finding, close_finding, decide_finding, mark_finding_done
 from specworks.workflow.gate import GATES, run_gate, start_phase
 from specworks.workflow.merge import BranchMergeError, merge_branch
-from specworks.workflow.review import REVIEW_FILE, Finding, FindingError, add_finding, close_finding, decide_finding, mark_finding_done, review_change
-from specworks.workflow.validate import GROUPS, summary, validate_change
+from specworks.workflow.review import review_change
+from specworks.workflow.validate import GROUPS, summary, validate_change, write_validation
 
 
 @app.command()
@@ -171,14 +172,15 @@ def finding_add(
     kind: str = typer.Argument(..., metavar="TYPE", help="The finding's type: spec-gap, design-gap, test-gap, code-gap, tag or quality."),
     text: str = typer.Argument(..., help="What the finding is."),
     proposal: str = typer.Option(..., "--proposal", help="The change it proposes."),
+    artifact: str = typer.Option("review", "--artifact", help="The check artifact it goes to: review (review.md) or validation (validation.md)."),
     change: str = ChangeOpt,
     as_json: bool = JsonOpt,
 ) -> None:
-    """Add an open finding with the next free ID and its Proposal to review.md (created from its template when missing).
+    """Add an open finding with the next free ID and its Proposal to a check artifact (review.md by default), created from its template when missing.
 
     Implements REQ-CLI-011.
     """
-    _write_finding(change, as_json, "add", lambda ch: add_finding(ch, kind, text, proposal))
+    _write_finding(change, as_json, "add", lambda ch: add_finding(ch, kind, text, proposal, artifact=artifact))
 
 
 # @req REQ-CLI-011
@@ -229,10 +231,10 @@ def finding_close(
 
 # @req REQ-CLI-011
 def _write_finding(ref: str, as_json: bool, action: str, write: Callable[[Change], Finding]) -> None:
-    """Run one of review.md's writers on the change and print the finding as `specworks cycle` reads it, with review.md's path."""
+    """Run one of the finding writers on the change and print the finding as `specworks cycle` reads it, with its check artifact's path."""
     ws, mod, ch = require_change(ref, as_json)
     started = time.monotonic()
-    path = ch.path / REVIEW_FILE
+    path = ch.path / _REVIEW.file
     try:
         finding = write(ch)
     except FindingError as exc:  # the message names review.md: shown relative to the workspace root, as every path
@@ -255,13 +257,17 @@ def validate_cmd(
     change: str = ChangeOpt,
     base: str | None = typer.Option(None, "--base", help="Branch to diff against (default: origin's default branch)."),
     no_run: bool = typer.Option(False, "--no-run", help="Do not run test/lint/typecheck (reported as warnings)."),
+    write: bool = typer.Option(False, "--write", help="Write validation.md: a finding per failed blocking check, and the verdict in its Summary."),
     fresh: bool = FreshOpt,
     as_json: bool = JsonOpt,
 ) -> None:
-    """Final read-only check before close (validate phase): completeness, correctness, coherence (exit 1 on FAIL)."""
+    """Final check before close (validate phase): completeness, correctness, coherence (exit 1 on FAIL); read-only unless --write."""
     ws, mod, ch = require_change(change, as_json)
     started = time.monotonic()
-    checks = validate_change(GateContext(ws, mod, ch, run_tests=not no_run, base=base, reuse_runs=not fresh))
+    ctx = GateContext(ws, mod, ch, run_tests=not no_run, base=base, reuse_runs=not fresh)
+    if write:
+        write_validation(ctx)  # REQ-CLI-023: prints validation.md's path; the code half wires its output
+    checks = validate_change(ctx)
     result = summary(checks)
     record(ws, mod, ch, "validate", started, verdict=result["verdict"], critical=result["critical"], warnings=result["warnings"])
     data = {**change_dict(ws, mod, ch), **result, "checks": [c.to_dict() for c in checks]}

@@ -2,7 +2,7 @@
 
 Each open finding in review.md (``- [ ] R<n> **<type>** ...``) needs work in
 one step: its Decision's ``back to <step>:`` when it says so, otherwise the
-step its type belongs to (see ``review.parse_review``). A finding for design
+step its type belongs to (see ``findings.parse_findings``). A finding for design
 needs design and then both halves of implement (test and code, in parallel),
 unless its Decision says ``back to design only:`` (design, then review);
 one for implement needs both halves; one for test or code needs only that
@@ -14,13 +14,14 @@ out (``done in specify: ...``), it needs design, so the build can resume.
 from __future__ import annotations
 
 from specworks.core.changes import HALVES, Change
-from specworks.workflow.review import read_review
+from specworks.workflow.findings import _REVIEW, read_findings
 
 
 # @req REQ-FLOW-012
 def next_cycle(change: Change) -> dict:
-    """The next build cycle for a reviewed change: the phase it starts at and the steps it runs."""
-    review = read_review(change)
+    """The next build cycle for a reviewed change: the phase it starts at and the steps it runs, and ``next``, the
+    change's next state (the phase its open findings start at, or with none the phase after its current one; REQ-FLOW-012)."""
+    review = read_findings(change, _REVIEW)
     found = [f.to_dict() for f in review.open]
     needed = {f.phase for f in review.open}
     steps: list[str] = []
@@ -40,4 +41,5 @@ def next_cycle(change: Change) -> dict:
         "startAt": start,
         "phases": steps,
         "handOver": "/specworks-specify" if start == "specify" else None,
+        "next": None,  # stub: the change's next state is not computed yet (REQ-FLOW-012)
     }

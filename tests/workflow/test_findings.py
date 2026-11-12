@@ -5,8 +5,8 @@ import difflib
 import pytest
 
 from helpers import REF, run_json
-from specworks.workflow.review import FindingError, add_finding, close_finding, decide_finding, mark_finding_done, read_review
-from support.findings import TWO_FINDINGS, change_of, read, review_path, write_review
+from specworks.workflow.findings import FindingError, add_finding, close_finding, decide_finding, mark_finding_done, read_findings
+from support.findings import REVIEW_ARTIFACT, TWO_FINDINGS, change_of, read, review_path, write_review
 
 DECISION_FORM = "a decision starts with 'back to <step>:' (specify, design, implement, test or code), 'back to design only:' or 'accepted:'"
 
@@ -22,7 +22,7 @@ def added_lines(old, new):
 
 
 def finding(root, finding_id):
-    return next(f for f in read_review(change_of(root)).findings if f.id == finding_id)
+    return next(f for f in read_findings(change_of(root), REVIEW_ARTIFACT).findings if f.id == finding_id)
 
 
 # --- the writers --------------------------------------------------------------
@@ -38,7 +38,7 @@ def test_ac_flow_016_1_a_new_finding_is_the_next_id(project):
     lines = added_lines(TWO_FINDINGS, read(project))
     assert "  - **Proposal**: assert the error message too" in lines
     assert any(line.lstrip().startswith("- [ ] R3") and "**test-gap**" in line for line in lines)
-    assert [(f.id, f.done) for f in read_review(change_of(project)).findings] == [("R1", False), ("R2", True), ("R3", False)]
+    assert [(f.id, f.done) for f in read_findings(change_of(project), REVIEW_ARTIFACT).findings] == [("R1", False), ("R2", True), ("R3", False)]
 
 
 # @ac AC-FLOW-016.1
@@ -51,7 +51,7 @@ def test_ac_flow_016_1_a_proposal_naming_another_step_routes_the_new_finding(pro
     assert (again.done, again.type, again.phase) == (False, "code-gap", "implement")
     lines = added_lines(TWO_FINDINGS, read(project))
     assert f"  - **Proposal**: {proposal}" in lines
-    assert [(f.id, f.done) for f in read_review(change_of(project)).findings] == [("R1", False), ("R2", True), ("R3", False)]
+    assert [(f.id, f.done) for f in read_findings(change_of(project), REVIEW_ARTIFACT).findings] == [("R1", False), ("R2", True), ("R3", False)]
 
 
 # @ac AC-FLOW-016.2
@@ -63,7 +63,7 @@ def test_ac_flow_016_2_no_review_md_creates_it_from_the_template(project):
     for heading in ("## Findings", "## Changed files without tags", "## Summary"):
         assert heading in text
     assert "`<!-- path -->`" not in text  # the template's example lines are left out
-    doc = read_review(change_of(project))
+    doc = read_findings(change_of(project), REVIEW_ARTIFACT)
     assert [(f.id, f.type, f.done) for f in doc.findings] == [("R1", "code-gap", False)] and doc.problems == []
     assert "  - **Proposal**: lower-case the email" in text.splitlines()
     assert text.index("## Findings") < text.index("- [ ] R1") < text.index("## Changed files without tags")
@@ -202,5 +202,5 @@ def test_ac_flow_016_8_a_finding_that_quotes_a_form_routes_by_the_line_start(pro
     assert (first.id, first.phase, first.design_only, first.done_in) == ("R1", "code", False, "")
     second = add_finding(change_of(project), "quality", "the reader skips a quoted form", "back to test: assert 'done in code:' is read")
     assert (second.id, second.phase, second.design_only, second.done_in) == ("R2", "test", False, "")
-    read_back = [(f.id, f.phase, f.design_only, f.done_in) for f in read_review(change_of(project)).open]
+    read_back = [(f.id, f.phase, f.design_only, f.done_in) for f in read_findings(change_of(project), REVIEW_ARTIFACT).open]
     assert read_back == [("R1", "code", False, ""), ("R2", "test", False, "")]

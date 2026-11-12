@@ -18,6 +18,7 @@ from specworks.specs.check import DESIGN_FILE
 from specworks.specs.specfile import H2_RE, blank_comments, fenced
 from specworks.workflow import checks as c
 from specworks.workflow.checks import Check, CheckFn, GateContext, passed, run_checks
+from specworks.workflow.findings import _REVIEW
 from specworks.workflow.review import CODE_EXTENSIONS
 from specworks.workflow.validate import validate_change
 
@@ -155,8 +156,8 @@ GATE_CHECKS: dict[str, list[CheckFn]] = {
         c.specs_warnings,
         c.specs_as_specified,
         c.review_written,
-        c.review_readable,
-        c.review_closed,
+        c.artifact_readable(_REVIEW),
+        c.artifact_closed(_REVIEW),
         c.reqs_have_code,
         c.acs_have_tests,
         c.no_unknown_tags,
