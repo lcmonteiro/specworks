@@ -13,6 +13,11 @@ from support.findings import VALIDATION_ARTIFACT, read_validation, validation_pa
 
 CODE_TASKS = "every [code] task is done (specworks task list --pending)"
 AC_TESTS = "every acceptance criterion has a test (@ac tag)"
+# the keys validate links its findings to: the names of the check functions (design.md Pinned wording)
+CODE_TASKS_KEY = "code_tasks_done"
+AC_TESTS_KEY = "acs_have_tests"
+FILES_ACCOUNTED = "changed files without tags are accounted for in review.md"
+FILES_ACCOUNTED_KEY = "files_accounted"
 ARCHITECTURE_SVG = "docs/diagrams/architecture-blocks.svg"
 
 
@@ -67,12 +72,12 @@ def test_ac_flow_019_1_a_failed_validate_writes_a_finding_per_failed_check(repo)
     doc = findings(repo)
     assert doc.problems == []
     assert [(f.id, f.done, f.type, f.phase, f.check) for f in doc.findings] == [
-        ("V1", False, "code-gap", "code", CODE_TASKS),
-        ("V2", False, "test-gap", "test", AC_TESTS),
+        ("V1", False, "code-gap", "code", CODE_TASKS_KEY),
+        ("V2", False, "test-gap", "test", AC_TESTS_KEY),
     ]
     text = read_validation(repo)
-    assert block(text, "V1")[1:] == [f"  - **Check**: {CODE_TASKS}", "  - **Proposal**: back to code: make the check pass"]
-    assert block(text, "V2")[1:] == [f"  - **Check**: {AC_TESTS}", "  - **Proposal**: back to test: make the check pass"]
+    assert block(text, "V1")[1:] == [f"  - **Check**: {CODE_TASKS_KEY}", "  - **Proposal**: back to code: make the check pass"]
+    assert block(text, "V2")[1:] == [f"  - **Check**: {AC_TESTS_KEY}", "  - **Proposal**: back to test: make the check pass"]
     assert CODE_TASKS in block(text, "V1")[0] and "1.2" in block(text, "V1")[0]
     assert AC_TESTS in block(text, "V2")[0] and "AC-AUTH-003.2" in block(text, "V2")[0]
     result = summary(checks)  # the verdict after the write: the two failed checks plus validation.md's open V1 and V2
@@ -124,7 +129,6 @@ def test_ac_flow_019_3_a_rerun_after_a_fix(repo):
     assert removed == [v1_before[0]] and added == [block(after, "V1")[0], "  - confirmed in validate: the check passes"]
 
 
-
 # @ac AC-FLOW-019.3
 def test_ac_flow_019_3_a_rerun_with_another_base(repo):
     """A check whose name carries the base (files accounted for in review.md): a rerun with another base finds the same V1."""
@@ -166,6 +170,6 @@ def test_ac_flow_019_5_a_check_review_fixes_is_routed_to_review(repo):
     write(repo)
     [finding] = findings(repo).findings
     assert (finding.id, finding.done, finding.type, finding.phase) == ("V1", False, "quality", "review")
-    assert finding.check.startswith("changed files without tags are accounted for in review.md"), finding
-    assert "src/auth/audit.py" in finding.text
+    assert finding.check == FILES_ACCOUNTED_KEY, finding
+    assert FILES_ACCOUNTED in finding.text and "src/auth/audit.py" in finding.text
     assert block(read_validation(repo), "V1")[-1] == "  - **Proposal**: back to review: make the check pass"
