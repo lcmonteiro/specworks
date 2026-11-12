@@ -46,6 +46,10 @@ change scenario by scenario and leave its notes as findings the flow follows.
   changed since the close.
 - `specworks finding` writes inspection findings of a closed change into its
   archive folder; every other write to an archived change is still refused.
+- A finding can carry a multi-line suggestion (a code diff, a requirement's
+  new text): `finding add --suggestion <file> --lang <language>` writes it
+  under the finding as `**Suggestion**:` in an indented code fence, read back
+  like every write; it routes nothing. It works for R, V and I findings.
 - A harness peer `inspect` for the new skill (REQ-HARNESS-001 asks one per
   skill).
 
@@ -60,10 +64,10 @@ change scenario by scenario and leave its notes as findings the flow follows.
 - `workflow`: REQ-FLOW-001 (inspection in the artifact list), REQ-FLOW-010
   (`I<n>`, `question`, back to inspect after review), REQ-FLOW-012 (a
   finding waiting for inspect starts no cycle), REQ-FLOW-016 (`confirmed in
-  inspect:`), REQ-FLOW-018 (inspection declared, blocking no gate).
+  inspect:`, suggestions), REQ-FLOW-018 (inspection declared, blocking no gate).
 - `specs`: new REQ-SPECS-018, the trace of a closed change.
 - `cli`: REQ-CLI-002 (`trace` and inspection `finding` on an archived
-  change).
+  change), REQ-CLI-011 (`--suggestion`, `--lang`).
 
 ## Related requirements
 
@@ -73,11 +77,11 @@ change scenario by scenario and leave its notes as findings the flow follows.
 - REQ-FLOW-016 modified
 - REQ-FLOW-018 modified
 - REQ-CLI-002 modified
+- REQ-CLI-011 modified
 - REQ-SPECS-012 left: the trace of an active change is unchanged; REQ-SPECS-018 adds the closed one
 - REQ-FLOW-011 left: the review gate reads only the artifacts that block it (REQ-FLOW-018 decides inspection blocks none)
 - REQ-FLOW-013 left: validate reads only the artifacts that block it, likewise
 - REQ-FLOW-019 left: validate writes only validation.md
-- REQ-CLI-011 left: `--artifact inspection` is a check artifact like any other
 - REQ-CLI-020 left: reopen already takes a reason; the skill passes inspection.md as the problem
 - REQ-CLI-004 left: `list --archived` already lists closed changes to pick from
 - REQ-PROJ-012 left: archived changes are listed as before
