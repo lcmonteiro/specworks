@@ -18,11 +18,12 @@ from specworks.core.runner import CommandError, cached_run, run_scoped
 from specworks.core.workspace import Module, Workspace
 from specworks.specs.tasks import TASKS_FILE
 from specworks.specs.trace import Analysis
-from specworks.workflow.artifacts import CheckArtifact
-from specworks.workflow.findings import _REVIEW, FindingsDoc, read_findings
+from specworks.workflow.artifacts import CheckArtifact, check_artifact, load_artifacts
+from specworks.workflow.findings import FindingsDoc, read_findings
 from specworks.workflow.review import ReviewReport, review_change
 
-REVIEW_FILE = _REVIEW.file
+REVIEW_ARTIFACT = check_artifact("review")
+REVIEW_FILE = REVIEW_ARTIFACT.file
 
 
 @dataclass
@@ -57,6 +58,7 @@ class GateContext:
     allow_open: bool = False  # review: open findings do not fail the gate (inside a build)
     reuse_runs: bool = True  # False: run each project command once for real (the real close, --fresh), never an earlier result
     ran: set[str] = field(default_factory=set)  # commands already run for real in this invocation
+    read: dict[str, FindingsDoc] = field(default_factory=dict)  # each check artifact's findings, by id, once read
 
     @cached_property
     def analysis(self) -> Analysis:
@@ -66,17 +68,20 @@ class GateContext:
     def report(self) -> ReviewReport:
         return review_change(self.analysis, self.base)
 
-    @cached_property
+    @property
     def review(self) -> FindingsDoc:
         """review.md's findings."""
-        return read_findings(self.change, _REVIEW)
+        return self.findings(REVIEW_ARTIFACT)
 
+    # @req REQ-FLOW-011, REQ-FLOW-013
     def findings(self, artifact: CheckArtifact) -> FindingsDoc:
-        """A check artifact's findings, read once per run and artifact.
+        """A check artifact's findings, read once per run and artifact (``read.clear()`` reads them again).
 
         Implements REQ-FLOW-011, REQ-FLOW-013.
         """
-        raise NotImplementedError
+        if artifact.id not in self.read:
+            self.read[artifact.id] = read_findings(self.change, artifact)
+        return self.read[artifact.id]
 
     @cached_property
     def test_plan(self) -> TestPlan:
@@ -209,14 +214,13 @@ def artifact_readable(artifact: CheckArtifact) -> CheckFn:
 
     Implements REQ-FLOW-010, REQ-FLOW-011, REQ-FLOW-013.
     """
-    if artifact != _REVIEW:
-        raise NotImplementedError  # the readability of another check artifact (REQ-FLOW-013)
 
-    # @req REQ-FLOW-010
-    def review_readable(ctx: GateContext) -> Check:
-        return _listed(f"every finding in {REVIEW_FILE} is readable (- [ ] R<n> ...)", ctx.review.problems)
+    # @req REQ-FLOW-010, REQ-FLOW-013
+    def readable(ctx: GateContext) -> Check:
+        return _listed(f"every finding in {artifact.file} is readable (- [ ] {artifact.letter}<n> ...)", ctx.findings(artifact).problems)
 
-    return review_readable
+    readable.__name__ = f"{artifact.id}_readable"
+    return readable
 
 
 def artifact_closed(artifact: CheckArtifact) -> CheckFn:
@@ -225,15 +229,18 @@ def artifact_closed(artifact: CheckArtifact) -> CheckFn:
 
     Implements REQ-FLOW-011, REQ-FLOW-013.
     """
-    if artifact != _REVIEW:
-        raise NotImplementedError  # the open findings of another check artifact (REQ-FLOW-013)
+    # A missing file fails only when the artifact is required (review.md); validation.md is optional.
+    required = not load_artifacts()[artifact.id].optional
 
-    # @req REQ-FLOW-011
-    def review_closed(ctx: GateContext) -> Check:
-        open_findings = [f"{f.id} {f.text}" for f in ctx.review.open]
-        return Check(f"no open finding in {REVIEW_FILE}", ctx.review.exists and not open_findings, open_findings, blocking=not ctx.allow_open)
+    # @req REQ-FLOW-011, REQ-FLOW-013
+    def closed(ctx: GateContext) -> Check:
+        doc = ctx.findings(artifact)
+        open_findings = [f"{f.id} {f.text}" for f in doc.open]
+        written = doc.exists or not required
+        return Check(f"no open finding in {artifact.file}", written and not open_findings, open_findings, blocking=not ctx.allow_open)
 
-    return review_closed
+    closed.__name__ = f"{artifact.id}_closed"
+    return closed
 
 
 # @req REQ-FLOW-011

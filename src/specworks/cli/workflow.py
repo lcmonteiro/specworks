@@ -17,9 +17,10 @@ from specworks.core.runner import cached_run
 from specworks.core.workspace import Workspace
 from specworks.specs.merge import archive_target, close_change, plan_merge
 from specworks.specs.trace import GAP_LABELS, Analysis
+from specworks.workflow.artifacts import check_artifact_for, check_artifacts
 from specworks.workflow.checks import Check, GateContext, passed
 from specworks.workflow.cycle import next_cycle
-from specworks.workflow.findings import _REVIEW, Finding, FindingError, add_finding, close_finding, decide_finding, mark_finding_done
+from specworks.workflow.findings import Finding, FindingError, add_finding, close_finding, decide_finding, mark_finding_done
 from specworks.workflow.gate import GATES, run_gate, start_phase
 from specworks.workflow.merge import BranchMergeError, merge_branch
 from specworks.workflow.review import review_change
@@ -123,21 +124,28 @@ def cycle(
     change: str = ChangeOpt,
     as_json: bool = JsonOpt,
 ) -> None:
-    """After a review: the steps the next build cycle runs (design, test, code, review) and where it starts, from review.md's open findings."""
+    """After a review or a validate: the steps the next build cycle runs (design, test, code, review), where it starts, and the change's next state, from the open findings of every check artifact.
+
+    Implements REQ-FLOW-012.
+    """
     ws, mod, ch = require_change(change, as_json)
     started = time.monotonic()
     result = next_cycle(ch)
     data = {**change_dict(ws, mod, ch), **result}
-    if not result["reviewed"]:
-        lines = ["not reviewed yet: no review.md (run /specworks-review)"]
-    elif not result["open"]:
-        lines = ["no open findings: the build is done; next is /specworks-validate"]
-    else:
+    if result["open"]:
         lines = [f"{f['id']} {f['type'] or '?'} -> {f['phase']}" for f in result["open"]]
         if result["handOver"]:
             lines.append(f"a spec finding: stop the build and run {result['handOver']} {mod.qualify(ch.name)}")
-        else:
+        elif result["phases"]:
             lines.append(f"next cycle: {' -> '.join(result['phases'])}")
+        else:
+            lines.append("no build cycle: the open findings wait for /specworks-validate to confirm them")
+    elif not result["reviewed"]:
+        lines = ["not reviewed yet: no review.md (run /specworks-review)"]
+    else:
+        lines = ["no open findings: the build is done; next is /specworks-validate"]
+    if result["next"]:
+        lines.append(f"next: {result['next']}")
     record(ws, mod, ch, "cycle", started, phases=list(result["phases"]), open=len(result["open"]))
     emit(data, as_json, "\n".join(lines))
 
@@ -231,18 +239,26 @@ def finding_close(
 
 # @req REQ-CLI-011
 def _write_finding(ref: str, as_json: bool, action: str, write: Callable[[Change], Finding]) -> None:
-    """Run one of the finding writers on the change and print the finding as `specworks cycle` reads it, with its check artifact's path."""
+    """Run one of the finding writers on the change and print the finding as `specworks cycle` reads it, with the path of
+    the check artifact it wrote: the one its ID's letter names."""
     ws, mod, ch = require_change(ref, as_json)
     started = time.monotonic()
-    path = ch.path / _REVIEW.file
     try:
         finding = write(ch)
-    except FindingError as exc:  # the message names review.md: shown relative to the workspace root, as every path
-        raise FindingError(str(exc).replace(str(path), ws.rel(path))) from None
+    except FindingError as exc:  # the message names the file: shown relative to the workspace root, as every path
+        raise FindingError(_relative_paths(ws, ch, str(exc))) from None
+    path = ch.path / check_artifact_for(finding.id).file
     rel = ws.rel(path)
     data = {**change_dict(ws, mod, ch), "finding": {**finding.to_dict(), "done": finding.done}, "path": rel}
     record(ws, mod, ch, "finding", started, action=action, id=finding.id, type=finding.type, step=finding.phase)  # never the finding's text
     emit(data, as_json, f"{finding.id} {finding.type or '?'} -> {finding.phase} ({'done' if finding.done else 'open'})\n{rel}")
+
+
+def _relative_paths(ws: Workspace, ch: Change, message: str) -> str:
+    """``message`` with the path of every check artifact of the change shown relative to the workspace root."""
+    for path in sorted((ch.path / a.file for a in check_artifacts()), key=lambda p: -len(str(p))):
+        message = message.replace(str(path), ws.rel(path))
+    return message
 
 
 def _rel(ws: Workspace, path: Path) -> str:
@@ -252,6 +268,7 @@ def _rel(ws: Workspace, path: Path) -> str:
         return path.as_posix()
 
 
+# @req REQ-CLI-023
 @app.command("validate")
 def validate_cmd(
     change: str = ChangeOpt,
@@ -265,12 +282,18 @@ def validate_cmd(
     ws, mod, ch = require_change(change, as_json)
     started = time.monotonic()
     ctx = GateContext(ws, mod, ch, run_tests=not no_run, base=base, reuse_runs=not fresh)
-    if write:
-        write_validation(ctx)  # REQ-CLI-023: prints validation.md's path; the code half wires its output
-    checks = validate_change(ctx)
+    written: str | None = None
+    if write:  # REQ-CLI-023: validation.md kept in step with the checks; the verdict is the one after the write
+        try:
+            checks, path = write_validation(ctx)
+        except FindingError as exc:
+            fail(_relative_paths(ws, ch, str(exc)), as_json)
+        written = ws.rel(path)
+    else:
+        checks = validate_change(ctx)
     result = summary(checks)
     record(ws, mod, ch, "validate", started, verdict=result["verdict"], critical=result["critical"], warnings=result["warnings"])
-    data = {**change_dict(ws, mod, ch), **result, "checks": [c.to_dict() for c in checks]}
+    data = {**change_dict(ws, mod, ch), **result, "checks": [c.to_dict() for c in checks], **({"path": written} if written else {})}
     lines = []
     for group in GROUPS:
         counts = result["groups"][group]
@@ -281,6 +304,8 @@ def validate_cmd(
     lines.append(f"{mod.qualify(ch.name)}: {result['verdict']} ({result['critical']} critical, {result['warnings']} warnings)")
     if result["goBackTo"]:
         lines.append(f"go back to: {', '.join(result['goBackTo'])}")
+    if written:
+        lines.append(written)
     emit(data, as_json, "\n".join(lines))
     if result["verdict"] != "PASS":
         raise typer.Exit(1)

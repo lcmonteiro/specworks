@@ -8,30 +8,28 @@ back before the file is written.
 from __future__ import annotations
 
 import re
+from collections.abc import Callable
 from dataclasses import dataclass, field
+from functools import cache
 from pathlib import Path
 
 from specworks.core.changes import Change
 from specworks.core.errors import SpecworksError
 from specworks.core.files import read_text
 from specworks.specs.specfile import H2_RE, blank_comments, fenced
-from specworks.workflow.artifacts import CheckArtifact, read_template
-
-# review.md as it was read before check artifacts were declared: the existing callers' artifact until
-# ``check_artifact("review")`` reads it from the schema (REQ-FLOW-018).
-_REVIEW = CheckArtifact(id="review", file="review.md", letter="R", phase="review", blocks=("review", "validate"))
-
+from specworks.workflow.artifacts import CheckArtifact, WorkflowError, check_artifact, check_artifact_for, check_artifacts, read_template
 
 # --- reading findings ----------------------------------------------------------
 #
 # Findings are checkboxes (``- [ ] R<n> **<type>** ...``, ``- [x]`` once resolved);
 # lines indented under one belong to it (its Decision). A Decision saying
 # ``back to <step>: <proposal>`` sends the finding to that step (specify, design,
-# implement, test or code), and ``back to design only:`` to design and then
+# implement, test, code or review), and ``back to design only:`` to design and then
 # straight to review; otherwise its type decides. A step that carried out the
 # proposal adds ``done in <step>: <what changed>``: the finding stays open until
-# review confirms it, but the work left is in the steps after that one. Untagged
-# changed files are accounted for under their own heading.
+# the step that found it confirms it, but the work left is in the steps after that
+# one (after review, validate). Untagged changed files are accounted for under their
+# own heading in review.md.
 
 # The step that resolves each finding type, in workflow order (specify comes first).
 TYPE_PHASE = {
@@ -42,18 +40,30 @@ TYPE_PHASE = {
     "tag": "code",
     "quality": "code",
 }
-# A finding is a checkbox with its ID first: ``- [ ] R1 ...``; ``*``/``+``/``1.`` bullets
-# and a bold ``**R1**`` are read too. Any other checkbox is reported, never skipped:
-# a finding the parser cannot see would let the review gate pass with it open.
-FINDING_RE = re.compile(r"^\s*(?:[-*+]|\d+[.)])\s+\[(?P<mark>[ xX]?)\]\s+(?P<bold>\*\*)?(?P<id>R\d+)\b(?(bold)\*\*)(?P<text>.*)$")
+# A finding is a checkbox with its ID first, the artifact's letter and a number: ``- [ ] R1 ...``
+# in review.md; ``*``/``+``/``1.`` bullets and a bold ``**R1**`` are read too. Any other checkbox
+# (another letter included) is reported, never skipped: a finding the parser cannot see would let
+# the gate pass with it open.
+FINDING_PATTERN = r"^\s*(?:[-*+]|\d+[.)])\s+\[(?P<mark>[ xX]?)\]\s+(?P<bold>\*\*)?(?P<id>{letter}\d+)\b(?(bold)\*\*)(?P<text>.*)$"
+FINDING_RE = re.compile(FINDING_PATTERN.format(letter="R"))  # review.md's
+
+
+# @req REQ-FLOW-018
+@cache
+def _finding_re(letter: str) -> re.Pattern[str]:
+    """``FINDING_RE`` for a check artifact's letter: a checkbox with another letter's ID is not one of its findings."""
+    return re.compile(FINDING_PATTERN.format(letter=re.escape(letter)))
 CHECKBOX_RE = re.compile(r"^\s*(?:[-*+]|\d+[.)])\s*\[[^\]]?\]")
 TYPE_RE = re.compile(r"\*\*([A-Za-z_-]+)\*\*")
-BACK_RE = re.compile(r"\bback to (?P<phase>specify|design|implement|test|code)(?P<only>\s+only)?\s*:", re.IGNORECASE)
-DONE_RE = re.compile(r"\bdone in (?P<phase>specify|design|implement|test|code)\s*:", re.IGNORECASE)
+BACK_RE = re.compile(r"\bback to (?P<phase>specify|design|implement|test|code|review)(?P<only>\s+only)?\s*:", re.IGNORECASE)
+DONE_RE = re.compile(r"\bdone in (?P<phase>specify|design|implement|test|code|review)\s*:", re.IGNORECASE)
+# The ``**Check**`` line under a finding validate wrote: the check it was written for (REQ-FLOW-019).
+CHECK_LINE_RE = re.compile(r"^\s*(?:[-*+]|\d+[.)])\s+\*\*Check\*\*\s*:\s*(?P<check>\S.*?)\s*$")
 # The steps a finding can be routed to, in workflow order: implement is both halves, test and code one each.
 FINDING_STEPS = ("specify", "design", "implement", "test", "code", "review")
 # The step a finding needs once a step carried out its proposal (``done in <step>:``).
-NEXT_STEP = {"specify": "design", "design": "implement", "implement": "review", "test": "review", "code": "review"}
+# After review, a finding another check artifact holds waits for the step that found it (validate).
+NEXT_STEP = {"specify": "design", "design": "implement", "implement": "review", "test": "review", "code": "review", "review": "validate"}
 
 
 # Where a line's text starts: after its indentation and an optional bullet, or after a bold label there too
@@ -103,7 +113,7 @@ class Finding:
     done: bool
     type: str  # "" when the finding names none
     text: str  # the finding's line, after its ID
-    phase: str  # the step that resolves it, one of FINDING_STEPS (after ``done_in``, the next one)
+    phase: str  # the step that resolves it, one of FINDING_STEPS (after ``done_in``, the next one, validate after review)
     routed: bool = True  # False: neither a known type nor a "back to"/"done in" step, so ``phase`` is only a guess
     done_in: str = ""  # the step that carried out its proposal (``done in <step>:``), awaiting review
     design_only: bool = False  # its Decision says ``back to design only:``: after design it goes to review (REQ-FLOW-010)
@@ -144,8 +154,7 @@ def parse_findings(text: str, artifact: CheckArtifact) -> FindingsDoc:
 
     Implements REQ-FLOW-010, REQ-FLOW-018.
     """
-    if artifact.letter != _REVIEW.letter:
-        raise NotImplementedError  # findings with another letter (REQ-FLOW-018)
+    finding_re = _finding_re(artifact.letter)
     doc = FindingsDoc(exists=True, artifact=artifact)
     current: Finding | None = None
     section = ""
@@ -163,7 +172,7 @@ def parse_findings(text: str, artifact: CheckArtifact) -> FindingsDoc:
         if section == ACCOUNTED_SECTION:
             accounted.append(line)
             continue
-        if match := FINDING_RE.match(line):
+        if match := finding_re.match(line):
             body = match.group("text").strip()
             # The first bold word that is a type (any case); else the first bold word, reported below as unknown.
             bold = [word.lower() for word in TYPE_RE.findall(body)]
@@ -180,7 +189,7 @@ def parse_findings(text: str, artifact: CheckArtifact) -> FindingsDoc:
             continue  # the finding's own line is text: a form it quotes never routes it
         if CHECKBOX_RE.match(line) and (current is None or not line.startswith((" ", "\t"))):
             # Indented under a finding, it is part of that finding (a sub-step); anywhere else it could hide open work.
-            doc.problems.append(f"line {number}: {line.strip()!r} is not a finding; write it as '- [ ] R<n> **<type>** ...'")
+            doc.problems.append(f"line {number}: {line.strip()!r} is not a finding; write it as '- [ ] {artifact.letter}<n> **<type>** ...'")
             current = None
         elif current is not None and line.strip() and not line.startswith((" ", "\t")):
             current = None  # back at the top level: the finding's block has ended
@@ -188,6 +197,8 @@ def parse_findings(text: str, artifact: CheckArtifact) -> FindingsDoc:
             (current.phase, current.design_only), current.routed = back, True
         if current is not None and (carried := _done_in(line)):
             current.done_in, current.routed = carried, True
+        if current is not None and not current.check and (check := CHECK_LINE_RE.match(line)):
+            current.check = check.group("check")
     for finding in doc.findings:
         if finding.done_in:
             finding.phase = _next_step(finding.done_in, finding.design_only)
@@ -195,7 +206,7 @@ def parse_findings(text: str, artifact: CheckArtifact) -> FindingsDoc:
             # The next build cycle starts from each open finding's phase, so it is never guessed.
             doc.problems.append(
                 f"{finding.id}: type {finding.type or '(none)'!r} is not one of {', '.join(TYPE_PHASE)}; "
-                f"name one, or add a Decision 'back to <specify|design|implement|test|code>: ...'"
+                f"name one, or add a Decision 'back to <specify|design|implement|test|code|review>: ...'"
             )
     doc.accounted = "\n".join(accounted)
     return doc
@@ -212,7 +223,7 @@ def read_all_findings(change: Change) -> list[FindingsDoc]:
 
     Implements REQ-FLOW-018, REQ-FLOW-012.
     """
-    raise NotImplementedError
+    return [read_findings(change, artifact) for artifact in check_artifacts()]
 
 
 # --- writing findings ----------------------------------------------------------
@@ -225,7 +236,7 @@ def read_all_findings(change: Change) -> list[FindingsDoc]:
 
 # A Decision line under a finding, as written by hand (``- **Decision**: ...``) or by ``decide_finding``.
 DECISION_LINE_RE = re.compile(r"^(?P<indent>\s*)(?:[-*+]|\d+[.)])\s+\**Decision\**\s*:", re.IGNORECASE)
-DECISION_RE = re.compile(r"^(?:back to (?:specify|design|implement|test|code)|back to design\s+only|accepted)\s*:\s*\S", re.IGNORECASE)
+DECISION_RE = re.compile(r"^(?:back to (?:specify|design|implement|test|code|review)|back to design\s+only|accepted)\s*:\s*\S", re.IGNORECASE)
 DECISION_FORM = "a decision starts with 'back to <step>:' (specify, design, implement, test or code), 'back to design only:' or 'accepted:'"
 LIST_ITEM_RE = re.compile(r"^\s*(?:[-*+]|\d+[.)])\s")
 CHECKBOX_MARK_RE = re.compile(r"\[[ xX]?\]")
@@ -283,7 +294,7 @@ def _locate(path: Path, text: str, artifact: CheckArtifact) -> _Review:
             continue
         if section == ACCOUNTED_SECTION:
             continue
-        if match := FINDING_RE.match(line):
+        if match := _finding_re(artifact.letter).match(line):
             current = _Block(number, number, line[: len(line) - len(line.lstrip())])
             owner = match.group("id") if match.group("id") not in review.blocks else None  # a repeated ID: the first one is the finding
             review.blocks.setdefault(match.group("id"), current)
@@ -295,6 +306,14 @@ def _locate(path: Path, text: str, artifact: CheckArtifact) -> _Review:
             if owner is not None and DECISION_LINE_RE.match(line):
                 review.decisions.setdefault(owner, []).append(number)
     return review
+
+
+def _artifact(find: Callable[[], CheckArtifact]) -> CheckArtifact:
+    """The check artifact ``find`` names, its ``WorkflowError`` (an unknown artifact or ID, naming the check artifacts) as a ``FindingError``."""
+    try:
+        return find()
+    except WorkflowError as exc:
+        raise FindingError(str(exc)) from None
 
 
 def _one_line(value: str, what: str) -> str:
@@ -367,16 +386,16 @@ def add_finding(change: Change, kind: str, text: str, proposal: str, artifact: s
 
     Implements REQ-FLOW-016.
     """
-    if artifact != _REVIEW.id or check:
-        raise NotImplementedError  # another check artifact, the **Check** line (REQ-FLOW-016, REQ-FLOW-019)
+    target = _artifact(lambda: check_artifact(artifact))
     kind = kind.strip().lower()
     if kind not in TYPE_PHASE:
         raise FindingError(f"unknown finding type {kind!r}; one of {', '.join(TYPE_PHASE)}")
     text, proposal = _one_line(text, "finding's text"), _one_line(proposal, "proposal")
-    path, original = _open(change, _REVIEW)
-    review = _locate(path, original or _new_artifact(change, _REVIEW), _REVIEW)
-    fid = f"{_REVIEW.letter}{max((int(f.id[1:]) for f in parse_findings(review.text, _REVIEW).findings), default=0) + 1}"
-    new = [f"- [ ] {fid} **{kind}** {text}", f"  - **Proposal**: {proposal}"]
+    check = " ".join(check.split())
+    path, original = _open(change, target)
+    review = _locate(path, original or _new_artifact(change, target), target)
+    fid = f"{target.letter}{max((int(f.id[1:]) for f in parse_findings(review.text, target).findings), default=0) + 1}"
+    new = [f"- [ ] {fid} **{kind}** {text}", *([f"  - **Check**: {check}"] if check else []), f"  - **Proposal**: {proposal}"]
     if review.section is None:
         _insert(review, len(review.lines), ["", "## Findings", "", *new])
     else:
@@ -388,8 +407,8 @@ def add_finding(change: Change, kind: str, text: str, proposal: str, artifact: s
         if not in_list:
             _insert(review, at, [""])
     # The step the reader gives: the form its Proposal line starts with, else its type; a form quoted in its text is text.
-    phase, design_only = _route(new[1]) or (TYPE_PHASE[kind], False)
-    return _write(review, original, fid, {"done": False, "type": kind, "phase": phase, "design_only": design_only})
+    phase, design_only = _route(new[-1]) or (TYPE_PHASE[kind], False)
+    return _write(review, original, fid, {"done": False, "type": kind, "phase": phase, "design_only": design_only, "check": check})
 
 
 # @req REQ-FLOW-016
@@ -402,10 +421,11 @@ def decide_finding(change: Change, finding_id: str, decision: str) -> Finding:
     decision = _one_line(decision, "decision")
     if not DECISION_RE.match(decision):
         raise FindingError(DECISION_FORM)
-    path, original = _open(change, _REVIEW)
-    review = _locate(path, original, _REVIEW)
+    target = _artifact(lambda: check_artifact_for(finding_id))
+    path, original = _open(change, target)
+    review = _locate(path, original, target)
     fid, block = _find(review, finding_id)
-    current = next(f for f in parse_findings(original, _REVIEW).findings if f.id == fid)
+    current = next(f for f in parse_findings(original, target).findings if f.id == fid)
     line = f"{block.indent}  - **Decision**: {decision}"
     if fid in review.decisions:
         at = review.decisions[fid][0]  # only that line is replaced, keeping its own ending
@@ -436,10 +456,11 @@ def mark_finding_done(change: Change, finding_id: str, step: str, text: str) -> 
     if step not in NEXT_STEP:
         raise FindingError(f"unknown step {step!r}; one of {', '.join(NEXT_STEP)}")
     text = _one_line(text, "text")
-    path, original = _open(change, _REVIEW)
-    review = _locate(path, original, _REVIEW)
+    target = _artifact(lambda: check_artifact_for(finding_id))
+    path, original = _open(change, target)
+    review = _locate(path, original, target)
     fid, block = _find(review, finding_id)
-    current = next(f for f in parse_findings(original, _REVIEW).findings if f.id == fid)
+    current = next(f for f in parse_findings(original, target).findings if f.id == fid)
     _insert(review, block.end + 1, [f"{block.indent}  - done in {step}: {text}"])
     return _write(review, original, fid, {"done": current.done, "done_in": step, "phase": _next_step(step, current.design_only)})
 
@@ -452,8 +473,9 @@ def close_finding(change: Change, finding_id: str, text: str) -> Finding:
     Implements REQ-FLOW-016.
     """
     text = _one_line(text, "text")
-    path, original = _open(change, _REVIEW)
-    review = _locate(path, original, _REVIEW)
+    target = _artifact(lambda: check_artifact_for(finding_id))
+    path, original = _open(change, target)
+    review = _locate(path, original, target)
     fid, block = _find(review, finding_id)
     _insert(review, block.end + 1, [f"{block.indent}  - confirmed in {review.artifact.phase}: {text}"])
     _tick(review, block)

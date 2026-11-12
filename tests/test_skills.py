@@ -114,7 +114,7 @@ def test_done_closes_only_through_a_second_subagent_after_the_go_ahead():
 
 
 UVX = "uvx --from git+https://github.com/lcmonteiro/specworks specworks"
-COMMITTING = ["specworks-refine", "specworks-specify", "specworks-design", "specworks-test", "specworks-code", "specworks-review", "specworks-close"]
+COMMITTING = ["specworks-refine", "specworks-specify", "specworks-design", "specworks-test", "specworks-code", "specworks-review", "specworks-validate", "specworks-close"]
 
 
 def allowed_commands(name):
@@ -143,9 +143,11 @@ def test_each_phase_skill_commits_its_work_after_the_gate(name):
     assert "stub, written in the code half" not in text  # the shared text is filled in
 
 
-def test_validate_is_read_only_and_does_not_commit():
+def test_validate_writes_its_findings_to_validation_md_and_commits():
+    # validate is no longer read-only: it keeps validation.md in step with its checks and adds the findings of its reading.
     text = read_skill("specworks-validate")
-    assert "**Committing**" not in text and not {"git add", "git commit"} & set(allowed_commands("specworks-validate"))
+    assert 'specworks validate --write --change "<ref>"' in text and "--artifact validation" in text
+    assert "**Committing**" in text and {"git add", "git commit"} <= set(allowed_commands("specworks-validate"))
 
 
 @pytest.mark.parametrize("name", packaged_skills())

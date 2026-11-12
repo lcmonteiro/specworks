@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from functools import cache
 from importlib import resources
@@ -58,36 +59,65 @@ class CheckArtifact:
     blocks: tuple[str, ...]
 
 
+# @req REQ-FLOW-018
+def _declared(artifacts: dict[str, Artifact]) -> list[CheckArtifact]:
+    """The artifacts with a ``findings`` entry, as check artifacts in schema order; a letter used twice raises ``WorkflowError``."""
+    found: list[CheckArtifact] = []
+    for art in artifacts.values():
+        if art.findings is None:
+            continue
+        letter = str(art.findings["letter"]).upper()
+        if clash := next((other for other in found if other.letter == letter), None):
+            raise WorkflowError(f"check artifacts {clash.id} and {art.id} both use the finding letter {letter!r} in schema.yaml")
+        found.append(CheckArtifact(id=art.id, file=art.generates, letter=letter, phase=art.phase, blocks=tuple(art.findings.get("blocks", ()))))
+    return found
+
+
+# @req REQ-FLOW-018
 def check_artifacts() -> list[CheckArtifact]:
     """The check artifacts of the schema, in schema order; a letter used twice raises ``WorkflowError`` when the schema loads.
 
     Implements REQ-FLOW-018.
     """
-    raise NotImplementedError
+    return _declared(load_artifacts())
 
 
+# @req REQ-FLOW-018
 def check_artifact(artifact_id: str) -> CheckArtifact:
     """The check artifact with this id; ``WorkflowError`` naming the check artifacts for any other.
 
     Implements REQ-FLOW-018, REQ-FLOW-016.
     """
-    raise NotImplementedError
+    declared = check_artifacts()
+    found = next((a for a in declared if a.id == artifact_id.strip().lower()), None)
+    if found is None:
+        raise WorkflowError(f"{artifact_id.strip()!r} is not a check artifact; one of {', '.join(a.id for a in declared)}")
+    return found
 
 
+# @req REQ-FLOW-018
 def check_artifact_for(finding_id: str) -> CheckArtifact:
     """The check artifact a finding ID belongs to, by its letter (``V3`` -> validation); ``WorkflowError`` for an ID whose
     letter is no check artifact's.
 
     Implements REQ-FLOW-016, REQ-FLOW-018.
     """
-    raise NotImplementedError
+    declared = check_artifacts()
+    match = re.fullmatch(r"(?P<letter>[A-Za-z])\d+", finding_id.strip())
+    found = next((a for a in declared if match and a.letter == match.group("letter").upper()), None)
+    if found is None:
+        letters = ", ".join(f"{a.letter}<n> in {a.file}" for a in declared)
+        raise WorkflowError(f"{finding_id.strip()!r} is not the ID of a finding of a check artifact ({letters})")
+    return found
 
 
 @cache
 def load_artifacts() -> dict[str, Artifact]:
     text = resources.files("specworks").joinpath("schema.yaml").read_text(encoding="utf-8")
     raw = yaml.safe_load(text)
-    return {item["id"]: Artifact(**item) for item in raw["artifacts"]}
+    artifacts = {item["id"]: Artifact(**item) for item in raw["artifacts"]}
+    _declared(artifacts)  # a letter used twice fails here, when the schema loads (REQ-FLOW-018)
+    return artifacts
 
 
 def read_template(name: str) -> str:

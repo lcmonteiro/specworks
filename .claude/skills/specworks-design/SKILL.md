@@ -166,12 +166,15 @@ Read the module's `<docsPath>/architecture.md` first (`docsPath` of the module i
    them.
 
    **Back from review**: when `specworks cycle --change "<ref>" --json`
-   lists open findings whose `phase` is `design`, you carried out their
-   agreed proposal (the Decision); once the gate passes, record each one:
+   lists open findings whose `phase` is `design` (`R<n>` from review.md,
+   `V<n>` from validation.md), you carried out their agreed proposal (the
+   Decision, else the Proposal); once the gate passes, record each one by its
+   ID:
    ```bash
-   specworks finding done R<n> --in design --change "<ref>" "<what changed>"
+   specworks finding done <ID> --in design --change "<ref>" "<what changed>"
    ```
-   It stays open: review checks it and closes it.
+   It stays open: review checks it, and the step that found it closes it
+   (review its `R` findings, validate its `V` findings).
 
 **Committing**: once this phase's gate has passed (a phase with no gate: once its
 artifact is written), and before the closing question, commit with specworks commit --change "<ref>":

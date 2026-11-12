@@ -91,7 +91,9 @@ again only when the change closes.
 
    `<type>` is the one that fits (`spec-gap`, `design-gap`, `test-gap`,
    `code-gap`, `tag` or `quality`), and `<step>` the step that carries it out
-   (`specify`, `design`, `implement`, `test` or `code`). For `refine` and
+   (`specify`, `design`, `implement`, `test`, `code` or `review`).
+   `specworks cycle --change "<ref>"` then names the cycle the findings need,
+   and `next`, the phase the change goes to. For `refine` and
    `specify` no finding is added: that phase's skill reads the reason from
    `specworks status`.
 

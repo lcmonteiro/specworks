@@ -186,12 +186,15 @@ next step the same way: the next skill (recommended), any alternative, and
    with a wrong ID) and re-run. Warnings: fix them or explain them.
 
    **Back from review**: when `specworks cycle --change "<ref>" --json`
-   lists open findings whose `phase` is `test`, you carried out their
-   agreed proposal (the Decision); once the gate passes, record each one (a finding routed to `implement` is recorded by the code half, so the two halves never write the same lines):
+   lists open findings whose `phase` is `test` (`R<n>` from review.md,
+   `V<n>` from validation.md), you carried out their agreed proposal (the
+   Decision, else the Proposal); once the gate passes, record each one by its
+   ID (a finding routed to `implement` is recorded by the code half, so the two halves never write the same lines):
    ```bash
-   specworks finding done R<n> --in test --change "<ref>" "<what changed>"
+   specworks finding done <ID> --in test --change "<ref>" "<what changed>"
    ```
-   It stays open: review checks it and closes it.
+   It stays open: review checks it, and the step that found it closes it
+   (review its `R` findings, validate its `V` findings).
 
 **Committing**: once this phase's gate has passed (a phase with no gate: once its
 artifact is written), and before the closing question, commit with specworks commit --change "<ref>":

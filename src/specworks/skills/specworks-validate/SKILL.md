@@ -1,21 +1,23 @@
 ---
 name: specworks-validate
-description: Validate phase of spec-driven development - a final, read-only pass/fail check that a change is complete, correct and coherent before it is closed, with every failure pointing to the phase that fixes it. Use when a specworks change has been reviewed and the user wants to know if it is ready, or says "validate the change", "is the change ready to close" or "specworks validate".
-allowed-tools: Bash(specworks:*), Bash(uv run specworks:*), Bash(uvx --from git+https://github.com/lcmonteiro/specworks specworks:*), Bash(git diff:*), Bash(git log:*), Bash(git status:*), Read, Grep, Glob
+description: Validate phase of spec-driven development - a final pass/fail check that a change is complete, correct and coherent before it is closed, recorded in validation.md with every failure as a finding routed to the phase that fixes it. Use when a specworks change has been reviewed and the user wants to know if it is ready, or says "validate the change", "is the change ready to close" or "specworks validate".
+allowed-tools: Bash(specworks:*), Bash(uv run specworks:*), Bash(uvx --from git+https://github.com/lcmonteiro/specworks specworks:*), Bash(git diff:*), Bash(git log:*), Bash(git status:*), Bash(git add:*), Bash(git commit:*), Read, Grep, Glob
 ---
 
-Validate phase: decide, changing nothing but the phase marker, whether the change is ready
-to close. The CLI checks what can be measured; you check what needs reading.
-The result is a clear PASS or FAIL, and every failure says which phase fixes
-it.
+Validate phase: decide whether the change is ready to close, and record it in
+`validation.md`. The CLI checks what can be measured; you check what needs
+reading. The result is a clear PASS or FAIL, and every failure is a `V<n>`
+finding in `validation.md`, routed to the phase that fixes it; that phase
+reads it from there.
 
 It is the sixth phase of `refine → specify → design → implement (test | code) → review → validate → close`.
 
-**Phase boundary**: read-only. Do not edit code, tests, specs, tasks, design or
-review.md, and do not fix what you find, even when it is a one-line fix: report
-it and point to the phase that owns it. The only write allowed is moving the
-change's phase marker. On PASS suggest `/specworks-close`; on FAIL, the phase to
-go back to.
+**Phase boundary**: do not edit code, tests, specs, tasks, design or
+review.md, and do not fix what you find, even when it is a one-line fix: record
+it as a finding and point to the phase that owns it. The only writes allowed
+are `validation.md`, through `specworks validate --write` and `specworks
+finding`, and the change's phase marker. On PASS suggest `/specworks-close`; on
+FAIL, the phase of the earliest open finding.
 
 <!-- specworks:include running-cli -->
 
@@ -39,25 +41,31 @@ go back to.
    phase as the recommended next step (`/specworks-review <ref>` for `gate
    review`) or "Stop here", and stop.
 
-2. **Run the measurable checks**
+2. **Run the measurable checks and write validation.md**
 
    ```bash
-   specworks validate --change "<ref>" --json      # add --base <branch> if the default is wrong
+   specworks validate --write --change "<ref>" --json      # add --base <branch> if the default is wrong
    ```
 
-   It runs the project's test, lint and typecheck commands and reports three
-   groups; each failed check has a `fix` (the phase skill that owns it):
+   It runs the project's test, lint and typecheck commands, reports three
+   groups (each failed check has a `fix`, the phase skill that owns it) and
+   keeps `validation.md` (its `path`) in step with them: a `V<n>` finding,
+   with its `**Check**` line, for each failed blocking check, the ones it
+   wrote before ticked (`confirmed in validate:`) once their check passes, and
+   the verdict and the warnings in its Summary. Warnings are never findings.
+   The groups:
    - **Completeness**: proposal, specs and tasks exist; every task done; every
      requirement has `@req` code; every criterion has an `@ac` test; review done
-     (`review.md` with no open finding).
+     (`review.md` with no open finding), and no open finding in
+     `validation.md`.
    - **Correctness**: specs valid; tests, lint and typecheck pass; no tags to
      unknown IDs; removed requirements gone.
    - **Coherence**: every untagged changed file accounted for in `review.md`;
      diagram SVGs up to date; the change went through review.
 
-3. **Check what needs reading (still read-only)**
+3. **Check what needs reading, and confirm your own findings**
 
-   Re-read the delta specs, design.md, review.md and the diff
+   Re-read the delta specs, design.md, review.md, validation.md and the diff
    (`git diff <base>...HEAD`). For each requirement, sample its `@req` code and
    the `@ac` tests of its criteria (`specworks trace --change "<ref>" --json`):
    - does each test exercise its scenario's WHEN and assert its THEN?
@@ -67,7 +75,22 @@ go back to.
 
    Report each problem as CRITICAL (the spec is not met, or a check above is
    unreliable) or WARNING (worth fixing, does not block), with the file and
-   the phase that fixes it. Do not report taste.
+   the phase that fixes it. Do not report taste. Add each CRITICAL one to
+   `validation.md` as a finding routed to the step that fixes it (specify,
+   design, implement, test, code or review); warnings stay in your report:
+   ```bash
+   specworks finding add <type> "<what is wrong, and where>" --proposal "back to <step>: <the change>" --artifact validation --change "<ref>"
+   ```
+   A finding you added in an earlier run (no `**Check**` line) that a step
+   has marked `done in <step>:` is yours to confirm: check the work, then tick
+   it, or leave it open and say why:
+   ```bash
+   specworks finding close V<n> --change "<ref>" "<what you confirmed>"
+   ```
+   The findings validate wrote itself (with a `**Check**` line) are ticked by
+   `specworks validate --write` alone.
+   Once you have added or ticked a finding, run step 2's command again, so
+   the Summary holds the verdict with your findings in it.
 
 4. **Report the verdict and stop**
 
@@ -79,21 +102,30 @@ go back to.
    WARNING   AC-AUTH-003.2 test checks the status only  -> /specworks-review
    ```
 
+   The verdict is FAIL when validation.md has an open finding (the CLI's or
+   yours). Commit (below) before the closing question.
+
    - **PASS** (no critical issue from the CLI or from your reading): "Ready to
      close." Then offer `1. /specworks-close <ref> (recommended): merge the
      specs into the living docs and archive the change` and `2. Stop here`.
-   - **FAIL**: list the critical issues grouped by the phase to go back to, and
-     offer the earliest one as the recommended option (e.g. `specworks phase
-     implement --change "<ref>"`, then `/specworks-code <ref>`) and "Stop here".
-     Warnings are listed but do not block.
+   - **FAIL**: list the open findings grouped by the step each one is routed
+     to, and offer the phase of the earliest one as the recommended option:
+     `specworks cycle --change "<ref>" --json` gives it as `next` (its
+     `startAt`), with `/specworks-specify <ref>` when `handOver` names it,
+     otherwise `/specworks-build <ref>`, which runs the cycle the findings
+     need; then "Stop here". Warnings are listed but do not block.
+
+<!-- specworks:include committing -->
 
 ---
 
 ## Guardrails
 
-- Never modify the project in this phase. A fix here would skip the review
-  and the records the other phases keep.
+- Never modify the project in this phase beyond validation.md. A fix here
+  would skip the review and the records the other phases keep.
 - A FAIL from `specworks validate` is never overridden by your judgement; your
-  reading can only add issues.
+  reading can only add findings. Never tick a finding to reach PASS: only
+  `specworks validate --write` ticks the ones it wrote, and you tick yours
+  only once their work is confirmed.
 - Be specific: every issue names the check or file and the phase that fixes it.
 - Re-read artifacts from disk; the user may have changed them since review.
