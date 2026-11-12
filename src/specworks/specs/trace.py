@@ -138,10 +138,9 @@ def mark_changed(rows: list[Row], since: ChangedSince) -> None:
 
 # @req REQ-SPECS-018
 def living_spec_at(ws: Workspace, change: Change, cap: CapabilityRef, commit: str | None) -> str | None:
-    """The text of ``cap``'s living spec as it was at ``commit`` (the close commit of the archived ``change``), read
-    with ``git show <commit>:<living spec>``; None without the commit, without git, or when the spec did not exist
-    then. The trace of a closed change compares its MODIFIED and REMOVED blocks with it, so a criterion a later change
-    added is never reported as removed.
+    """The text of ``cap``'s living spec as it was at ``commit``, read with ``git show <commit>:<living spec>``; None
+    without the commit, without git, or when the spec did not exist then. The trace of a closed change compares its
+    MODIFIED and REMOVED blocks with it, so a criterion a later change added is never reported as removed.
 
     Implements REQ-SPECS-018.
     """
@@ -428,7 +427,7 @@ class Analysis:
 
     @cached_property
     def rows(self) -> list[Row]:
-        # A closed change's removed criteria come from the living spec at its close, not from today's (REQ-SPECS-018).
+        # A closed change's removed criteria come from the living spec just before its close, not from today's (REQ-SPECS-018).
         rows = build_matrix(self._specs_at_close() if self.archived else self.specs, self.tags)
         if self.changed_since is not None:
             mark_changed(rows, self.changed_since)
