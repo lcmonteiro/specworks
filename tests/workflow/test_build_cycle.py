@@ -261,3 +261,23 @@ def test_ac_flow_012_10_a_finding_waiting_for_validate_starts_no_cycle(project):
     assert data["startAt"] is None and data["phases"] == [] and data["handOver"] is None
     assert [(f["id"], f["phase"]) for f in data["open"]] == [("V1", "validate")]
     assert data["next"] == "validate"
+
+
+def write_inspection(root, body):
+    (root / ".specworks/changes/active" / REF / "inspection.md").write_text(f"# Inspection: {REF}\n\n## Findings\n\n{body}\n\n## Summary\n\n2 of 4 blocks walked\n")
+
+
+# @ac AC-FLOW-012.11
+def test_ac_flow_012_11_a_finding_waiting_for_inspect_starts_no_cycle(project):
+    write_review(project, "- [x] R1 **code-gap** reset ignored case\n  - **Decision**: code fixed")
+    write_inspection(
+        project,
+        "- [ ] I1 **code-gap** the old token is not revoked\n  - **Proposal**: back to code: revoke the old token\n"
+        "  - done in code: revoked in reset.py\n  - done in review: revocation is tested",
+    )
+    code, data = run_json("phase", "validate", "--change", REF)
+    assert code == 0, data
+    data = cycle()
+    assert data["startAt"] is None and data["phases"] == [] and data["handOver"] is None
+    assert [(f["id"], f["phase"]) for f in data["open"]] == [("I1", "inspect")]
+    assert data["next"] == "close"

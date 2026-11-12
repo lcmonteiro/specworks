@@ -35,6 +35,7 @@ def test_status_after_planning(change):
         "traceability": "ready",
         "review": "ready",
         "validation": "blocked",
+        "inspection": "ready",
     }
 
 
@@ -47,6 +48,16 @@ def test_ac_flow_001_5_validation_is_optional_then_done(change):
     (change / "validation.md").write_text("# Validation: add-password-reset\n\n## Findings\n\nNone.\n", encoding="utf-8")
     code, data = run_json("status", "--change", "add-password-reset")
     assert {a["id"]: a["status"] for a in data["artifacts"]}["validation"] == "done"
+
+
+# @ac AC-FLOW-001.6
+def test_ac_flow_001_6_inspection_is_optional_then_done(change):
+    code, data = run_json("status", "--change", "add-password-reset")
+    inspection = {a["id"]: a for a in data["artifacts"]}["inspection"]
+    assert code == 0 and (inspection["status"], inspection["optional"]) == ("ready", True), inspection
+    (change / "inspection.md").write_text("# Inspection: add-password-reset\n\n## Findings\n\n- [ ] I1 **question** why?\n", encoding="utf-8")
+    code, data = run_json("status", "--change", "add-password-reset")
+    assert code == 0 and {a["id"]: a["status"] for a in data["artifacts"]}["inspection"] == "done", data
 
 
 # @ac AC-FLOW-001.4

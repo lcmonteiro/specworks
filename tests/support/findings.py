@@ -11,6 +11,9 @@ REVIEW_ARTIFACT = CheckArtifact(id="review", file="review.md", letter="R", phase
 VALIDATION = f".specworks/changes/active/{REF}/validation.md"
 # validation.md as a check artifact, as the schema declares it (REQ-FLOW-018)
 VALIDATION_ARTIFACT = CheckArtifact(id="validation", file="validation.md", letter="V", phase="validate", blocks=("validate",))
+INSPECTION = f".specworks/changes/active/{REF}/inspection.md"
+# inspection.md as a check artifact, as the schema declares it (REQ-FLOW-018)
+INSPECTION_ARTIFACT = CheckArtifact(id="inspection", file="inspection.md", letter="I", phase="inspect", blocks=())
 TWO_FINDINGS = (
     f"# Review: {REF}\n\n"
     "## Findings\n\n"
@@ -51,6 +54,19 @@ def write_validation_md(root, findings, summary=""):
 
 def read_validation(root):
     return validation_path(root).read_text(encoding="utf-8")
+
+
+def inspection_path(root):
+    return root / INSPECTION
+
+
+def write_inspection(root, findings):
+    """inspection.md with ``findings`` (lines of Markdown) under ``## Findings``."""
+    inspection_path(root).write_text(f"# Inspection: {REF}\n\n## Findings\n\n{findings}\n\n## Summary\n\n3 of 5 blocks walked\n", encoding="utf-8")
+
+
+def read_inspection(root):
+    return inspection_path(root).read_text(encoding="utf-8")
 
 
 def change_files(root):
