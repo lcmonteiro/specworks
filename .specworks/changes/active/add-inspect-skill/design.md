@@ -94,26 +94,23 @@ one has neither. Serves: REQ-SPECS-018.
 Reopened for inspection.md I1: the trace of a closed change compared its
 MODIFIED blocks with today's living spec, so every criterion a later change
 added showed as removed but still tagged. For an archived change,
-`dropped_criteria` now compares with the living spec as it was at the close
-commit (the one `changed_since_close` finds), read with
-`git show <commit>:<living spec>`: a criterion the change itself left out
-and still tagged is still reported; one added later is not. Without that
-commit (no git, history rewritten) no criterion is reported as removed,
-rather than guessing from today's spec. Skipping the check for every
-closed change was rejected: it would hide real leftover tags. Serves:
+`dropped_criteria` now compares with the living spec as it was just before
+the close: at the parent of the close commit (the one `changed_since_close`
+finds), read with `living_spec_at(ws, change, cap, f"{commit}^")`, that is
+`git show <commit>^:<living spec>`. The close commit itself does not hold the
+spec from before the close: `close_change` (`specs/merge.py`) writes the
+merged living specs and moves the change to the archive together, so that
+commit already has each MODIFIED block as the change wrote it, without the
+criteria the change left out (AC-X-001.2 in AC-SPECS-018.4 would never be
+reported). A criterion the change itself left out and still tagged is still
+reported; one added later is not. When the close commit or its parent, or
+the spec at that parent, cannot be read (no git, history rewritten), no
+criterion is reported as removed, rather than guessing from today's spec
+(AC-SPECS-018.5). `living_spec_at` reads the spec at whatever commit it is
+given. Skipping the check for every closed change was rejected: it would
+hide real leftover tags. Agreed with the user (the close commit's parent);
+REQ-SPECS-018's text says the same since review finding R6. Serves:
 REQ-SPECS-018.
-
-Agreed with the user: the close commit's parent. The close commit
-does not hold the living spec from before the close: `close_change`
-(`specs/merge.py`) writes the merged living specs and moves the change to
-the archive together, so that one commit already has each MODIFIED block
-as the change wrote it, and the criteria the change left out are gone from
-it. Compared with the spec at the close commit, the change's own left-out
-criteria (AC-X-001.2 in AC-SPECS-018.4) would never be reported. Proposal:
-compare with the living spec at the close commit's parent
-(`living_spec_at(ws, change, cap, f"{commit}^")`; `living_spec_at` itself is
-unchanged and reads the spec at the commit it is given), and report nothing
-when that parent or its spec cannot be read (as AC-SPECS-018.5).
 
 ### The skill orders, the reviewer breaks the circle
 
