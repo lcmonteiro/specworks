@@ -18,6 +18,8 @@ reading the diff. `- [ ] R<n>` while open, `- [x] R<n>` once resolved. Write
 with why it needs no tag (config, refactor, helper of REQ-...) or the
 finding that covers it. -->
 
+- `tests/support/copilot.py`: test helper of REQ-HARNESS-013 (the fake GitHub answers `/models`)
+
 ## Summary
 
 <!-- Two or three lines: what was found, what changed in code, specs and design, and anything sent back to an earlier phase. -->
