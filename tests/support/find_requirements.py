@@ -1,4 +1,6 @@
-"""Helpers shared by the find_requirements tests of several capabilities."""
+"""
+Helpers shared by the find_requirements tests of several capabilities.
+"""
 
 from typer.testing import CliRunner
 
@@ -71,7 +73,9 @@ The system SHALL write a module's value with `config set --module <name>`.
 
 
 def line_of(spec, text):
-    """The 1-based number of the line of ``spec`` that is exactly ``text``."""
+    """
+    The 1-based number of the line of ``spec`` that is exactly ``text``.
+    """
     return spec.splitlines().index(text) + 1
 
 
@@ -80,7 +84,9 @@ def add_capabilities(config, entries):
 
 
 def make_project(tmp_path, monkeypatch):
-    """user-auth and settings with living specs, and audit-log with none yet."""
+    """
+    user-auth and settings with living specs, and audit-log with none yet.
+    """
     monkeypatch.chdir(tmp_path)
     init_repo(tmp_path)
     assert runner.invoke(app, ["init", "--no-skills"]).exit_code == 0
@@ -128,7 +134,9 @@ TOKEN_002 = "The system SHALL refresh a token before it lapses."
 
 
 def make_tokens_project(tmp_path, monkeypatch):
-    """sessions with three living requirements: two mention `token` (each on several lines), one `expired`."""
+    """
+    sessions with three living requirements: two mention `token` (each on several lines), one `expired`.
+    """
     monkeypatch.chdir(tmp_path)
     init_repo(tmp_path)
     assert runner.invoke(app, ["init", "--no-skills"]).exit_code == 0

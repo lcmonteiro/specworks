@@ -1,4 +1,6 @@
-"""Sample planning text shared by the tests: a living spec, a delta, a proposal and tasks for user-auth, and the project's architecture."""
+"""
+Sample planning text shared by the tests: a living spec, a delta, a proposal and tasks for user-auth, and the project's architecture.
+"""
 
 LIVING = """\
 # user-auth

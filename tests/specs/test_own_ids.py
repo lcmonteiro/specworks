@@ -1,4 +1,6 @@
-"""A change reopened after its close may touch the IDs its own earlier close added, changed or removed (REQ-SPECS-017)."""
+"""
+A change reopened after its close may touch the IDs its own earlier close added, changed or removed (REQ-SPECS-017).
+"""
 
 import re
 
@@ -52,7 +54,9 @@ def setup(project, delta_text, living=LIVING, lines=()):
 
 
 def problems(rid):
-    """The errors `specworks check` gives about one ID: they all start with it."""
+    """
+    The errors `specworks check` gives about one ID: they all start with it.
+    """
     _, data = run_json("check", "--change", REF)
     return [m for m in errors(data) if m.startswith(rid)]
 

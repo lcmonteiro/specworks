@@ -1,4 +1,5 @@
-"""Validate phase (`specworks validate`): final, read-only check of a change before it is closed.
+"""
+Validate phase (`specworks validate`): final, read-only check of a change before it is closed.
 
 Every check is grouped (completeness, correctness, coherence) and names the
 phase skill that fixes it. Nothing here writes to the project: it only
@@ -37,7 +38,9 @@ def diagrams_current(ctx: GateContext) -> Check:
 
 # @req REQ-FLOW-013
 def architecture_diagrams_current(ctx: GateContext) -> Check | None:
-    """A non-blocking warning naming each missing or outdated SVG in the module's ``docs/diagrams/``; None when none is."""
+    """
+    A non-blocking warning naming each missing or outdated SVG in the module's ``docs/diagrams/``; None when none is.
+    """
     settings = ctx.ws.top.config.diagrams
     stale = [f"{ctx.ws.rel(d.svg)} ({status})" for d in diagrams_in(ctx.module.docs_path) if (status := state(d, settings)) != "ok"]
     if not stale:

@@ -120,7 +120,9 @@ def test_other_yaml_files_are_not_configs(tmp_path, monkeypatch, name):
 
 
 def old_layout(root):
-    """A project in the old layout: ``spec.yml`` with the marker and its ``spec/`` folder."""
+    """
+    A project in the old layout: ``spec.yml`` with the marker and its ``spec/`` folder.
+    """
     (root / "spec.yml").write_text("specworks: 1\ncapabilities: {}\n")
     (root / "spec/changes/active/add-login").mkdir(parents=True)
     (root / "spec/changes/active/add-login/.change.yaml").write_text("name: add-login\ncreated: '2026-01-01T10:00:00'\nphase: refine\n")

@@ -1,4 +1,6 @@
-"""Reopening a closed change (REQ-PROJ-033) and recording why (REQ-PROJ-034)."""
+"""
+Reopening a closed change (REQ-PROJ-033) and recording why (REQ-PROJ-034).
+"""
 
 import re
 import shutil

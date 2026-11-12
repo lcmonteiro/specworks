@@ -1,4 +1,6 @@
-"""Validate phase: the final read-only report and `gate validate`."""
+"""
+Validate phase: the final read-only report and `gate validate`.
+"""
 
 import hashlib
 import json
@@ -104,7 +106,9 @@ ARCHITECTURE_SVG = "docs/diagrams/architecture-blocks.svg"
 
 
 def architecture_warnings(data):
-    """The checks that name the module's architecture diagram's SVG."""
+    """
+    The checks that name the module's architecture diagram's SVG.
+    """
     return [c for c in data["checks"] if any(ARCHITECTURE_SVG in detail for detail in c["details"])]
 
 

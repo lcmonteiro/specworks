@@ -1,4 +1,6 @@
-"""In-flight changes: creation, listing and phase tracking."""
+"""
+In-flight changes: creation, listing and phase tracking.
+"""
 
 from __future__ import annotations
 
@@ -32,16 +34,22 @@ def half_error(half: str) -> str:
 
 
 class ChangeError(SpecworksError):
-    """Raised for invalid change names or missing changes."""
+    """
+    Raised for invalid change names or missing changes.
+    """
 
 
 class ChangeNotFound(ChangeError):
-    """Raised when no change of that name exists (a broken .change.yaml is a plain ChangeError)."""
+    """
+    Raised when no change of that name exists (a broken .change.yaml is a plain ChangeError).
+    """
 
 
 @dataclass(frozen=True)
 class Reopened:
-    """One reopen of a closed change: when (local date and time), why, and the phase it started in (REQ-PROJ-034)."""
+    """
+    One reopen of a closed change: when (local date and time), why, and the phase it started in (REQ-PROJ-034).
+    """
 
     at: str
     reason: str
@@ -62,7 +70,9 @@ class Change:
 
     @property
     def order(self) -> tuple[str, str, str]:
-        """Sorts changes by when they started; the name and folder break ties."""
+        """
+        Sorts changes by when they started; the name and folder break ties.
+        """
         return (self.created, self.name, self.path.as_posix())
 
     def save(self) -> None:
@@ -82,7 +92,9 @@ class Change:
 
 # @req REQ-PROJ-023
 def _record(root: Path) -> dict[str, str]:
-    """The dirty files to record when a phase starts; none outside a git repository, where the move still succeeds."""
+    """
+    The dirty files to record when a phase starts; none outside a git repository, where the move still succeeds.
+    """
     try:
         return dirty_files(root)
     except GitError:
@@ -92,7 +104,9 @@ def _record(root: Path) -> dict[str, str]:
 # @req REQ-PROJ-010
 # @req REQ-PROJ-023
 def create_change(cfg: Config, name: str, root: Path | None = None) -> Change:
-    """Create the change folder and its metadata; with `root` (the workspace root), record its dirty files (REQ-PROJ-023)."""
+    """
+    Create the change folder and its metadata; with `root` (the workspace root), record its dirty files (REQ-PROJ-023).
+    """
     validate_kebab(name, "change name", "add-user-auth")
     if name in (ARCHIVE_DIR, ACTIVE_DIR):
         raise ChangeError(f"'{name}' is reserved for the changes folders; pick another name")
@@ -164,7 +178,9 @@ def list_changes(cfg: Config) -> list[Change]:
 
 # @req REQ-PROJ-012
 def list_archived(cfg: Config) -> list[Change]:
-    """Closed and abandoned changes, oldest first; a folder whose metadata cannot be read is left out."""
+    """
+    Closed and abandoned changes, oldest first; a folder whose metadata cannot be read is left out.
+    """
     if not cfg.archive_path.is_dir():
         return []
     found = []
@@ -179,13 +195,17 @@ def list_archived(cfg: Config) -> list[Change]:
 
 
 def archived_as(cfg: Config, name: str) -> Change | None:
-    """The newest archived change named ``name`` (or the archived one whose folder is ``name``), if any."""
+    """
+    The newest archived change named ``name`` (or the archived one whose folder is ``name``), if any.
+    """
     found = [c for c in list_archived(cfg) if name in (c.name, c.path.name)]
     return found[-1] if found else None
 
 
 def _check_phase(phase: str) -> None:
-    """Refuse a phase a change cannot be moved to."""
+    """
+    Refuse a phase a change cannot be moved to.
+    """
     if phase in HALVES:
         raise ChangeError(half_error(phase))
     if phase not in PHASES:
@@ -198,7 +218,8 @@ def _check_phase(phase: str) -> None:
 # @req REQ-PROJ-011
 # @req REQ-PROJ-023
 def set_phase(change: Change, phase: str, root: Path | None = None) -> None:
-    """Move the change to `phase` and save it; with `root` (the workspace root), a new phase also records its dirty files.
+    """
+    Move the change to `phase` and save it; with `root` (the workspace root), a new phase also records its dirty files.
 
     Moving to the phase the change is already in keeps the record it has. Implements REQ-PROJ-023.
     """
@@ -212,7 +233,8 @@ def set_phase(change: Change, phase: str, root: Path | None = None) -> None:
 # @req REQ-PROJ-033
 # @req REQ-PROJ-034
 def reopen_change(cfg: Config, name: str, reason: str, phase: str = "review", root: Path | None = None) -> Change:
-    """Move the closed change ``name`` (or archive folder) back to ``active/`` in ``phase``, recording ``reason``.
+    """
+    Move the closed change ``name`` (or archive folder) back to ``active/`` in ``phase``, recording ``reason``.
 
     Implements REQ-PROJ-033 and REQ-PROJ-034. Raises ``ChangeError`` for a blank reason, a phase it cannot take, a change
     that is active, abandoned or whose name is in use, and ``ChangeNotFound`` for a name no archive or ``active/`` has.
@@ -249,7 +271,9 @@ def reopen_change(cfg: Config, name: str, reason: str, phase: str = "review", ro
 
 @dataclass(frozen=True)
 class CommitResult:
-    """A phase commit (REQ-PROJ-024); paths are relative to the workspace root."""
+    """
+    A phase commit (REQ-PROJ-024); paths are relative to the workspace root.
+    """
 
     commit: str | None  # the short hash, None when nothing was committed
     subject: str
@@ -260,7 +284,8 @@ class CommitResult:
 
 # @req REQ-PROJ-024
 def commit_phase(root: Path, ref: str, change: Change, subject: str | None = None, trailers: Sequence[str] = ()) -> CommitResult:
-    """Commit the change folder and every file dirty now that is not in its record or whose content differs.
+    """
+    Commit the change folder and every file dirty now that is not in its record or whose content differs.
 
     `root` is the workspace root and `ref` the change's ref, for the default subject `<ref>: <phase>` (`<ref>: close`
     for a change close has archived, phase `done`); the trailers follow a blank line, in order. Files of the change's

@@ -15,7 +15,9 @@ def project(tmp_path, monkeypatch):
 
 @pytest.fixture
 def committed(project, monkeypatch):
-    """The project with everything committed on main, so a branch starts from a real commit."""
+    """
+    The project with everything committed on main, so a branch starts from a real commit.
+    """
     for key, value in {"GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t", "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@t"}.items():
         monkeypatch.setenv(key, value)
     git(project, "add", "-A")
@@ -134,7 +136,9 @@ def test_new_names_the_branch_it_started_from_unless_it_is_the_base(committed):
 
 
 def stay_on_work(root):
-    """`branch_per_change: false` at the top level, with HEAD on a branch `work`."""
+    """
+    `branch_per_change: false` at the top level, with HEAD on a branch `work`.
+    """
     cfg = root / ".specworks/config.yml"
     cfg.write_text(cfg.read_text(encoding="utf-8") + "branch_per_change: false\n", encoding="utf-8")
     git(root, "checkout", "-q", "-b", "work")

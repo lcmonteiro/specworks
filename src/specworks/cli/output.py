@@ -1,4 +1,6 @@
-"""Shared CLI plumbing: options, JSON/text output, errors, and resolving the workspace and changes."""
+"""
+Shared CLI plumbing: options, JSON/text output, errors, and resolving the workspace and changes.
+"""
 
 from __future__ import annotations
 
@@ -95,7 +97,9 @@ def changes_of(ws: Workspace, all_modules: bool) -> list[tuple[Module, Change]]:
 
 # @req REQ-CLI-002
 def resolve_change(ws: Workspace, ref: str) -> tuple[Module, Change]:
-    """``module:name`` is exact. A bare name prefers the current module, then any module if unique."""
+    """
+    ``module:name`` is exact. A bare name prefers the current module, then any module if unique.
+    """
     module, name = ws.split(ref)
     if module is not None:
         return module, load_change(module.config, name)
@@ -127,7 +131,9 @@ def resolve_change(ws: Workspace, ref: str) -> tuple[Module, Change]:
 
 # @req REQ-CLI-002
 def resolve_archived(ws: Workspace, ref: str) -> tuple[Module, Change]:
-    """An archived change, by name (the newest of that name) or folder (``<date>-<name>``); the current module first."""
+    """
+    An archived change, by name (the newest of that name) or folder (``<date>-<name>``); the current module first.
+    """
     module, name = ws.split(ref)
     modules = [module] if module is not None else [ws.current, *(m for m in ws.modules() if m is not ws.current)]
     found = [(m, c) for m in modules if (c := archived_as(m.config, name))]
@@ -140,6 +146,8 @@ def resolve_archived(ws: Workspace, ref: str) -> tuple[Module, Change]:
 
 
 def require_change(ref: str, as_json: bool) -> tuple[Workspace, Module, Change]:
-    """The workspace and the change ``ref`` names."""
+    """
+    The workspace and the change ``ref`` names.
+    """
     ws = workspace(as_json)
     return (ws, *resolve_change(ws, ref))

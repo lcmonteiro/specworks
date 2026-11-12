@@ -1,4 +1,5 @@
-"""Build cycles: after a review, the steps the next cycle runs.
+"""
+Build cycles: after a review, the steps the next cycle runs.
 
 Each open finding in review.md (``- [ ] R<n> **<type>** ...``) needs work in
 one step: its Decision's ``back to <step>:`` when it says so, otherwise the
@@ -19,7 +20,9 @@ from specworks.workflow.review import read_review
 
 # @req REQ-FLOW-012
 def next_cycle(change: Change) -> dict:
-    """The next build cycle for a reviewed change: the phase it starts at and the steps it runs."""
+    """
+    The next build cycle for a reviewed change: the phase it starts at and the steps it runs.
+    """
     review = read_review(change)
     found = [f.to_dict() for f in review.open]
     needed = {f.phase for f in review.open}

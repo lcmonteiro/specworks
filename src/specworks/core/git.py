@@ -1,4 +1,6 @@
-"""Running git: its output as bytes or text, and one error for a missing git or a failed command."""
+"""
+Running git: its output as bytes or text, and one error for a missing git or a failed command.
+"""
 
 import hashlib
 import os
@@ -12,11 +14,15 @@ from specworks.core.errors import SpecworksError
 
 
 class GitError(SpecworksError):
-    """Raised when git is not installed or a git command fails (e.g. outside a repository)."""
+    """
+    Raised when git is not installed or a git command fails (e.g. outside a repository).
+    """
 
 
 class GitMissing(GitError):
-    """Raised when git cannot be run (REQ-PROJ-017)."""
+    """
+    Raised when git cannot be run (REQ-PROJ-017).
+    """
 
 
 def git(cwd: Path, *args: str, stdin: bytes | None = None) -> bytes:
@@ -38,7 +44,9 @@ def git_text(cwd: Path, *args: str) -> str:
 
 @dataclass(frozen=True)
 class Branch:
-    """A change's branch and the branch it starts from, `None` when that is not known (REQ-PROJ-019)."""
+    """
+    A change's branch and the branch it starts from, `None` when that is not known (REQ-PROJ-019).
+    """
 
     name: str
     started_from: str | None
@@ -46,7 +54,8 @@ class Branch:
 
 # @req REQ-PROJ-017
 def require_repo(path: Path) -> None:
-    """Fail unless `path` is inside a git repository; runs git from the nearest existing parent.
+    """
+    Fail unless `path` is inside a git repository; runs git from the nearest existing parent.
 
     Raises `GitMissing` when git cannot be run, `GitError` ("not inside a git repository: run `git init` first")
     otherwise. Implements REQ-PROJ-017.
@@ -64,14 +73,17 @@ def require_repo(path: Path) -> None:
 
 # @req REQ-PROJ-018
 def branch_name(ref: str) -> str:
-    """The branch for a change ref: `ref` with `:` replaced by `/`. Implements REQ-PROJ-018."""
+    """
+    The branch for a change ref: `ref` with `:` replaced by `/`. Implements REQ-PROJ-018.
+    """
     return ref.replace(":", "/")
 
 
 # @req REQ-PROJ-018
 # @req REQ-PROJ-019
 def plan_branch(cwd: Path, name: str, base: str | None = None) -> Branch:
-    """Check the branch can be created, without changing the repository.
+    """
+    Check the branch can be created, without changing the repository.
 
     `base` is the base branch name (`origin/main` counts as `main`). Raises `GitError` for an existing branch or a
     detached HEAD. Implements REQ-PROJ-018, REQ-PROJ-019.
@@ -95,13 +107,17 @@ def plan_branch(cwd: Path, name: str, base: str | None = None) -> Branch:
 # @req REQ-PROJ-018
 # @req REQ-PROJ-019
 def create_branch(cwd: Path, branch: Branch) -> None:
-    """Create the branch and switch to it, carrying the working tree over. Implements REQ-PROJ-018, REQ-PROJ-019."""
+    """
+    Create the branch and switch to it, carrying the working tree over. Implements REQ-PROJ-018, REQ-PROJ-019.
+    """
     git(cwd, "checkout", "-b", branch.name)
 
 
 # @req REQ-CLI-015
 def current_branch(cwd: Path) -> str | None:
-    """The branch HEAD is on (`symbolic-ref --short HEAD`), `None` on a detached HEAD. Implements REQ-CLI-015."""
+    """
+    The branch HEAD is on (`symbolic-ref --short HEAD`), `None` on a detached HEAD. Implements REQ-CLI-015.
+    """
     try:
         return git_text(cwd, "symbolic-ref", "--short", "HEAD").strip()  # also works before the first commit
     except GitMissing:
@@ -115,7 +131,9 @@ DETACHED = "cannot commit on a detached HEAD; switch to a branch first"
 
 
 def _content_hash(path: Path) -> str | None:
-    """SHA-256 hex of a file's bytes (a symlink's target text), `deleted` when it is gone, None for a folder (a submodule)."""
+    """
+    SHA-256 hex of a file's bytes (a symlink's target text), `deleted` when it is gone, None for a folder (a submodule).
+    """
     if path.is_symlink():
         return hashlib.sha256(os.readlink(path).encode("utf-8", "surrogateescape")).hexdigest()
     if path.is_file():
@@ -126,7 +144,8 @@ def _content_hash(path: Path) -> str | None:
 # @req REQ-PROJ-023
 # @req REQ-PROJ-024
 def dirty_files(root: Path) -> dict[str, str]:
-    """The staged, unstaged and untracked (not ignored) files under `root`, by path relative to it (POSIX).
+    """
+    The staged, unstaged and untracked (not ignored) files under `root`, by path relative to it (POSIX).
 
     Each maps to the SHA-256 hex of its content, or `deleted` when it no longer exists. Raises `GitError` outside a
     repository. Implements REQ-PROJ-023, REQ-PROJ-024.
@@ -158,7 +177,8 @@ def dirty_files(root: Path) -> dict[str, str]:
 
 # @req REQ-PROJ-024
 def commit(root: Path, paths: Sequence[str], message: str) -> str:
-    """Stage exactly `paths` (relative to `root`, deletions included) and commit them with `message`; return the short hash.
+    """
+    Stage exactly `paths` (relative to `root`, deletions included) and commit them with `message`; return the short hash.
 
     The message goes to git on stdin. Raises `GitError` ("cannot commit on a detached HEAD; switch to a branch first")
     before staging anything on a detached HEAD. Never pushes. Implements REQ-PROJ-024.

@@ -1,4 +1,6 @@
-"""The git backend: the conversation kept in a git-ignored ``chat.jsonl`` in the run's change folder."""
+"""
+The git backend: the conversation kept in a git-ignored ``chat.jsonl`` in the run's change folder.
+"""
 
 from __future__ import annotations
 
@@ -24,7 +26,8 @@ logger = logging.getLogger(__name__)
 
 # @req REQ-HARNESS-009
 def to_line(msg: ChatMessage) -> dict[str, Any]:
-    """``msg`` as a ``chat.jsonl`` line: ``id``, ``from``, ``to``, ``replyTo``, ``status``, ``text``, ``at``; never its credentials.
+    """
+    ``msg`` as a ``chat.jsonl`` line: ``id``, ``from``, ``to``, ``replyTo``, ``status``, ``text``, ``at``; never its credentials.
 
     Implements REQ-HARNESS-009.
     """
@@ -41,7 +44,8 @@ def to_line(msg: ChatMessage) -> dict[str, Any]:
 
 # @req REQ-HARNESS-009
 def signature(folder: Path) -> int:
-    """The newest ``st_mtime_ns`` of any file in ``folder`` except ``chat.jsonl``, ``events.jsonl``, ``events.sent`` and ``.gitignore``.
+    """
+    The newest ``st_mtime_ns`` of any file in ``folder`` except ``chat.jsonl``, ``events.jsonl``, ``events.sent`` and ``.gitignore``.
 
     ``0`` for an empty or unreadable folder.
 
@@ -62,7 +66,8 @@ def signature(folder: Path) -> int:
 @require(HookListen)
 @require(HookForget)
 class GitBackend:
-    """Appends every message to the run's change's ``chat.jsonl``, holding them until the run has a change.
+    """
+    Appends every message to the run's change's ``chat.jsonl``, holding them until the run has a change.
 
     Implements REQ-HARNESS-009.
     """
@@ -70,7 +75,9 @@ class GitBackend:
     change: Change | None
 
     def __init__(self, ws: Workspace, module: Module) -> None:
-        """A backend with no change yet: the run's change is found from what the run does. Implements REQ-HARNESS-009."""
+        """
+        A backend with no change yet: the run's change is found from what the run does. Implements REQ-HARNESS-009.
+        """
         self.ws = ws
         self.module = module
         #: The run's change: ``None`` until it is found.
@@ -81,7 +88,9 @@ class GitBackend:
         self._snapshot: dict[str, int] = {c.name: signature(c.path) for c in self._active()}
 
     def _active(self) -> list[Change]:
-        """The module's active changes, by name; none when they cannot be read."""
+        """
+        The module's active changes, by name; none when they cannot be read.
+        """
         try:
             return sorted(list_changes(self.module.config), key=lambda c: c.name)
         except Exception:  # noqa: BLE001 - a broken change folder must not stop the chat
@@ -89,14 +98,18 @@ class GitBackend:
             return []
 
     def _find_change(self) -> None:
-        """Make the first active change, by name, created or changed since the start the run's change."""
+        """
+        Make the first active change, by name, created or changed since the start the run's change.
+        """
         for change in self._active():
             if self._snapshot.get(change.name) != signature(change.path):
                 self.change = change
                 return
 
     def _flush(self) -> None:
-        """Append the held lines to the change's ``chat.jsonl``, in order; on a failure they stay held."""
+        """
+        Append the held lines to the change's ``chat.jsonl``, in order; on a failure they stay held.
+        """
         if self.change is None or not self._held:
             return
         try:
@@ -110,14 +123,18 @@ class GitBackend:
         ensure_ignored(self.change.path, (CHAT_FILE,))
 
     async def listen(self, msg: ChatMessage) -> None:
-        """Append ``msg`` (or hold it while the run has no change); a write failure is logged and ignored. Implements REQ-HARNESS-009."""
+        """
+        Append ``msg`` (or hold it while the run has no change); a write failure is logged and ignored. Implements REQ-HARNESS-009.
+        """
         self._held.append(to_line(msg))
         if self.change is None:
             self._find_change()
         self._flush()
 
     async def forget(self, before: datetime | None = None) -> int:
-        """Drop held lines (the file is kept); how many were dropped. Implements REQ-HARNESS-009."""
+        """
+        Drop held lines (the file is kept); how many were dropped. Implements REQ-HARNESS-009.
+        """
         kept = [] if before is None else [line for line in self._held if datetime.fromisoformat(line["at"]) >= before]
         dropped = len(self._held) - len(kept)
         self._held = kept

@@ -1,4 +1,6 @@
-"""`specworks login`: log in to GitHub Copilot for the harness, with the prompt on stderr and the result on stdout (REQ-CLI-023)."""
+"""
+`specworks login`: log in to GitHub Copilot for the harness, with the prompt on stderr and the result on stdout (REQ-CLI-023).
+"""
 
 import json
 import re
@@ -23,7 +25,9 @@ def needs_the_extra():
 
 @pytest.fixture
 def github(tmp_path, monkeypatch):
-    """A fake GitHub behind every httpx request, a config folder in a temporary folder, and no real home."""
+    """
+    A fake GitHub behind every httpx request, a config folder in a temporary folder, and no real home.
+    """
     needs_the_extra()
     from support.copilot import real_clock_github, route_httpx_to
 
@@ -37,7 +41,9 @@ def github(tmp_path, monkeypatch):
 
 @pytest.fixture
 def folder(tmp_path, monkeypatch):
-    """A folder that is not a project."""
+    """
+    A folder that is not a project.
+    """
     place = tmp_path / "elsewhere"
     place.mkdir()
     monkeypatch.chdir(place)
@@ -169,7 +175,9 @@ def test_ac_cli_023_9_a_flow_that_fails(github, folder):
 
 
 def forget_harness(monkeypatch):
-    """Take the harness out of the imported modules, so the command imports it again."""
+    """
+    Take the harness out of the imported modules, so the command imports it again.
+    """
     for name in list(sys.modules):
         if name == "specworks.harness" or name.startswith("specworks.harness."):
             monkeypatch.delitem(sys.modules, name)

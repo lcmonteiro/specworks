@@ -1,4 +1,5 @@
-"""The Typer application and its command groups; command modules register on these.
+"""
+The Typer application and its command groups; command modules register on these.
 
 Every command registered here turns a ``SpecworksError`` into the error output
 (``{"error": ...}`` with ``--json``) and exit code 1, so commands just let them raise.

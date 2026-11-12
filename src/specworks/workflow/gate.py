@@ -1,4 +1,5 @@
-"""Phase gates: can a change leave a phase? Each gate is a list of named checks.
+"""
+Phase gates: can a change leave a phase? Each gate is a list of named checks.
 
 A skill runs ``specworks gate <phase> --change <ref>`` before suggesting the next
 phase. Gates only use facts the CLI can see (specs, tasks, @ac/@req tags); the
@@ -23,7 +24,9 @@ from specworks.workflow.validate import validate_change
 
 
 class GateError(SpecworksError):
-    """Raised for a phase without a gate."""
+    """
+    Raised for a phase without a gate.
+    """
 
 
 # "## Interfaces", in any case and with any qualifier ("## Interfaces (API)").
@@ -33,7 +36,9 @@ CODE_SPAN_RE = re.compile(r"`([^`\s]+)`")
 
 # @req REQ-FLOW-006
 def interfaces_section(change: Change) -> str | None:
-    """The text of design.md's Interfaces section without HTML comments, or None if there is none."""
+    """
+    The text of design.md's Interfaces section without HTML comments, or None if there is none.
+    """
     design = change.path / DESIGN_FILE
     if not design.is_file():
         return None
@@ -52,7 +57,8 @@ def interfaces_section(change: Change) -> str | None:
 
 # @req REQ-FLOW-006
 def interface_files(section: str) -> list[str]:
-    """File paths named in code spans (`src/auth/reset.py`, `src/auth/reset.py:ResetService`, `main.py`).
+    """
+    File paths named in code spans (`src/auth/reset.py`, `src/auth/reset.py:ResetService`, `main.py`).
 
     A name without a folder counts only with a code extension, so `ResetService.request_reset` is not a file.
     """
@@ -81,7 +87,9 @@ def interfaces_recorded(ctx: GateContext) -> Check:
 
 # @req REQ-FLOW-006
 def interface_files_exist(ctx: GateContext) -> Check:
-    """A named file counts when it exists inside the change's module, named relative to it or to the workspace root."""
+    """
+    A named file counts when it exists inside the change's module, named relative to it or to the workspace root.
+    """
     module_root = ctx.module.root.resolve()
 
     def in_module(path: str) -> bool:
@@ -184,7 +192,9 @@ def run_gate(ctx: GateContext, phase: str) -> tuple[bool, list[Check]]:
 
 # @req REQ-FLOW-014
 def run_implement_gate(ctx: GateContext) -> tuple[bool, list[Check]]:
-    """The test gate, then (once it passes) the code gate, each check named after its half."""
+    """
+    The test gate, then (once it passes) the code gate, each check named after its half.
+    """
     checks: list[Check] = []
     for half in HALVES:
         ok, half_checks = run_gate(ctx, half)
@@ -198,7 +208,8 @@ def run_implement_gate(ctx: GateContext) -> tuple[bool, list[Check]]:
 
 # @req REQ-FLOW-014
 def gates_to_start(current: str, phase: str) -> list[str]:
-    """Gates that must pass before a change in ``current`` starts ``phase``.
+    """
+    Gates that must pass before a change in ``current`` starts ``phase``.
 
     Moving forward, every phase left behind must be finished (its gate, when it
     has one). Re-entering a phase, or going back to one for rework, needs only
@@ -218,7 +229,8 @@ def gates_to_start(current: str, phase: str) -> list[str]:
 # @req REQ-FLOW-014, REQ-FLOW-005
 # @req REQ-PROJ-023
 def start_phase(ctx: GateContext, phase: str) -> tuple[bool, list[tuple[str, list[Check]]]]:
-    """Run the gates ``phase`` depends on, in order, and move the change to it if they all pass.
+    """
+    Run the gates ``phase`` depends on, in order, and move the change to it if they all pass.
 
     Stops at the first gate that does not pass; returns whether the change
     moved and each gate that ran with its checks.

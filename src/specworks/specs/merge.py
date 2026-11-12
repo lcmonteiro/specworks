@@ -1,4 +1,5 @@
-"""Merge a change's delta specs into the living specs and archive the change.
+"""
+Merge a change's delta specs into the living specs and archive the change.
 
 The living spec of a capability (``<code path>/<docs_dir>/spec.md``) is edited
 as text so everything outside the requirement blocks is kept as written:
@@ -30,7 +31,9 @@ from specworks.specs.specfile import LIVING_SECTION, Requirement, living_problem
 
 
 class MergeError(SpecworksError):
-    """Raised when a delta cannot be applied to its living spec."""
+    """
+    Raised when a delta cannot be applied to its living spec.
+    """
 
 
 @dataclass
@@ -65,7 +68,8 @@ class CapabilityMerge:
 
 
 def _blocks(lines: list[str]) -> tuple[int, int, list[tuple[str | None, int, int]]]:
-    """Locate '## Requirements' and its requirement blocks as 0-based line indexes: (section start, section end, [(id, start, end)]).
+    """
+    Locate '## Requirements' and its requirement blocks as 0-based line indexes: (section start, section end, [(id, start, end)]).
 
     The blocks come from ``parse_spec``, so headings inside code fences (an example in a requirement) are text.
     """
@@ -84,7 +88,9 @@ def _block_lines(req: Requirement) -> list[str]:
 
 
 def _splice(out: list[str], new_lines: list[str]) -> None:
-    """Append ``new_lines`` to ``out``, never leaving two blank lines where they meet."""
+    """
+    Append ``new_lines`` to ``out``, never leaving two blank lines where they meet.
+    """
     start = 0
     while start < len(new_lines) and not new_lines[start].strip() and (not out or not out[-1].strip()):
         start += 1
@@ -99,7 +105,8 @@ def new_spec_text(cap: CapabilityRef, purpose: str) -> str:
 # @req REQ-SPECS-013
 # @req REQ-SPECS-017
 def apply_delta(living_text: str, delta: Delta, own: frozenset[str] = frozenset()) -> tuple[str, list[str], list[str], list[str]]:
-    """New living spec text plus the IDs added, modified and removed.
+    """
+    New living spec text plus the IDs added, modified and removed.
 
     ``own`` holds the change's own IDs from an earlier close: an ADDED one the living spec has is replaced in place and
     listed as modified, a REMOVED one already gone is skipped (REQ-SPECS-017).
@@ -180,7 +187,9 @@ def requirements_index(cap: CapabilityRef, spec_text: str, history: list[str]) -
 # @req REQ-SPECS-013
 # @req REQ-SPECS-017
 def plan_merge(ws: Workspace, change: Change, specs: ChangeSpecs, change_ref: str, today: str | None = None) -> list[CapabilityMerge]:
-    """Compute every living spec and requirements index this change produces, without writing."""
+    """
+    Compute every living spec and requirements index this change produces, without writing.
+    """
     today = today or datetime.now().isoformat(sep=" ", timespec="seconds")  # the time lets check order same-day closes
     unregistered = [d.cap.ref for d in specs.deltas if d.cap.capability is None]
     if unregistered:
@@ -217,7 +226,9 @@ def write_merge(merges: list[CapabilityMerge]) -> None:
 
 
 def archive_target(change: Change, archive_root: Path, today: str | None = None) -> Path:
-    """Where the change is archived (<archive>/<date>-<name>/); fails if that folder is taken."""
+    """
+    Where the change is archived (<archive>/<date>-<name>/); fails if that folder is taken.
+    """
     target = archive_root / f"{today or date.today().isoformat()}-{change.name}"
     if target.exists():
         raise MergeError(f"{target.name} already exists in the archive")
@@ -225,7 +236,9 @@ def archive_target(change: Change, archive_root: Path, today: str | None = None)
 
 
 def archive_change(change: Change, archive_root: Path, today: str | None = None, abandoned: str = "") -> Path:
-    """Move the change to <archive>/<date>-<name>/: marked done after a close, or ``abandoned`` (why) without merging."""
+    """
+    Move the change to <archive>/<date>-<name>/: marked done after a close, or ``abandoned`` (why) without merging.
+    """
     target = archive_target(change, archive_root, today)
     before = (change.phase, change.abandoned)
     if abandoned:
@@ -245,7 +258,8 @@ def archive_change(change: Change, archive_root: Path, today: str | None = None,
 
 # @req REQ-SPECS-013
 def close_change(merges: list[CapabilityMerge], change: Change, archive_root: Path, today: str | None = None) -> Path:
-    """Write the merged living docs and archive the change, all or nothing.
+    """
+    Write the merged living docs and archive the change, all or nothing.
 
     The archive folder is checked before anything is written; if writing or
     archiving fails, every living file is put back as it was.

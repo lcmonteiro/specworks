@@ -1,4 +1,6 @@
-"""Staying in the workspace: file tools in the provider's workspaces, and `ws_run` in the peer's folder, with no push and a time limit (REQ-HARNESS-008)."""
+"""
+Staying in the workspace: file tools in the provider's workspaces, and `ws_run` in the peer's folder, with no push and a time limit (REQ-HARNESS-008).
+"""
 
 import asyncio
 import os
@@ -26,12 +28,16 @@ def ask(name, text):
 
 
 def results(model, peer):
-    """Every tool result the peer's last model call was given."""
+    """
+    Every tool result the peer's last model call was given.
+    """
     return model.runs_of(peer)[-1].tool_results()
 
 
 def worktree_folder(project):
-    """The folder of `test`'s worktree."""
+    """
+    The folder of `test`'s worktree.
+    """
     for line in git_out(project, "worktree", "list", "--porcelain").splitlines():
         if line.startswith("worktree "):
             folder = Path(line.removeprefix("worktree "))
@@ -42,7 +48,9 @@ def worktree_folder(project):
 
 @pytest.fixture
 def outside(tmp_path_factory):
-    """A file outside the project."""
+    """
+    A file outside the project.
+    """
     path = tmp_path_factory.mktemp("outside") / "outside.txt"
     path.write_text("secret\n", encoding="utf-8")
     return path

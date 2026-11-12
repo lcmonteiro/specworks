@@ -61,7 +61,9 @@ def test_hand_edited_svg_is_stale(change, fake_d2):
 
 @pytest.fixture
 def no_d2(monkeypatch):
-    """pyd2 has no binary (a broken install) and SPECWORKS_D2 is not set."""
+    """
+    pyd2 has no binary (a broken install) and SPECWORKS_D2 is not set.
+    """
 
     def missing():
         raise FileNotFoundError("the d2 binary is missing; reinstall pyd2")
@@ -110,7 +112,9 @@ def test_pyd2_provides_the_pinned_release(monkeypatch):
 
 # @ac AC-INTEG-001.3
 def test_render_args_are_stable():
-    """The stamp hashes these flags: changing them would mark every committed SVG stale."""
+    """
+    The stamp hashes these flags: changing them would mark every committed SVG stale.
+    """
     from specworks.core.config import DiagramSettings
 
     assert DiagramSettings().options().args() == [

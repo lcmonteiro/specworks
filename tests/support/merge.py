@@ -1,4 +1,6 @@
-"""Helpers shared by the merge tests of several capabilities."""
+"""
+Helpers shared by the merge tests of several capabilities.
+"""
 
 from helpers import REF, git, run_json
 from specworks.core.git import git_text
@@ -10,7 +12,9 @@ BASELINE = "baseline"
 
 
 def make_halves(project, monkeypatch):
-    """The planned project committed on main (tagged `baseline`), with the change's trace written, and a `half` branch from there; on main."""
+    """
+    The planned project committed on main (tagged `baseline`), with the change's trace written, and a `half` branch from there; on main.
+    """
     for key, value in {"GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t", "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@t"}.items():
         monkeypatch.setenv(key, value)
     (project / "src/auth/session.py").write_text("def session():\n    return 1\n")
@@ -23,7 +27,9 @@ def make_halves(project, monkeypatch):
 
 
 def commit_on(root, branch, files, message):
-    """Check out `branch`, write `files` ({relative path: text}), commit them."""
+    """
+    Check out `branch`, write `files` ({relative path: text}), commit them.
+    """
     git(root, "checkout", "-q", branch)
     for rel, text in files.items():
         path = root / rel
@@ -34,7 +40,9 @@ def commit_on(root, branch, files, message):
 
 
 def tick(root, *numbers):
-    """The baseline's tasks.md with the given tasks ticked, whatever is checked out, so each side carries only its own edits."""
+    """
+    The baseline's tasks.md with the given tasks ticked, whatever is checked out, so each side carries only its own edits.
+    """
     text = git_text(root, "show", f"{BASELINE}:{TASKS_MD}")
     for n in numbers:
         text = text.replace(f"- [ ] {n} ", f"- [x] {n} ")
@@ -54,6 +62,8 @@ def merging(root):
 
 
 def snapshot(root):
-    """HEAD and the text of every file git knows, to check an aborted merge left the checkout as it was."""
+    """
+    HEAD and the text of every file git knows, to check an aborted merge left the checkout as it was.
+    """
     files = git_text(root, "ls-files").split()
     return head(root), {f: (root / f).read_text(encoding="utf-8") for f in files}

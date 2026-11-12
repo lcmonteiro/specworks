@@ -1,4 +1,6 @@
-"""Code phase support: `specworks run` and the code gate."""
+"""
+Code phase support: `specworks run` and the code gate.
+"""
 
 import pytest
 

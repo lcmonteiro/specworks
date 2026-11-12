@@ -1,4 +1,6 @@
-"""Specs and traceability: check, trace, spec show/list and diagrams."""
+"""
+Specs and traceability: check, trace, spec show/list and diagrams.
+"""
 
 from __future__ import annotations
 
@@ -21,7 +23,9 @@ def check_cmd(
     strict: bool = typer.Option(False, "--strict", help="Treat warnings as errors."),
     as_json: bool = JsonOpt,
 ) -> None:
-    """Check a change's proposal, delta specs and tasks (IDs, SHALL/MUST, scenarios, coverage)."""
+    """
+    Check a change's proposal, delta specs and tasks (IDs, SHALL/MUST, scenarios, coverage).
+    """
     ws, mod, ch = require_change(change, as_json)
     issues = Analysis(ws, ch).issues
     errors = [i for i in issues if i.level == "error" or strict]
@@ -45,7 +49,9 @@ def trace(
     write: bool = typer.Option(False, "--write", help="Write traceability.md in the change folder."),
     as_json: bool = JsonOpt,
 ) -> None:
-    """Requirement -> acceptance criterion -> task -> test (@ac) -> code (@req) matrix of a change."""
+    """
+    Requirement -> acceptance criterion -> task -> test (@ac) -> code (@req) matrix of a change.
+    """
     ws, mod, ch = require_change(change, as_json)
     analysis = Analysis(ws, ch)
     rows, found = analysis.rows, analysis.gaps
@@ -69,7 +75,9 @@ def spec_show(
     no_scenarios: bool = typer.Option(False, "--no-scenarios", help="Only requirement IDs and titles."),
     as_json: bool = JsonOpt,
 ) -> None:
-    """A capability's living spec, ID prefix, next free ID and delta path (also for a new capability)."""
+    """
+    A capability's living spec, ID prefix, next free ID and delta path (also for a new capability).
+    """
     ws = workspace(as_json)
     cap = resolve_ref(ws, ref)
     data = describe(ws, cap, with_scenarios=not no_scenarios)
@@ -85,7 +93,9 @@ def spec_show(
 
 @spec_app.command("list")
 def spec_list(as_json: bool = JsonOpt) -> None:
-    """Every capability of the workspace with its prefix and living spec."""
+    """
+    Every capability of the workspace with its prefix and living spec.
+    """
     ws = workspace(as_json)
     caps = [describe(ws, c, with_scenarios=False) for c in workspace_capabilities(ws)]
     for c in caps:
@@ -100,7 +110,9 @@ def spec_find(
     terms: list[str] = typer.Argument(None, help="Terms to look for (commands, flags, config keys, file names); literal, any case."),
     as_json: bool = JsonOpt,
 ) -> None:
-    """Every living requirement, in every module, that mentions any of the terms, with its path:line."""
+    """
+    Every living requirement, in every module, that mentions any of the terms, with its path:line.
+    """
     if not terms:
         fail("give at least one term", as_json)
     ws = workspace(as_json)
@@ -121,7 +133,9 @@ def diagrams(
     dir: Path | None = typer.Option(None, "--dir", help="Render <dir>/diagrams/*.d2 instead, <dir> relative to the workspace root (e.g. a capability's docsPath)."),
     as_json: bool = JsonOpt,
 ) -> None:
-    """Render D2 diagrams (diagrams/*.d2) of a change, or of a docs folder, to SVG with the workspace's settings."""
+    """
+    Render D2 diagrams (diagrams/*.d2) of a change, or of a docs folder, to SVG with the workspace's settings.
+    """
     ws = workspace(as_json)
     settings = ws.top.config.diagrams
     if themes:

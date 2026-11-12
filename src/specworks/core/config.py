@@ -1,4 +1,5 @@
-"""Project configuration: locating the project root and reading its config file.
+"""
+Project configuration: locating the project root and reading its config file.
 
 A project is a folder holding ``.specworks/config.yml``; ``.specworks/`` is its
 workflow folder. A ``specworks: <n>`` line, not indented and anywhere in the file
@@ -41,7 +42,8 @@ TELEMETRY_KEYS = ("langfuse", "host")
 
 @dataclass
 class Capability:
-    """A durable system behaviour, owned by a folder of code.
+    """
+    A durable system behaviour, owned by a folder of code.
 
     Its living docs (spec, requirements, design and its diagrams) live in
     ``<path>/<docs_dir>/`` next to the code that implements it.
@@ -58,7 +60,8 @@ class Capability:
 
     # @req REQ-PROJ-027
     def tests_path(self, root: Path, tests_dir: str) -> Path:
-        """The capability's test folder: ``root / tests`` when set, else ``root / tests_dir / name``, whether or not it exists.
+        """
+        The capability's test folder: ``root / tests`` when set, else ``root / tests_dir / name``, whether or not it exists.
 
         Implements REQ-PROJ-004, REQ-PROJ-027.
         """
@@ -66,7 +69,9 @@ class Capability:
 
 
 def theme_id(value: object, key: str) -> int:
-    """A theme given by name (``c4``, ``Colorblind Clear``) or number -> its D2 number."""
+    """
+    A theme given by name (``c4``, ``Colorblind Clear``) or number -> its D2 number.
+    """
     try:
         if isinstance(value, bool) or not isinstance(value, (int, str)):
             raise ValueError(value)
@@ -76,7 +81,9 @@ def theme_id(value: object, key: str) -> int:
 
 
 def dark_theme_id(value: object, key: str) -> int | None:
-    """Like ``theme_id``; ``none`` (or ``same``) means the light theme is used in dark mode too."""
+    """
+    Like ``theme_id``; ``none`` (or ``same``) means the light theme is used in dark mode too.
+    """
     if value is None or (isinstance(value, str) and value.strip().lower() in ("none", "same")):
         return None
     try:
@@ -91,7 +98,9 @@ def theme_name(number: int | None) -> str:
 
 @dataclass
 class DiagramSettings:
-    """How `specworks diagrams` renders D2 sources; set once at the top level for one shared look."""
+    """
+    How `specworks diagrams` renders D2 sources; set once at the top level for one shared look.
+    """
 
     theme: int = 0  # D2 theme ID (`d2 themes`): 0 Neutral Default
     dark_theme: int | None = 200  # used when the viewer is in dark mode; None = same as theme
@@ -100,7 +109,9 @@ class DiagramSettings:
     pad: int = 24
 
     def options(self) -> pyd2.Options:
-        """The pyd2 render options for these settings (version left out of the SVG)."""
+        """
+        The pyd2 render options for these settings (version left out of the SVG).
+        """
         return pyd2.Options(self.theme, self.dark_theme, self.layout, self.sketch, self.pad, omit_version=True)
 
 
@@ -111,7 +122,9 @@ PATHS_PLACEHOLDER = "{paths}"  # replaced in commands.test_scoped by the quoted 
 
 # @req REQ-PROJ-003
 def load_commands(raw: object) -> dict[str, str]:
-    """Shell commands the skills run (tests, lint, ...); empty values are left out."""
+    """
+    Shell commands the skills run (tests, lint, ...); empty values are left out.
+    """
     if raw is None:
         return {}
     if not isinstance(raw, dict):
@@ -131,14 +144,18 @@ def load_commands(raw: object) -> dict[str, str]:
 
 # @req REQ-PROJ-003, REQ-PROJ-025
 def check_scoped_command(command: str) -> None:
-    """Refuse a ``commands.test_scoped`` without ``{paths}``: the review gate fills its test folders in there."""
+    """
+    Refuse a ``commands.test_scoped`` without ``{paths}``: the review gate fills its test folders in there.
+    """
     if PATHS_PLACEHOLDER not in command:
         raise ConfigError(f"'commands.{SCOPED_TEST_KEY}' must hold {PATHS_PLACEHOLDER}, where the test folders go (e.g. uv run pytest {PATHS_PLACEHOLDER})")
 
 
 # @req REQ-PROJ-003
 def load_globs(raw: object, key: str) -> list[str]:
-    """A list of glob strings; a single string is a common slip, so it gets its own message."""
+    """
+    A list of glob strings; a single string is a common slip, so it gets its own message.
+    """
     if raw is None:
         return []
     if isinstance(raw, str):
@@ -153,7 +170,9 @@ def load_globs(raw: object, key: str) -> list[str]:
 
 # @req REQ-PROJ-003
 def load_tools(raw: object, present: bool) -> list[str] | None:
-    """The AI tool IDs saved under ``tools:``; None when the key is absent."""
+    """
+    The AI tool IDs saved under ``tools:``; None when the key is absent.
+    """
     if not present:
         return None
     known = ", ".join(TOOL_IDS)
@@ -183,7 +202,9 @@ def load_diagram_settings(raw: object) -> DiagramSettings:
 
 # @req REQ-PROJ-026
 def load_branch_per_change(raw: object, present: bool) -> bool:
-    """Whether a new change gets its own branch: true when the key is absent, else its YAML boolean."""
+    """
+    Whether a new change gets its own branch: true when the key is absent, else its YAML boolean.
+    """
     if not present:
         return True
     if not isinstance(raw, bool):
@@ -193,7 +214,9 @@ def load_branch_per_change(raw: object, present: bool) -> bool:
 
 @dataclass
 class TelemetryConfig:
-    """The top level's ``telemetry:`` block: whether events are recorded and sent to Langfuse, and its host. Implements REQ-PROJ-003."""
+    """
+    The top level's ``telemetry:`` block: whether events are recorded and sent to Langfuse, and its host. Implements REQ-PROJ-003.
+    """
 
     langfuse: bool = False
     host: str = ""  # empty: SPECWORKS_LANGFUSE_HOST or the default host (REQ-INTEG-008)
@@ -201,7 +224,8 @@ class TelemetryConfig:
 
 # @req REQ-PROJ-003
 def load_telemetry(raw: object, present: bool) -> TelemetryConfig | None:
-    """The ``telemetry:`` block; None when the key is absent.
+    """
+    The ``telemetry:`` block; None when the key is absent.
 
     Raises ``ConfigError`` naming ``telemetry`` or ``telemetry.<key>``. Implements REQ-PROJ-003.
     """
@@ -222,7 +246,9 @@ def load_telemetry(raw: object, present: bool) -> TelemetryConfig | None:
 
 # @req REQ-PROJ-003, REQ-PROJ-032
 def check_telemetry_host(host: object) -> None:
-    """Refuse a ``telemetry.host`` that is not empty or an ``http://`` / ``https://`` URL."""
+    """
+    Refuse a ``telemetry.host`` that is not empty or an ``http://`` / ``https://`` URL.
+    """
     if host == "":
         return
     if not isinstance(host, str) or not host.strip().startswith(("http://", "https://")):
@@ -279,14 +305,18 @@ def is_config_file(path: Path) -> bool:
 
 # @req REQ-PROJ-001
 def find_config(directory: Path) -> Path | None:
-    """The specworks config of ``directory`` (``.specworks/config.yml`` with the marker), if there is one."""
+    """
+    The specworks config of ``directory`` (``.specworks/config.yml`` with the marker), if there is one.
+    """
     path = directory / WORKFLOW_DIR / CONFIG_FILE
     return path if is_config_file(path) else None
 
 
 # @req REQ-PROJ-021
 def old_config_in(directory: Path) -> Path | None:
-    """An old-style config directly in ``directory`` (a ``*.yml`` with the marker), if there is one."""
+    """
+    An old-style config directly in ``directory`` (a ``*.yml`` with the marker), if there is one.
+    """
     if not directory.is_dir():
         return None
     return next((p for p in sorted(directory.glob(f"*{CONFIG_EXT}")) if is_config_file(p)), None)
@@ -294,14 +324,18 @@ def old_config_in(directory: Path) -> Path | None:
 
 # @req REQ-PROJ-021
 def find_old_config(start: Path | None = None) -> Path | None:
-    """The nearest old-style config (a ``*.yml`` with the marker directly in a folder) in ``start`` or its parents."""
+    """
+    The nearest old-style config (a ``*.yml`` with the marker directly in a folder) in ``start`` or its parents.
+    """
     current = (start or Path.cwd()).resolve()
     return next((found for directory in (current, *current.parents) if (found := old_config_in(directory)) is not None), None)
 
 
 # @req REQ-PROJ-021
 def old_layout_error(path: Path, module: str | None = None) -> ConfigError:
-    """The error for an old-style config at ``path``, naming the move to ``.specworks/`` (nothing is moved)."""
+    """
+    The error for an old-style config at ``path``, naming the move to ``.specworks/`` (nothing is moved).
+    """
     prefix = f"module '{module}': " if module is not None else ""
     return ConfigError(
         f"{prefix}{path}: specworks keeps its config in {WORKFLOW_DIR}/{CONFIG_FILE}; "
@@ -311,7 +345,8 @@ def old_layout_error(path: Path, module: str | None = None) -> ConfigError:
 
 # @req REQ-PROJ-001, REQ-PROJ-021
 def find_root(start: Path | None = None) -> Path | None:
-    """Walk up from ``start`` until a directory holding ``.specworks/config.yml`` is found.
+    """
+    Walk up from ``start`` until a directory holding ``.specworks/config.yml`` is found.
 
     When there is none, an old-style config in ``start`` or a parent fails the lookup with the move to make.
     """
@@ -326,7 +361,9 @@ def find_root(start: Path | None = None) -> Path | None:
 
 # @req REQ-PROJ-001, REQ-PROJ-002, REQ-PROJ-003, REQ-PROJ-004, REQ-PROJ-026, REQ-PROJ-027
 def load_config(root: Path) -> Config:
-    """Load ``root/.specworks/config.yml``."""
+    """
+    Load ``root/.specworks/config.yml``.
+    """
     path = root / WORKFLOW_DIR / CONFIG_FILE
     if not is_config_file(path):
         raise ConfigError(f"{path} is not a specworks config (missing or no 'specworks: {CONFIG_VERSION}' line)")

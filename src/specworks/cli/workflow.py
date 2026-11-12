@@ -1,4 +1,6 @@
-"""Workflow commands: gates, starting a phase, review, cycle, merging a half's branch, validate, close and the project's own commands."""
+"""
+Workflow commands: gates, starting a phase, review, cycle, merging a half's branch, validate, close and the project's own commands.
+"""
 
 from __future__ import annotations
 
@@ -37,7 +39,9 @@ def gate(
     fresh: bool = FreshOpt,
     as_json: bool = JsonOpt,
 ) -> None:
-    """Check whether a change has finished a phase (exit 1 if a blocking check fails)."""
+    """
+    Check whether a change has finished a phase (exit 1 if a blocking check fails).
+    """
     ws, mod, ch = require_change(change, as_json)
     started = time.monotonic()
     ok, checks = run_gate(GateContext(ws, mod, ch, run_tests=not no_run, base=base, allow_open=allow_open, reuse_runs=not fresh), phase)
@@ -65,7 +69,8 @@ def start(
     fresh: bool = FreshOpt,
     as_json: bool = JsonOpt,
 ) -> None:
-    """Move a change to a phase once the gates it depends on pass (exit 1, phase unchanged, if one fails).
+    """
+    Move a change to a phase once the gates it depends on pass (exit 1, phase unchanged, if one fails).
 
     Moving forward, every phase left behind must pass its gate; going back to a
     phase (or re-entering it) needs the gate of the phase just before it.
@@ -97,7 +102,9 @@ def review(
     base: str | None = typer.Option(None, "--base", help="Branch to diff against (default: origin's default branch)."),
     as_json: bool = JsonOpt,
 ) -> None:
-    """Drift candidates between a change's specs and its code, in both directions."""
+    """
+    Drift candidates between a change's specs and its code, in both directions.
+    """
     ws, mod, ch = require_change(change, as_json)
     report = review_change(Analysis(ws, ch), base)
     data = {**change_dict(ws, mod, ch), **report.to_dict()}
@@ -122,7 +129,9 @@ def cycle(
     change: str = ChangeOpt,
     as_json: bool = JsonOpt,
 ) -> None:
-    """After a review: the steps the next build cycle runs (design, test, code, review) and where it starts, from review.md's open findings."""
+    """
+    After a review: the steps the next build cycle runs (design, test, code, review) and where it starts, from review.md's open findings.
+    """
     ws, mod, ch = require_change(change, as_json)
     started = time.monotonic()
     result = next_cycle(ch)
@@ -148,7 +157,8 @@ def merge(
     change: str = ChangeOpt,
     as_json: bool = JsonOpt,
 ) -> None:
-    """Merge a branch for a change, resolving its tasks.md (every tick kept) and traceability.md (regenerated); abort on any other conflict.
+    """
+    Merge a branch for a change, resolving its tasks.md (every tick kept) and traceability.md (regenerated); abort on any other conflict.
 
     Implements REQ-CLI-010.
     """
@@ -174,7 +184,8 @@ def finding_add(
     change: str = ChangeOpt,
     as_json: bool = JsonOpt,
 ) -> None:
-    """Add an open finding with the next free ID and its Proposal to review.md (created from its template when missing).
+    """
+    Add an open finding with the next free ID and its Proposal to review.md (created from its template when missing).
 
     Implements REQ-CLI-011.
     """
@@ -189,7 +200,8 @@ def finding_decide(
     change: str = ChangeOpt,
     as_json: bool = JsonOpt,
 ) -> None:
-    """Write a finding's Decision, replacing the one it has; 'accepted' ticks it.
+    """
+    Write a finding's Decision, replacing the one it has; 'accepted' ticks it.
 
     Implements REQ-CLI-011.
     """
@@ -205,7 +217,8 @@ def finding_done(
     change: str = ChangeOpt,
     as_json: bool = JsonOpt,
 ) -> None:
-    """Record that a step carried out a finding's proposal ('done in <step>: ...'); the finding stays open for review.
+    """
+    Record that a step carried out a finding's proposal ('done in <step>: ...'); the finding stays open for review.
 
     Implements REQ-CLI-011.
     """
@@ -220,7 +233,8 @@ def finding_close(
     change: str = ChangeOpt,
     as_json: bool = JsonOpt,
 ) -> None:
-    """Tick a finding and record what review confirmed ('confirmed in review: ...').
+    """
+    Tick a finding and record what review confirmed ('confirmed in review: ...').
 
     Implements REQ-CLI-011.
     """
@@ -229,7 +243,9 @@ def finding_close(
 
 # @req REQ-CLI-011
 def _write_finding(ref: str, as_json: bool, action: str, write: Callable[[Change], Finding]) -> None:
-    """Run one of review.md's writers on the change and print the finding as `specworks cycle` reads it, with review.md's path."""
+    """
+    Run one of review.md's writers on the change and print the finding as `specworks cycle` reads it, with review.md's path.
+    """
     ws, mod, ch = require_change(ref, as_json)
     started = time.monotonic()
     path = ch.path / REVIEW_FILE
@@ -258,7 +274,9 @@ def validate_cmd(
     fresh: bool = FreshOpt,
     as_json: bool = JsonOpt,
 ) -> None:
-    """Final read-only check before close (validate phase): completeness, correctness, coherence (exit 1 on FAIL)."""
+    """
+    Final read-only check before close (validate phase): completeness, correctness, coherence (exit 1 on FAIL).
+    """
     ws, mod, ch = require_change(change, as_json)
     started = time.monotonic()
     checks = validate_change(GateContext(ws, mod, ch, run_tests=not no_run, base=base, reuse_runs=not fresh))
@@ -289,7 +307,9 @@ def close(
     no_run: bool = typer.Option(False, "--no-run", help="With --dry-run: validate without running test/lint/typecheck."),
     as_json: bool = JsonOpt,
 ) -> None:
-    """Merge the change's delta specs into the living specs, update requirements.md, and archive the change."""
+    """
+    Merge the change's delta specs into the living specs, update requirements.md, and archive the change.
+    """
     if no_run and not dry_run:
         fail("--no-run only goes with --dry-run: the real close runs test, lint and typecheck before writing anything", as_json)
     ws, mod, ch = require_change(change, as_json)
@@ -333,7 +353,9 @@ def run(
     change: str | None = typer.Option(None, "--change", "-c", help="Run in the module owning this change."),
     as_json: bool = JsonOpt,
 ) -> None:
-    """Run one of the project's configured commands in the right module folder (exit code passes through)."""
+    """
+    Run one of the project's configured commands in the right module folder (exit code passes through).
+    """
     ch = None
     if change:
         ws, mod, ch = require_change(change, as_json)

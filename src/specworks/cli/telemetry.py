@@ -1,5 +1,7 @@
-"""Telemetry in the CLI: recording a command's event, the state for `context`, the IDs for `status`,
-sending after `commit`, and `specworks telemetry push`."""
+"""
+Telemetry in the CLI: recording a command's event, the state for `context`, the IDs for `status`,
+sending after `commit`, and `specworks telemetry push`.
+"""
 
 from __future__ import annotations
 
@@ -18,7 +20,8 @@ from specworks.tools.langfuse import SendResult, langfuse_settings, send_events
 
 # @req REQ-CLI-017
 def record(ws: Workspace, module: Module, change: Change, event: str, started: float, /, **fields: object) -> None:
-    """Record ``event`` for ``change`` with ``ms`` since ``started`` (``time.monotonic()``) when the top level opted in.
+    """
+    Record ``event`` for ``change`` with ``ms`` since ``started`` (``time.monotonic()``) when the top level opted in.
 
     Implements REQ-CLI-017.
     """
@@ -28,14 +31,18 @@ def record(ws: Workspace, module: Module, change: Change, event: str, started: f
 
 # @req REQ-CLI-004
 def telemetry_state(ws: Workspace) -> dict:
-    """``{"state", "host"}`` for `context`; never a key. Implements REQ-CLI-004."""
+    """
+    ``{"state", "host"}`` for `context`; never a key. Implements REQ-CLI-004.
+    """
     settings = langfuse_settings(ws.top.config.telemetry)
     return {"state": settings.state, "host": settings.host}
 
 
 # @req REQ-CLI-019
 def telemetry_ids(module: Module, change: Change) -> dict:
-    """``{"traceId", "sessionId"}`` of ``change`` for `status`. Implements REQ-CLI-019."""
+    """
+    ``{"traceId", "sessionId"}`` of ``change`` for `status`. Implements REQ-CLI-019.
+    """
     return {"traceId": trace_id(module.label, change), "sessionId": session_id(module.qualify(change.name))}
 
 
@@ -50,7 +57,8 @@ def _result_dict(result: SendResult) -> dict:
 
 # @req REQ-CLI-012
 def send_after_commit(ws: Workspace, module: Module, change: Change) -> dict | None:
-    """Send the change's unsent events after a commit: ``{"sent", "queued", "reason"}``, or None when telemetry is not on.
+    """
+    Send the change's unsent events after a commit: ``{"sent", "queued", "reason"}``, or None when telemetry is not on.
 
     Implements REQ-CLI-012.
     """
@@ -62,7 +70,9 @@ def send_after_commit(ws: Workspace, module: Module, change: Change) -> dict | N
 # @req REQ-CLI-018
 @telemetry_app.command("push")
 def push(change: str = ChangeOpt, as_json: bool = JsonOpt) -> None:
-    """Send a change's unsent events to Langfuse; exits 1 while events are still queued. Implements REQ-CLI-018."""
+    """
+    Send a change's unsent events to Langfuse; exits 1 while events are still queued. Implements REQ-CLI-018.
+    """
     ws = workspace(as_json)
     try:
         mod, ch = resolve_change(ws, change)

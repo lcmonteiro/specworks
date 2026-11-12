@@ -1,4 +1,6 @@
-"""The harness's chat model, read from the ``SPECWORKS_MODEL_*`` variables; a key's value is never shown."""
+"""
+The harness's chat model, read from the ``SPECWORKS_MODEL_*`` variables; a key's value is never shown.
+"""
 
 from __future__ import annotations
 
@@ -20,7 +22,9 @@ MODEL_BASE_URL = "SPECWORKS_MODEL_BASE_URL"
 
 # @req REQ-HARNESS-010
 class ModelSettingsError(SpecworksError):
-    """A model setting is missing or empty; the message names the variable, never a value. Implements REQ-HARNESS-010."""
+    """
+    A model setting is missing or empty; the message names the variable, never a value. Implements REQ-HARNESS-010.
+    """
 
     def __init__(self, variable: str) -> None:
         hint = " (or run `specworks login copilot`)" if variable == MODEL_KEY else ""
@@ -37,7 +41,8 @@ def model_from_env(
     store: LoginStore | None = None,
     client: httpx.Client | None = None,
 ) -> BaseChatModel:
-    """An OpenAI-compatible chat model from ``env`` (``os.environ`` when None).
+    """
+    An OpenAI-compatible chat model from ``env`` (``os.environ`` when None).
 
     Raises ``ModelSettingsError`` for the first of ``MODEL_KEY``, ``MODEL_NAME`` missing or empty. When the key is missing or empty, the stored
     Copilot login of ``root`` (``store``, ``client``) is used instead, and the error says to run ``specworks login copilot``.

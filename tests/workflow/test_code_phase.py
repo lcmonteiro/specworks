@@ -1,4 +1,6 @@
-"""Code phase support: `specworks run` and the code gate."""
+"""
+Code phase support: `specworks run` and the code gate.
+"""
 
 import sys
 
@@ -14,7 +16,9 @@ def set_command(key, command):
 
 
 def implement_everything(root):
-    """Tests for every AC, @req tags for every requirement, every task ticked."""
+    """
+    Tests for every AC, @req tags for every requirement, every task ticked.
+    """
     write_tests(root, "AC-AUTH-003.1", "AC-AUTH-003.2", "AC-AUTH-002.1")
     (root / "src/auth/reset.py").write_text("# @req REQ-AUTH-003\ndef reset(): ...\n")  # specworks: ignore-tags
     (root / "src/auth/lockout.py").write_text("# @req REQ-AUTH-002\nLIMIT = 3\n")  # specworks: ignore-tags
@@ -22,7 +26,9 @@ def implement_everything(root):
 
 
 def implement_code_only(root):
-    """@req tags for every requirement and every task ticked, but no @ac test of the change."""
+    """
+    @req tags for every requirement and every task ticked, but no @ac test of the change.
+    """
     (root / "src/auth/reset.py").write_text("# @req REQ-AUTH-003\ndef reset(): ...\n")  # specworks: ignore-tags
     (root / "src/auth/lockout.py").write_text("# @req REQ-AUTH-002\nLIMIT = 3\n")  # specworks: ignore-tags
     run_json("task", "done", "1.1", "1.2", "--change", REF)
@@ -33,7 +39,9 @@ def checks(data):
 
 
 def task_checks(data):
-    """The gate's checks on open tasks (not `specworks check`)."""
+    """
+    The gate's checks on open tasks (not `specworks check`).
+    """
     return [c for c in data["checks"] if "task" in c["name"] and "done" in c["name"]]
 
 

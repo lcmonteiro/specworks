@@ -1,4 +1,6 @@
-"""Helpers shared by the close_phase tests of several capabilities."""
+"""
+Helpers shared by the close_phase tests of several capabilities.
+"""
 
 import hashlib
 
@@ -8,7 +10,9 @@ CHANGE_DIR = f".specworks/changes/active/{REF}"
 
 
 def make_ready(repo):
-    """A change that passes validate: implemented, reviewed, in the review phase."""
+    """
+    A change that passes validate: implemented, reviewed, in the review phase.
+    """
     (repo / CHANGE_DIR / "review.md").write_text("# Review\n\n## Findings\n\nNone.\n")
     run_json("phase", "review", "--change", REF)
     return repo

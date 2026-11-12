@@ -1,4 +1,6 @@
-"""A stand-in Langfuse server for the telemetry tests: it records each ingestion request and answers the statuses it is given."""
+"""
+A stand-in Langfuse server for the telemetry tests: it records each ingestion request and answers the statuses it is given.
+"""
 
 import json
 import socket
@@ -11,7 +13,9 @@ ENV_VARS = ("SPECWORKS_LANGFUSE_PUBLIC_KEY", "SPECWORKS_LANGFUSE_SECRET_KEY", "S
 
 
 class Server:
-    """Answers each request with the next status of ``statuses`` (the last one repeats); ``requests`` holds what it got."""
+    """
+    Answers each request with the next status of ``statuses`` (the last one repeats); ``requests`` holds what it got.
+    """
 
     def __init__(self, statuses=(200,)):
         self.statuses = list(statuses)
@@ -54,7 +58,9 @@ class Server:
 
 
 class Silent:
-    """A host that accepts the connection but never answers."""
+    """
+    A host that accepts the connection but never answers.
+    """
 
     def __enter__(self):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -68,7 +74,9 @@ class Silent:
 
 
 def clear_env(monkeypatch):
-    """No SPECWORKS_LANGFUSE_* nor plain LANGFUSE_* variable from the machine running the tests."""
+    """
+    No SPECWORKS_LANGFUSE_* nor plain LANGFUSE_* variable from the machine running the tests.
+    """
     for name in (*ENV_VARS, "LANGFUSE_PUBLIC_KEY", "LANGFUSE_SECRET_KEY", "LANGFUSE_HOST"):
         monkeypatch.delenv(name, raising=False)
 
@@ -81,7 +89,9 @@ def set_keys(monkeypatch, host=None):
 
 
 def opt_in(root, host=None):
-    """Append a ``telemetry`` block opting in to the top level's config."""
+    """
+    Append a ``telemetry`` block opting in to the top level's config.
+    """
     config = root / ".specworks/config.yml"
     block = "telemetry:\n  langfuse: true\n" + (f"  host: {host}\n" if host else "")
     config.write_text(config.read_text(encoding="utf-8").rstrip("\n") + "\n" + block, encoding="utf-8")

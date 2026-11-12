@@ -1,4 +1,6 @@
-"""`specworks harness`: the harness chat in the terminal, imported only by this command (REQ-CLI-022)."""
+"""
+`specworks harness`: the harness chat in the terminal, imported only by this command (REQ-CLI-022).
+"""
 
 import re
 import subprocess
@@ -28,7 +30,9 @@ def harness_project(tmp_path, monkeypatch):
 
 
 def forget_harness(monkeypatch):
-    """Take the harness out of the imported modules, so the command imports it again."""
+    """
+    Take the harness out of the imported modules, so the command imports it again.
+    """
     for name in list(sys.modules):
         if name == "specworks.harness" or name.startswith("specworks.harness."):
             monkeypatch.delitem(sys.modules, name)
@@ -70,7 +74,9 @@ def test_ac_cli_022_2_no_key(harness_project, tmp_path, monkeypatch):
 
 
 def opened_sessions(monkeypatch):
-    """The sessions the command runs or starts, recorded instead of opening a terminal."""
+    """
+    The sessions the command runs or starts, recorded instead of opening a terminal.
+    """
     import chatinho
 
     opened = []

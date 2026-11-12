@@ -1,4 +1,6 @@
-"""Helpers shared by the capability_tests tests of several capabilities."""
+"""
+Helpers shared by the capability_tests tests of several capabilities.
+"""
 
 import json
 import sys
@@ -37,7 +39,9 @@ def recorder_command(recorder, log, mode, placeholder=""):
 
 
 def make_log(tmp_path_factory):
-    """The run log of the recorder test commands, outside every sample project, and the recorder itself."""
+    """
+    The run log of the recorder test commands, outside every sample project, and the recorder itself.
+    """
     folder = tmp_path_factory.mktemp("runs")
     recorder = folder / "recorder.py"
     recorder.write_text(RECORDER, encoding="utf-8")
@@ -55,7 +59,9 @@ def commands_block(log, scoped=True):
 
 
 def runs(log, root):
-    """Each recorded run as (mode, folders, folder it ran in relative to ``root``)."""
+    """
+    Each recorded run as (mode, folders, folder it ran in relative to ``root``).
+    """
     _, run_log = log
     entries = [json.loads(line) for line in run_log.read_text(encoding="utf-8").splitlines() if line]
     return [(e["mode"], e["paths"], Path(e["cwd"]).resolve().relative_to(root.resolve()).as_posix()) for e in entries]
@@ -74,7 +80,9 @@ def new_project(root, monkeypatch, config_tail="", capabilities="", commands="co
 
 
 def add_billing_module(root, billing_config=""):
-    """Module billing at services/billing with capability invoices (src/invoices) and ``billing_config`` appended."""
+    """
+    Module billing at services/billing with capability invoices (src/invoices) and ``billing_config`` appended.
+    """
     assert runner.invoke(app, ["module", "add", "services/billing"]).exit_code == 0
     cfg = root / "services/billing/.specworks/config.yml"
     text = cfg.read_text(encoding="utf-8").replace("capabilities: {}", "capabilities:\n  invoices:\n    path: src/invoices")

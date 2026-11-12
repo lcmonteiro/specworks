@@ -1,4 +1,6 @@
-"""tasks.md: tracked tasks (``- [ ] N.M description``) and ticking them off."""
+"""
+tasks.md: tracked tasks (``- [ ] N.M description``) and ticking them off.
+"""
 
 from __future__ import annotations
 
@@ -18,7 +20,9 @@ FOLLOW_UP_RE = re.compile(r"^##\s+Workflow follow-up\s*$", re.IGNORECASE)
 
 
 class TaskError(SpecworksError):
-    """Raised for a missing tasks.md or an unknown task number."""
+    """
+    Raised for a missing tasks.md or an unknown task number.
+    """
 
 
 @dataclass
@@ -65,7 +69,9 @@ def read_tasks(change_path: Path) -> list[Task]:
 
 # @req REQ-SPECS-009
 def set_done(change_path: Path, nums: list[str], done: bool) -> None:
-    """Tick (or untick) tasks by number, editing only their checkbox."""
+    """
+    Tick (or untick) tasks by number, editing only their checkbox.
+    """
     path = change_path / TASKS_FILE
     found = read_tasks(change_path)
     tasks = {t.num: t for t in found}

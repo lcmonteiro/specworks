@@ -1,4 +1,6 @@
-"""`specworks harness`: the specworks flow as a chatinho chat in the terminal (needs the `harness` extra)."""
+"""
+`specworks harness`: the specworks flow as a chatinho chat in the terminal (needs the `harness` extra).
+"""
 
 from __future__ import annotations
 
@@ -13,7 +15,8 @@ EXTRA_MISSING = "specworks harness needs the harness extra: install specworks[ha
 # @req REQ-CLI-022
 @app.command()
 def harness() -> None:
-    """Open the harness chat, empty: one agent peer per skill, handing work to each other (needs the harness extra).
+    """
+    Open the harness chat, empty: one agent peer per skill, handing work to each other (needs the harness extra).
 
     A change starts or continues when the user messages a peer, such as ``@refine <request>``.
 

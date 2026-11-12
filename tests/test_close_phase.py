@@ -1,4 +1,6 @@
-"""Close phase: capability registration, delta merge into living specs, requirements index, archive."""
+"""
+Close phase: capability registration, delta merge into living specs, requirements index, archive.
+"""
 
 from specworks.specs.specfile import parse_spec
 

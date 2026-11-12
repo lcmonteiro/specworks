@@ -1,4 +1,6 @@
-"""Helpers shared by the commit tests of several capabilities."""
+"""
+Helpers shared by the commit tests of several capabilities.
+"""
 
 import hashlib
 import json
@@ -31,7 +33,9 @@ def run_json(*args):
 
 
 def make_project(tmp_path, monkeypatch):
-    """A project with the change `add-login` and `notes.txt`, `old.txt` and `src/a.py`, all committed on main; work goes on on `feature`."""
+    """
+    A project with the change `add-login` and `notes.txt`, `old.txt` and `src/a.py`, all committed on main; work goes on on `feature`.
+    """
     monkeypatch.chdir(tmp_path)
     init_repo(tmp_path)
     assert runner.invoke(app, ["init", "--no-skills"]).exit_code == 0
@@ -49,7 +53,9 @@ def change(root):
 
 
 def record(root, **files):
-    """Save the change's record as if the phase had started with exactly these files dirty (path -> content)."""
+    """
+    Save the change's record as if the phase had started with exactly these files dirty (path -> content).
+    """
     ch = change(root)
     ch.dirty = {path.replace("__", "/"): sha(content) for path, content in files.items()}
     ch.save()
@@ -67,7 +73,9 @@ def message(root):
 
 
 def make_closed(tmp_path, monkeypatch):
-    """The planned project's change `add-password-reset`, reviewed and then closed with `specworks close`: archived, its active folder gone."""
+    """
+    The planned project's change `add-password-reset`, reviewed and then closed with `specworks close`: archived, its active folder gone.
+    """
     root = make_repo(make_planned_project(tmp_path, monkeypatch), monkeypatch)
     active = root / ".specworks/changes/active" / CLOSED_REF
     (active / "review.md").write_text("# Review\n\n## Findings\n\nNone.\n", encoding="utf-8")

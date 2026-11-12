@@ -1,4 +1,6 @@
-"""The Copilot session token: exchanged from the stored login, renewed before it expires, and a revoked login (REQ-HARNESS-012)."""
+"""
+The Copilot session token: exchanged from the stored login, renewed before it expires, and a revoked login (REQ-HARNESS-012).
+"""
 
 import traceback
 

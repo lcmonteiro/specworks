@@ -1,4 +1,6 @@
-"""`specworks login`: store a Copilot login for the harness (needs the `harness` extra)."""
+"""
+`specworks login`: store a Copilot login for the harness (needs the `harness` extra).
+"""
 
 from __future__ import annotations
 
@@ -26,7 +28,8 @@ def login(
     ghe_host: str = typer.Option("", "--ghe-host", help="A GitHub Enterprise host, empty for github.com."),
     as_json: bool = typer.Option(False, "--json", help="Print the result as JSON."),
 ) -> None:
-    """Log in to GitHub Copilot with the device flow and store the login outside the project, for ``specworks harness``.
+    """
+    Log in to GitHub Copilot with the device flow and store the login outside the project, for ``specworks harness``.
 
     Implements REQ-CLI-023.
     """

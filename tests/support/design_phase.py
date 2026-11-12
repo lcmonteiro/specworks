@@ -1,4 +1,6 @@
-"""Helpers shared by the design_phase tests of several capabilities."""
+"""
+Helpers shared by the design_phase tests of several capabilities.
+"""
 
 import json
 import re

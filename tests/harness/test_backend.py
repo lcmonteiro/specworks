@@ -1,4 +1,6 @@
-"""The conversation kept in the change's git-ignored chat.jsonl (REQ-HARNESS-009)."""
+"""
+The conversation kept in the change's git-ignored chat.jsonl (REQ-HARNESS-009).
+"""
 
 import os
 
@@ -33,7 +35,9 @@ def test_ac_harness_009_1_appended(project, ws, change):
 
 
 def creates_change(root):
-    """A step that creates the change `add-x` as a peer would (through `specworks new`), then answers."""
+    """
+    A step that creates the change `add-x` as a peer would (through `specworks new`), then answers.
+    """
 
     def step(_messages):
         create_change(load_workspace(root).top.config, "add-x")
@@ -99,7 +103,9 @@ def test_an_untouched_change_is_not_the_runs(project, ws, change):
 
 
 def checks(change):
-    """A step that only checks the change, as a read-only command (`specworks gate`) does with telemetry on: it records an event, then answers."""
+    """
+    A step that only checks the change, as a read-only command (`specworks gate`) does with telemetry on: it records an event, then answers.
+    """
 
     def step(_messages):
         record_event(change, True, "command", command="gate")

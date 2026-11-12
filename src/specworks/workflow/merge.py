@@ -1,4 +1,5 @@
-"""Merging a half's branch into the current checkout for a change (in /specworks-build, the test half's worktree).
+"""
+Merging a half's branch into the current checkout for a change (in /specworks-build, the test half's worktree).
 
 Git merges the branch; when the only conflicts are in the change's ``tasks.md`` and ``traceability.md``, they are
 resolved (every tick kept, the trace regenerated) and the merge is committed. Anything else aborts the merge and
@@ -22,7 +23,8 @@ TRACE_FILE = "traceability.md"
 
 # @req REQ-FLOW-015
 class BranchMergeError(SpecworksError):
-    """Raised when a branch cannot be merged for a change: refused before merging, or aborted on a conflict.
+    """
+    Raised when a branch cannot be merged for a change: refused before merging, or aborted on a conflict.
 
     ``files`` holds the conflicting files; it is empty when the merge was refused before it started (uncommitted
     changes, an unknown branch). Named apart from ``specworks.specs.merge.MergeError``, which close raises.
@@ -37,7 +39,8 @@ class BranchMergeError(SpecworksError):
 # @req REQ-FLOW-015
 @dataclass(frozen=True)
 class MergeResult:
-    """A merged branch: ``merged`` is False only when git had nothing to merge; ``resolved`` lists the files resolved.
+    """
+    A merged branch: ``merged`` is False only when git had nothing to merge; ``resolved`` lists the files resolved.
 
     Implements REQ-FLOW-015, REQ-CLI-010.
     """
@@ -48,12 +51,16 @@ class MergeResult:
 
     # @req REQ-CLI-010
     def to_dict(self, ws: Workspace) -> dict:
-        """``merged``, ``branch`` and ``resolved`` (paths relative to the workspace root). Implements REQ-CLI-010."""
+        """
+        ``merged``, ``branch`` and ``resolved`` (paths relative to the workspace root). Implements REQ-CLI-010.
+        """
         return {"merged": self.merged, "branch": self.branch, "resolved": [ws.rel(p) for p in self.resolved]}
 
 
 def _box(line: str) -> tuple[str, bool]:
-    """The line without its ending and with its task box emptied, and whether that box was ticked."""
+    """
+    The line without its ending and with its task box emptied, and whether that box was ticked.
+    """
     line = line.rstrip("\r\n")
     match = TASK_RE.match(line)
     if match is None or match.group("mark").strip().lower() not in ("", "x"):
@@ -64,7 +71,8 @@ def _box(line: str) -> tuple[str, bool]:
 
 # @req REQ-FLOW-015
 def merge_ticks(ours: str, theirs: str) -> str | None:
-    """``tasks.md`` with each line ticked when either side ticks it; ``None`` when a line differs in more than its box.
+    """
+    ``tasks.md`` with each line ticked when either side ticks it; ``None`` when a line differs in more than its box.
 
     Each line keeps the ours side's line ending. Implements REQ-FLOW-015.
     """
@@ -86,7 +94,8 @@ def merge_ticks(ours: str, theirs: str) -> str | None:
 
 # @req REQ-FLOW-015
 def merge_branch(ws: Workspace, module: Module, change: Change, branch: str) -> MergeResult:
-    """Merge ``branch`` into the current checkout for ``change``, resolving its ``tasks.md`` and ``traceability.md``.
+    """
+    Merge ``branch`` into the current checkout for ``change``, resolving its ``tasks.md`` and ``traceability.md``.
 
     Refuses a checkout with uncommitted changes or an unknown branch before merging; aborts the merge on any other
     conflict, or on a ``tasks.md`` line that differs in more than its box. ``module`` gives the change's ref for the
@@ -121,7 +130,9 @@ def merge_branch(ws: Workspace, module: Module, change: Change, branch: str) -> 
 
 
 def _abort(cwd: Path) -> None:
-    """Abort the merge in progress, if any, restoring the checkout as it was before it."""
+    """
+    Abort the merge in progress, if any, restoring the checkout as it was before it.
+    """
     try:
         git(cwd, "rev-parse", "--verify", "--quiet", "MERGE_HEAD")
     except GitError:
@@ -137,7 +148,9 @@ def _rel(ws: Workspace, path: Path) -> str:
 
 
 def _resolve(ws: Workspace, module: Module, change: Change, top: Path, conflicts: list[Path]) -> list[Path]:
-    """Write the resolved ``tasks.md`` and ``traceability.md``; raise ``BranchMergeError`` on any other conflict."""
+    """
+    Write the resolved ``tasks.md`` and ``traceability.md``; raise ``BranchMergeError`` on any other conflict.
+    """
     tasks, trace = (change.path / TASKS_FILE).resolve(), (change.path / TRACE_FILE).resolve()
     others = [p for p in conflicts if p.resolve() not in (tasks, trace)]
     if others:

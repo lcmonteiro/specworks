@@ -1,4 +1,5 @@
-"""A fake GitHub for the Copilot login tests: the device flow and the session-token exchange, on a fake transport with no network.
+"""
+A fake GitHub for the Copilot login tests: the device flow and the session-token exchange, on a fake transport with no network.
 
 Requests are told apart by their path, so the host (github.com or a GitHub Enterprise one) is free; every request is recorded in ``requests``.
 """
@@ -16,7 +17,9 @@ SESSION_LIFE = 25 * 60
 
 @dataclass
 class Clock:
-    """A clock that only moves when a test sleeps or advances it."""
+    """
+    A clock that only moves when a test sleeps or advances it.
+    """
 
     at: float = 1_000_000.0
 
@@ -32,7 +35,8 @@ class Clock:
 
 @dataclass
 class FakeGitHub:
-    """What the login tests need from GitHub.
+    """
+    What the login tests need from GitHub.
 
     ``valid`` is the set of OAuth tokens that exchange for a session token; ``polls`` is what the device flow's access-token polls answer, in order
     (``authorize``, ``pending``, ``slow_down``, ``denied`` or ``expired``; ``pending`` once the list runs out). ``authorize`` registers a new OAuth
@@ -113,10 +117,14 @@ class FakeGitHub:
 
 
 def real_clock_github(**kwargs) -> FakeGitHub:
-    """A fake GitHub that reads the real time, for commands that cannot be given a clock; its poll interval is 0 so nothing waits."""
+    """
+    A fake GitHub that reads the real time, for commands that cannot be given a clock; its poll interval is 0 so nothing waits.
+    """
     return FakeGitHub(now=time.time, interval=0, **kwargs)
 
 
 def route_httpx_to(monkeypatch, github: FakeGitHub) -> None:
-    """Send every request httpx makes, from any client, to ``github``."""
+    """
+    Send every request httpx makes, from any client, to ``github``.
+    """
     monkeypatch.setattr(httpx.HTTPTransport, "handle_request", lambda self, request: github.handle(request))

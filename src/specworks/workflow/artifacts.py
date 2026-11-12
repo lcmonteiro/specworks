@@ -1,4 +1,6 @@
-"""Artifact graph of a change: what exists, what is ready, and how to write each artifact."""
+"""
+Artifact graph of a change: what exists, what is ready, and how to write each artifact.
+"""
 
 from __future__ import annotations
 
@@ -28,7 +30,9 @@ class Artifact:
     optional: bool = False
 
     def skipped(self, change: Change) -> bool:
-        """Delta specs of a change with no behaviour change (``skip_specs``) are not written."""
+        """
+        Delta specs of a change with no behaviour change (``skip_specs``) are not written.
+        """
         return self.id == "specs" and change.skip_specs
 
     def exists(self, change: Change) -> bool:
@@ -38,7 +42,9 @@ class Artifact:
 
 
 class WorkflowError(SpecworksError):
-    """Raised for unknown artifacts."""
+    """
+    Raised for unknown artifacts.
+    """
 
 
 @cache
@@ -56,7 +62,9 @@ def read_template(name: str) -> str:
 
 # @req REQ-FLOW-001
 def artifact_states(change: Change) -> list[dict]:
-    """Each artifact as done, ready (all requirements exist), blocked, or skipped (specs of a skip_specs change)."""
+    """
+    Each artifact as done, ready (all requirements exist), blocked, or skipped (specs of a skip_specs change).
+    """
     artifacts = load_artifacts()
     states = []
     for art in artifacts.values():
@@ -82,7 +90,8 @@ def artifact_states(change: Change) -> list[dict]:
 
 # @req REQ-FLOW-001
 def half_progress(change: Change) -> dict[str, dict[str, int]] | None:
-    """Each half's tasks done and in total (``{"test": {"done": 3, "total": 3}, "code": {...}}``) for a change in implement, else None.
+    """
+    Each half's tasks done and in total (``{"test": {"done": 3, "total": 3}, "code": {...}}``) for a change in implement, else None.
 
     Read from tasks.md only, without running any command.
     """

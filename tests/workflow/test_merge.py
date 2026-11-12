@@ -1,4 +1,6 @@
-"""Merging a half's branch: `specworks merge <branch>` resolves the change's tasks.md and traceability.md, aborts on anything else."""
+"""
+Merging a half's branch: `specworks merge <branch>` resolves the change's tasks.md and traceability.md, aborts on anything else.
+"""
 
 import pytest
 

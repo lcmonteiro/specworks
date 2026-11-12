@@ -1,5 +1,6 @@
 # specworks: ignore-tags-start
-"""Traceability: requirement -> acceptance criteria -> tasks -> tests -> code.
+"""
+Traceability: requirement -> acceptance criteria -> tasks -> tests -> code.
 
 Tests and code link back to the specs with comment tags, in any language::
 
@@ -91,7 +92,9 @@ class Row:
 
 # @req REQ-SPECS-011
 def glob_match(rel: str, pattern: str) -> bool:
-    """``rel`` (a posix path) matches ``pattern``: ``*``/``?`` within one folder, ``**`` across folders."""
+    """
+    ``rel`` (a posix path) matches ``pattern``: ``*``/``?`` within one folder, ``**`` across folders.
+    """
     regex = re.escape(pattern).replace(r"\*\*/", "(?:.*/)?").replace(r"\*\*", ".*").replace(r"\*", "[^/]*").replace(r"\?", "[^/]")
     return re.fullmatch(regex, rel) is not None
 
@@ -105,8 +108,10 @@ def is_test_file(rel: str, test_globs: list[str]) -> bool:
 
 # @req REQ-SPECS-011
 def scan_rule(module: Module, path: Path) -> tuple[bool, bool]:
-    """(scanned, is_test) for a file of ``module``: its tests (by test_globs, or by name outside docs) are always
-    scanned; source_globs, when set, limit the other files; otherwise everything but documentation is scanned."""
+    """
+    (scanned, is_test) for a file of ``module``: its tests (by test_globs, or by name outside docs) are always
+    scanned; source_globs, when set, limit the other files; otherwise everything but documentation is scanned.
+    """
     cfg = module.config
     rel = path.relative_to(module.root).as_posix()
     is_doc = path.suffix.lower() in DOC_EXTENSIONS
@@ -118,14 +123,18 @@ def scan_rule(module: Module, path: Path) -> tuple[bool, bool]:
 
 
 def _is_marker(line: str, marker: str) -> bool:
-    """``marker`` alone on the line, around comment punctuation only: a doc that quotes it in prose is not one."""
+    """
+    ``marker`` alone on the line, around comment punctuation only: a doc that quotes it in prose is not one.
+    """
     return marker in line and not any(ch.isalnum() for ch in line.replace(marker, "", 1))
 
 
 # @req REQ-SPECS-001, REQ-SPECS-002
 def _tag_lines(text: str) -> list[tuple[int, str]]:
-    """(number, line) of the lines whose tags count: not marked ``specworks: ignore-tags`` and not inside an
-    ignore block (``ignore-tags-start`` .. ``ignore-tags-end``, or the end of the file)."""
+    """
+    (number, line) of the lines whose tags count: not marked ``specworks: ignore-tags`` and not inside an
+    ignore block (``ignore-tags-start`` .. ``ignore-tags-end``, or the end of the file).
+    """
     lines, ignoring = [], False
     for number, line in enumerate(text.splitlines(), start=1):
         if _is_marker(line, IGNORE_START):
@@ -139,7 +148,9 @@ def _tag_lines(text: str) -> list[tuple[int, str]]:
 
 # @req REQ-SPECS-003, REQ-SPECS-011
 def scan_tags(ws: Workspace) -> list[Tag]:
-    """Every @req / @ac tag in the workspace, skipping hidden, vendored and workflow folders."""
+    """
+    Every @req / @ac tag in the workspace, skipping hidden, vendored and workflow folders.
+    """
     skip_roots = {(m.root / m.config.dir).resolve() for m in ws.modules()}
     tags: list[Tag] = []
     for dirpath, dirnames, filenames in os.walk(ws.root):
@@ -244,8 +255,10 @@ def gaps(rows: list[Row]) -> dict[str, list[str]]:
 
 # @req REQ-SPECS-012
 def unknown_tags(specs: ChangeSpecs, tags: list[Tag], others: set[str], prefixes: set[str]) -> list[Tag]:
-    """Tags to an ID of this change's capabilities that no spec has (``others``: other active changes' IDs), or with a
-    prefix no capability uses."""
+    """
+    Tags to an ID of this change's capabilities that no spec has (``others``: other active changes' IDs), or with a
+    prefix no capability uses.
+    """
     mine = {d.cap.prefix for d in specs.deltas}
     known = specs.known_ids() | others
     found = []
@@ -300,7 +313,8 @@ def write_traceability(change: Change, text: str) -> Path:
 
 
 class Analysis:
-    """What the CLI knows about a change: its parsed specs and their issues, the workspace's tags and the gaps.
+    """
+    What the CLI knows about a change: its parsed specs and their issues, the workspace's tags and the gaps.
 
     Each part is computed on first use, so a caller that needs only the specs never scans the workspace.
     """

@@ -1,4 +1,6 @@
-"""`specworks reopen` (REQ-CLI-020) and `status` reading why a change was reopened (REQ-CLI-021)."""
+"""
+`specworks reopen` (REQ-CLI-020) and `status` reading why a change was reopened (REQ-CLI-021).
+"""
 
 import pytest
 from typer.testing import CliRunner

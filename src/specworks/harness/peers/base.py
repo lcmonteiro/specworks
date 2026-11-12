@@ -1,4 +1,6 @@
-"""The skill peers' base: ``SkillPeer``, a chatinho ``DeepAgentConnector`` per packaged skill, and the preamble every peer gets."""
+"""
+The skill peers' base: ``SkillPeer``, a chatinho ``DeepAgentConnector`` per packaged skill, and the preamble every peer gets.
+"""
 
 from __future__ import annotations
 
@@ -42,20 +44,25 @@ _HANDED: contextvars.ContextVar[list[tuple[int, str]] | None] = contextvars.Cont
 
 # @req REQ-HARNESS-001
 def peer_name(skill: str) -> str:
-    """The peer's name: the skill's name without ``specworks-``. Implements REQ-HARNESS-001."""
+    """
+    The peer's name: the skill's name without ``specworks-``. Implements REQ-HARNESS-001.
+    """
     return skill.removeprefix(PREFIX)
 
 
 # @req REQ-HARNESS-004
 def preamble(name: str, peers: Sequence[str], rules: Sequence[str] = ()) -> str:
-    """``PREAMBLE`` for the peer ``name`` in a chat of ``peers``, then each of ``rules`` on its own line. Implements REQ-HARNESS-004."""
+    """
+    ``PREAMBLE`` for the peer ``name`` in a chat of ``peers``, then each of ``rules`` on its own line. Implements REQ-HARNESS-004.
+    """
     return "\n".join([PREAMBLE.format(name=name, peers=", ".join(peers)), *rules])
 
 
 # @req REQ-HARNESS-001
 # @req REQ-HARNESS-004
 def skill_instructions(skill: str, peers: Sequence[str], rules: Sequence[str] = ()) -> str:
-    """The peer's instructions: its preamble (with ``rules``), a blank line, then ``read_skill(skill)`` unchanged.
+    """
+    The peer's instructions: its preamble (with ``rules``), a blank line, then ``read_skill(skill)`` unchanged.
 
     Implements REQ-HARNESS-001, REQ-HARNESS-004.
     """
@@ -67,7 +74,8 @@ def skill_instructions(skill: str, peers: Sequence[str], rules: Sequence[str] = 
 # @req REQ-HARNESS-003
 # @req REQ-HARNESS-005
 class SkillPeer(DeepAgentConnector):
-    """A packaged skill as a chat peer: chatinho's Deep Agent connector, in the workspace the provider gives it.
+    """
+    A packaged skill as a chat peer: chatinho's Deep Agent connector, in the workspace the provider gives it.
 
     Each step is a subclass in its own module, named by ``@connector("<name>")``; its skill is ``PREFIX + name``.
     It acts only on what is addressed to it, and hands over to the next peer after its run, from a fresh context.
@@ -83,11 +91,14 @@ class SkillPeer(DeepAgentConnector):
 
     @classmethod
     def skill_name(cls) -> str:
-        """The packaged skill this class serves: ``PREFIX + cls.name``. Implements REQ-HARNESS-001."""
+        """
+        The packaged skill this class serves: ``PREFIX + cls.name``. Implements REQ-HARNESS-001.
+        """
         return PREFIX + cls.name
 
     def __init__(self, model: BaseChatModel, peers: Sequence[str]) -> None:
-        """Named ``cls.name``: ``ask_user=True``, ``MEMORY``, the ``hand_over`` tool and ``skill_instructions(skill, peers, rules)``.
+        """
+        Named ``cls.name``: ``ask_user=True``, ``MEMORY``, the ``hand_over`` tool and ``skill_instructions(skill, peers, rules)``.
 
         Implements REQ-HARNESS-001, REQ-HARNESS-002.
         """
@@ -100,7 +111,9 @@ class SkillPeer(DeepAgentConnector):
         super().__init__(peer_name(skill), model, [self.hand_over_tool()], memory=MEMORY, ask_user=True, system_prompt=skill_instructions(skill, peers, self.rules))
 
     async def answer(self, msg: ChatMessage) -> Reply:
-        """AgentConnector's run on ``msg``, then the recorded hand-over is said. Implements REQ-HARNESS-003, REQ-HARNESS-005."""
+        """
+        AgentConnector's run on ``msg``, then the recorded hand-over is said. Implements REQ-HARNESS-003, REQ-HARNESS-005.
+        """
         handed: list[tuple[int, str]] = []
         token = _HANDED.set(handed)
         try:
@@ -116,7 +129,9 @@ class SkillPeer(DeepAgentConnector):
         return reply
 
     async def _hand_over(self, at: int, text: str, msg: ChatMessage) -> None:
-        """Say ``text`` to peer ``at``, replying to ``msg``, once this peer's reply to it is posted."""
+        """
+        Say ``text`` to peer ``at``, replying to ``msg``, once this peer's reply to it is posted.
+        """
         await asyncio.sleep(0)  # the session posts the reply as soon as answer() returns
         try:
             await self.say(text, to=at, reply_to=msg.id)
@@ -124,11 +139,14 @@ class SkillPeer(DeepAgentConnector):
             logger.warning("%s: cannot hand over (%s)", self.name, type(exc).__name__)
 
     async def listen(self, msg: ChatMessage) -> None:
-        """Does nothing: a skill peer acts only on what is addressed to it. Implements REQ-HARNESS-003."""
+        """
+        Does nothing: a skill peer acts only on what is addressed to it. Implements REQ-HARNESS-003.
+        """
         return None
 
     def hand_over_tool(self) -> StructuredTool:
-        """The agent tool ``hand_over(peer: str, text: str) -> str``.
+        """
+        The agent tool ``hand_over(peer: str, text: str) -> str``.
 
         It returns ``"handed over to <peer>"``, or ``"error: unknown peer '<peer>'"`` / ``"error: cannot hand over to yourself"``
         and records nothing. Implements REQ-HARNESS-003.

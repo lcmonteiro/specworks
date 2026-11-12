@@ -1,4 +1,6 @@
-"""Helpers shared by the modules tests of several capabilities."""
+"""
+Helpers shared by the modules tests of several capabilities.
+"""
 
 import json
 
@@ -22,7 +24,9 @@ def run_json(*args):
 
 
 def make_workspace(tmp_path, monkeypatch):
-    """Top-level project with module billing (services/billing) and nested module billing/tax."""
+    """
+    Top-level project with module billing (services/billing) and nested module billing/tax.
+    """
     monkeypatch.chdir(tmp_path)
     init_repo(tmp_path)
     run("init")

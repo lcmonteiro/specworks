@@ -1,4 +1,6 @@
-"""Helpers shared by the archive tests of several capabilities."""
+"""
+Helpers shared by the archive tests of several capabilities.
+"""
 
 from datetime import date
 
