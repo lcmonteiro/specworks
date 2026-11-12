@@ -38,6 +38,7 @@ CAPABILITY_KEYS = ("path", "prefix", "description", "tests")
 TOOL_IDS: tuple[str, ...] = ("claude", "copilot")
 DIAGRAM_KEYS = ("theme", "dark_theme", "layout", "sketch", "pad")
 TELEMETRY_KEYS = ("langfuse", "host")
+HARNESS_KEYS = ("model",)
 
 
 @dataclass
@@ -244,6 +245,24 @@ def load_telemetry(raw: object, present: bool) -> TelemetryConfig | None:
     return TelemetryConfig(langfuse=langfuse, host=str(host).strip())
 
 
+@dataclass
+class HarnessConfig:
+    """
+    The top level's ``harness:`` block: the model the harness uses when ``SPECWORKS_MODEL_MODEL`` names none. Implements REQ-PROJ-003.
+    """
+
+    model: str = ""
+
+
+def load_harness(raw: object, present: bool) -> HarnessConfig | None:
+    """
+    The ``harness:`` block; None when the key is absent.
+
+    Raises ``ConfigError`` naming ``harness`` or ``harness.model``. Implements REQ-PROJ-003.
+    """
+    raise NotImplementedError
+
+
 # @req REQ-PROJ-003, REQ-PROJ-032
 def check_telemetry_host(host: object) -> None:
     """
@@ -271,6 +290,7 @@ class Config:
     tools: list[str] | None = None  # the AI tools saved at the top level (TOOL_IDS); None when none is saved
     branch_per_change: bool = True  # whether `new` creates a branch per change; only the top level's is read (REQ-PROJ-026)
     telemetry: TelemetryConfig | None = None  # the top level's telemetry block; None when absent (REQ-PROJ-003)
+    harness: HarnessConfig | None = None  # the top level's harness block; None when absent (REQ-PROJ-003)
 
     @property
     def config_path(self) -> Path:

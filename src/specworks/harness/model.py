@@ -18,6 +18,7 @@ from specworks.harness.logins import LoginStore
 MODEL_KEY = "SPECWORKS_MODEL_API_KEY"
 MODEL_NAME = "SPECWORKS_MODEL_MODEL"
 MODEL_BASE_URL = "SPECWORKS_MODEL_BASE_URL"
+MODEL_CONFIG_KEY = "harness.model"  # the top level config's model, used when MODEL_NAME is not set
 
 
 # @req REQ-HARNESS-010

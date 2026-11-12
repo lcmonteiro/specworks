@@ -151,6 +151,14 @@ class CopilotSession:
         """
         return self._api_base
 
+    def default_model(self) -> str | None:
+        """
+        The id of the model the Copilot API marks as its default chat model, or None when it cannot tell.
+
+        Asks ``<api base>/models`` with the session token. Implements REQ-HARNESS-013.
+        """
+        raise NotImplementedError
+
 
 # @req REQ-HARNESS-011
 def device_login(

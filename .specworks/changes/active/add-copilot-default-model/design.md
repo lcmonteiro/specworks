@@ -67,6 +67,8 @@ error path is simpler. Serves: REQ-HARNESS-013.
 
 ## Interfaces
 
+Agreed with the user
+
 - `src/specworks/core/config.py`: `HARNESS_KEYS = ("model",)`;
   `@dataclass class HarnessConfig: model: str = ""`;
   `load_harness(raw: object, present: bool) -> HarnessConfig | None` (raises

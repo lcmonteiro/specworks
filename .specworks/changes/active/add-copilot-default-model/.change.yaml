@@ -1,3 +1,11 @@
 name: add-copilot-default-model
 created: '2026-11-12T14:31:00'
-phase: specify
+phase: design
+specified:
+  REQ-CLI-013: a2aa50236fbc
+  REQ-CLI-022: d5ed79b8e773
+  REQ-HARNESS-013: 1614919056f9
+  REQ-HARNESS-010: ee9735fc3064
+  REQ-PROJ-035: 9b560c8e82f5
+  REQ-PROJ-003: 7e2461f77b14
+  REQ-PROJ-025: 7e916b13c2d4
