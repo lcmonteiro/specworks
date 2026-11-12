@@ -217,12 +217,16 @@ validate).
 The system SHALL write a change's findings as text of their check artifact
 (REQ-FLOW-018) that REQ-FLOW-010 reads back: a new finding under `## Findings`
 of the artifact asked for (review.md when none is), with that artifact's
-letter and its next free number, its type and its Proposal (creating the
-artifact from its template when missing); and, for an existing finding,
+letter and its next free number, its type and its Proposal, and, when
+given, a suggestion (creating the artifact from its template when missing); and, for an existing finding,
 found in the artifact its ID's letter names: its Decision, replacing the one it has, which SHALL start
 with `back to <step>:`, `back to design only:` or `accepted:` and, when `accepted`, tick the finding;
 a `done in <step>:` line, where the step may also be review; and a tick with what its step confirmed (`confirmed in review:`,
-`confirmed in validate:` or `confirmed in inspect:`, after the artifact's step). It SHALL add
+`confirmed in validate:` or `confirmed in inspect:`, after the artifact's step). A suggestion SHALL be written under the
+finding as a `**Suggestion**:` line followed by the suggestion's text,
+unchanged, in an indented code fence with its language (`diff`, `markdown`,
+...), the fence longer than any run of backticks in the text; it SHALL not
+route the finding, and an empty suggestion SHALL be refused. It SHALL add
 each line at the end of the finding's block and leave every other line of
 the file as it was. It SHALL refuse an unknown finding, type, step or check
 artifact, an
@@ -300,6 +304,12 @@ by the form a line starts with, else by the finding's type.
 - **GIVEN** a change with no inspection.md
 - **WHEN** a `question` finding is added to inspection, then closed
 - **THEN** inspection.md is created from its template with I1 under `## Findings`, routed to review; after the close it is ticked with `confirmed in inspect:`
+
+#### Scenario: AC-FLOW-016.13 A suggestion
+
+- **GIVEN** a suggestion in `diff` of three lines, one of them holding ```` ``` ````
+- **WHEN** a `code-gap` finding is added to inspection with it, and its proposal `back to code: revoke the old token`
+- **THEN** I1 has its Proposal line, then `**Suggestion**:` and the three lines unchanged in an indented fence of four backticks marked `diff`; I1 is routed to code, and reading it back gives the same finding; an empty suggestion is refused and no file changes
 
 ### Requirement: REQ-FLOW-018 Check artifacts
 
