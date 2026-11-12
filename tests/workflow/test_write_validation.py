@@ -3,7 +3,7 @@
 import difflib
 import re
 
-from helpers import REF, run_json, write_tests
+from helpers import REF, git, run_json, write_tests
 from specworks.cli.output import resolve_change
 from specworks.core.workspace import load_workspace
 from specworks.workflow.checks import GateContext
@@ -29,11 +29,11 @@ def failing(repo):
     return repo
 
 
-def write(root):
+def write(root, base="main"):
     """Run validate with the write, as `specworks validate --write` does: the checks after the write, and the path."""
     ws = load_workspace(root)
     module, change = resolve_change(ws, REF)
-    return write_validation(GateContext(ws, module, change, base="main"))
+    return write_validation(GateContext(ws, module, change, base=base))
 
 
 def findings(root):
@@ -122,6 +122,25 @@ def test_ac_flow_019_3_a_rerun_after_a_fix(repo):
     assert block(after, "V3") == v3_before
     removed, added = changed_lines(before.split("## Summary")[0], after.split("## Summary")[0])
     assert removed == [v1_before[0]] and added == [block(after, "V1")[0], "  - confirmed in validate: the check passes"]
+
+
+
+# @ac AC-FLOW-019.3
+def test_ac_flow_019_3_a_rerun_with_another_base(repo):
+    """A check whose name carries the base (files accounted for in review.md): a rerun with another base finds the same V1."""
+    reviewed(repo)
+    (repo / "src/auth/audit.py").write_text("def audit(): ...\n")  # untagged, not accounted for in review.md
+    write(repo)
+    git(repo, "branch", "trunk", "main")  # the same commit as main, under another name
+    write(repo, base="trunk")
+    assert [(f.id, f.done) for f in findings(repo).findings] == [("V1", False)]  # still failing: not written twice
+    before = read_validation(repo)
+    write_review(repo, f"# Review: {REF}\n\n## Findings\n\nNone.\n\n## Changed files without tags\n\n- `src/auth/audit.py`: audit helper\n")
+    checks, _ = write(repo, base="trunk")
+    assert summary(checks)["verdict"] == "PASS"
+    assert [(f.id, f.done) for f in findings(repo).findings] == [("V1", True)]
+    v1_before = block(before, "V1")
+    assert block(read_validation(repo), "V1") == [v1_before[0].replace("- [ ] V1", "- [x] V1", 1), *v1_before[1:], "  - confirmed in validate: the check passes"]
 
 
 # @ac AC-FLOW-019.4
