@@ -312,7 +312,7 @@ def suggestion_block(lines):
     """The lines from the ``**Suggestion**:`` line to the end of its fence, the fence's content without its indentation."""
     at = lines.index("  - **Suggestion**:")
     opener = lines[at + 1]
-    end = lines.index(opener, at + 2)
+    end = lines.index(opener[: opener.rindex("`") + 1], at + 2)  # the closing fence: the opener without its language
     body = lines[at + 2 : end]
     assert all(line.startswith("    ") for line in body), body
     return at, opener, [line[4:] for line in body]

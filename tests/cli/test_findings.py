@@ -89,7 +89,7 @@ def fenced(text, lang):
     at = lines.index("  - **Suggestion**:")
     opener = lines[at + 1]
     assert opener.lstrip().startswith("```") and opener.lstrip().lstrip("`") == lang, opener
-    end = lines.index(opener, at + 2)
+    end = lines.index(opener[: opener.rindex("`") + 1], at + 2)  # the closing fence: the opener without its language
     return [line[4:] for line in lines[at + 2 : end]]
 
 
