@@ -34,6 +34,7 @@ class Check:
     blocking: bool = True
     group: str = ""  # validate: completeness / correctness / coherence
     fix: str = ""  # validate: the phase skill that fixes a failure
+    key: str = ""  # validate: the name of the check function, stable when the name shows a base (REQ-FLOW-019)
 
     @property
     def mark(self) -> str:
@@ -140,7 +141,7 @@ def half_tasks_done(half: str) -> CheckFn:
         pending = [f"{t.num} {t.text}" for t in specs.tasks if t.half == half and not t.done]
         return Check(f"every [{half}] task is done (specworks task list --pending)", specs.tasks_found and not pending, pending)
 
-    return check
+    return _named(check, f"{half}_tasks_done")
 
 
 # @req REQ-FLOW-013
@@ -170,16 +171,22 @@ def specs_as_specified(ctx: GateContext) -> Check | None:
 # --- tags ------------------------------------------------------------------------
 
 
-def _gap(name: str, key: str, blocking: bool = True) -> CheckFn:
-    """A check that passes when the traceability gap ``key`` (trace.gaps) is empty."""
-    return lambda ctx: _listed(name, ctx.analysis.gaps[key], blocking)
+def _named(check: CheckFn, name: str) -> CheckFn:
+    """``check`` named ``name``: the key validate links its findings to (REQ-FLOW-019)."""
+    check.__name__ = check.__qualname__ = name
+    return check
 
 
-reqs_have_code = _gap("every requirement has code (@req tag)", "reqWithoutCode")
-acs_have_tests = _gap("every acceptance criterion has a test (@ac tag)", "acWithoutTests")
-removed_gone = _gap("removed requirements and criteria are gone from tests and code", "removedStillTagged")
+def _gap(fn_name: str, name: str, key: str, blocking: bool = True) -> CheckFn:
+    """A check named ``fn_name`` that passes when the traceability gap ``key`` (trace.gaps) is empty."""
+    return _named(lambda ctx: _listed(name, ctx.analysis.gaps[key], blocking), fn_name)
+
+
+reqs_have_code = _gap("reqs_have_code", "every requirement has code (@req tag)", "reqWithoutCode")
+acs_have_tests = _gap("acs_have_tests", "every acceptance criterion has a test (@ac tag)", "acWithoutTests")
+removed_gone = _gap("removed_gone", "removed requirements and criteria are gone from tests and code", "removedStillTagged")
 # Before the code half is done, the code of a removed requirement (or criterion) may still be there.
-removed_gone_warning = _gap("removed requirements and criteria are gone from tests and code", "removedStillTagged", blocking=False)
+removed_gone_warning = _gap("removed_gone_warning", "removed requirements and criteria are gone from tests and code", "removedStillTagged", blocking=False)
 
 
 # @req REQ-FLOW-007
@@ -412,7 +419,7 @@ def review_tests_pass(ctx: GateContext) -> Check:
 
 
 def optional_command(key: str, name: str) -> CheckFn:
-    return lambda ctx: command_check(ctx, key, name, optional=True)
+    return _named(lambda ctx: command_check(ctx, key, name, optional=True), f"{key}_passes")
 
 
 CODE_COMMANDS = ("build", "typecheck", "lint")

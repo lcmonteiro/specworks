@@ -58,7 +58,7 @@ CHECKBOX_RE = re.compile(r"^\s*(?:[-*+]|\d+[.)])\s*\[[^\]]?\]")
 TYPE_RE = re.compile(r"\*\*([A-Za-z_-]+)\*\*")
 BACK_RE = re.compile(r"\bback to (?P<phase>specify|design|implement|test|code|review)(?P<only>\s+only)?\s*:", re.IGNORECASE)
 DONE_RE = re.compile(r"\bdone in (?P<phase>specify|design|implement|test|code|review)\s*:", re.IGNORECASE)
-# The ``**Check**`` line under a finding validate wrote: the check it was written for (REQ-FLOW-019).
+# The ``**Check**`` line under a finding validate wrote: the key of the check it was written for (REQ-FLOW-019).
 CHECK_LINE_RE = re.compile(r"^\s*(?:[-*+]|\d+[.)])\s+\*\*Check\*\*\s*:\s*(?P<check>\S.*?)\s*$")
 # The steps a finding can be routed to, in workflow order: implement is both halves, test and code one each.
 FINDING_STEPS = ("specify", "design", "implement", "test", "code", "review")
@@ -125,7 +125,7 @@ class Finding:
     routed: bool = True  # False: neither a known type nor a "back to"/"done in" step, so ``phase`` is only a guess
     done_in: str = ""  # the step that carried out its proposal (``done in <step>:``), awaiting review
     design_only: bool = False  # its Decision says ``back to design only:``: after design it goes to review (REQ-FLOW-010)
-    check: str = ""  # its ``**Check**`` line: the validate check it was written for (REQ-FLOW-019)
+    check: str = ""  # its ``**Check**`` line: the key of the validate check it was written for (REQ-FLOW-019)
 
     def to_dict(self) -> dict:
         data: dict = {"id": self.id, "type": self.type, "text": self.text, "phase": self.phase}

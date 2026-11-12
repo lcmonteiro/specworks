@@ -1,6 +1,6 @@
 name: unify-check-findings
 created: '2026-11-11T23:48:54'
-phase: review
+phase: implement
 specified:
   REQ-CLI-023: df557a47f9d6
   REQ-CLI-011: d690eb4dc2f9
@@ -12,6 +12,11 @@ specified:
   REQ-FLOW-012: cf4c5f3320c1
   REQ-FLOW-013: b4079598eaff
   REQ-FLOW-016: 02b85b468304
+dirty:
+  .specworks/changes/active/unify-check-findings/design.md: ef836230df10b73f785680ca7a349f70ab847ddeeb9e609a6ebbd33deb7577ba
+  src/specworks/workflow/checks.py: 25d086e4a7e90ad4bb16e3746145a4eec22636fdcb43b5c1dded175c9620f1b9
+  src/specworks/workflow/findings.py: 4f78afa982d1dd3770a3d7875614dd3469082ab89bd84c7a8ea967c134262bc4
+  src/specworks/workflow/validate.py: 6191a76588872f7e612698e6ec4b594f8658e5575e5f67f7262a5d1809887f5c
 reopened:
 - at: '2026-11-12T14:07:14'
   reason: validate links a V finding to its check by the full check name, which carries

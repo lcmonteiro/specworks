@@ -120,7 +120,7 @@ def _run(ctx: GateContext, rows: list[tuple[str, str, CheckFn]]) -> list[Check]:
     for group, fix, check in rows:
         result = check(ctx)
         if result is not None:
-            result.group, result.fix = group, fix
+            result.group, result.fix, result.key = group, fix, check.__name__
             checks.append(result)
     return checks
 
@@ -138,6 +138,9 @@ def write_validation(ctx: GateContext) -> tuple[list[Check], Path]:
     failed blocking check that has none open, the ones it wrote before ticked once their check passes, and the Summary
     rewritten; then the checks run again. The checks after the write, and validation.md's path.
 
+    A finding is linked to its check by the check's key (its function's name), not by its name, which can change
+    between runs (the base of the diff in "changed files without tags are accounted for ... (base <since>)").
+
     Every finding goes through the finding writers (each edit read back); findings without a ``**Check**`` line are
     never touched. The Summary is written from the checks after the write, so it holds the verdict validate gives.
     Implements REQ-FLOW-019, REQ-FLOW-013.
@@ -147,17 +150,17 @@ def write_validation(ctx: GateContext) -> tuple[list[Check], Path]:
     own = set(FINDINGS_CHECKS.values())
     checks = _run(ctx, [row for row in VALIDATE if row[2] not in own])
     waiting = {f.check for f in read_findings(ctx.change, artifact).open if f.check}
-    failed = [check for check in checks if check.blocking and not check.ok and check.name not in waiting]
+    failed = [check for check in checks if check.blocking and not check.ok and check.key not in waiting]
     if failed and path.is_file():
         _edit(path, lambda lines: _set_none(lines, False))  # the first finding replaces "None."
     for check in failed:
-        if check.name in waiting:
-            continue  # two checks of one name: one finding
+        if check.key in waiting:
+            continue  # two checks of one key: one finding
         kind, step = FIX_FINDING.get(check.fix, FIX_FINDING[REVIEW])
         text = "; ".join([check.name, *check.details])
-        add_finding(ctx.change, kind, text, f"back to {step}: {CHECK_PROPOSAL}", artifact=VALIDATION, check=check.name)
-        waiting.add(check.name)
-    passing = {check.name for check in checks if check.ok}
+        add_finding(ctx.change, kind, text, f"back to {step}: {CHECK_PROPOSAL}", artifact=VALIDATION, check=check.key)
+        waiting.add(check.key)
+    passing = {check.key for check in checks if check.ok}
     for finding in read_findings(ctx.change, artifact).open:
         if finding.check in passing:
             close_finding(ctx.change, finding.id, CHECK_CONFIRMED)

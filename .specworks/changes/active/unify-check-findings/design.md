@@ -99,13 +99,20 @@ Serves: REQ-FLOW-011, REQ-FLOW-013.
 5. Run all checks again (now including the ones left out in step 1) and return
    them: the verdict validate prints is the one after the write.
 
-Findings without a `**Check**` line (added by the skill or by hand) are
-never touched. A check that passed and was closed, then fails again, gets a
+A finding is linked to its check by the check's key, the name of its check
+function (`files_accounted`, `code_tasks_done`; a check factory names the
+function it returns), never by the check's name: a name can change between
+runs (`changed files without tags are accounted for in review.md (base
+<since>)` carries the base), and a rerun with another base would then never
+close the old finding and add a duplicate (inspection.md I1, agreed with the
+user). The `**Check**` line holds that key; the finding's text keeps the
+check's name. Findings without a `**Check**` line (added by the skill or by
+hand) are never touched. A check that passed and was closed, then fails again, gets a
 new finding. Each step goes through the finding writers, so every write is
 read back as today. Serves: REQ-FLOW-019, REQ-CLI-023.
 
 **Pinned wording** (validation.md):
-- the check line under a finding validate wrote: `  - **Check**: <check name>`
+- the check line under a finding validate wrote: `  - **Check**: <check key>` (the check function's name)
 - its Proposal: `  - **Proposal**: back to <step>: make the check pass`
 - its close: `  - confirmed in validate: the check passes`
 - the Summary:
@@ -230,9 +237,9 @@ re-import).
 - [`None.` handling touches the Findings section of validation.md] -> only
   the validation writer does it; review.md writes keep every other line byte
   for byte (AC-FLOW-016.6).
-- [A check name changes between versions, so an old `**Check**` line matches
-  nothing] -> the old finding stays open and validate fails naming it; the
-  skill closes it by hand. Check names are stable in practice.
+- [A check function is renamed between versions, so an old `**Check**` line
+  matches nothing] -> the old finding stays open and validate fails naming it; the
+  skill closes it by hand. Check function names are stable in practice.
 - [validate --write runs the checks twice] -> the project's commands reuse the
   first run's result (same code), so only the cheap checks run again.
 
