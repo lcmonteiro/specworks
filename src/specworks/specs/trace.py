@@ -44,6 +44,7 @@ from typing import Any
 from specworks.core.changes import ARCHIVE_DIR, META_FILE, Change
 from specworks.core.git import GitError, git_text
 from specworks.core.workspace import Module, Workspace
+from specworks.specs.capabilities import CapabilityRef
 from specworks.specs.check import ChangeSpecs, Issue, check_change, other_deltas
 from specworks.specs.specfile import id_prefix, table_cell
 
@@ -133,6 +134,17 @@ def mark_changed(rows: list[Row], since: ChangedSince) -> None:
     """Set each row's ``changed``: its test and code locations (``file:line``) whose file is in ``since.files``."""
     for row in rows:
         row.changed = [where for where in row.tests + row.code if where.rsplit(":", 1)[0] in since.files]
+
+
+def living_spec_at(ws: Workspace, change: Change, cap: CapabilityRef, commit: str | None) -> str | None:
+    """The text of ``cap``'s living spec as it was at ``commit`` (the close commit of the archived ``change``), read
+    with ``git show <commit>:<living spec>``; None without the commit, without git, or when the spec did not exist
+    then. The trace of a closed change compares its MODIFIED and REMOVED blocks with it, so a criterion a later change
+    added is never reported as removed.
+
+    Implements REQ-SPECS-018.
+    """
+    raise NotImplementedError("living_spec_at")
 
 
 # @req REQ-SPECS-011

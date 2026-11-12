@@ -33,7 +33,7 @@
 
 ## 6. Removed criteria of a closed change (reopened: inspection.md I1)
 
-- [ ] 6.1 Add `living_spec_at(ws, change, cap, commit)` in `specs/trace.py` as a stub per design.md Interfaces (REQ-SPECS-018); verify `uv run ruff check src tests && uv run mypy`
+- [x] 6.1 Add `living_spec_at(ws, change, cap, commit)` in `specs/trace.py` as a stub per design.md Interfaces (REQ-SPECS-018); verify `uv run ruff check src tests && uv run mypy`
 - [ ] 6.2 [test] Write failing tests for a criterion added after the close (not removed) next to one the change left out and still tagged (still removed), and for no close commit (nothing removed), tagged `@ac AC-SPECS-018.4`, `@ac AC-SPECS-018.5`; keep AC-SPECS-018.1 to 018.3 passing; verify they fail on the stub
 - [ ] 6.3 [code] Implement the living spec at the close commit and `dropped_criteria` compared with it for an archived change, none without the commit (REQ-SPECS-018) tagged `@req REQ-SPECS-018`; verify by typecheck and `uv run specworks trace --change unify-check-findings --json` showing no removedStillTagged
 

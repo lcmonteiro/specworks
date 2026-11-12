@@ -155,8 +155,12 @@ Agreed with the user
 - `src/specworks/workflow/cycle.py`: `WAITING_STEPS = ("validate",
   "inspect")`; `next_cycle` leaves findings routed there out of the cycle
   (REQ-FLOW-012)
-- `src/specworks/specs/trace.py`: `living_spec_at(ws, change, cap, commit) -> str | None`
-  (the capability's living spec text at that commit; None without it) (REQ-SPECS-018);
+- `src/specworks/specs/trace.py`: `living_spec_at(ws: Workspace, change: Change,
+  cap: CapabilityRef, commit: str | None) -> str | None` (the capability's
+  living spec text at that commit, by `git show`; None without the commit,
+  without git, or when the spec did not exist then; it raises nothing). It
+  is the only new interface: `Analysis.rows` comparing an archived change
+  with it is the code half's (REQ-SPECS-018);
   `src/specworks/specs/trace.py`: `ChangedSince(commit: str | None, files:
   frozenset[str], note: str = "")`; `changed_since_close(ws, change) ->
   ChangedSince`; `Row.changed: list[str]` (REQ-SPECS-018)
