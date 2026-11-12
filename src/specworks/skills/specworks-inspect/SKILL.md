@@ -18,7 +18,7 @@ before.
 `specworks finding add` with `--artifact inspection` (and `specworks finding
 close` on an `I<n>` ID), which writes the reviewer's notes to inspection.md,
 and `specworks commit`, which commits them. It reads with `specworks status`, `specworks trace` (without
-`--write`), `specworks cycle`, `specworks list --archived`, read-only git
+`--write`), `specworks cycle` (an open change only), `specworks list --archived`, read-only git
 (`git diff`, `git log`, `git status`) and the files. It never fixes what it
 finds and never decides a note: deciding is for `/specworks-review` (open
 change) and `/specworks-reopen` (closed change).
@@ -43,14 +43,19 @@ A closed change is picked the same way, from
    ```bash
    specworks status --change "<ref>" --json
    specworks trace --change "<ref>" --json
-   specworks cycle --change "<ref>" --json
    ```
-   `status` says whether it is closed (`"archived": true`). `trace` gives,
+   `status` says whether it is closed (`"archived": true`) and gives its
+   folder (`path`). `trace` gives,
    per requirement and criterion, its tasks and the `file:line` of its tests
    (`@ac`) and code (`@req`); for a closed change it reads today's code and
    lists in `changed` the locations whose file changed since the close
-   (`changedSinceClose`, or a note when that cannot be told). `cycle` lists
-   the open findings, `I<n>` among them.
+   (`changedSinceClose`, or a note when that cannot be told).
+
+   The open findings, `I<n>` among them:
+   - an open change: `specworks cycle --change "<ref>" --json` lists them;
+   - a closed change: `cycle` refuses an archived change, so read the open
+     `- [ ] I<n>` lines of `inspection.md` in its archive folder (`path`),
+     when there is one.
 
    Never run `trace --write`: inspection writes nothing but inspection.md.
 

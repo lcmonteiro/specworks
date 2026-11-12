@@ -17,6 +17,7 @@ reading the diff. `- [ ] R<n>` while open, `- [x] R<n>` once resolved. Write
 - [ ] R3 **quality** specworks-inspect step 1 runs 'specworks cycle --change <ref> --json' for every change, but cycle refuses an archived change (cli/workflow.py:144 require_change; tests/cli/test_archive.py:59), so on a closed change the open I<n> findings routed to inspect (step 3) cannot be listed that way
   - **Proposal**: back to code: in src/specworks/skills/specworks-inspect/SKILL.md step 1, run cycle only for an open change; for a closed one, read its open I<n> findings from inspection.md in the archive folder (the path status gives); then uv run specworks skills
   - **Decision**: back to code: in the specworks-inspect skill run specworks cycle only for an open change; for a closed one read inspection.md in the archive folder; then run uv run specworks skills
+  - done in code: specworks-inspect step 1 runs cycle only for an open change; for a closed one it reads the open I<n> lines of inspection.md in the archive folder (status path); installed copy refreshed with specworks skills
 - [ ] R4 **quality** tests/workflow/test_build_cycle.py:266 write_inspection writes inspection.md without encoding="utf-8" (CLAUDE.md conventions) and duplicates tests/support/findings.py write_inspection
   - **Proposal**: back to test: use support.findings.write_inspection in test_ac_flow_012_11 and drop the local helper
   - **Decision**: back to test: use support.findings.write_inspection in tests/workflow/test_build_cycle.py and drop the local helper
