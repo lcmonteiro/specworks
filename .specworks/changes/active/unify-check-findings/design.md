@@ -134,53 +134,78 @@ thing from the same findings. Serves: REQ-FLOW-012.
 
 ## Interfaces
 
+Proposed: waiting for the user's agreement
+
+Nothing below is BREAKING for a user of the CLI: every existing command,
+flag and output field stays; `finding add` gains `--artifact`, `validate`
+gains `--write`, `cycle` gains `next`. Inside the package, the findings API
+moves from the review module to a new findings module (callers and tests
+re-import).
+
 - `src/specworks/schema.yaml`: `findings: {letter, blocks}` on `review`
   (`R`, `[review, validate]`); new artifact `validation` (`validation.md`,
   phase `validate`, template `validation.md`, `requires: [review]`,
-  `optional: true`, `findings: {letter: V, blocks: [validate]}`).
+  `optional: true`, an `instruction`, `findings: {letter: V, blocks:
+  [validate]}`) (REQ-FLOW-018, REQ-FLOW-001)
 - `src/specworks/templates/validation.md`: `# Validation: <!-- change ref -->`,
   `## Findings` (guidance comment, `None.` when there are none),
-  `## Summary`.
-- `src/specworks/workflow/artifacts.py`: `Artifact.findings: dict | None`;
-  `CheckArtifact(id, file, letter, phase, blocks)` (frozen);
-  `check_artifacts() -> list[CheckArtifact]`;
-  `check_artifact(artifact_id) -> CheckArtifact` (raises `WorkflowError`
-  naming the check artifacts); `check_artifact_for(finding_id) ->
-  CheckArtifact` (raises `WorkflowError` for an ID whose letter is no check
-  artifact's).
+  `## Summary` (REQ-FLOW-019)
+- `src/specworks/workflow/artifacts.py`: `Artifact.findings: dict | None = None`;
+  `CheckArtifact(id: str, file: str, letter: str, phase: str, blocks: tuple[str, ...])`
+  (frozen dataclass); `check_artifacts() -> list[CheckArtifact]` (schema
+  order; a duplicate letter raises `WorkflowError` when the schema loads);
+  `check_artifact(artifact_id: str) -> CheckArtifact`, raises `WorkflowError`
+  naming the check artifacts; `check_artifact_for(finding_id: str) ->
+  CheckArtifact`, raises `WorkflowError` for an ID whose letter is no check
+  artifact's (REQ-FLOW-018, REQ-FLOW-016)
 - `src/specworks/workflow/findings.py` (new): `TYPE_PHASE`, `FINDING_STEPS`,
-  `NEXT_STEP`, `Finding` (as today), `FindingsDoc` (today's `ReviewDoc`,
-  plus `artifact: CheckArtifact`), `FindingError`;
-  `parse_findings(text, artifact) -> FindingsDoc`,
-  `read_findings(change, artifact) -> FindingsDoc`,
-  `read_all_findings(change) -> list[FindingsDoc]` (one per check artifact,
-  schema order); the writers
-  `add_finding(change, kind, text, proposal, artifact="review", check="") -> Finding`
-  (`check` adds the `**Check**` line),
+  `NEXT_STEP`, `Finding` (as today, plus `check: str = ""`, its `**Check**`
+  line), `FindingsDoc` (today's `ReviewDoc`, plus `artifact: CheckArtifact`;
+  `accounted`/`accounts_for` stay, empty outside review.md), `FindingError`
+  (as today, naming the artifact's file) (REQ-FLOW-010, REQ-FLOW-018)
+- `src/specworks/workflow/findings.py`: `parse_findings(text: str, artifact:
+  CheckArtifact) -> FindingsDoc`, `read_findings(change: Change, artifact:
+  CheckArtifact) -> FindingsDoc`, `read_all_findings(change: Change) ->
+  list[FindingsDoc]` (one per check artifact, schema order, missing files
+  with `exists=False`) (REQ-FLOW-010, REQ-FLOW-018)
+- `src/specworks/workflow/findings.py`: the writers
+  `add_finding(change, kind, text, proposal, artifact: str = "review", check: str = "") -> Finding`
+  (an unknown `artifact` raises `FindingError` naming the check artifacts;
+  `check` adds the `**Check**` line);
   `decide_finding(change, finding_id, decision) -> Finding`,
   `mark_finding_done(change, finding_id, step, text) -> Finding`,
   `close_finding(change, finding_id, text) -> Finding` (writes
-  `confirmed in <artifact phase>:`); `Finding.check: str` (its `**Check**`
-  line, "" when none).
+  `confirmed in <artifact phase>:`), each finding the artifact from the ID's
+  letter (an ID of no check artifact raises `FindingError`)
+  (REQ-FLOW-016)
 - `src/specworks/workflow/review.py`: the drift report only
   (`review_change`, `ReviewReport`, `ChangedFile`, `changed_paths`,
-  `deleted_paths`, `detect_base`, `CODE_EXTENSIONS`); `REVIEW_FILE`,
-  `parse_review`, `read_review`, `ReviewDoc` and the writers move out.
-- `src/specworks/workflow/checks.py`: `artifact_readable(artifact) -> CheckFn`,
-  `artifact_closed(artifact) -> CheckFn` (replacing `review_readable`,
-  `review_closed`); `GateContext.findings(artifact) -> FindingsDoc`
-  (computed once per artifact; `GateContext.review` reads review's).
+  `deleted_paths`, `detect_base`, `CODE_EXTENSIONS`); `REVIEW_FILE`
+  (replaced by `check_artifact("review").file`), `parse_review`,
+  `read_review`, `ReviewDoc` and the writers move out, with no re-export
+  (REQ-FLOW-010)
+- `src/specworks/workflow/checks.py`: `artifact_readable(artifact:
+  CheckArtifact) -> CheckFn`, `artifact_closed(artifact: CheckArtifact) ->
+  CheckFn` (replacing `review_readable`, `review_closed`; review's rows keep
+  their names and details); `GateContext.findings(artifact: CheckArtifact)
+  -> FindingsDoc` (cached per artifact); `GateContext.review -> FindingsDoc`
+  (review's) (REQ-FLOW-011, REQ-FLOW-013)
 - `src/specworks/workflow/gate.py`: the review gate's rows built from the
-  check artifacts blocking `review`.
-- `src/specworks/workflow/validate.py`: the rows built from the check
-  artifacts blocking `validate`;
-  `write_validation(ctx) -> tuple[list[Check], Path]`.
-- `src/specworks/workflow/cycle.py`: `next_cycle(change)` adds `next`
-  (`str | None`); each `open` entry keeps `id`.
+  check artifacts whose `blocks` holds `review` (REQ-FLOW-011)
+- `src/specworks/workflow/validate.py`: the `VALIDATE` rows built from the
+  check artifacts whose `blocks` holds `validate`, each fixed by
+  `/specworks-<artifact phase>`;
+  `write_validation(ctx: GateContext) -> tuple[list[Check], Path]` (the
+  checks after the write, validation.md's path) (REQ-FLOW-013, REQ-FLOW-019)
+- `src/specworks/workflow/cycle.py`: `next_cycle(change)` reads every check
+  artifact and adds `next: str | None`; each `open` entry keeps its `id`
+  (REQ-FLOW-012)
 - `src/specworks/cli/workflow.py`: `finding add ... --artifact <id>`
   (default `review`); `decide/done/close` print the path of the ID's
-  artifact; `validate --write` (prints `path`, relative to the workspace
-  root); `cycle` prints `next`.
+  artifact (REQ-CLI-011); `validate --write` (prints `path`, relative to
+  the workspace root, `"path"` under `--json`; exit 1 on FAIL after
+  writing) (REQ-CLI-023); `cycle` prints `next: <phase>` (`"next"` under
+  `--json`) (REQ-FLOW-012)
 
 ## Diagrams
 
@@ -205,4 +230,15 @@ None: review.md is read as before, and validation.md is new and optional.
 
 ## Open Questions
 
-None.
+- **A V finding carried out before validate never leaves review** (raised
+  in design; changes REQ-FLOW-010, REQ-FLOW-012, REQ-FLOW-016, so it is a
+  spec question). A `V` finding routed to code becomes `done in code:` and
+  is then routed to review (REQ-FLOW-010); review closes only its own `R`
+  findings, and validate closes `V` ones. So after review `specworks cycle`
+  still lists it with `startAt: review` and `next: review`, and a build would
+  offer review again and again instead of going on to validate; a
+  `back to review:` `V` finding (AC-FLOW-019.5) does the same. Proposed fix,
+  at specify: `done in review:` as a step, routing a finding on to validate
+  (`NEXT_STEP["review"] = "validate"`); an open finding routed to validate
+  starts no cycle, and `next` is validate. The API above would change only
+  in `DONE_RE`, `NEXT_STEP` and the steps `mark_finding_done` accepts.
