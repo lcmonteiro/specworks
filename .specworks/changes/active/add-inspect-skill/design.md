@@ -122,7 +122,7 @@ one has neither. Serves: REQ-SPECS-018.
 
 ## Interfaces
 
-Proposed: waiting for the user's agreement
+Agreed with the user
 
 - `src/specworks/schema.yaml`: artifact `inspection` (`inspection.md`,
   phase `inspect`, template `inspection.md`, `requires: [tasks]`,
