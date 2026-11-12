@@ -15,12 +15,23 @@ from harness.scripted import ScriptedModel, chat, new_change, read_chat, touches
 from specworks.harness import ModelSettingsError, model_from_env
 from specworks.harness.confine import shell_env
 from specworks.harness.logins import Login, LoginStore
-from specworks.harness.model import MODEL_BASE_URL, MODEL_KEY, MODEL_NAME
+from specworks.harness.model import MODEL_BASE_URL, MODEL_CONFIG_KEY, MODEL_KEY, MODEL_NAME
 from specworks.harness.workspaces import SpecworksWorktrees
 from support.copilot import Clock, FakeGitHub
 
 KEY = "sk-secret"
 SETTINGS = {MODEL_KEY: KEY, MODEL_NAME: "gpt-test", MODEL_BASE_URL: "http://127.0.0.1:9/v1"}
+NO_MODEL = "SPECWORKS_MODEL_MODEL is not set and the config has no harness.model"
+
+
+def with_harness_model(root, model):
+    """
+    ``root`` as a project whose top level's config sets ``harness.model`` to ``model``.
+    """
+    config = root / ".specworks" / "config.yml"
+    config.parent.mkdir(parents=True, exist_ok=True)
+    config.write_text(f"specworks: 1\nharness:\n  model: {model}\n", encoding="utf-8")
+    return root
 
 
 # @ac AC-HARNESS-010.1
@@ -55,6 +66,42 @@ def test_ac_harness_010_2_a_missing_variable(variable, value, tmp_path):
     assert variable in str(error.value)
     assert KEY not in str(error.value)
     assert ("specworks login copilot" in str(error.value)) == (variable == MODEL_KEY)
+    if variable == MODEL_NAME:
+        assert NO_MODEL in str(error.value) and MODEL_CONFIG_KEY in str(error.value)
+
+
+# @ac AC-HARNESS-010.2
+def test_ac_harness_010_2_no_model_in_a_project_without_one(tmp_path):
+    root = tmp_path / "project"
+    (root / ".specworks").mkdir(parents=True)
+    (root / ".specworks" / "config.yml").write_text("specworks: 1\n", encoding="utf-8")
+    env = {MODEL_KEY: KEY}
+    with pytest.raises(ModelSettingsError) as error:
+        model_from_env(env, root=root, store=LoginStore(tmp_path / "no-logins"))
+    assert NO_MODEL in str(error.value)
+    assert KEY not in str(error.value)
+
+
+# @ac AC-HARNESS-010.5
+def test_ac_harness_010_5_the_model_from_the_config(tmp_path):
+    root = with_harness_model(tmp_path / "project", "gpt-4.1")
+    model = model_from_env({MODEL_KEY: KEY}, root=root, store=LoginStore(tmp_path / "no-logins"))
+    assert model.model_name == "gpt-4.1"
+    assert model.openai_api_key.get_secret_value() == KEY
+
+
+# @ac AC-HARNESS-010.5
+def test_ac_harness_010_5_an_empty_variable_falls_back_to_the_config(tmp_path):
+    root = with_harness_model(tmp_path / "project", "gpt-4.1")
+    model = model_from_env({MODEL_KEY: KEY, MODEL_NAME: "  "}, root=root, store=LoginStore(tmp_path / "no-logins"))
+    assert model.model_name == "gpt-4.1"
+
+
+# @ac AC-HARNESS-010.6
+def test_ac_harness_010_6_the_variable_wins_over_the_config(tmp_path):
+    root = with_harness_model(tmp_path / "project", "gpt-4.1")
+    model = model_from_env({MODEL_KEY: KEY, MODEL_NAME: "o3"}, root=root, store=LoginStore(tmp_path / "no-logins"))
+    assert model.model_name == "o3"
 
 
 def auth_error():
@@ -228,3 +275,79 @@ def test_ac_harness_010_4_a_logins_tokens_never_shown(project, ws, login, caplog
         assert token not in caplog.text
         assert read_chat(change), "the conversation is written"
         assert token not in (change.path / "chat.jsonl").read_text(encoding="utf-8")
+
+
+MODELS = {
+    "object": "list",
+    "data": [
+        {"id": "gpt-4o-mini", "is_chat_default": False, "is_chat_fallback": True},
+        {"id": "gpt-4.1", "is_chat_default": True},
+        {"id": "o3", "is_chat_default": False},
+    ],
+}
+
+
+# @ac AC-HARNESS-013.1
+def test_ac_harness_013_1_copilots_default_used(tmp_path):
+    login = StoredLogin(tmp_path, models=MODELS)
+    login.stored()
+    model = login.model({})
+    assert model.model_name == "gpt-4.1"
+    asked = login.github.model_requests()
+    assert len(asked) == 1
+    assert str(asked[0].url).startswith("https://api.individual.githubcopilot.com")
+    assert asked[0].headers["authorization"] == f"Bearer {login.github.last_session(OAUTH)}"
+    assert key_of(model) == login.github.last_session(OAUTH)
+
+
+# @ac AC-HARNESS-013.1
+def test_ac_harness_013_1_the_default_from_the_session(tmp_path):
+    from specworks.harness.copilot import CopilotSession
+
+    login = StoredLogin(tmp_path, models=MODELS)
+    login.stored()
+    session = CopilotSession(login.store.find(None), client=login.github.client(), now=login.clock.time)
+    assert session.default_model() == "gpt-4.1"
+
+
+# @ac AC-HARNESS-013.2
+@pytest.mark.parametrize("named", ["variable", "config"])
+def test_ac_harness_013_2_no_request_when_a_model_is_named(tmp_path, named):
+    login = StoredLogin(tmp_path, models=MODELS)
+    login.stored()
+    env = {MODEL_NAME: "o3"} if named == "variable" else {}
+    if named == "config":
+        with_harness_model(login.root, "o3")
+    model = login.model(env)
+    assert model.model_name == "o3"
+    assert login.github.model_requests() == []
+
+
+# @ac AC-HARNESS-013.3
+@pytest.mark.parametrize(
+    "models, status",
+    [
+        ({"data": [{"id": "gpt-4.1", "is_chat_default": False}]}, 200),
+        ({"data": []}, 200),
+        ({"models": [{"id": "gpt-4.1", "is_chat_default": True}]}, 200),
+        ({"data": [{"id": "", "is_chat_default": True}]}, 200),
+        ({"data": [{"id": 7, "is_chat_default": True}]}, 200),
+        ("not json", 200),
+        ([{"id": "gpt-4.1", "is_chat_default": True}], 200),
+        (MODELS, 500),
+        (MODELS, 401),
+        ("network", 200),
+    ],
+    ids=["none marked", "empty", "no data", "empty id", "id not text", "not json", "a bare list", "server error", "rejected", "network error"],
+)
+def test_ac_harness_013_3_no_default_to_use(tmp_path, models, status):
+    import httpx
+
+    login = StoredLogin(tmp_path, models=httpx.ConnectError("unreachable") if models == "network" else models, models_status=status)
+    login.stored()
+    with pytest.raises(ModelSettingsError) as error:
+        login.model({})
+    message = str(error.value)
+    assert NO_MODEL in message
+    assert OAUTH not in message and login.github.last_session(OAUTH) not in message
+    assert len(login.github.model_requests()) == 1

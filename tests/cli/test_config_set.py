@@ -113,6 +113,21 @@ def test_ac_cli_013_7_telemetry_from_inside_a_module(project, monkeypatch):
     assert data["config"] == CONFIG
 
 
+# @ac AC-CLI-013.8
+def test_ac_cli_013_8_the_harness_model_from_inside_a_module(project, monkeypatch):
+    assert invoke("module", "add", "services/billing").exit_code == 0
+    billing = project / "services/billing"
+    billing_before = read(billing)
+    monkeypatch.chdir(billing)
+    code, data = invoke_json("config", "set", "harness.model", "gpt-4.1")
+    assert code == 0, data
+    assert entries(read(project), "model") == ["  model: gpt-4.1"]
+    harness = load_config(project).harness
+    assert harness is not None and harness.model == "gpt-4.1"
+    assert read(billing) == billing_before
+    assert data["config"] == CONFIG
+
+
 # @ac AC-CLI-013.2
 def test_ac_cli_013_2_an_unreadable_file_is_refused(project):
     before = read(project)
