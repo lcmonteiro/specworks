@@ -36,6 +36,7 @@ reading the diff. `- [ ] R<n>` while open, `- [x] R<n>` once resolved. Write
   - **Decision**: back to specify: reword REQ-SPECS-018 to read the living spec just before the close commit (at its parent), and to report none when that commit or its parent cannot be read; only the requirement's text changes
 - [ ] R7 **quality** src/specworks/specs/trace.py:140 living_spec_at's docstring says commit is '(the close commit of the archived change)', but its only caller passes the close commit's parent (trace.py:422) and design.md says it reads the spec at whatever commit it is given
   - **Proposal**: back to code: drop '(the close commit of the archived change)' from the docstring, or say the trace passes the close commit's parent
+  - **Decision**: back to code: drop '(the close commit of the archived change)' from living_spec_at's docstring
 
 ## Changed files without tags
 
