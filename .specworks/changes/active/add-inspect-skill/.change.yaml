@@ -1,6 +1,6 @@
 name: add-inspect-skill
 created: '2026-11-11T23:16:38'
-phase: implement
+phase: review
 specified:
   REQ-CLI-002: 09502155daaa
   REQ-CLI-011: 1aee4266086f
