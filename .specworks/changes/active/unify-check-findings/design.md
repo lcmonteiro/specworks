@@ -83,8 +83,9 @@ Serves: REQ-FLOW-011, REQ-FLOW-013.
 
 `write_validation(ctx) -> tuple[list[Check], Path]` in `validate.py`:
 
-1. Run every `VALIDATE` row except the validation artifact's own
-   readability and open-findings checks.
+1. Run every `VALIDATE` row except the open-findings checks of every
+   check artifact and validation.md's readability check (a finding, from
+   review or from validate, is never turned into another finding).
 2. For each blocking check that failed and has no open `V` finding with its
    `**Check**` line, add one: type from the row's fix (`/specworks-specify`
    → `spec-gap`, design → `design-gap`, test → `test-gap`, code →
@@ -95,7 +96,7 @@ Serves: REQ-FLOW-011, REQ-FLOW-013.
 4. Rewrite the `## Summary` section (everything from its heading to the next
    `##` or the end) from the checks; replace `None.` under Findings once
    there is a finding, write it when there is none.
-5. Run all checks again (now including the validation artifact's) and return
+5. Run all checks again (now including the ones left out in step 1) and return
    them: the verdict validate prints is the one after the write.
 
 Findings without a `**Check**` line (added by the skill or by hand) are

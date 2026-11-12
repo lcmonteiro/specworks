@@ -14,6 +14,7 @@ reading the diff. `- [ ] R<n>` while open, `- [x] R<n>` once resolved. Write
 - [ ] R2 **design-gap** design.md Decisions > 'Validate keeps its own findings in step with its checks', step 1 says write_validation leaves out only the validation artifact's own readability and open-findings checks; the code (src/specworks/workflow/validate.py:147, FINDINGS_CHECKS) also leaves out review.md's open-findings check, as REQ-FLOW-019 says ('other than the open findings of the check artifacts'). The code and spec agree; design.md is narrower, and close copies it into the living design
   - **Proposal**: back to design only: reword step 1 as 'every VALIDATE row except the open-findings checks of every check artifact and validation.md's readability check'
   - **Decision**: back to design only: change write_validation step 1 to read: every VALIDATE row except the open-findings checks of every check artifact and validation.md's readability check
+  - done in design: design.md step 1 of write_validation now leaves out the open-findings checks of every check artifact and validation.md's readability check; step 5 reruns the ones left out
 
 ## Changed files without tags
 
