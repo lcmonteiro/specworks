@@ -75,7 +75,10 @@ def test_ac_flow_019_1_a_failed_validate_writes_a_finding_per_failed_check(repo)
     assert block(text, "V2")[1:] == [f"  - **Check**: {AC_TESTS}", "  - **Proposal**: back to test: make the check pass"]
     assert CODE_TASKS in block(text, "V1")[0] and "1.2" in block(text, "V1")[0]
     assert AC_TESTS in block(text, "V2")[0] and "AC-AUTH-003.2" in block(text, "V2")[0]
-    assert section(text, "Summary").startswith("Verdict: FAIL (2 critical, ")
+    result = summary(checks)  # the verdict after the write: the two failed checks plus validation.md's open V1 and V2
+    assert result["critical"] == 3
+    verdict = section(text, "Summary").splitlines()[0]
+    assert re.fullmatch(rf"Verdict: FAIL \({result['critical']} critical, {result['warnings']} warnings?\)", verdict), verdict
 
 
 # @ac AC-FLOW-019.2
