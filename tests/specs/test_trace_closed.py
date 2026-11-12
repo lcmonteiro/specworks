@@ -60,8 +60,9 @@ def test_ac_specs_018_2_locations_changed_since_the_close_are_marked(closed):
     assert rows["AC-AUTH-002.1"]["changed"] == []
     assert data["changedSinceClose"]["commit"] == close_commit and "src/auth/reset.py" in data["changedSinceClose"]["files"], data["changedSinceClose"]
     text = runner.invoke(app, ["trace", "--change", REF]).output
-    assert "src/auth/reset.py:1 (changed since close)" in text, text
-    assert "src/auth/lockout.py:1 (changed since close)" not in text and "tests/test_reset.py:1 (changed since close)" not in text, text
+    assert "`src/auth/reset.py:1` (changed since close)" in text, text
+    assert "`src/auth/lockout.py:1`" in text and "`src/auth/lockout.py:1` (changed since close)" not in text, text
+    assert "`tests/test_reset.py:1`" in text and "`tests/test_reset.py:1` (changed since close)" not in text, text
 
 
 # @ac AC-SPECS-018.2

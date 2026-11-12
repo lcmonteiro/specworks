@@ -4,7 +4,7 @@ import pytest
 
 from helpers import REF, run_json
 from specworks.workflow.findings import parse_findings
-from support.findings import REVIEW_ARTIFACT
+from support.findings import REVIEW_ARTIFACT, write_inspection
 
 
 def open_findings(text):
@@ -261,10 +261,6 @@ def test_ac_flow_012_10_a_finding_waiting_for_validate_starts_no_cycle(project):
     assert data["startAt"] is None and data["phases"] == [] and data["handOver"] is None
     assert [(f["id"], f["phase"]) for f in data["open"]] == [("V1", "validate")]
     assert data["next"] == "validate"
-
-
-def write_inspection(root, body):
-    (root / ".specworks/changes/active" / REF / "inspection.md").write_text(f"# Inspection: {REF}\n\n## Findings\n\n{body}\n\n## Summary\n\n2 of 4 blocks walked\n")
 
 
 # @ac AC-FLOW-012.11
