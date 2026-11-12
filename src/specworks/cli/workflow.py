@@ -177,10 +177,14 @@ def merge(
 # @req REQ-CLI-011
 @finding_app.command("add")
 def finding_add(
-    kind: str = typer.Argument(..., metavar="TYPE", help="The finding's type: spec-gap, design-gap, test-gap, code-gap, tag or quality."),
+    kind: str = typer.Argument(..., metavar="TYPE", help="The finding's type: spec-gap, design-gap, test-gap, code-gap, tag, quality or question."),
     text: str = typer.Argument(..., help="What the finding is."),
     proposal: str = typer.Option(..., "--proposal", help="The change it proposes."),
-    artifact: str = typer.Option("review", "--artifact", help="The check artifact it goes to: review (review.md) or validation (validation.md)."),
+    artifact: str = typer.Option(
+        "review", "--artifact", help="The check artifact it goes to: review (review.md), validation (validation.md) or inspection (inspection.md)."
+    ),
+    suggestion: str | None = typer.Option(None, "--suggestion", metavar="FILE", help="A file (or - for standard input) whose text goes under the finding as its Suggestion."),
+    lang: str = typer.Option("text", "--lang", help="The language the Suggestion's fence is marked with, e.g. diff or python."),
     change: str = ChangeOpt,
     as_json: bool = JsonOpt,
 ) -> None:
@@ -188,6 +192,8 @@ def finding_add(
 
     Implements REQ-CLI-011.
     """
+    if suggestion is not None:
+        raise NotImplementedError("finding add --suggestion")
     _write_finding(change, as_json, "add", lambda ch: add_finding(ch, kind, text, proposal, artifact=artifact))
 
 

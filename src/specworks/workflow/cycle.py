@@ -17,6 +17,10 @@ from __future__ import annotations
 from specworks.core.changes import HALVES, PHASES, Change
 from specworks.workflow.findings import read_all_findings
 
+#: The steps an open finding waits for outside a build cycle: the check step that confirms it (validate for V, inspect
+#: for I). No cycle runs for a finding routed to one of them. Implements REQ-FLOW-012.
+WAITING_STEPS = ("validate", "inspect")
+
 
 # @req REQ-FLOW-012
 def next_cycle(change: Change) -> dict:

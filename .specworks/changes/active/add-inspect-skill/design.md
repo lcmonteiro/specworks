@@ -134,8 +134,10 @@ Agreed with the user
   review`; `_next_step(done_in, design_only=False, artifact: CheckArtifact | None = None)`
   (`None`: validate after review, as today);
   `add_finding(change, kind, text, proposal, artifact="review", check="",
-  suggestion="", lang="text") -> Finding` (an empty `suggestion` given
-  explicitly raises `FindingError`) (REQ-FLOW-010, REQ-FLOW-016)
+  suggestion: str | None = None, lang="text") -> Finding` (`None`: no
+  suggestion; an empty `suggestion`, `""` or blank, raises `FindingError`.
+  The default is `None`, not `""`, so that an explicit empty one can be
+  told apart from none) (REQ-FLOW-010, REQ-FLOW-016)
 - `src/specworks/workflow/cycle.py`: `WAITING_STEPS = ("validate",
   "inspect")`; `next_cycle` leaves findings routed there out of the cycle
   (REQ-FLOW-012)

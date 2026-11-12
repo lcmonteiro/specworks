@@ -307,3 +307,26 @@ artifacts:
       the V findings it checked `done in review:`, and only validate confirms
       and ticks them. Write "None." under Findings when there are none; the
       warnings go in the Summary, never as findings.
+
+  - id: inspection
+    phase: inspect
+    generates: inspection.md
+    template: inspection.md
+    requires: [tasks]
+    # Written only by /specworks-inspect, and only when the reviewer leaves notes.
+    optional: true
+    # A check artifact: its findings are I<n>, and open ones block no gate.
+    findings: {letter: I, blocks: []}
+    instruction: |
+      Record the notes a reviewer left while inspecting the change, open or
+      closed: one finding per note, written with
+      `specworks finding add <type> "<text>" --proposal "<proposal>" --artifact inspection --change <ref>`,
+      never by hand. Nothing is written when there are no notes.
+
+      Findings (`- [ ] I<n>` open, `- [x] I<n>` confirmed) read like review.md's,
+      with the same types plus **question** (a doubt for review to answer), and
+      the same routes (`back to <step>:`, `done in <step>:`). A finding may
+      carry a **Suggestion**: the text in an indented code fence under its
+      Proposal, which never routes it. After review, an open I finding waits
+      for the next inspection, which confirms and ticks it. Inspection blocks
+      no gate.

@@ -39,6 +39,7 @@ TYPE_PHASE = {
     "code-gap": "code",
     "tag": "code",
     "quality": "code",
+    "question": "review",
 }
 # A finding is a checkbox with its ID first, the artifact's letter and a number: ``- [ ] R1 ...``
 # in review.md; ``*``/``+``/``1.`` bullets and a bold ``**R1**`` are read too. Any other checkbox
@@ -100,8 +101,15 @@ def _done_in(line: str) -> str | None:
 
 
 # @req REQ-FLOW-010
-def _next_step(done_in: str, design_only: bool = False) -> str:
-    """The step a finding needs once ``done_in`` carried out its proposal: review after design for a design-only finding."""
+def _next_step(done_in: str, design_only: bool = False, artifact: CheckArtifact | None = None) -> str:
+    """The step a finding needs once ``done_in`` carried out its proposal: review after design for a design-only finding.
+    After review, the step of the finding's check ``artifact`` when that is not review (validate for V, inspect for I),
+    else validate; ``None``: validate after review, as before.
+
+    Implements REQ-FLOW-010.
+    """
+    if artifact is not None:
+        raise NotImplementedError("_next_step(artifact=...)")
     return "review" if design_only and done_in == "design" else NEXT_STEP[done_in]
 
 ACCOUNTED_SECTION = "changed files without tags"
@@ -378,14 +386,22 @@ def _new_artifact(change: Change, artifact: CheckArtifact) -> str:
 
 
 # @req REQ-FLOW-016
-def add_finding(change: Change, kind: str, text: str, proposal: str, artifact: str = "review", check: str = "") -> Finding:
+def add_finding(
+    change: Change, kind: str, text: str, proposal: str, artifact: str = "review", check: str = "", suggestion: str | None = None, lang: str = "text"
+) -> Finding:
     """Add an open finding of type ``kind`` (one of ``TYPE_PHASE``) to the check artifact ``artifact`` with its next free
     ID and its Proposal line (and a ``**Check**`` line when ``check`` is given) under ``## Findings``, creating the file
     from its template when missing; the finding as ``read_findings`` reads it after. An unknown ``artifact`` raises
     ``FindingError`` naming the check artifacts.
 
+    A ``suggestion`` (multi-line text) goes after the Proposal line, as ``  - **Suggestion**:`` and the text in a fence
+    indented by four spaces, marked ``lang``, of ``max(3, longest backtick run + 1)`` backticks; it never routes the
+    finding. An empty ``suggestion`` raises ``FindingError``; ``None`` writes none.
+
     Implements REQ-FLOW-016.
     """
+    if suggestion is not None:
+        raise NotImplementedError("add_finding(suggestion=...)")
     target = _artifact(lambda: check_artifact(artifact))
     kind = kind.strip().lower()
     if kind not in TYPE_PHASE:

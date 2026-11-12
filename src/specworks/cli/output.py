@@ -143,3 +143,11 @@ def require_change(ref: str, as_json: bool) -> tuple[Workspace, Module, Change]:
     """The workspace and the change ``ref`` names."""
     ws = workspace(as_json)
     return (ws, *resolve_change(ws, ref))
+
+
+def require_change_or_archived(ref: str, as_json: bool) -> tuple[Workspace, Module, Change]:
+    """The workspace and the change ``ref`` names, active or else archived (only ``trace`` and inspection's ``finding``).
+
+    Implements REQ-CLI-002.
+    """
+    raise NotImplementedError("require_change_or_archived")

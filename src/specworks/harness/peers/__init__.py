@@ -12,6 +12,7 @@ from specworks.harness.peers.close import ClosePeer
 from specworks.harness.peers.code import CodePeer
 from specworks.harness.peers.design import DesignPeer
 from specworks.harness.peers.done import DonePeer
+from specworks.harness.peers.inspect import InspectPeer
 from specworks.harness.peers.onboard import OnboardPeer
 from specworks.harness.peers.refine import RefinePeer
 from specworks.harness.peers.reopen import ReopenPeer
@@ -31,6 +32,7 @@ PEERS: tuple[type[SkillPeer], ...] = (
     CodePeer,
     DesignPeer,
     DonePeer,
+    InspectPeer,
     OnboardPeer,
     RefinePeer,
     ReopenPeer,
@@ -66,6 +68,7 @@ __all__ = [
     "CodePeer",
     "DesignPeer",
     "DonePeer",
+    "InspectPeer",
     "OnboardPeer",
     "RefinePeer",
     "ReopenPeer",

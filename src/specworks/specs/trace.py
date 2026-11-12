@@ -39,6 +39,7 @@ import re
 from dataclasses import dataclass, field, replace
 from functools import cached_property
 from pathlib import Path
+from typing import Any
 
 from specworks.core.changes import Change
 from specworks.core.workspace import Module, Workspace
@@ -87,6 +88,30 @@ class Row:
     tasks: list[str] = field(default_factory=list)
     tests: list[str] = field(default_factory=list)
     code: list[str] = field(default_factory=list)
+    changed: list[str] = field(default_factory=list)  # the test and code locations whose file changed since a closed change's close (REQ-SPECS-018)
+
+
+@dataclass(frozen=True)
+class ChangedSince:
+    """What changed since a closed change's close: the close ``commit`` and the ``files`` changed since (committed or
+    not, relative to the workspace root); without git or without that commit, ``commit`` is None, ``files`` is empty
+    and ``note`` says why.
+
+    Implements REQ-SPECS-018.
+    """
+
+    commit: str | None
+    files: frozenset[str]
+    note: str = ""
+
+
+def changed_since_close(ws: Workspace, change: Change) -> ChangedSince:
+    """The files changed since the close of the archived ``change``: the close commit is the last commit that added its
+    archive folder, and the files are those ``git diff --name-only <commit>`` lists.
+
+    Implements REQ-SPECS-018.
+    """
+    raise NotImplementedError("changed_since_close")
 
 
 # @req REQ-SPECS-011
@@ -184,7 +209,7 @@ def build_matrix(specs: ChangeSpecs, tags: list[Tag]) -> list[Row]:
     rows: list[Row] = []
     for delta, req in specs.requirements():
         req_id = req.id or "?"
-        base = dict(capability=delta.cap.ref, req=req_id, title=req.title, section=req.section)
+        base: dict[str, Any] = dict(capability=delta.cap.ref, req=req_id, title=req.title, section=req.section)
         req_tasks = tasks_by_id.get(req_id, [])
         code = code_by_id.get(req_id, [])
         if req.section == "REMOVED" or not req.scenarios:
