@@ -1,6 +1,6 @@
 name: add-copilot-default-model
 created: '2026-11-12T14:31:00'
-phase: implement
+phase: review
 specified:
   REQ-CLI-013: a2aa50236fbc
   REQ-CLI-022: d5ed79b8e773
