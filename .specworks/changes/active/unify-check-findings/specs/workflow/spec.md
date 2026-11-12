@@ -8,14 +8,15 @@ The schema SHALL declare which artifacts of a change are check artifacts:
 each with the letter of its finding IDs and the gates its open findings
 block. It SHALL declare review (`review.md`, letter `R`, blocking the review
 and validate gates) and validation (`validation.md`, letter `V`, blocking the
-validate gate), the latter optional. Every check artifact SHALL be read as
+validate gate) and inspection (`inspection.md`, letter `I`, blocking no
+gate), the last two optional. Every check artifact SHALL be read as
 REQ-FLOW-010 says, with its own letter, and a finding whose ID has another
 letter than its artifact's SHALL be reported as unreadable.
 
 #### Scenario: AC-FLOW-018.1 The declared check artifacts
 
 - **WHEN** the check artifacts are listed
-- **THEN** they are review with letter `R`, blocking the review and validate gates, and validation with letter `V`, blocking the validate gate
+- **THEN** they are review with letter `R`, blocking the review and validate gates, validation with letter `V`, blocking the validate gate, and inspection with letter `I`, blocking no gate
 
 #### Scenario: AC-FLOW-018.2 A finding in validation.md
 
@@ -27,6 +28,12 @@ letter than its artifact's SHALL be reported as unreadable.
 
 - **WHEN** validation.md has a finding `- [ ] R1 **code-gap** ...`, or review.md one `- [ ] V1 **code-gap** ...`
 - **THEN** it is reported as unreadable, and the gates that artifact blocks fail on readability
+
+#### Scenario: AC-FLOW-018.4 Inspection findings block nothing
+
+- **GIVEN** a change whose review gate and validate pass
+- **WHEN** inspection.md gets an open finding I1
+- **THEN** the review gate and validate still pass, with no check or warning about I1
 
 ### Requirement: REQ-FLOW-019 Writing validation.md
 
@@ -75,7 +82,7 @@ be the one validate gives after writing.
 ### Requirement: REQ-FLOW-001 Artifact states
 
 The system SHALL report each artifact of a change (refinement, proposal, specs,
-design, tasks, traceability, review, validation) as `done` when its file exists, as
+design, tasks, traceability, review, validation, inspection) as `done` when its file exists, as
 `skipped` for the delta specs of a change marked skip-specs, and otherwise as
 `ready` when every artifact it requires is done, optional or skipped, or as
 `blocked`. For a change in implement, the status SHALL also report each half
@@ -111,15 +118,21 @@ without running any command.
 - **WHEN** its status is read before and after validation.md is written
 - **THEN** validation is `ready` and optional before, and `done` after
 
+#### Scenario: AC-FLOW-001.6 Inspection
+
+- **GIVEN** a change with tasks.md written
+- **WHEN** its status is read before and after inspection.md is written
+- **THEN** inspection is `ready` and optional before, and `done` after
+
 ### Requirement: REQ-FLOW-010 Reading findings
 
 The system SHALL read each finding in a check artifact (REQ-FLOW-018) as a
 checkbox with its ID, the artifact's letter and a number (`- [ ] R<n>` in
-review.md, `- [ ] V<n>` in validation.md, also `*`, `1.` and a bold ID), open
+review.md, `- [ ] V<n>` in validation.md, `- [ ] I<n>` in inspection.md, also `*`, `1.` and a bold ID), open
 or done, with a type (the first bold word that is a known type, in any case).
 It SHALL route the finding to the step of its type (`spec-gap` to specify,
 `design-gap` to design, `test-gap` to the test half, `code-gap`, `tag` and
-`quality` to the code half), or to the step of a `back to <step>:` in its own
+`quality` to the code half, `question` to review), or to the step of a `back to <step>:` in its own
 block, where a step is specify, design, implement (both halves), test, code
 or review, and a `done in <step>:` step is one of these. A `back to <step>:`, `back to design only:` or `done in <step>:`
 SHALL count only where it starts a line's text, after the line's indentation,
@@ -127,7 +140,8 @@ an optional bullet and an optional bold label (such as `**Decision**:` or
 `**Proposal**:`); later on a line, and on the finding's own line, it is text.
 After a `done in <step>:` it SHALL route the finding to the step
 after that one: design after specify, implement after design, review
-after implement, test or code, and validate after review, except that a finding whose Decision says
+after implement, test or code, and after review the step that confirms it:
+inspect for a finding of inspection.md, validate for any other, except that a finding whose Decision says
 `back to design only:` SHALL be routed to design, and after `done in design:`
 to review. HTML comments and code fences SHALL be ignored.
 A checkbox outside a finding's block (at the top level or indented, ticked or
@@ -190,6 +204,16 @@ unreadable.
 
 - **WHEN** validation.md has a `code-gap` V1 with `done in code:` and a `quality` V2 saying `back to review:`, and later `done in review:` is added under each
 - **THEN** both are routed to review before, and to validate after, still open
+
+#### Scenario: AC-FLOW-010.12 A question
+
+- **WHEN** inspection.md has `- [ ] I1 **question** why is the token not returned?`
+- **THEN** I1 is open and routed to review
+
+#### Scenario: AC-FLOW-010.13 Back to inspect
+
+- **WHEN** an inspection finding I1 of type `code-gap` gets `done in code:`, then `done in review:`
+- **THEN** it is routed to code, then review, then inspect, still open; a validation finding with the same lines is routed to validate at the end
 
 ### Requirement: REQ-FLOW-011 Gate review
 
@@ -262,7 +286,7 @@ needs implement; otherwise only the halves the findings need; and review last. I
 SHALL say the phase the cycle starts at: design when design is in the cycle,
 implement when a half is, review otherwise. A spec finding SHALL hand over to
 `/specworks-specify` instead of starting a cycle. A finding routed to
-validate SHALL start no cycle: it waits for validate to confirm it. A change with no check
+validate or inspect SHALL start no cycle: it waits for that step to confirm it. A change with no check
 artifact, or no open finding, has no next cycle. It SHALL also say the
 change's next state: the phase the cycle starts at, or, with no cycle to run,
 the phase after the change's current one (validate after review, close after
@@ -319,6 +343,12 @@ validate).
 - **GIVEN** a change in review whose only open finding is a V1 with `done in review:`
 - **WHEN** the next cycle is read
 - **THEN** there is no start and no steps, V1 is listed routed to validate, and the next state is validate
+
+#### Scenario: AC-FLOW-012.11 Waiting for inspect
+
+- **GIVEN** a change in validate whose only open finding is an I1 with `done in review:`
+- **WHEN** the next cycle is read
+- **THEN** there is no start and no steps, I1 is listed routed to inspect, and the next state is close
 
 ### Requirement: REQ-FLOW-013 Validate
 
@@ -394,11 +424,16 @@ write nothing.
 The system SHALL write a change's findings as text of their check artifact
 (REQ-FLOW-018) that REQ-FLOW-010 reads back: a new finding under `## Findings`
 of the artifact asked for (review.md when none is), with that artifact's
-letter and its next free number, its type and its Proposal (creating the
-artifact from its template when missing); and, for an existing finding,
+letter and its next free number, its type and its Proposal, and, when
+given, a suggestion (creating the artifact from its template when missing); and, for an existing finding,
 found in the artifact its ID's letter names: its Decision, replacing the one it has, which SHALL start
 with `back to <step>:`, `back to design only:` or `accepted:` and, when `accepted`, tick the finding;
-a `done in <step>:` line, where the step may also be review; and a tick with what its step confirmed. It SHALL add
+a `done in <step>:` line, where the step may also be review; and a tick with what its step confirmed (`confirmed in review:`,
+`confirmed in validate:` or `confirmed in inspect:`, after the artifact's step). A suggestion SHALL be written under the
+finding as a `**Suggestion**:` line followed by the suggestion's text,
+unchanged, in an indented code fence with its language (`diff`, `markdown`,
+...), the fence longer than any run of backticks in the text; it SHALL not
+route the finding, and an empty suggestion SHALL be refused. It SHALL add
 each line at the end of the finding's block and leave every other line of
 the file as it was. It SHALL refuse an unknown finding, type, step or check
 artifact, an
@@ -470,3 +505,15 @@ by the form a line starts with, else by the finding's type.
 - **GIVEN** validation.md with an open V1 routed to review
 - **WHEN** `done in review: a.py accounted for` is recorded under it
 - **THEN** it is routed to validate and still open, and only that line is added
+
+#### Scenario: AC-FLOW-016.12 A finding in inspection.md
+
+- **GIVEN** a change with no inspection.md
+- **WHEN** a `question` finding is added to inspection, then closed
+- **THEN** inspection.md is created from its template with I1 under `## Findings`, routed to review; after the close it is ticked with `confirmed in inspect:`
+
+#### Scenario: AC-FLOW-016.13 A suggestion
+
+- **GIVEN** a suggestion in `diff` of three lines, one of them holding ```` ``` ````
+- **WHEN** a `code-gap` finding is added to inspection with it, and its proposal `back to code: revoke the old token`
+- **THEN** I1 has its Proposal line, then `**Suggestion**:` and the three lines unchanged in an indented fence of four backticks marked `diff`; I1 is routed to code, and reading it back gives the same finding; an empty suggestion is refused and no file changes

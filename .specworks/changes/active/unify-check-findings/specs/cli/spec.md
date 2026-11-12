@@ -30,12 +30,15 @@ Without `--write`, `specworks validate` SHALL write no file.
 ### Requirement: REQ-CLI-011 finding
 
 `specworks finding` SHALL write a change's findings (REQ-FLOW-016)
-through `add <type> <text> --proposal <proposal> [--artifact <check artifact>]`,
+through `add <type> <text> --proposal <proposal> [--artifact <check artifact>]
+[--suggestion <file> --lang <language>]`,
 `decide <id> <decision>`, `done <id> --in <step> <text>` and
 `close <id> <text>`, each with `--change` (the change's ref) and `--json`.
 `add` SHALL write to the check artifact named by `--artifact` (`review` when
 omitted); `decide`, `done` and `close` SHALL write to the check artifact
-whose letter the ID starts with. Each SHALL print the finding as `specworks
+whose letter the ID starts with. `--suggestion` SHALL read the suggestion
+from the file (`-` for standard input), `--lang` naming its fence's language
+(`text` when omitted); a missing file SHALL be refused. Each SHALL print the finding as `specworks
 cycle` reads it afterwards (its ID, open or done, and the step it is routed
 to) and the path of the artifact it wrote, relative to the workspace root; a refusal
 SHALL be an error (`{"error": …}` with exit 1 under `--json`) and change no
@@ -60,3 +63,8 @@ file.
 
 - **WHEN** `finding add code-gap "x" --proposal "back to code: y" --artifact tasks --json` runs
 - **THEN** it prints `{"error": …}` naming the check artifacts, exits 1, and no file changes
+
+#### Scenario: AC-CLI-011.5 A suggestion from a file
+
+- **WHEN** `finding add code-gap "x" --proposal "back to code: y" --artifact inspection --suggestion fix.diff --lang diff --json` runs, then the same with a file that does not exist
+- **THEN** the first exits 0 and inspection.md holds the file's text under `**Suggestion**:` in a `diff` fence; the second prints `{"error": …}` naming the file, exits 1, and no file changes
