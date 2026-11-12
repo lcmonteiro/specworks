@@ -8,6 +8,9 @@ from specworks.workflow.artifacts import CheckArtifact
 REVIEW = f".specworks/changes/active/{REF}/review.md"
 # review.md as a check artifact, as the schema declares it (REQ-FLOW-018)
 REVIEW_ARTIFACT = CheckArtifact(id="review", file="review.md", letter="R", phase="review", blocks=("review", "validate"))
+VALIDATION = f".specworks/changes/active/{REF}/validation.md"
+# validation.md as a check artifact, as the schema declares it (REQ-FLOW-018)
+VALIDATION_ARTIFACT = CheckArtifact(id="validation", file="validation.md", letter="V", phase="validate", blocks=("validate",))
 TWO_FINDINGS = (
     f"# Review: {REF}\n\n"
     "## Findings\n\n"
@@ -35,3 +38,22 @@ def write_review(root, text):
 
 def read(root):
     return review_path(root).read_text(encoding="utf-8")
+
+
+def validation_path(root):
+    return root / VALIDATION
+
+
+def write_validation_md(root, findings, summary=""):
+    """validation.md with ``findings`` (lines of Markdown) under ``## Findings`` and ``summary`` under ``## Summary``."""
+    validation_path(root).write_text(f"# Validation: {REF}\n\n## Findings\n\n{findings}\n\n## Summary\n\n{summary}", encoding="utf-8")
+
+
+def read_validation(root):
+    return validation_path(root).read_text(encoding="utf-8")
+
+
+def change_files(root):
+    """Every file of the change folder and its bytes: what a refused write must leave as it was."""
+    folder = root / ".specworks/changes/active" / REF
+    return {str(p.relative_to(folder)): p.read_bytes() for p in sorted(folder.rglob("*")) if p.is_file()}

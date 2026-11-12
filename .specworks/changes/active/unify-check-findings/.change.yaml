@@ -1,6 +1,6 @@
 name: unify-check-findings
 created: '2026-11-11T23:48:54'
-phase: design
+phase: implement
 specified:
   REQ-CLI-023: df557a47f9d6
   REQ-CLI-011: d690eb4dc2f9
