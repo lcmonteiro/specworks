@@ -1,0 +1,29 @@
+# Review: unify-check-findings
+
+Base: `origin/main`
+
+## Findings
+
+<!-- One line per drift between code, spec and design (API), from `specworks review` and from
+reading the diff. `- [ ] R<n>` while open, `- [x] R<n>` once resolved. Write
+"None." when there are no findings. -->
+
+- [ ] R1 **test-gap** AC-FLOW-019.1: the test asserts the Summary says 'Verdict: FAIL (2 critical, ', but REQ-FLOW-019 makes the verdict the one validate gives after writing, which also fails 'no open finding in validation.md' (V1, V2): 3 critical. The criterion only says the Summary says FAIL; the suite fails on it (tests/workflow/test_write_validation.py:78)
+  - **Proposal**: back to test: assert the Summary's verdict line against the returned checks (summary(checks): 'Verdict: FAIL (3 critical, ...)', the two failed checks plus validation.md's open findings), not a hard-coded 2
+- [ ] R2 **design-gap** design.md Decisions > 'Validate keeps its own findings in step with its checks', step 1 says write_validation leaves out only the validation artifact's own readability and open-findings checks; the code (src/specworks/workflow/validate.py:147, FINDINGS_CHECKS) also leaves out review.md's open-findings check, as REQ-FLOW-019 says ('other than the open findings of the check artifacts'). The code and spec agree; design.md is narrower, and close copies it into the living design
+  - **Proposal**: back to design only: reword step 1 as 'every VALIDATE row except the open-findings checks of every check artifact and validation.md's readability check'
+
+## Changed files without tags
+
+<!-- Every file `specworks review` lists under untracedSource/untracedTests,
+with why it needs no tag (config, refactor, helper of REQ-...) or the
+finding that covers it. -->
+
+- `tests/support/findings.py`: shared test helper (paths, check artifacts and writers for review.md and validation.md) used by the tagged tests of REQ-FLOW-010, 016, 018 and 019; no criterion of its own
+- `tests/test_skills.py`: skill-wording test (validate now writes validation.md and commits); skills have no capability, so their tests stay untagged (CLAUDE.md)
+
+## Summary
+
+<!-- Two or three lines: what was found, what changed in code, specs and design, and anything sent back to an earlier phase. -->
+
+The code matches the delta specs and design.md's Interfaces; every requirement has code and every criterion a test. The suite fails on one test (R1, test-gap: AC-FLOW-019.1 hard-codes 2 critical where the verdict after the write is 3), and design.md's step 1 of write_validation is narrower than the spec and the code (R2, back to design only). Nothing was changed here (inside a build): both are open, waiting for the user's decision.
