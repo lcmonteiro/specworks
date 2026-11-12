@@ -7,12 +7,15 @@ import pytest
 from helpers import REF, run_json
 from specworks.workflow.findings import FindingError, add_finding, close_finding, decide_finding, mark_finding_done, read_findings
 from support.findings import (
+    INSPECTION_ARTIFACT,
     REVIEW_ARTIFACT,
     TWO_FINDINGS,
     VALIDATION_ARTIFACT,
     change_files,
     change_of,
+    inspection_path,
     read,
+    read_inspection,
     read_validation,
     review_path,
     validation_path,
@@ -277,3 +280,67 @@ def test_ac_flow_016_11_done_in_review_routes_a_validation_finding_to_validate(p
     carried = mark_finding_done(change_of(project), "V1", "review", "a.py accounted for")
     assert (carried.id, carried.done, carried.phase, carried.done_in) == ("V1", False, "validate", "review")
     assert added_lines(before, read_validation(project)) == ["  - done in review: a.py accounted for"]
+
+
+# --- findings in inspection.md, and suggestions -----------------------------------------
+
+
+# @ac AC-FLOW-016.12
+def test_ac_flow_016_12_a_question_added_to_inspection_then_closed(project):
+    assert not inspection_path(project).exists()
+    change = change_of(project)
+    added = add_finding(change, "question", "why is the token not returned?", "back to review: say why in design.md", artifact="inspection")
+    assert (added.id, added.done, added.type, added.phase) == ("I1", False, "question", "review")
+    text = read_inspection(project)
+    assert text.startswith(f"# Inspection: {REF}") and "## Summary" in text
+    assert text.index("## Findings") < text.index("- [ ] I1 **question** why is the token not returned?") < text.index("## Summary")
+    doc = read_findings(change, INSPECTION_ARTIFACT)
+    assert [(f.id, f.done, f.phase) for f in doc.findings] == [("I1", False, "review")] and doc.problems == []  # the template's example is left out
+    closed = close_finding(change, "I1", "design.md says why")
+    assert (closed.id, closed.done) == ("I1", True)
+    lines = read_inspection(project).splitlines()
+    assert any(line.startswith("- [x] I1 **question**") for line in lines), lines
+    assert "  - confirmed in inspect: design.md says why" in lines
+    assert [(f.id, f.done) for f in read_findings(change, INSPECTION_ARTIFACT).findings] == [("I1", True)]
+
+
+SUGGESTION = "-    return None\n+    revoke(old)  # not ``` a fence\n+    return new_token\n"
+SUGGESTION_LINES = SUGGESTION.splitlines()
+
+
+def suggestion_block(lines):
+    """The lines from the ``**Suggestion**:`` line to the end of its fence, the fence's content without its indentation."""
+    at = lines.index("  - **Suggestion**:")
+    opener = lines[at + 1]
+    end = lines.index(opener, at + 2)
+    body = lines[at + 2 : end]
+    assert all(line.startswith("    ") for line in body), body
+    return at, opener, [line[4:] for line in body]
+
+
+# @ac AC-FLOW-016.13
+def test_ac_flow_016_13_a_suggestion_in_an_indented_fence(project):
+    change = change_of(project)
+    added = add_finding(
+        change, "code-gap", "the old token stays valid", "back to code: revoke the old token", artifact="inspection", suggestion=SUGGESTION, lang="diff"
+    )
+    assert (added.id, added.done, added.type, added.phase) == ("I1", False, "code-gap", "code")
+    lines = read_inspection(project).splitlines()
+    proposal = lines.index("  - **Proposal**: back to code: revoke the old token")
+    at, opener, body = suggestion_block(lines)
+    assert at == proposal + 1
+    assert opener == "    ````diff"
+    assert body == SUGGESTION_LINES
+    assert lines[at + 2 + len(body)] == "    ````"
+    doc = read_findings(change, INSPECTION_ARTIFACT)
+    assert doc.problems == [] and [f.to_dict() for f in doc.findings] == [added.to_dict()]
+
+
+# @ac AC-FLOW-016.13
+@pytest.mark.parametrize("empty", ["", "  \n\n"], ids=["empty", "blank"])
+def test_ac_flow_016_13_an_empty_suggestion_is_refused(project, empty):
+    write_review(project, TWO_FINDINGS)
+    before = change_files(project)
+    with pytest.raises(FindingError):
+        add_finding(change_of(project), "code-gap", "x", "back to code: y", artifact="inspection", suggestion=empty, lang="diff")
+    assert change_files(project) == before and not inspection_path(project).exists()

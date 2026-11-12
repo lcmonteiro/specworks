@@ -1,9 +1,26 @@
 """Writing review findings: the review.md writers and `specworks finding`."""
 
+import json
+
 from helpers import REF, run_json, runner
 from specworks.cli import app
 from specworks.workflow.findings import read_findings
-from support.findings import REVIEW, REVIEW_ARTIFACT, TWO_FINDINGS, VALIDATION, VALIDATION_ARTIFACT, change_files, change_of, read, review_path, write_review
+from support.findings import (
+    INSPECTION,
+    INSPECTION_ARTIFACT,
+    REVIEW,
+    REVIEW_ARTIFACT,
+    TWO_FINDINGS,
+    VALIDATION,
+    VALIDATION_ARTIFACT,
+    change_files,
+    change_of,
+    inspection_path,
+    read,
+    read_inspection,
+    review_path,
+    write_review,
+)
 
 # --- specworks finding ---------------------------------------------------------
 
@@ -61,3 +78,42 @@ def test_ac_cli_011_4_an_unknown_artifact_is_refused(project):
     code, data = run_json("finding", "add", "code-gap", "x", "--proposal", "back to code: y", "--artifact", "tasks", "--change", REF)
     assert code == 1 and "review" in data["error"] and "validation" in data["error"], data
     assert change_files(project) == before
+
+
+FIX = "-    return None\n+    revoke(old)\n+    return new_token\n"
+
+
+def fenced(text, lang):
+    """The lines of the fence marked ``lang`` under the ``**Suggestion**:`` line, without their indentation."""
+    lines = text.splitlines()
+    at = lines.index("  - **Suggestion**:")
+    opener = lines[at + 1]
+    assert opener.lstrip().startswith("```") and opener.lstrip().lstrip("`") == lang, opener
+    end = lines.index(opener, at + 2)
+    return [line[4:] for line in lines[at + 2 : end]]
+
+
+# @ac AC-CLI-011.5
+def test_ac_cli_011_5_a_suggestion_from_a_file(project):
+    (project / "fix.diff").write_text(FIX, encoding="utf-8")
+    add = ["finding", "add", "code-gap", "x", "--proposal", "back to code: y", "--artifact", "inspection"]
+    code, data = run_json(*add, "--suggestion", "fix.diff", "--lang", "diff", "--change", REF)
+    assert code == 0, data
+    assert data["path"] == INSPECTION and (data["finding"]["id"], data["finding"]["done"], data["finding"]["phase"]) == ("I1", False, "code"), data
+    assert fenced(read_inspection(project), "diff") == FIX.splitlines()
+    assert [(f.id, f.phase) for f in read_findings(change_of(project), INSPECTION_ARTIFACT).findings] == [("I1", "code")]
+
+    before = change_files(project)
+    code, data = run_json(*add, "--suggestion", "missing.diff", "--lang", "diff", "--change", REF)
+    assert code == 1 and "missing.diff" in data["error"], data
+    assert change_files(project) == before
+
+
+# @ac AC-CLI-011.5
+def test_ac_cli_011_5_a_suggestion_from_standard_input(project):
+    args = ["finding", "add", "code-gap", "x", "--proposal", "back to code: y", "--artifact", "inspection", "--suggestion", "-", "--change", REF, "--json"]
+    result = runner.invoke(app, args, input=FIX)
+    assert result.exit_code == 0, result.output
+    assert json.loads(result.output)["finding"]["id"] == "I1"
+    assert fenced(read_inspection(project), "text") == FIX.splitlines()  # --lang defaults to text
+    assert inspection_path(project).exists() and not review_path(project).exists()
