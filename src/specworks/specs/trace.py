@@ -46,7 +46,7 @@ from specworks.core.git import GitError, git_text
 from specworks.core.workspace import Module, Workspace
 from specworks.specs.capabilities import CapabilityRef
 from specworks.specs.check import ChangeSpecs, Issue, check_change, other_deltas
-from specworks.specs.specfile import id_prefix, table_cell
+from specworks.specs.specfile import id_prefix, parse_spec, table_cell
 
 TAG_ID = r"(?:REQ|AC)-[A-Z0-9][A-Z0-9.-]*[A-Z0-9]"
 TAG_RE = re.compile(rf"@(?P<kind>req|ac)\s+(?P<ids>{TAG_ID}(?:\s*,\s*{TAG_ID})*)")
@@ -413,9 +413,23 @@ class Analysis:
         """What changed since an archived change's close; None for an active change."""
         return changed_since_close(self.ws, self.change) if self.archived else None
 
+    # @req REQ-SPECS-018
+    def _specs_at_close(self) -> ChangeSpecs:
+        """The specs with each delta's living spec as it was before the close (at the close commit's parent): the close
+        commit already holds the merged spec, without the criteria the change left out. None without that commit, so no
+        criterion is reported as removed rather than one guessed from today's spec."""
+        commit = self.changed_since.commit if self.changed_since else None
+        parent = f"{commit}^" if commit else None
+        deltas = []
+        for delta in self.specs.deltas:
+            text = living_spec_at(self.ws, self.change, delta.cap, parent)
+            deltas.append(replace(delta, living=parse_spec(text) if text is not None else None))
+        return replace(self.specs, deltas=deltas)
+
     @cached_property
     def rows(self) -> list[Row]:
-        rows = build_matrix(self.specs, self.tags)
+        # A closed change's removed criteria come from the living spec at its close, not from today's (REQ-SPECS-018).
+        rows = build_matrix(self._specs_at_close() if self.archived else self.specs, self.tags)
         if self.changed_since is not None:
             mark_changed(rows, self.changed_since)
         return rows
