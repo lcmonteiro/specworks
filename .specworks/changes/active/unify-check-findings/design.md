@@ -144,7 +144,7 @@ thing from the same findings. Serves: REQ-FLOW-012.
 
 ## Interfaces
 
-Proposed: waiting for the user's agreement
+Agreed with the user
 
 Nothing below is BREAKING for a user of the CLI: every existing command,
 flag and output field stays; `finding add` gains `--artifact`, `validate`
