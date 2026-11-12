@@ -103,6 +103,18 @@ rather than guessing from today's spec. Skipping the check for every
 closed change was rejected: it would hide real leftover tags. Serves:
 REQ-SPECS-018.
 
+Proposed: waiting for the user's agreement (code half). The close commit
+does not hold the living spec from before the close: `close_change`
+(`specs/merge.py`) writes the merged living specs and moves the change to
+the archive together, so that one commit already has each MODIFIED block
+as the change wrote it, and the criteria the change left out are gone from
+it. Compared with the spec at the close commit, the change's own left-out
+criteria (AC-X-001.2 in AC-SPECS-018.4) would never be reported. Proposal:
+compare with the living spec at the close commit's parent
+(`living_spec_at(ws, change, cap, f"{commit}^")`; `living_spec_at` itself is
+unchanged and reads the spec at the commit it is given), and report nothing
+when that parent or its spec cannot be read (as AC-SPECS-018.5).
+
 ### The skill orders, the reviewer breaks the circle
 
 `specworks-inspect` (read-only but for inspection.md, like onboard plus

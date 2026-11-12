@@ -136,6 +136,7 @@ def mark_changed(rows: list[Row], since: ChangedSince) -> None:
         row.changed = [where for where in row.tests + row.code if where.rsplit(":", 1)[0] in since.files]
 
 
+# @req REQ-SPECS-018
 def living_spec_at(ws: Workspace, change: Change, cap: CapabilityRef, commit: str | None) -> str | None:
     """The text of ``cap``'s living spec as it was at ``commit`` (the close commit of the archived ``change``), read
     with ``git show <commit>:<living spec>``; None without the commit, without git, or when the spec did not exist
@@ -144,7 +145,15 @@ def living_spec_at(ws: Workspace, change: Change, cap: CapabilityRef, commit: st
 
     Implements REQ-SPECS-018.
     """
-    raise NotImplementedError("living_spec_at")
+    living = cap.living_spec()
+    if commit is None or living is None:
+        return None
+    try:
+        rel = living.resolve().relative_to(ws.root.resolve()).as_posix()
+        # ./ reads the path from the workspace root, which may be a folder inside the repository.
+        return git_text(ws.root, "show", f"{commit}:./{rel}")
+    except (GitError, ValueError):
+        return None
 
 
 # @req REQ-SPECS-011
