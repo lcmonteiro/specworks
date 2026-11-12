@@ -122,6 +122,16 @@ read back as today. Serves: REQ-FLOW-019, REQ-CLI-023.
   ```
   (`Warnings:` and its list only when there is one.)
 
+### A finding waits for the step that found it
+
+Review checks the work done for every finding, but closes only its own `R`
+ones. For a `V` finding it adds `done in review:`, which routes the finding on
+to validate (`NEXT_STEP["review"] = "validate"`, `done in` accepts `review`).
+A finding routed to validate starts no build cycle, so `specworks cycle`
+gives no start and `next` is validate, where validate confirms and closes it.
+Without it a `V` finding routed back to code would be routed to review after
+`done in code:` forever. Serves: REQ-FLOW-010, REQ-FLOW-012, REQ-FLOW-016.
+
 ### The next state is part of the cycle
 
 `next_cycle(change)` reads every check artifact, lists each open finding with
@@ -173,7 +183,8 @@ re-import).
   (an unknown `artifact` raises `FindingError` naming the check artifacts;
   `check` adds the `**Check**` line);
   `decide_finding(change, finding_id, decision) -> Finding`,
-  `mark_finding_done(change, finding_id, step, text) -> Finding`,
+  `mark_finding_done(change, finding_id, step, text) -> Finding` (`step`
+  one of specify, design, implement, test, code, review),
   `close_finding(change, finding_id, text) -> Finding` (writes
   `confirmed in <artifact phase>:`), each finding the artifact from the ID's
   letter (an ID of no check artifact raises `FindingError`)
@@ -230,15 +241,4 @@ None: review.md is read as before, and validation.md is new and optional.
 
 ## Open Questions
 
-- **A V finding carried out before validate never leaves review** (raised
-  in design; changes REQ-FLOW-010, REQ-FLOW-012, REQ-FLOW-016, so it is a
-  spec question). A `V` finding routed to code becomes `done in code:` and
-  is then routed to review (REQ-FLOW-010); review closes only its own `R`
-  findings, and validate closes `V` ones. So after review `specworks cycle`
-  still lists it with `startAt: review` and `next: review`, and a build would
-  offer review again and again instead of going on to validate; a
-  `back to review:` `V` finding (AC-FLOW-019.5) does the same. Proposed fix,
-  at specify: `done in review:` as a step, routing a finding on to validate
-  (`NEXT_STEP["review"] = "validate"`); an open finding routed to validate
-  starts no cycle, and `next` is validate. The API above would change only
-  in `DONE_RE`, `NEXT_STEP` and the steps `mark_finding_done` accepts.
+None.

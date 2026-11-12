@@ -121,13 +121,13 @@ It SHALL route the finding to the step of its type (`spec-gap` to specify,
 `design-gap` to design, `test-gap` to the test half, `code-gap`, `tag` and
 `quality` to the code half), or to the step of a `back to <step>:` in its own
 block, where a step is specify, design, implement (both halves), test, code
-or review. A `back to <step>:`, `back to design only:` or `done in <step>:`
+or review, and a `done in <step>:` step is one of these. A `back to <step>:`, `back to design only:` or `done in <step>:`
 SHALL count only where it starts a line's text, after the line's indentation,
 an optional bullet and an optional bold label (such as `**Decision**:` or
 `**Proposal**:`); later on a line, and on the finding's own line, it is text.
 After a `done in <step>:` it SHALL route the finding to the step
-after that one: design after specify, implement after design, and review
-after implement, test or code, except that a finding whose Decision says
+after that one: design after specify, implement after design, review
+after implement, test or code, and validate after review, except that a finding whose Decision says
 `back to design only:` SHALL be routed to design, and after `done in design:`
 to review. HTML comments and code fences SHALL be ignored.
 A checkbox outside a finding's block (at the top level or indented, ticked or
@@ -185,6 +185,11 @@ unreadable.
 
 - **WHEN** a `code-gap` finding's Decision says `back to review: account for a.py`
 - **THEN** it is routed to review; `back to review only:` is not a route
+
+#### Scenario: AC-FLOW-010.11 Done in review
+
+- **WHEN** validation.md has a `code-gap` V1 with `done in code:` and a `quality` V2 saying `back to review:`, and later `done in review:` is added under each
+- **THEN** both are routed to review before, and to validate after, still open
 
 ### Requirement: REQ-FLOW-011 Gate review
 
@@ -256,9 +261,10 @@ with its ID: design when any finding needs design; both halves
 needs implement; otherwise only the halves the findings need; and review last. It
 SHALL say the phase the cycle starts at: design when design is in the cycle,
 implement when a half is, review otherwise. A spec finding SHALL hand over to
-`/specworks-specify` instead of starting a cycle. A change with no check
+`/specworks-specify` instead of starting a cycle. A finding routed to
+validate SHALL start no cycle: it waits for validate to confirm it. A change with no check
 artifact, or no open finding, has no next cycle. It SHALL also say the
-change's next state: the phase the cycle starts at, or, with no open finding,
+change's next state: the phase the cycle starts at, or, with no cycle to run,
 the phase after the change's current one (validate after review, close after
 validate).
 
@@ -307,6 +313,12 @@ validate).
 
 - **WHEN** the next state is read for a change in review with an open `code-gap`, in review with no open finding, and in validate with no open finding
 - **THEN** it is implement, validate and close
+
+#### Scenario: AC-FLOW-012.10 Waiting for validate
+
+- **GIVEN** a change in review whose only open finding is a V1 with `done in review:`
+- **WHEN** the next cycle is read
+- **THEN** there is no start and no steps, V1 is listed routed to validate, and the next state is validate
 
 ### Requirement: REQ-FLOW-013 Validate
 
@@ -386,7 +398,7 @@ letter and its next free number, its type and its Proposal (creating the
 artifact from its template when missing); and, for an existing finding,
 found in the artifact its ID's letter names: its Decision, replacing the one it has, which SHALL start
 with `back to <step>:`, `back to design only:` or `accepted:` and, when `accepted`, tick the finding;
-a `done in <step>:` line; and a tick with what its step confirmed. It SHALL add
+a `done in <step>:` line, where the step may also be review; and a tick with what its step confirmed. It SHALL add
 each line at the end of the finding's block and leave every other line of
 the file as it was. It SHALL refuse an unknown finding, type, step or check
 artifact, an
@@ -452,3 +464,9 @@ by the form a line starts with, else by the finding's type.
 
 - **WHEN** a finding is added to `tasks`, or decided as `V7` in a change whose validation.md has no V7
 - **THEN** it is refused naming the check artifacts (or V7), and no file changes
+
+#### Scenario: AC-FLOW-016.11 Done in review
+
+- **GIVEN** validation.md with an open V1 routed to review
+- **WHEN** `done in review: a.py accounted for` is recorded under it
+- **THEN** it is routed to validate and still open, and only that line is added

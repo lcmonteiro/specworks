@@ -15,7 +15,8 @@ one format, the phases read them, and the step that found a finding closes it.
   and validate gates) and a new optional artifact **validation** (`V`,
   `validation.md`, blocks the validate gate) are declared.
 - Findings are read the same way in every check artifact (types, routes,
-  `done in`), with its own letter; `back to review:` becomes a route.
+  `done in`), with its own letter; `back to review:` becomes a route, and `done in review:`
+  routes a finding on to validate, which confirms it.
 - `specworks finding add` takes `--artifact <check artifact>` (default
   `review`); `decide`, `done` and `close` find the artifact from the ID's
   letter.
