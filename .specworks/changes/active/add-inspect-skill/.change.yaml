@@ -1,3 +1,12 @@
 name: add-inspect-skill
 created: '2026-11-11T23:16:38'
-phase: specify
+phase: design
+specified:
+  REQ-CLI-002: 09502155daaa
+  REQ-CLI-011: 1aee4266086f
+  REQ-SPECS-018: d79d75a3e5eb
+  REQ-FLOW-001: fb2b5d7855fc
+  REQ-FLOW-010: edf3d5942511
+  REQ-FLOW-012: f5235b33a47e
+  REQ-FLOW-016: 462f8fb4ec2f
+  REQ-FLOW-018: cccc834700ed

@@ -131,7 +131,8 @@ Proposed: waiting for the user's agreement
 - `src/specworks/templates/inspection.md`: `# Inspection: <!-- change ref -->`,
   `## Findings` (guidance comment), `## Summary` (blocks walked of total)
 - `src/specworks/workflow/findings.py`: `TYPE_PHASE` gains `question:
-  review`; `_next_step(done_in, design_only=False, artifact=None)`;
+  review`; `_next_step(done_in, design_only=False, artifact: CheckArtifact | None = None)`
+  (`None`: validate after review, as today);
   `add_finding(change, kind, text, proposal, artifact="review", check="",
   suggestion="", lang="text") -> Finding` (an empty `suggestion` given
   explicitly raises `FindingError`) (REQ-FLOW-010, REQ-FLOW-016)
