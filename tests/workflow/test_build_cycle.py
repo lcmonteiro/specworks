@@ -212,3 +212,52 @@ def test_a_finding_done_in_a_step_is_routed_to_the_next_step():
     )
     found = open_findings(text)
     assert [(f["phase"], f["doneIn"]) for f in found] == [("implement", "design"), ("review", "test"), ("review", "code")]
+
+
+# --- findings of every check artifact, and the next state ------------------------------
+
+
+def write_validation(root, body):
+    (root / ".specworks/changes/active" / REF / "validation.md").write_text(f"# Validation: {REF}\n\n## Findings\n\n{body}\n\n## Summary\n\nVerdict: FAIL\n")
+
+
+# @ac AC-FLOW-012.8
+def test_ac_flow_012_8_a_cycle_from_a_validation_finding(project):
+    write_review(project, "- [x] R1 **code-gap** reset ignored case\n  - **Decision**: code fixed")
+    write_validation(project, "- [ ] V1 **test-gap** AC-AUTH-003.2 has no test\n  - **Proposal**: back to test: make the check pass")
+    data = cycle()
+    assert data["startAt"] == "implement" and data["phases"] == ["test", "review"] and data["handOver"] is None
+    assert [(f["id"], f["phase"]) for f in data["open"]] == [("V1", "test")]
+
+
+# @ac AC-FLOW-012.9
+@pytest.mark.parametrize(
+    "phase, findings, expected",
+    [
+        ("review", "- [ ] R1 **code-gap** reset ignores case\n  - **Decision**: back to code: lower-case it", "implement"),
+        ("review", "- [x] R1 **code-gap** reset ignored case\n  - **Decision**: code fixed", "validate"),
+        ("validate", "- [x] R1 **code-gap** reset ignored case\n  - **Decision**: code fixed", "close"),
+    ],
+    ids=["open-code-gap", "review-done", "validate-done"],
+)
+def test_ac_flow_012_9_the_next_state(project, phase, findings, expected):
+    write_review(project, findings)
+    code, data = run_json("phase", phase, "--change", REF)
+    assert code == 0, data
+    assert cycle()["next"] == expected
+
+
+# @ac AC-FLOW-012.10
+def test_ac_flow_012_10_a_finding_waiting_for_validate_starts_no_cycle(project):
+    write_review(project, "- [x] R1 **code-gap** reset ignored case\n  - **Decision**: code fixed")
+    write_validation(
+        project,
+        "- [ ] V1 **code-gap** REQ-AUTH-003 has no code\n  - **Proposal**: back to code: make the check pass\n"
+        "  - done in code: tagged reset.py\n  - done in review: reset.py is tagged",
+    )
+    code, data = run_json("phase", "review", "--change", REF)
+    assert code == 0, data
+    data = cycle()
+    assert data["startAt"] is None and data["phases"] == [] and data["handOver"] is None
+    assert [(f["id"], f["phase"]) for f in data["open"]] == [("V1", "validate")]
+    assert data["next"] == "validate"

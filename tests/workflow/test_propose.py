@@ -38,6 +38,17 @@ def test_status_after_planning(change):
     }
 
 
+# @ac AC-FLOW-001.5
+def test_ac_flow_001_5_validation_is_optional_then_done(change):
+    (change / "review.md").write_text("# Review: add-password-reset\n\n## Findings\n\nNone.\n", encoding="utf-8")
+    code, data = run_json("status", "--change", "add-password-reset")
+    validation = {a["id"]: a for a in data["artifacts"]}["validation"]
+    assert code == 0 and (validation["status"], validation["optional"]) == ("ready", True), validation
+    (change / "validation.md").write_text("# Validation: add-password-reset\n\n## Findings\n\nNone.\n", encoding="utf-8")
+    code, data = run_json("status", "--change", "add-password-reset")
+    assert {a["id"]: a["status"] for a in data["artifacts"]}["validation"] == "done"
+
+
 # @ac AC-FLOW-001.4
 def test_status_shows_the_halves_of_implement(change):
     (change / "tasks.md").write_text(

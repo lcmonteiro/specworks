@@ -8,7 +8,7 @@ import pytest
 
 from helpers import REF, git, remove_repo, run_json, write_tests
 from specworks.workflow.findings import parse_findings
-from support.findings import REVIEW_ARTIFACT
+from support.findings import REVIEW_ARTIFACT, write_validation_md
 
 FAIL = f'"{sys.executable}" -c "import sys; print(\'2 failed\'); sys.exit(3)"'
 
@@ -172,6 +172,20 @@ def test_gate_review_needs_a_test_for_every_criterion(repo, allow_open):
     code, data = run_json("gate", "review", "--change", REF, "--base", "main", *allow_open)
     missing = checks(data)["every acceptance criterion has a test (@ac tag)"]
     assert code == 1 and missing["blocking"] and missing["details"] == ["AC-AUTH-003.2"], data
+
+
+# @ac AC-FLOW-011.9
+@pytest.mark.parametrize("allow_open", [[], ["--allow-open"]])
+def test_ac_flow_011_9_validation_findings_do_not_block_review(repo, allow_open):
+    write_review(repo, "None.\n")
+    code, data = run_json("gate", "review", "--change", REF, "--base", "main", *allow_open)
+    assert code == 0 and data["passed"] is True, data
+    before = [(c["name"], c["ok"], c["blocking"]) for c in data["checks"]]
+    write_validation_md(repo, "- [ ] V1 **code-gap** REQ-AUTH-003 has no code\n  - **Proposal**: back to code: make the check pass")
+    code, data = run_json("gate", "review", "--change", REF, "--base", "main", *allow_open)
+    assert code == 0 and data["passed"] is True, data
+    assert [(c["name"], c["ok"], c["blocking"]) for c in data["checks"]] == before  # no check, and no warning, about V1
+    assert not any("V1" in detail or "validation.md" in c["name"] for c in data["checks"] for detail in c["details"]), data
 
 
 # @ac AC-FLOW-011.3
