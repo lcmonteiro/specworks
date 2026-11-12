@@ -218,12 +218,17 @@ from the row's fix (specify → `spec-gap`, design → `design-gap`, test →
 passes is closed with `confirmed in validate: the check passes`. It rewrites
 the `## Summary` (verdict, the three group counts, the warnings, which never
 become findings) and `None.` under Findings, then runs every check again and
-returns them, so the verdict printed is the one after the write. Findings
-with no `**Check**` line (added by the skill or by hand) are never touched; a
-check that fails again after its finding was closed gets a new one. Each
-write goes through the finding writers. An old `**Check**` line whose check
-was renamed matches nothing and stays open until closed by hand.
-(unify-check-findings)
+returns them, so the verdict printed is the one after the write. A finding
+is linked to its check by the check's key, the name of its check function
+(`Check.key`, set by validate; a check factory names the function it
+returns), never by the check's name: a name can carry the diff's base, and a
+rerun with another base would never close the old finding and add a
+duplicate. The `**Check**` line holds the key; the finding's text keeps the
+name. Findings with no `**Check**` line (added by the skill or by hand) are
+never touched; a check that fails again after its finding was closed gets a
+new one. Each write goes through the finding writers. An old `**Check**`
+line whose check function was renamed matches nothing and stays open until
+closed by hand. (unify-check-findings)
 
 ### A finding waits for the step that found it
 
@@ -368,7 +373,8 @@ which close raises. (merge-halves-without-conflicts)
   `check_artifacts()`, `check_artifact(artifact_id)`,
   `check_artifact_for(finding_id)` (each unknown name or letter a
   `WorkflowError` naming the check artifacts).
-- `src/specworks/workflow/checks.py`: `Check`, `GateContext`, `passed(checks)`,
+- `src/specworks/workflow/checks.py`: `Check` (`key`: the check function's
+  name, set by validate), `GateContext`, `passed(checks)`,
   `run_checks(ctx, checks)`, and the check functions (including
   `half_tasks_done(half)`, `unmarked_tasks_done`, `review_tests_pass`,
   `TestPlan`, `test_plan(ctx) -> TestPlan`, `test_folders_exist(ctx)`,
@@ -417,7 +423,7 @@ which close raises. (merge-halves-without-conflicts)
   `write_validation(ctx) -> tuple[list[Check], Path]` (the checks after the
   write, validation.md's path).
 - validation.md as validate writes it: under a finding
-  `  - **Check**: <check name>` and
+  `  - **Check**: <check key>` (the check function's name) and
   `  - **Proposal**: back to <step>: make the check pass`; its close
   `  - confirmed in validate: the check passes`; `## Summary` holds
   `Verdict: PASS | FAIL (<n> critical, <n> warnings)`, the lines
