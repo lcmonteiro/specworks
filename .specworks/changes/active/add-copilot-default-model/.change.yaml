@@ -1,3 +1,5 @@
 name: add-copilot-default-model
 created: '2026-11-12T14:31:00'
 phase: refine
+dirty:
+  .specworks/changes/active/add-copilot-default-model/.change.yaml: 7aed8900d64f9b9aece2b6e681ef1b71e814db9135770a47b6d5465f070814ee

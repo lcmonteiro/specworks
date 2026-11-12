@@ -6,19 +6,20 @@
 harness` still stops with `SPECWORKS_MODEL_MODEL is not set`. The stored
 login can stand in for the API key, but not for the model name, so a user who
 has just logged in still has to find a valid Copilot model id and export it
-by hand. This happens on GitHub.com and on GitHub Enterprise hosts alike.
+in every shell. A project also has no place to say which model its harness
+uses, so the choice cannot be shared through the repository.
 
 ## Outcomes
 
 - After `specworks login copilot` (with or without `--ghe-host`), running
-  `specworks harness` starts with no `SPECWORKS_MODEL_*` variable set.
-- The harness reads its settings from the environment first, then from the
-  files on disk: `SPECWORKS_MODEL_MODEL`, when set, still picks the model.
-- `specworks login copilot --model <id>` lets the user pick a model other
-  than Copilot's default.
-- A stored login that has no model yet (made before this change) gives an
-  error saying to run `specworks login copilot` again, before the session
-  starts.
+  `specworks harness` starts with no `SPECWORKS_MODEL_*` variable set and no
+  config edit, using Copilot's default chat model.
+- A project can pin its model in `.specworks/config.yml`, with
+  `specworks config set harness.model <id>`, and the harness uses it.
+- `SPECWORKS_MODEL_MODEL`, when set, still wins over the config.
+- When no model is named and Copilot gives no default, the harness stops
+  before the session with an error saying to set `harness.model` or
+  `SPECWORKS_MODEL_MODEL`.
 
 ## Context
 
@@ -28,95 +29,102 @@ by hand. This happens on GitHub.com and on GitHub Enterprise hosts alike.
   `SPECWORKS_MODEL_MODEL`. REQ-HARNESS-012 lets a stored login replace only
   `SPECWORKS_MODEL_API_KEY` and the base URL.
 - `model.py` `model_from_env` raises `ModelSettingsError(MODEL_NAME)` when the
-  name is missing, even after it has found a stored login.
-- `logins.py` `Login` holds only `oauth_token` and `ghe_host`. `LoginStore`
-  writes one global file and one file per project, in the user's config
-  folder.
+  name is missing, even after it has found a stored login. It gets `root`, so
+  it can reach the project's config.
 - `copilot.py` `CopilotSession` exchanges the OAuth token for a session token
-  and takes the API base from the exchange's `endpoints.api`. `log_in` reuses
-  a login that still exchanges, unless `--force` is given.
-- `cli` capability: `cli/login.py` (REQ-CLI-023) has the `--local`,
-  `--global`, `--force`, `--ghe-host` and `--json` options, but no model
-  option.
+  and takes the API base from the exchange's `endpoints.api`.
+- `project` capability (`src/specworks/core`): `.specworks/config.yml` holds
+  `context`, `commands`, `branch_per_change` and `telemetry`;
+  `config_file.py` `SETTABLE_KEYS` lists what `specworks config set` writes
+  (REQ-PROJ-025), editing the file as text so comments stay.
+- `cli` capability: `cli/harness.py` (REQ-CLI-022) fails naming the missing
+  model variable; `cli/login.py` (REQ-CLI-023) is not affected.
 
 **Assumed:**
 - `GET <api base>/models` with the session token lists the models the login
-  may use, and marks Copilot's default chat model (`is_chat_default`). Not yet
-  checked against a live login.
+  may use, each with an `id`, and marks Copilot's default chat model with
+  `is_chat_default`. Community sources agree; the format is undocumented and
+  not yet checked against a live github.com or GHE login.
 
 ## Constraints
 
-- [hard] An explicit `SPECWORKS_MODEL_API_KEY` still ignores the stored logins,
-  and still needs `SPECWORKS_MODEL_MODEL` (another provider has no default).
-- [hard] Environment variables win over what is stored on disk.
-- [hard] No token appears in any output, error or file other than the login
-  file. The model id is not secret and may be shown.
-- [hard] Login files written before this change, with no model, are still
-  read without error by the store.
-- [soft] The harness makes no extra request at startup to choose a model.
+- [hard] Environment variables win over the config, and the config wins over
+  Copilot's default.
+- [hard] An explicit `SPECWORKS_MODEL_API_KEY` still ignores the stored logins;
+  with it, a model must come from the variable or the config (another provider
+  has no default to ask for).
+- [hard] No token appears in any output, error or file. The model id is not
+  secret and may be shown.
+- [hard] Configs without the new key still load unchanged.
+- [soft] No request at startup when a model is named.
 
 ## Options
 
-### Option A: login stores the model
+### Option A: config key, else Copilot's default
 
-At login, after the token exchange, ask Copilot's `/models` for its chat
-default (or take `--model <id>`) and store it in the login file next to the
-token. The harness takes the model from `SPECWORKS_MODEL_MODEL`, else from the
-stored login.
+`harness.model` in `.specworks/config.yml`, set with `specworks config set`.
+The harness takes the model from `SPECWORKS_MODEL_MODEL`, else the config,
+else, with a stored login, asks Copilot's `/models` for its chat default after
+the first token exchange.
 
-- **Pros:** the harness reads only env and disk, with no extra request; the
-  stored model is one the login could use at login time; the user can pin a
-  model with `--model`.
-- **Cons:** the stored model can go stale (retired, or disabled by an
-  enterprise policy) until the user logs in again; older logins need a new
-  login.
+- **Pros:** login then harness works in any project; a team pins a model in
+  the repository; the default is always one the login may use.
+- **Cons:** one extra request at startup when no model is named; depends on an
+  undocumented field.
 - **Effort:** M
-- **Touches:** `harness`, `cli`
+- **Touches:** `project`, `harness`, `cli`
 - **Outcomes:** meets all four.
 
-### Option B: harness asks Copilot at every start
+### Option B: config key only
 
-Nothing new is stored; the harness calls `/models` after the first token
-exchange and uses the chat default.
+Same key, but no default: a missing model is an error naming the key.
 
-- **Pros:** always the current default; older logins work as they are.
-- **Cons:** an extra request at every start; no way to pin a model except the
-  environment variable; the model does not come from env or disk.
+- **Pros:** simple, explicit, no extra request.
+- **Cons:** every project needs a setup step after login.
 - **Effort:** S
-- **Touches:** `harness`
-- **Outcomes:** meets the first two; fails `--model` on login; the error for
-  older logins does not apply.
+- **Touches:** `project`, `harness`, `cli`
+- **Outcomes:** fails the first; meets the others.
 
-### Option C: a fixed default name
+### Option C: login writes the project config
 
-specworks ships a constant model id used with a stored login.
+`login` asks Copilot for its default and writes it into the current project's
+config.
 
-- **Pros:** smallest change, no request.
-- **Cons:** fails when an enterprise disables that model; goes out of date.
-- **Effort:** S
-- **Touches:** `harness`
-- **Outcomes:** meets the first only where the constant is allowed; fails
-  `--model`.
+- **Pros:** no request at harness start.
+- **Cons:** a global login edits a project file; other projects get nothing.
+- **Effort:** M
+- **Touches:** `project`, `harness`, `cli`
+- **Outcomes:** meets the first only for the project login ran in.
+
+### Option D: model stored in the login file (dropped)
+
+The earlier choice: the login keeps the model next to its token.
+
+- **Pros:** no request at harness start.
+- **Cons:** the model lives outside the project and cannot be shared;
+  dropped once the model was wanted in the project config.
+- **Effort:** M
+- **Touches:** `harness`, `cli`
+- **Outcomes:** fails the second.
 
 ## Recommendation
 
-Option A, agreed with the user: the harness reads env, then files on disk,
-and the login is where the model is chosen, from Copilot's own default unless
-`--model` is given.
+Option A, agreed with the user: the model is named by the environment or the
+project config, and Copilot's own default fills the gap so login then harness
+just works.
 
 ## Open Questions
 
-- When `login` reuses a stored login that has no model, does it fill the model
-  in, and does `--model` replace a stored model without `--force`? Proposed:
-  yes to both. (who can answer: the user, in specify)
-- Does `/models` give `is_chat_default` for both github.com and GHE logins,
-  and what happens when no model is marked? (who can answer: checking against
-  a live login, in specify or design)
+- Does `/models` give `is_chat_default` for both github.com and GHE logins?
+  When it marks none, or cannot be read, the harness fails as the last outcome
+  says. (who can answer: checking against a live login, in design)
 
 ## Candidate Capabilities
 
-- `harness`: modified - the stored login also keeps a model, and the harness
-  takes the model from `SPECWORKS_MODEL_MODEL`, else from the stored login
-  (REQ-HARNESS-010, 011, 012).
-- `cli`: modified - `specworks login copilot` gets `--model` and reports the
-  stored model (REQ-CLI-023).
+- `project`: modified - the config gets `harness.model`, settable with
+  `specworks config set` (REQ-PROJ-025).
+- `harness`: modified - the model comes from `SPECWORKS_MODEL_MODEL`, else the
+  config, else Copilot's default chat model for a stored login
+  (REQ-HARNESS-010, REQ-HARNESS-012).
+- `cli`: modified - `specworks harness`'s missing-model error names the config
+  key too (REQ-CLI-022).
