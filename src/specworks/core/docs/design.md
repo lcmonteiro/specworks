@@ -176,6 +176,15 @@ with `http://` or `https://`. A module's config that sets it is refused in
 one-line block edit as `commands.<key>`, always in the top level's config.
 (add-langfuse-monitoring)
 
+### The harness model is a top-level block like telemetry
+
+`harness: {model: str}` loads into `HarnessConfig` (`Config.harness` is `None`
+when absent), refused in a module's config like `telemetry`. An empty model in
+the file is an error, since it would silently mean "no model"; `config set
+harness.model ""` removes the line instead, and the `harness:` line with it
+once nothing is left under it. A block rather than a flat `harness_model:`
+key leaves room for other harness settings. (add-copilot-default-model)
+
 ### A change's event log lives in its folder, git-ignored there
 
 `record_event` appends one JSON line (`at` in UTC, `event`, then the fields)
@@ -355,12 +364,15 @@ where to configure one. (baseline-project, run-unknown-key)
   `branch_per_change`, or an edit that does not load back, file restored).
 - Config file: top-level `tools: [claude, copilot]` and
   `branch_per_change: true|false` (only the top level's is read), and
-  `telemetry: {langfuse: true|false, host: <http(s) URL>}` (top level only).
+  `telemetry: {langfuse: true|false, host: <http(s) URL>}` and
+  `harness: {model: <model id>}` (top level only).
 - `src/specworks/core/config.py`: `TELEMETRY_KEYS`, `TelemetryConfig`
   (`langfuse: bool = False`, `host: str = ""`),
   `load_telemetry(raw, present) -> TelemetryConfig | None` (raises
-  `ConfigError`), `Config.telemetry`; `SETTABLE_KEYS` also holds
-  `telemetry.langfuse` and `telemetry.host`.
+  `ConfigError`), `Config.telemetry`; `HARNESS_KEYS`, `HarnessConfig`
+  (`model: str = ""`), `load_harness(raw, present) -> HarnessConfig | None`
+  (raises `ConfigError`), `Config.harness`; `SETTABLE_KEYS` also holds
+  `telemetry.langfuse`, `telemetry.host` and `harness.model`.
 - `src/specworks/core/events.py`: `EVENTS_FILE` (`events.jsonl`), `SENT_FILE`
   (`events.sent`), `IGNORE_FILE` (`.gitignore`),
   `record_event(change, enabled, event, **fields)` (never raises),

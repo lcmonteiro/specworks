@@ -1,6 +1,6 @@
 name: add-copilot-default-model
 created: '2026-11-12T14:31:00'
-phase: review
+phase: done
 specified:
   REQ-CLI-013: a2aa50236fbc
   REQ-CLI-022: d5ed79b8e773
@@ -9,3 +9,5 @@ specified:
   REQ-PROJ-035: 9b560c8e82f5
   REQ-PROJ-003: 7e2461f77b14
   REQ-PROJ-025: 7e916b13c2d4
+dirty:
+  .specworks/changes/active/add-copilot-default-model/.change.yaml: c74cd8391e657f1e502e1abbe85c6fb364d417a2b4a7eea8b00e02c65383dee6

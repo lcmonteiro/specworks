@@ -175,6 +175,24 @@ add-copilot-login) When the key is missing or empty, it uses the stored Copilot
 login of the project (local before global) instead; an explicit key makes no
 stored-login read and no request. (add-copilot-login)
 
+The model name is `SPECWORKS_MODEL_MODEL`, else `harness.model` of the top
+level's config (read from `root`; no root or no config means none), else, only
+with a stored login, `CopilotSession.default_model()` after the first token
+exchange; with none, `ModelSettingsError(MODEL_NAME)` says `SPECWORKS_MODEL_MODEL
+is not set and the config has no harness.model`. A named model is never checked
+against Copilot's list, so naming one costs no request. (add-copilot-default-model)
+
+### Copilot's default model comes from its model list
+
+`default_model()` asks `GET <api base>/models` with the session token and takes
+the entry marked `is_chat_default`; hosts that mark none (bmw.ghe.com) get the
+first usable picker model (`model_picker_enabled`, `policy.state` `enabled`,
+not `preview`), a `versatile` one first. The list is undocumented, so any other
+answer (an error, another shape, nothing usable) is None, never an error with
+its text, and the caller's error names both settings. Alternatives: a fixed
+model name (breaks when an enterprise disables it) and storing the model with
+the login (not shareable through the project). (add-copilot-default-model)
+
 ### The Copilot login lives in the harness and outside the project
 
 `copilot.py` (device flow, token exchange, `log_in`) and `logins.py` (the
@@ -242,8 +260,8 @@ reused for another unless `--force` is given. (add-copilot-login)
   for an empty or unreadable folder); `GitBackend(ws, module)` with `change`
   (`None` until the run's change is found), `listen`, `forget` (drops held
   lines only), `to_line(msg)`.
-- `model.py`: `MODEL_KEY`, `MODEL_NAME`, `MODEL_BASE_URL`,
-  `ModelSettingsError(variable)`,
+- `model.py`: `MODEL_KEY`, `MODEL_NAME`, `MODEL_BASE_URL`, `MODEL_CONFIG_KEY`
+  (`harness.model`), `ModelSettingsError(variable)`,
   `model_from_env(env=None, *, root=None, store=None, client=None)`;
   `run_harness(ws)` passes `root=ws.root`.
 - `logins.py`: `Scope` (`"global"` or `"local"`), `Login(oauth_token, ghe_host="")`
@@ -251,8 +269,8 @@ reused for another unless `--force` is given. (add-copilot-login)
   `LoginStore(base=None)` with `save(scope, root, login)`, `load(scope, root)`
   and `find(root)` (local, then global).
 - `copilot.py`: `EDITOR_HEADERS`, `CopilotLoginError(message, *, login_again=False)`,
-  `CopilotSession(login, *, client=None, now=time.time)` with `token()` and
-  `api_base`, `device_login(ghe_host, prompt, *, client, sleep, now) -> Login`,
+  `CopilotSession(login, *, client=None, now=time.time)` with `token()`,
+  `api_base` and `default_model() -> str | None`, `device_login(ghe_host, prompt, *, client, sleep, now) -> Login`,
   `LoginResult(scope, reused)`, `log_in(scope, root, *, force, ghe_host, prompt,
   store, client, sleep, now) -> LoginResult`.
 

@@ -200,8 +200,9 @@ refused before anything is read or written. The target is `--module` when
 given, else the current module, as in `capability add`, except for
 `branch_per_change`: only the top level's value is read, so it is always
 written to the top level's config, and the output's `config` and `module`
-name the top level; `telemetry.*` is written there too. `config get` was left out: `context` already prints the
-commands and context. (add-config-set, add-branch-default)
+name the top level; `telemetry.*` and `harness.*` are written there too. `config get` was left out: `context` already prints the
+commands and context. (add-config-set, add-branch-default,
+add-copilot-default-model)
 
 ### `spec find` is the specify skill's search
 
