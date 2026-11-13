@@ -20,7 +20,7 @@ def findings_section(text):
     return re.sub(r"(?s)<!--.*?-->", "", found.group(1)).strip()
 
 
-# @ac AC-CLI-023.1
+# @ac AC-CLI-024.1
 def test_ac_cli_023_1_writing_on_fail(repo):
     reviewed(repo)
     run_json("task", "undo", "1.2", "--change", REF)
@@ -31,7 +31,7 @@ def test_ac_cli_023_1_writing_on_fail(repo):
     assert [f.phase for f in doc.open if f.type == "code-gap"] == ["code"], doc
 
 
-# @ac AC-CLI-023.2
+# @ac AC-CLI-024.2
 def test_ac_cli_023_2_writing_on_pass(repo):
     reviewed(repo)
     result = runner.invoke(app, ["validate", "--write", "--change", REF, "--base", "main"])
@@ -40,7 +40,7 @@ def test_ac_cli_023_2_writing_on_pass(repo):
     assert findings_section(read_validation(repo)) == "None."
 
 
-# @ac AC-CLI-023.3
+# @ac AC-CLI-024.3
 def test_ac_cli_023_3_no_write_without_the_flag(repo):
     reviewed(repo)
     run_json("task", "undo", "1.2", "--change", REF)

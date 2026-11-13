@@ -22,10 +22,10 @@
 
 ## 4. Validate writes validation.md
 
-- [x] 4.1 Add `write_validation(ctx)` in `validate.py` and `--write` on `specworks validate` as stubs (REQ-FLOW-019, REQ-CLI-023); verify `uv run ruff check src tests && uv run mypy`
+- [x] 4.1 Add `write_validation(ctx)` in `validate.py` and `--write` on `specworks validate` as stubs (REQ-FLOW-019, REQ-CLI-024); verify `uv run ruff check src tests && uv run mypy`
 - [x] 4.2 [test] Write failing tests for a failed validate (V1 → code, V2 → test, each with its `**Check**` line, Summary FAIL), a passing one (`None.`, Summary PASS with the groups), a rerun after a fix (V1 confirmed, V2 not repeated, a hand-written V3 and every other line unchanged), warnings only in the Summary, and a check review fixes routed to review, tagged `@ac AC-FLOW-019.1` to `@ac AC-FLOW-019.5`, with the pinned wording of design.md; verify they fail on the stubs
-- [x] 4.3 [test] Write failing CLI tests for `validate --write` on FAIL (exit 1, the path, a finding routed to code) and on PASS (exit 0, `None.`), and that validate without `--write` creates no validation.md, tagged `@ac AC-CLI-023.1`, `@ac AC-CLI-023.2`, `@ac AC-CLI-023.3`; update AC-FLOW-013.2 to validate without `--write`, tagged `@ac AC-FLOW-013.2`; verify the new ones fail on the stubs
-- [x] 4.4 [code] Implement `write_validation` as design.md's five steps, through the finding writers, and `validate --write` printing the path (REQ-FLOW-019, REQ-CLI-023, REQ-FLOW-013) tagged `@req REQ-FLOW-019`, `@req REQ-CLI-023`; verify by typecheck and `uv run specworks validate --write --change unify-check-findings --no-run` writing a readable validation.md
+- [x] 4.3 [test] Write failing CLI tests for `validate --write` on FAIL (exit 1, the path, a finding routed to code) and on PASS (exit 0, `None.`), and that validate without `--write` creates no validation.md, tagged `@ac AC-CLI-024.1`, `@ac AC-CLI-024.2`, `@ac AC-CLI-024.3`; update AC-FLOW-013.2 to validate without `--write`, tagged `@ac AC-FLOW-013.2`; verify the new ones fail on the stubs
+- [x] 4.4 [code] Implement `write_validation` as design.md's five steps, through the finding writers, and `validate --write` printing the path (REQ-FLOW-019, REQ-CLI-024, REQ-FLOW-013) tagged `@req REQ-FLOW-019`, `@req REQ-CLI-024`; verify by typecheck and `uv run specworks validate --write --change unify-check-findings --no-run` writing a readable validation.md
 
 ## 5. The finding command
 

@@ -109,7 +109,7 @@ user). The `**Check**` line holds that key; the finding's text keeps the
 check's name. Findings without a `**Check**` line (added by the skill or by
 hand) are never touched. A check that passed and was closed, then fails again, gets a
 new finding. Each step goes through the finding writers, so every write is
-read back as today. Serves: REQ-FLOW-019, REQ-CLI-023.
+read back as today. Serves: REQ-FLOW-019, REQ-CLI-024.
 
 **Pinned wording** (validation.md):
 - the check line under a finding validate wrote: `  - **Check**: <check key>` (the check function's name)
@@ -223,7 +223,7 @@ re-import).
   (default `review`); `decide/done/close` print the path of the ID's
   artifact (REQ-CLI-011); `validate --write` (prints `path`, relative to
   the workspace root, `"path"` under `--json`; exit 1 on FAIL after
-  writing) (REQ-CLI-023); `cycle` prints `next: <phase>` (`"next"` under
+  writing) (REQ-CLI-024); `cycle` prints `next: <phase>` (`"next"` under
   `--json`) (REQ-FLOW-012)
 
 ## Diagrams

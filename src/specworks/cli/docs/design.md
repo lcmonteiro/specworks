@@ -332,7 +332,7 @@ a second config format exists. (upgrade-project, dedupe-copilot-skills)
   and the path (REQ-CLI-011).
 - `validate --change <ref> [--write] [--json]`: with `--write`, adds `path`
   (validation.md, workspace-relative); exit 1 on FAIL after writing
-  (REQ-CLI-023).
+  (REQ-CLI-024).
 - `cycle --change <ref> [--json]`: adds `next` (text `next: <phase>`).
 - `capability add <name> --path <folder> [--module/-m <name>] [--prefix P]
   [--description TEXT] [--create] [--json]`: `--json` adds `created` (the

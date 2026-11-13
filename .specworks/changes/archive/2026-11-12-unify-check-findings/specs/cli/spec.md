@@ -2,7 +2,7 @@
 
 ## ADDED Requirements
 
-### Requirement: REQ-CLI-023 validate --write
+### Requirement: REQ-CLI-024 validate --write
 
 `specworks validate --write` SHALL validate the change and write its
 validation.md (REQ-FLOW-019), printing the verdict as validate does and the
@@ -10,17 +10,17 @@ path of validation.md relative to the workspace root (`"path"` under
 `--json`). It SHALL exit 1 on FAIL, as validate does, after writing.
 Without `--write`, `specworks validate` SHALL write no file.
 
-#### Scenario: AC-CLI-023.1 Writing on FAIL
+#### Scenario: AC-CLI-024.1 Writing on FAIL
 
 - **WHEN** `specworks validate --write --json` runs on a change with an open `[code]` task
 - **THEN** it exits 1, prints the FAIL verdict and `.specworks/changes/active/<name>/validation.md` as its path, and that file holds a finding routed to code
 
-#### Scenario: AC-CLI-023.2 Writing on PASS
+#### Scenario: AC-CLI-024.2 Writing on PASS
 
 - **WHEN** `specworks validate --write` runs on a change that passes
 - **THEN** it exits 0 and validation.md says `None.` under Findings
 
-#### Scenario: AC-CLI-023.3 No write without the flag
+#### Scenario: AC-CLI-024.3 No write without the flag
 
 - **WHEN** `specworks validate` runs without `--write` on a change that fails
 - **THEN** it exits 1 and no validation.md is created

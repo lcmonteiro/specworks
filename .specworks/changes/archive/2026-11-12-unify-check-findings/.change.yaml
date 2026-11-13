@@ -2,7 +2,7 @@ name: unify-check-findings
 created: '2026-11-11T23:48:54'
 phase: done
 specified:
-  REQ-CLI-023: df557a47f9d6
+  REQ-CLI-024: df557a47f9d6
   REQ-CLI-011: 1aee4266086f
   REQ-FLOW-018: c4721407d1a2
   REQ-FLOW-019: 3fd099691a67

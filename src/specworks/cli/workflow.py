@@ -304,7 +304,7 @@ def _rel(ws: Workspace, path: Path) -> str:
         return path.as_posix()
 
 
-# @req REQ-CLI-023
+# @req REQ-CLI-024
 @app.command("validate")
 def validate_cmd(
     change: str = ChangeOpt,
@@ -319,7 +319,7 @@ def validate_cmd(
     started = time.monotonic()
     ctx = GateContext(ws, mod, ch, run_tests=not no_run, base=base, reuse_runs=not fresh)
     written: str | None = None
-    if write:  # REQ-CLI-023: validation.md kept in step with the checks; the verdict is the one after the write
+    if write:  # REQ-CLI-024: validation.md kept in step with the checks; the verdict is the one after the write
         try:
             checks, path = write_validation(ctx)
         except FindingError as exc:
