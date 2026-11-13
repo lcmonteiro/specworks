@@ -169,6 +169,21 @@ without that commit, `ChangedSince` has no commit, marks nothing and its
 `note` says why. An active change has nothing to compare with and gets
 neither. (add-inspect-skill)
 
+### A closed change's removed criteria come from the spec before its close
+
+For an archived change, the criteria its MODIFIED and REMOVED blocks left out
+are found against the living spec as it was just before the close: at the
+parent of the close commit `changed_since_close` finds, read with
+`living_spec_at` (`git show <commit>^:<living spec>`). The close commit
+itself already holds the merged spec, so it would show nothing removed; and
+today's living spec would report every criterion a later change added as
+removed but still tagged. A criterion the change itself left out and still
+tagged is still reported. When the close commit, its parent or the spec there
+cannot be read (no git, history rewritten), no criterion is reported as
+removed rather than guessing from today's spec. Skipping the check for every
+closed change was rejected: it would hide real leftover tags.
+(add-inspect-skill)
+
 ### Close is all or nothing
 
 Close computes every living spec and index first, checks the archive folder,
@@ -205,7 +220,10 @@ was. (baseline-specs)
   (`changed_since`: a `ChangedSince` for an archived change, else None);
   `Row.changed: list[str]`; `ChangedSince(commit: str | None, files:
   frozenset[str], note: str = "")`, `changed_since_close(ws, change) ->
-  ChangedSince`, `mark_changed(rows, since)` (REQ-SPECS-018).
+  ChangedSince`, `mark_changed(rows, since)`, `living_spec_at(ws, change,
+  cap, commit: str | None) -> str | None` (the capability's living spec at
+  that commit by `git show`; None without the commit, without git, or when
+  the spec did not exist then; raises nothing) (REQ-SPECS-018).
 - `src/specworks/specs/merge.py`: `plan_merge(...) -> [CapabilityMerge]`,
   `close_change(merges, change, archive_root)`, `archive_change`,
   `apply_delta(living_text, delta, own=frozenset()) -> (text, added,

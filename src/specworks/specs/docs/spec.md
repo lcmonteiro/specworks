@@ -600,7 +600,11 @@ active one's: from its delta specs and tasks, and the `@ac` and `@req` tags of
 the current code. It SHALL mark each test and code location whose file
 changed since the change was closed (the commit that archived it), and SHALL
 say, without marking anything, when that cannot be told (no git, or no such
-commit).
+commit). The criteria it reports as removed but still tagged SHALL be those
+the change's MODIFIED and REMOVED blocks leave out of the living spec as it
+was just before that commit (at its parent, before the close merged the
+change), so a criterion a later change added is never reported; when that
+commit or its parent cannot be read, no criterion SHALL be reported as removed.
 
 #### Scenario: AC-SPECS-018.1 A closed change
 
@@ -618,3 +622,15 @@ commit).
 
 - **WHEN** the trace of a closed change is read outside a git repository
 - **THEN** no location is marked, and the trace says it cannot tell what changed since the close
+
+#### Scenario: AC-SPECS-018.4 A criterion added after the close
+
+- **GIVEN** a closed change whose MODIFIED REQ-X-001 has AC-X-001.1 and leaves out AC-X-001.2 (tagged in a test), and a later commit that adds AC-X-001.3 to the living spec and tags a test with it
+- **WHEN** its trace is read
+- **THEN** AC-X-001.3 is not reported as removed, and AC-X-001.2 still is
+
+#### Scenario: AC-SPECS-018.5 No close commit
+
+- **GIVEN** a closed change whose MODIFIED block leaves out a criterion still tagged in a test
+- **WHEN** its trace is read outside a git repository
+- **THEN** no criterion is reported as removed
