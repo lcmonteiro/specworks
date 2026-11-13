@@ -7,11 +7,14 @@
 When the harness uses a stored Copilot login (REQ-HARNESS-012) and neither
 `SPECWORKS_MODEL_MODEL` nor `harness.model` names a model, it SHALL ask the
 Copilot API, with the session token, for the models the login may use, and
-SHALL use the one marked as the default chat model. It SHALL make that request
-only then, and before the session starts. When the list cannot be read, or
-marks no model as the default chat model, building the model SHALL fail before
-the session starts, naming `SPECWORKS_MODEL_MODEL` and `harness.model`, and no
-token SHALL appear in the error.
+SHALL use the one marked as the default chat model. When the list marks none,
+it SHALL use the first model of the list that the model picker shows, whose
+policy is enabled and that is not a preview, in the `versatile` category, or,
+when there is none in that category, the first such model of any category. It
+SHALL make that request only then, and before the session starts. When the
+list cannot be read, or gives neither a default nor such a model, building the
+model SHALL fail before the session starts, naming `SPECWORKS_MODEL_MODEL` and
+`harness.model`, and no token SHALL appear in the error.
 
 #### Scenario: AC-HARNESS-013.1 Copilot's default used
 
@@ -27,9 +30,21 @@ token SHALL appear in the error.
 
 #### Scenario: AC-HARNESS-013.3 No default to use
 
-- **GIVEN** a stored login, no model named, and a model list that marks no default chat model, an answer that is not a model list, or a request that fails
+- **GIVEN** a stored login, no model named, and a model list with no default chat model and no model the picker shows with its policy enabled and not a preview, an answer that is not a model list, or a request that fails
 - **WHEN** the harness builds its model
 - **THEN** building fails naming `SPECWORKS_MODEL_MODEL` and `harness.model`, and no token appears in the error
+
+#### Scenario: AC-HARNESS-013.4 A versatile picker model when none is marked
+
+- **GIVEN** a stored login, no model named, and a model list marking no default chat model, whose picker models are, in order, `haiku` (lightweight), `beta` (versatile, a preview), `blocked` (versatile, policy disabled), `hidden` (versatile, not in the picker), `sonnet` (versatile) and `gpt` (versatile)
+- **WHEN** the harness builds its model
+- **THEN** the model is `sonnet`
+
+#### Scenario: AC-HARNESS-013.5 Any category when none is versatile
+
+- **GIVEN** a stored login, no model named, and a model list marking no default chat model, whose usable picker models are, in order, `haiku` (lightweight) and `opus` (powerful)
+- **WHEN** the harness builds its model
+- **THEN** the model is `haiku`
 
 ## MODIFIED Requirements
 

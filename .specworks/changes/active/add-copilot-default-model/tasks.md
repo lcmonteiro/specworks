@@ -23,6 +23,11 @@
 - [x] 4.1 [test] Write failing tests in `tests/harness/test_model.py` for AC-HARNESS-010.2, AC-HARNESS-010.5 and AC-HARNESS-010.6, and in `tests/cli/test_harness.py` for AC-CLI-022.8, tagged `@ac <AC-ID>`, asserting the pinned missing-model message; verify they fail on today's order
 - [x] 4.2 [code] Take the model from `SPECWORKS_MODEL_MODEL`, else the top level's `harness.model`, else `default_model()` for a stored login, else raise the pinned missing-model error (REQ-HARNESS-010, REQ-HARNESS-013, REQ-CLI-022) tagged `@req REQ-HARNESS-010`; verify in a scratch project with a config `harness.model` and `SPECWORKS_MODEL_API_KEY` set that `specworks harness` gets past the model check
 
+## 5. The picker fallback (review R1)
+
+- [ ] 5.1 [test] Write failing tests in `tests/harness/test_model.py` for AC-HARNESS-013.4 and AC-HARNESS-013.5, and update AC-HARNESS-013.3's cases to lists with no usable picker model, tagged `@ac <AC-ID>`; verify the new ones fail on today's `default_model()`
+- [ ] 5.2 [code] When no entry is marked default, return the first usable picker model (picker enabled, policy enabled, not a preview), `versatile` first (REQ-HARNESS-013) tagged `@req REQ-HARNESS-013`; verify with a live bmw.ghe.com login that `model_from_env()` with no model named gives a model, and `uv run mypy` passes
+
 ## Workflow follow-up
 
 - After implement, check by hand with a live github.com and GHE login that `specworks harness` starts with no model named (design Open Questions).

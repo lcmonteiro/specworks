@@ -15,7 +15,9 @@ name, and a project has no place to record which model its harness uses.
 - The harness takes its model from `SPECWORKS_MODEL_MODEL`, else
   `harness.model`, else, when it uses a stored Copilot login, the model the
   Copilot API marks as its chat default (`GET <api base>/models`,
-  `is_chat_default`), asked after the first token exchange and only then.
+  `is_chat_default`), or, when it marks none (as on bmw.ghe.com), the first
+  model its picker shows with its policy enabled and not a preview, preferring
+  the `versatile` category; asked after the first token exchange and only then.
 - With no model from any of these, building the model fails before the
   session starts, naming `SPECWORKS_MODEL_MODEL` and `harness.model`.
 
@@ -80,4 +82,4 @@ None.
 - Choosing or validating the model against `/models` when one is named.
 - A model in a module's config, or a base URL or key in the config.
 - Adding a `harness:` example to `init`'s default config.
-- Picking a fallback model when Copilot marks none as default.
+- Ranking models beyond the picker's `versatile` category and the list's order.

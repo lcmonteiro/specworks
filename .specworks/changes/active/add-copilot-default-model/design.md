@@ -53,9 +53,13 @@ REQ-HARNESS-013, REQ-CLI-022.
 
 `CopilotSession.default_model()` sends `GET <api_base>/models` with
 `Authorization: Bearer <session token>` and the editor headers, and returns
-the `id` of the first entry of `data` whose `is_chat_default` is true. Any
-failure (network error, non-200, not JSON, no `data` list, no marked entry,
-an `id` that is not a non-empty string) returns None; `model_from_env` turns
+the `id` of the first entry of `data` whose `is_chat_default` is true. When no
+entry is marked (bmw.ghe.com marks none, checked live), it takes the usable
+entries, those with `model_picker_enabled` true, `policy.state` `enabled` and
+`preview` not true, and returns the first one whose `model_picker_category`
+is `versatile`, else the first usable one. Entries whose `id` is not a
+non-empty string are skipped. Any failure (network error, non-200, not JSON,
+no `data` list, nothing to pick) returns None; `model_from_env` turns
 None into the error naming both settings, so no response text or token
 reaches the user. Alternative: raise `CopilotLoginError` with the status:
 rejected, the user's fix is the same either way (name a model), and one
@@ -112,5 +116,5 @@ None: configs without `harness:` load as before, and a user with
 
 ## Open Questions
 
-- Whether github.com and GHE both mark `is_chat_default`: checked by hand with
-  a live login after implement; a host that does not only needs a named model.
+- bmw.ghe.com marks no `is_chat_default` (review R1); the picker fallback covers
+  it. github.com is still to be checked by hand with a live login.
