@@ -40,11 +40,14 @@ import re
 from dataclasses import dataclass, field, replace
 from functools import cached_property
 from pathlib import Path
+from typing import Any
 
-from specworks.core.changes import Change
+from specworks.core.changes import ARCHIVE_DIR, META_FILE, Change
+from specworks.core.git import GitError, git_text
 from specworks.core.workspace import Module, Workspace
+from specworks.specs.capabilities import CapabilityRef
 from specworks.specs.check import ChangeSpecs, Issue, check_change, other_deltas
-from specworks.specs.specfile import id_prefix, table_cell
+from specworks.specs.specfile import id_prefix, parse_spec, table_cell
 
 TAG_ID = r"(?:REQ|AC)-[A-Z0-9][A-Z0-9.-]*[A-Z0-9]"
 TAG_RE = re.compile(rf"@(?P<kind>req|ac)\s+(?P<ids>{TAG_ID}(?:\s*,\s*{TAG_ID})*)")
@@ -88,6 +91,74 @@ class Row:
     tasks: list[str] = field(default_factory=list)
     tests: list[str] = field(default_factory=list)
     code: list[str] = field(default_factory=list)
+    changed: list[str] = field(default_factory=list)  # the test and code locations whose file changed since a closed change's close (REQ-SPECS-018)
+
+
+@dataclass(frozen=True)
+class ChangedSince:
+    """
+    What changed since a closed change's close: the close ``commit`` and the ``files`` changed since (committed or
+    not, relative to the workspace root); without git or without that commit, ``commit`` is None, ``files`` is empty
+    and ``note`` says why.
+
+    Implements REQ-SPECS-018.
+    """
+
+    commit: str | None
+    files: frozenset[str]
+    note: str = ""
+
+
+# @req REQ-SPECS-018
+def changed_since_close(ws: Workspace, change: Change) -> ChangedSince:
+    """
+    The files changed since the close of the archived ``change``: the close commit is the last commit that added its
+    archive folder (its ``.change.yaml``, which only the close adds: an inspection.md written later adds a file to the
+    folder too), and the files are those ``git diff --name-only <commit>`` lists, with the untracked ones.
+
+    Implements REQ-SPECS-018.
+    """
+    meta = f"{ws.rel(change.path)}/{META_FILE}"
+    try:
+        # --no-renames: the close moves the folder, which git would otherwise read as a rename, not an addition.
+        commit = git_text(ws.root, "log", "-1", "--no-renames", "--diff-filter=A", "--format=%H", "--", meta).strip()
+        if not commit:
+            return ChangedSince(None, frozenset(), f"no commit adds {meta}: cannot tell what changed since the close")
+        changed = git_text(ws.root, "-c", "core.quotepath=off", "diff", "--name-only", "--relative", commit, "--")
+        untracked = git_text(ws.root, "-c", "core.quotepath=off", "ls-files", "--others", "--exclude-standard")
+    except GitError as exc:
+        reason = str(exc).splitlines()[0] if str(exc) else "git failed"
+        return ChangedSince(None, frozenset(), f"cannot tell what changed since the close ({reason})")
+    return ChangedSince(commit, frozenset(line for line in (changed + "\n" + untracked).splitlines() if line.strip()))
+
+
+# @req REQ-SPECS-018
+def mark_changed(rows: list[Row], since: ChangedSince) -> None:
+    """
+    Set each row's ``changed``: its test and code locations (``file:line``) whose file is in ``since.files``.
+    """
+    for row in rows:
+        row.changed = [where for where in row.tests + row.code if where.rsplit(":", 1)[0] in since.files]
+
+
+# @req REQ-SPECS-018
+def living_spec_at(ws: Workspace, change: Change, cap: CapabilityRef, commit: str | None) -> str | None:
+    """
+    The text of ``cap``'s living spec as it was at ``commit``, read with ``git show <commit>:<living spec>``; None
+    without the commit, without git, or when the spec did not exist then. The trace of a closed change compares its
+    MODIFIED and REMOVED blocks with it, so a criterion a later change added is never reported as removed.
+
+    Implements REQ-SPECS-018.
+    """
+    living = cap.living_spec()
+    if commit is None or living is None:
+        return None
+    try:
+        rel = living.resolve().relative_to(ws.root.resolve()).as_posix()
+        # ./ reads the path from the workspace root, which may be a folder inside the repository.
+        return git_text(ws.root, "show", f"{commit}:./{rel}")
+    except (GitError, ValueError):
+        return None
 
 
 # @req REQ-SPECS-011
@@ -195,7 +266,7 @@ def build_matrix(specs: ChangeSpecs, tags: list[Tag]) -> list[Row]:
     rows: list[Row] = []
     for delta, req in specs.requirements():
         req_id = req.id or "?"
-        base = dict(capability=delta.cap.ref, req=req_id, title=req.title, section=req.section)
+        base: dict[str, Any] = dict(capability=delta.cap.ref, req=req_id, title=req.title, section=req.section)
         req_tasks = tasks_by_id.get(req_id, [])
         code = code_by_id.get(req_id, [])
         if req.section == "REMOVED" or not req.scenarios:
@@ -276,8 +347,13 @@ def unknown_tags(specs: ChangeSpecs, tags: list[Tag], others: set[str], prefixes
 
 # @req REQ-SPECS-012
 def to_markdown(change_ref: str, rows: list[Row], found: dict[str, list[str]]) -> str:
+    """
+    The matrix as markdown; a location in its row's ``changed`` (a closed change's, REQ-SPECS-018) is marked ``(changed since close)``.
+    """
+    changed = {where for r in rows for where in r.changed}
+
     def cell(items: list[str]) -> str:
-        return "<br>".join(f"`{i}`" for i in items) if items else "—"
+        return "<br>".join(f"`{i}`" + (" (changed since close)" if i in changed else "") for i in items) if items else "—"
 
     out = [
         f"# Traceability: {change_ref}",
@@ -346,9 +422,43 @@ class Analysis:
     def tags(self) -> list[Tag]:
         return scan_tags(self.ws)
 
+    @property
+    def archived(self) -> bool:
+        """
+        The change is in its module's archive folder (closed or abandoned): its trace marks what changed since.
+        """
+        return self.change.path.parent.name == ARCHIVE_DIR
+
+    # @req REQ-SPECS-018
+    @cached_property
+    def changed_since(self) -> ChangedSince | None:
+        """
+        What changed since an archived change's close; None for an active change.
+        """
+        return changed_since_close(self.ws, self.change) if self.archived else None
+
+    # @req REQ-SPECS-018
+    def _specs_at_close(self) -> ChangeSpecs:
+        """
+        The specs with each delta's living spec as it was before the close (at the close commit's parent): the close
+        commit already holds the merged spec, without the criteria the change left out. None without that commit, so no
+        criterion is reported as removed rather than one guessed from today's spec.
+        """
+        commit = self.changed_since.commit if self.changed_since else None
+        parent = f"{commit}^" if commit else None
+        deltas = []
+        for delta in self.specs.deltas:
+            text = living_spec_at(self.ws, self.change, delta.cap, parent)
+            deltas.append(replace(delta, living=parse_spec(text) if text is not None else None))
+        return replace(self.specs, deltas=deltas)
+
     @cached_property
     def rows(self) -> list[Row]:
-        return build_matrix(self.specs, self.tags)
+        # A closed change's removed criteria come from the living spec just before its close, not from today's (REQ-SPECS-018).
+        rows = build_matrix(self._specs_at_close() if self.archived else self.specs, self.tags)
+        if self.changed_since is not None:
+            mark_changed(rows, self.changed_since)
+        return rows
 
     @cached_property
     def gaps(self) -> dict[str, list[str]]:

@@ -175,6 +175,29 @@ Read the module's `<docsPath>/architecture.md` first (`docsPath` of the module i
    ```
    - **accepted**: only with the user's explicit agreement, with the reason.
 
+   **Findings of validation.md**: `specworks cycle --change "<ref>" --json`
+   lists every open finding of the check artifacts, each by its ID. A `V<n>`
+   finding is validate's: check the work a step marked `done in <step>:`
+   under it, and carry out the ones routed `back to review:` (e.g. account
+   for a file); then record what you checked, and never tick it:
+   ```bash
+   specworks finding done V<n> --in review --change "<ref>" "<what was checked>"
+   ```
+   It is then routed to validate, which confirms and ticks it; `cycle` gives
+   it no build cycle and says `next: validate`. A `V<n>` finding whose work
+   is not done yet is a finding of this review: add it to review.md as usual.
+
+   **Findings of inspection.md**: an `I<n>` finding is a reviewer's note from
+   `/specworks-inspect`. Treat it as a `V<n>`: answer a `question` (or turn
+   it into a finding of this review), check the work a step marked `done in
+   <step>:` under the others, and record what you checked, never ticking it:
+   ```bash
+   specworks finding done I<n> --in review --change "<ref>" "<what was checked or answered>"
+   ```
+   It is then routed to inspect, which confirms and ticks it on its next
+   run; `cycle` gives it no build cycle. An `I<n>` finding whose work is not
+   done yet is a finding of this review: add it to review.md as usual.
+
 5. **Write `review.md`**
 
    ```bash

@@ -19,7 +19,12 @@ from specworks.core.runner import CommandError, cached_run, run_scoped
 from specworks.core.workspace import Module, Workspace
 from specworks.specs.tasks import TASKS_FILE
 from specworks.specs.trace import Analysis
-from specworks.workflow.review import REVIEW_FILE, ReviewDoc, ReviewReport, read_review, review_change
+from specworks.workflow.artifacts import CheckArtifact, check_artifact, load_artifacts
+from specworks.workflow.findings import FindingsDoc, read_findings
+from specworks.workflow.review import ReviewReport, review_change
+
+REVIEW_ARTIFACT = check_artifact("review")
+REVIEW_FILE = REVIEW_ARTIFACT.file
 
 
 @dataclass
@@ -30,6 +35,7 @@ class Check:
     blocking: bool = True
     group: str = ""  # validate: completeness / correctness / coherence
     fix: str = ""  # validate: the phase skill that fixes a failure
+    key: str = ""  # validate: the name of the check function, stable when the name shows a base (REQ-FLOW-019)
 
     @property
     def mark(self) -> str:
@@ -54,6 +60,7 @@ class GateContext:
     allow_open: bool = False  # review: open findings do not fail the gate (inside a build)
     reuse_runs: bool = True  # False: run each project command once for real (the real close, --fresh), never an earlier result
     ran: set[str] = field(default_factory=set)  # commands already run for real in this invocation
+    read: dict[str, FindingsDoc] = field(default_factory=dict)  # each check artifact's findings, by id, once read
 
     @cached_property
     def analysis(self) -> Analysis:
@@ -63,9 +70,23 @@ class GateContext:
     def report(self) -> ReviewReport:
         return review_change(self.analysis, self.base)
 
-    @cached_property
-    def review(self) -> ReviewDoc:
-        return read_review(self.change)
+    @property
+    def review(self) -> FindingsDoc:
+        """
+        review.md's findings.
+        """
+        return self.findings(REVIEW_ARTIFACT)
+
+    # @req REQ-FLOW-011, REQ-FLOW-013
+    def findings(self, artifact: CheckArtifact) -> FindingsDoc:
+        """
+        A check artifact's findings, read once per run and artifact (``read.clear()`` reads them again).
+
+        Implements REQ-FLOW-011, REQ-FLOW-013.
+        """
+        if artifact.id not in self.read:
+            self.read[artifact.id] = read_findings(self.change, artifact)
+        return self.read[artifact.id]
 
     @cached_property
     def test_plan(self) -> TestPlan:
@@ -134,7 +155,7 @@ def half_tasks_done(half: str) -> CheckFn:
         pending = [f"{t.num} {t.text}" for t in specs.tasks if t.half == half and not t.done]
         return Check(f"every [{half}] task is done (specworks task list --pending)", specs.tasks_found and not pending, pending)
 
-    return check
+    return _named(check, f"{half}_tasks_done")
 
 
 # @req REQ-FLOW-013
@@ -168,18 +189,26 @@ def specs_as_specified(ctx: GateContext) -> Check | None:
 # --- tags ------------------------------------------------------------------------
 
 
-def _gap(name: str, key: str, blocking: bool = True) -> CheckFn:
+def _named(check: CheckFn, name: str) -> CheckFn:
     """
-    A check that passes when the traceability gap ``key`` (trace.gaps) is empty.
+    ``check`` named ``name``: the key validate links its findings to (REQ-FLOW-019).
     """
-    return lambda ctx: _listed(name, ctx.analysis.gaps[key], blocking)
+    check.__name__ = check.__qualname__ = name
+    return check
 
 
-reqs_have_code = _gap("every requirement has code (@req tag)", "reqWithoutCode")
-acs_have_tests = _gap("every acceptance criterion has a test (@ac tag)", "acWithoutTests")
-removed_gone = _gap("removed requirements and criteria are gone from tests and code", "removedStillTagged")
+def _gap(fn_name: str, name: str, key: str, blocking: bool = True) -> CheckFn:
+    """
+    A check named ``fn_name`` that passes when the traceability gap ``key`` (trace.gaps) is empty.
+    """
+    return _named(lambda ctx: _listed(name, ctx.analysis.gaps[key], blocking), fn_name)
+
+
+reqs_have_code = _gap("reqs_have_code", "every requirement has code (@req tag)", "reqWithoutCode")
+acs_have_tests = _gap("acs_have_tests", "every acceptance criterion has a test (@ac tag)", "acWithoutTests")
+removed_gone = _gap("removed_gone", "removed requirements and criteria are gone from tests and code", "removedStillTagged")
 # Before the code half is done, the code of a removed requirement (or criterion) may still be there.
-removed_gone_warning = _gap("removed requirements and criteria are gone from tests and code", "removedStillTagged", blocking=False)
+removed_gone_warning = _gap("removed_gone_warning", "removed requirements and criteria are gone from tests and code", "removedStillTagged", blocking=False)
 
 
 # @req REQ-FLOW-007
@@ -210,21 +239,41 @@ def review_written(ctx: GateContext) -> Check:
     return Check(f"{REVIEW_FILE} is written", exists, [] if exists else [f"write {REVIEW_FILE} (specworks instructions review)"])
 
 
-# @req REQ-FLOW-010
-def review_readable(ctx: GateContext) -> Check:
+def artifact_readable(artifact: CheckArtifact) -> CheckFn:
     """
-    A checkbox the parser cannot read may be an open finding, so it never passes silently.
+    The check that every finding in the check artifact is readable (``- [ ] <letter><n> ...``): a checkbox the parser
+    cannot read may be an open finding, so it never passes silently. Review's keeps its name and details.
+
+    Implements REQ-FLOW-010, REQ-FLOW-011, REQ-FLOW-013.
     """
-    return _listed(f"every finding in {REVIEW_FILE} is readable (- [ ] R<n> ...)", ctx.review.problems)
+
+    # @req REQ-FLOW-010, REQ-FLOW-013
+    def readable(ctx: GateContext) -> Check:
+        return _listed(f"every finding in {artifact.file} is readable (- [ ] {artifact.letter}<n> ...)", ctx.findings(artifact).problems)
+
+    readable.__name__ = f"{artifact.id}_readable"
+    return readable
 
 
-# @req REQ-FLOW-011
-def review_closed(ctx: GateContext) -> Check:
+def artifact_closed(artifact: CheckArtifact) -> CheckFn:
     """
-    In a build (--allow-open), open findings are the hand-off to the next cycle (`specworks cycle`), not a failure.
+    The check that the check artifact has no open finding. In a build (--allow-open), open findings are the hand-off
+    to the next cycle (`specworks cycle`), not a failure. Review's keeps its name and details.
+
+    Implements REQ-FLOW-011, REQ-FLOW-013.
     """
-    open_findings = [f"{f.id} {f.text}" for f in ctx.review.open]
-    return Check(f"no open finding in {REVIEW_FILE}", ctx.review.exists and not open_findings, open_findings, blocking=not ctx.allow_open)
+    # A missing file fails only when the artifact is required (review.md); validation.md is optional.
+    required = not load_artifacts()[artifact.id].optional
+
+    # @req REQ-FLOW-011, REQ-FLOW-013
+    def closed(ctx: GateContext) -> Check:
+        doc = ctx.findings(artifact)
+        open_findings = [f"{f.id} {f.text}" for f in doc.open]
+        written = doc.exists or not required
+        return Check(f"no open finding in {artifact.file}", written and not open_findings, open_findings, blocking=not ctx.allow_open)
+
+    closed.__name__ = f"{artifact.id}_closed"
+    return closed
 
 
 # @req REQ-FLOW-011
@@ -412,7 +461,7 @@ def review_tests_pass(ctx: GateContext) -> Check:
 
 
 def optional_command(key: str, name: str) -> CheckFn:
-    return lambda ctx: command_check(ctx, key, name, optional=True)
+    return _named(lambda ctx: command_check(ctx, key, name, optional=True), f"{key}_passes")
 
 
 CODE_COMMANDS = ("build", "typecheck", "lint")

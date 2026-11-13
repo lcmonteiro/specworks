@@ -43,8 +43,15 @@ never import higher ones.
   above them, workflow above, cli on top; no import goes upward.
   (baseline-project)
 - **The CLI checks, the skills judge**: gates and validate check only what the
-  CLI can see (specs, tasks, tags, review.md, git, commands); judgement stays
-  in the skills. (baseline-workflow)
+  CLI can see (specs, tasks, tags, the check artifacts' findings, git,
+  commands); judgement stays in the skills. (baseline-workflow)
+- **Check steps share one findings model**: every check step writes its own
+  artifact (review.md `R`, validation.md `V`, inspection.md `I`), declared in
+  `schema.yaml` with its letter and the gates its open findings block; the
+  same `finding` commands write them, `cycle` reads them all, and the step
+  that found a finding closes it. (unify-check-findings) Inspection blocks no
+  gate and may be written on a closed change, the one write the CLI allows
+  into the archive. (add-inspect-skill)
 - **Errors are values**: every expected failure is a `SpecworksError`; under
   `--json` it is `{"error": ...}` with exit 1, and every printed path is
   relative to the workspace root. (baseline-cli)
@@ -102,8 +109,13 @@ never import higher ones.
 - **Delta spec**: a change's ADDED, MODIFIED and REMOVED requirements for one
   capability, merged into its living `spec.md` at close.
 - **Gate**: the checks a phase must pass before the next one starts.
-- **Finding**: one drift recorded in review.md, routed back to the step that
-  fixes it.
+- **Check artifact**: an artifact a check step writes findings to, with its
+  own ID letter: review.md (`R`), validation.md (`V`), inspection.md (`I`).
+- **Inspection**: a human walk through a change, open or closed, scenario by
+  scenario (`/specworks-inspect`); its notes, when there are any, become `I`
+  findings.
+- **Finding**: one problem recorded in a check artifact, routed back to the
+  step that fixes it and closed by the step that found it.
 - **Living docs**: a capability's spec, requirements index and design, plus a
   module's architecture, describing the system as it is now.
 - **Event log**: a change's git-ignored `events.jsonl` of telemetry events,

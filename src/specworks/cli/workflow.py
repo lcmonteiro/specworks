@@ -5,6 +5,7 @@ Workflow commands: gates, starting a phase, review, cycle, merging a half's bran
 from __future__ import annotations
 
 import json
+import sys
 import time
 from collections.abc import Callable
 from pathlib import Path
@@ -12,19 +13,33 @@ from pathlib import Path
 import typer
 
 from specworks.cli.app import app, finding_app
-from specworks.cli.output import ChangeOpt, FreshOpt, JsonOpt, change_dict, emit, fail, require_change, workspace
+from specworks.cli.output import (
+    ChangeOpt,
+    FreshOpt,
+    JsonOpt,
+    change_dict,
+    emit,
+    fail,
+    is_archived,
+    refuse_archived,
+    require_change,
+    require_change_or_archived,
+    workspace,
+)
 from specworks.cli.telemetry import record
 from specworks.core.changes import PHASES, Change
 from specworks.core.runner import cached_run
 from specworks.core.workspace import Workspace
 from specworks.specs.merge import archive_target, close_change, plan_merge
 from specworks.specs.trace import GAP_LABELS, Analysis
+from specworks.workflow.artifacts import CheckArtifact, check_artifact, check_artifact_for, check_artifacts
 from specworks.workflow.checks import Check, GateContext, passed
 from specworks.workflow.cycle import next_cycle
+from specworks.workflow.findings import Finding, FindingError, add_finding, close_finding, decide_finding, mark_finding_done
 from specworks.workflow.gate import GATES, run_gate, start_phase
 from specworks.workflow.merge import BranchMergeError, merge_branch
-from specworks.workflow.review import REVIEW_FILE, Finding, FindingError, add_finding, close_finding, decide_finding, mark_finding_done, review_change
-from specworks.workflow.validate import GROUPS, summary, validate_change
+from specworks.workflow.review import review_change
+from specworks.workflow.validate import GROUPS, summary, validate_change, write_validation
 
 
 @app.command()
@@ -130,22 +145,28 @@ def cycle(
     as_json: bool = JsonOpt,
 ) -> None:
     """
-    After a review: the steps the next build cycle runs (design, test, code, review) and where it starts, from review.md's open findings.
+    After a review or a validate: the steps the next build cycle runs (design, test, code, review), where it starts, and the change's next state, from the open findings of every check artifact.
+
+    Implements REQ-FLOW-012.
     """
     ws, mod, ch = require_change(change, as_json)
     started = time.monotonic()
     result = next_cycle(ch)
     data = {**change_dict(ws, mod, ch), **result}
-    if not result["reviewed"]:
-        lines = ["not reviewed yet: no review.md (run /specworks-review)"]
-    elif not result["open"]:
-        lines = ["no open findings: the build is done; next is /specworks-validate"]
-    else:
+    if result["open"]:
         lines = [f"{f['id']} {f['type'] or '?'} -> {f['phase']}" for f in result["open"]]
         if result["handOver"]:
             lines.append(f"a spec finding: stop the build and run {result['handOver']} {mod.qualify(ch.name)}")
-        else:
+        elif result["phases"]:
             lines.append(f"next cycle: {' -> '.join(result['phases'])}")
+        else:
+            lines.append("no build cycle: the open findings wait for /specworks-validate to confirm them")
+    elif not result["reviewed"]:
+        lines = ["not reviewed yet: no review.md (run /specworks-review)"]
+    else:
+        lines = ["no open findings: the build is done; next is /specworks-validate"]
+    if result["next"]:
+        lines.append(f"next: {result['next']}")
     record(ws, mod, ch, "cycle", started, phases=list(result["phases"]), open=len(result["open"]))
     emit(data, as_json, "\n".join(lines))
 
@@ -175,21 +196,42 @@ def merge(
     emit(data, as_json, "\n".join(lines))
 
 
+# The check artifact of an archived change that takes findings: the notes of an inspection after the close (REQ-CLI-002).
+ARCHIVED_FINDINGS = "inspection"
+
+
 # @req REQ-CLI-011
 @finding_app.command("add")
 def finding_add(
-    kind: str = typer.Argument(..., metavar="TYPE", help="The finding's type: spec-gap, design-gap, test-gap, code-gap, tag or quality."),
+    kind: str = typer.Argument(..., metavar="TYPE", help="The finding's type: spec-gap, design-gap, test-gap, code-gap, tag, quality or question."),
     text: str = typer.Argument(..., help="What the finding is."),
     proposal: str = typer.Option(..., "--proposal", help="The change it proposes."),
+    artifact: str = typer.Option(
+        "review", "--artifact", help="The check artifact it goes to: review (review.md), validation (validation.md) or inspection (inspection.md)."
+    ),
+    suggestion: str | None = typer.Option(None, "--suggestion", metavar="FILE", help="A file (or - for standard input) whose text goes under the finding as its Suggestion."),
+    lang: str = typer.Option("text", "--lang", help="The language the Suggestion's fence is marked with, e.g. diff or python."),
     change: str = ChangeOpt,
     as_json: bool = JsonOpt,
 ) -> None:
     """
-    Add an open finding with the next free ID and its Proposal to review.md (created from its template when missing).
+    Add an open finding with the next free ID and its Proposal to a check artifact (review.md by default), created from its template when missing.
 
     Implements REQ-CLI-011.
     """
-    _write_finding(change, as_json, "add", lambda ch: add_finding(ch, kind, text, proposal))
+    text_of_suggestion: str | None = None
+    if suggestion is not None:
+        try:
+            text_of_suggestion = sys.stdin.read() if suggestion == "-" else Path(suggestion).read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError) as exc:
+            fail(f"cannot read the suggestion {suggestion}: {exc}", as_json)
+    _write_finding(
+        change,
+        as_json,
+        "add",
+        lambda ch: add_finding(ch, kind, text, proposal, artifact=artifact, suggestion=text_of_suggestion, lang=lang),
+        lambda: check_artifact(artifact),
+    )
 
 
 # @req REQ-CLI-011
@@ -205,7 +247,7 @@ def finding_decide(
 
     Implements REQ-CLI-011.
     """
-    _write_finding(change, as_json, "decide", lambda ch: decide_finding(ch, finding_id, decision))
+    _write_finding(change, as_json, "decide", lambda ch: decide_finding(ch, finding_id, decision), lambda: check_artifact_for(finding_id))
 
 
 # @req REQ-CLI-011
@@ -222,7 +264,7 @@ def finding_done(
 
     Implements REQ-CLI-011.
     """
-    _write_finding(change, as_json, "done", lambda ch: mark_finding_done(ch, finding_id, step, text))
+    _write_finding(change, as_json, "done", lambda ch: mark_finding_done(ch, finding_id, step, text), lambda: check_artifact_for(finding_id))
 
 
 # @req REQ-CLI-011
@@ -238,25 +280,38 @@ def finding_close(
 
     Implements REQ-CLI-011.
     """
-    _write_finding(change, as_json, "close", lambda ch: close_finding(ch, finding_id, text))
+    _write_finding(change, as_json, "close", lambda ch: close_finding(ch, finding_id, text), lambda: check_artifact_for(finding_id))
 
 
-# @req REQ-CLI-011
-def _write_finding(ref: str, as_json: bool, action: str, write: Callable[[Change], Finding]) -> None:
+# @req REQ-CLI-011, REQ-CLI-002
+def _write_finding(ref: str, as_json: bool, action: str, write: Callable[[Change], Finding], target: Callable[[], CheckArtifact]) -> None:
     """
-    Run one of review.md's writers on the change and print the finding as `specworks cycle` reads it, with review.md's path.
+    Run one of the finding writers on the change and print the finding as `specworks cycle` reads it, with the path of
+    the check artifact it wrote: the one its ID's letter names. An archived change takes findings only in the check
+    artifact ``ARCHIVED_FINDINGS`` (``target`` is the one the command writes to); any other is refused (REQ-CLI-002).
     """
-    ws, mod, ch = require_change(ref, as_json)
+    ws, mod, ch = require_change_or_archived(ref, as_json)
+    if is_archived(ch) and (artifact := target()).id != ARCHIVED_FINDINGS:
+        refuse_archived(ws, mod, ch, f"its {artifact.file} takes no finding; only {ARCHIVED_FINDINGS}.md does (`--artifact {ARCHIVED_FINDINGS}`, or an I<n> ID)")
     started = time.monotonic()
-    path = ch.path / REVIEW_FILE
     try:
         finding = write(ch)
-    except FindingError as exc:  # the message names review.md: shown relative to the workspace root, as every path
-        raise FindingError(str(exc).replace(str(path), ws.rel(path))) from None
+    except FindingError as exc:  # the message names the file: shown relative to the workspace root, as every path
+        raise FindingError(_relative_paths(ws, ch, str(exc))) from None
+    path = ch.path / check_artifact_for(finding.id).file
     rel = ws.rel(path)
     data = {**change_dict(ws, mod, ch), "finding": {**finding.to_dict(), "done": finding.done}, "path": rel}
     record(ws, mod, ch, "finding", started, action=action, id=finding.id, type=finding.type, step=finding.phase)  # never the finding's text
     emit(data, as_json, f"{finding.id} {finding.type or '?'} -> {finding.phase} ({'done' if finding.done else 'open'})\n{rel}")
+
+
+def _relative_paths(ws: Workspace, ch: Change, message: str) -> str:
+    """
+    ``message`` with the path of every check artifact of the change shown relative to the workspace root.
+    """
+    for path in sorted((ch.path / a.file for a in check_artifacts()), key=lambda p: -len(str(p))):
+        message = message.replace(str(path), ws.rel(path))
+    return message
 
 
 def _rel(ws: Workspace, path: Path) -> str:
@@ -266,23 +321,34 @@ def _rel(ws: Workspace, path: Path) -> str:
         return path.as_posix()
 
 
+# @req REQ-CLI-024
 @app.command("validate")
 def validate_cmd(
     change: str = ChangeOpt,
     base: str | None = typer.Option(None, "--base", help="Branch to diff against (default: origin's default branch)."),
     no_run: bool = typer.Option(False, "--no-run", help="Do not run test/lint/typecheck (reported as warnings)."),
+    write: bool = typer.Option(False, "--write", help="Write validation.md: a finding per failed blocking check, and the verdict in its Summary."),
     fresh: bool = FreshOpt,
     as_json: bool = JsonOpt,
 ) -> None:
     """
-    Final read-only check before close (validate phase): completeness, correctness, coherence (exit 1 on FAIL).
+    Final check before close (validate phase): completeness, correctness, coherence (exit 1 on FAIL); read-only unless --write.
     """
     ws, mod, ch = require_change(change, as_json)
     started = time.monotonic()
-    checks = validate_change(GateContext(ws, mod, ch, run_tests=not no_run, base=base, reuse_runs=not fresh))
+    ctx = GateContext(ws, mod, ch, run_tests=not no_run, base=base, reuse_runs=not fresh)
+    written: str | None = None
+    if write:  # REQ-CLI-024: validation.md kept in step with the checks; the verdict is the one after the write
+        try:
+            checks, path = write_validation(ctx)
+        except FindingError as exc:
+            fail(_relative_paths(ws, ch, str(exc)), as_json)
+        written = ws.rel(path)
+    else:
+        checks = validate_change(ctx)
     result = summary(checks)
     record(ws, mod, ch, "validate", started, verdict=result["verdict"], critical=result["critical"], warnings=result["warnings"])
-    data = {**change_dict(ws, mod, ch), **result, "checks": [c.to_dict() for c in checks]}
+    data = {**change_dict(ws, mod, ch), **result, "checks": [c.to_dict() for c in checks], **({"path": written} if written else {})}
     lines = []
     for group in GROUPS:
         counts = result["groups"][group]
@@ -293,6 +359,8 @@ def validate_cmd(
     lines.append(f"{mod.qualify(ch.name)}: {result['verdict']} ({result['critical']} critical, {result['warnings']} warnings)")
     if result["goBackTo"]:
         lines.append(f"go back to: {', '.join(result['goBackTo'])}")
+    if written:
+        lines.append(written)
     emit(data, as_json, "\n".join(lines))
     if result["verdict"] != "PASS":
         raise typer.Exit(1)

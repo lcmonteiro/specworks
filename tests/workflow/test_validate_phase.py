@@ -7,8 +7,11 @@ import json
 import re
 import sys
 
+import pytest
+
 from helpers import REF, fake_executable, run_json, runner
 from specworks.cli import app
+from support.findings import read_validation, write_validation_md
 
 FAIL = f'"{sys.executable}" -c "import sys; print(\'lint: 1 error\'); sys.exit(1)"'
 PASS = f'"{sys.executable}" -c "print(\'ok\')"'
@@ -49,12 +52,16 @@ def test_verify_passes_a_finished_change(repo):
 
 
 # @ac AC-FLOW-013.2
-def test_verify_is_read_only(repo):
+@pytest.mark.parametrize("failing", [False, True], ids=["passing", "failing"])
+def test_verify_is_read_only_without_write(repo, failing):
     reviewed(repo)
+    if failing:  # a failed check is what validate --write would add a finding for
+        run_json("task", "undo", "1.2", "--change", REF)
     before = snapshot(repo)
     run_json("validate", "--change", REF, "--base", "main")
     run_json("gate", "validate", "--change", REF, "--base", "main")
     assert snapshot(repo) == before
+    assert not (repo / ".specworks/changes/active" / REF / "validation.md").exists()
 
 
 # @ac AC-FLOW-013.3
@@ -152,6 +159,38 @@ def test_gate_verify_matches_verify(repo):
     (repo / ".specworks/changes/active" / REF / "review.md").write_text("- [ ] R1 open\n")
     code, data = run_json("gate", "validate", "--change", REF, "--base", "main")
     assert code == 1
+
+
+V1_OPEN = "- [ ] V1 **code-gap** reset ignores case\n  - **Proposal**: back to code: lower-case the email"
+
+
+def validation_closed(data):
+    """
+    The open-findings check of validation.md.
+    """
+    return [c for c in data["checks"] if "open finding" in c["name"] and "validation.md" in c["name"]]
+
+
+# @ac AC-FLOW-013.10
+def test_ac_flow_013_10_an_open_validation_finding_fails_validate(repo):
+    reviewed(repo)
+    code, data = run_json("validate", "--change", REF, "--base", "main")
+    assert code == 0 and data["verdict"] == "PASS", data
+    write_validation_md(repo, V1_OPEN)
+    code, data = run_json("validate", "--change", REF, "--base", "main")
+    assert code == 1 and data["verdict"] == "FAIL", data
+    [closed] = validation_closed(data)
+    assert closed["ok"] is False and closed["blocking"] and closed["fix"] == "/specworks-validate", closed
+    assert [d for d in closed["details"] if d.startswith("V1 ")], closed
+    assert "/specworks-validate" in data["goBackTo"]
+    code, data = run_json("gate", "validate", "--change", REF, "--base", "main")
+    assert code == 1 and data["passed"] is False, data
+
+    (repo / ".specworks/changes/active" / REF / "validation.md").write_text(read_validation(repo).replace("- [ ] V1", "- [x] V1"), encoding="utf-8")
+    code, data = run_json("validate", "--change", REF, "--base", "main")
+    assert code == 0 and data["verdict"] == "PASS", data
+    code, data = run_json("gate", "validate", "--change", REF, "--base", "main")
+    assert code == 0 and data["passed"] is True, data
 
 
 # @ac AC-FLOW-013.8

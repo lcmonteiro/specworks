@@ -1,0 +1,20 @@
+name: unify-check-findings
+created: '2026-11-11T23:48:54'
+phase: done
+specified:
+  REQ-CLI-024: df557a47f9d6
+  REQ-CLI-011: 1aee4266086f
+  REQ-FLOW-018: c4721407d1a2
+  REQ-FLOW-019: 3fd099691a67
+  REQ-FLOW-001: fb2b5d7855fc
+  REQ-FLOW-010: edf3d5942511
+  REQ-FLOW-011: 7dd1fd4d0075
+  REQ-FLOW-012: f5235b33a47e
+  REQ-FLOW-013: b4079598eaff
+  REQ-FLOW-016: 462f8fb4ec2f
+reopened:
+- at: '2026-11-12T14:07:14'
+  reason: validate links a V finding to its check by the full check name, which carries
+    the base, so a rerun with another base never closes the old V and adds a duplicate
+    (inspection.md I1)
+  phase: review

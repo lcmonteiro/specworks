@@ -173,9 +173,10 @@ of <skills folder>/specworks-build/SKILL.md.
    repository): run the test half first, then the code half, both in the
    main checkout; the code half still does not read the test half's tests.
 
-   From the second cycle on, each step works on the **open findings in
-   review.md** that belong to it (`specworks cycle --change "<ref>" --json`
-   lists each finding with its step in `phase`): carry out the agreed
+   From the second cycle on, each step works on the **open findings of the
+   check artifacts** that belong to it (`R<n>` in review.md, `V<n>` in
+   validation.md after a validate; `specworks cycle --change "<ref>" --json`
+   lists each finding by its ID with its step in `phase`): carry out the agreed
    proposal in the finding's Decision, plus whatever the later steps need to
    follow it (a new API needs its tests and code). A finding routed to
    `implement` belongs to both halves. A finding marked `done in <step>:`
@@ -194,8 +195,10 @@ of <skills folder>/specworks-build/SKILL.md.
    **open** with the phase that will carry it out, instead of being fixed
    inside review. It decides nothing with the user itself:
 
-   - **First run**: it ticks the findings from an earlier cycle that are
-     now done (`- [x]`, with `specworks finding close`), adds every new
+   - **First run**: it ticks its own (`R<n>`) findings from an earlier cycle
+     that are now done (`- [x]`, with `specworks finding close`), marks each
+     `V<n>` finding of validation.md it checked `done in review:` (with
+     `specworks finding done V<n> --in review`; validate ticks it), adds every new
      finding open with the change it proposes (`specworks finding add`), then returns them all in one
      `Result: question` (small, obvious ones grouped into one yes/no
      question, as review does):
@@ -207,7 +210,7 @@ of <skills folder>/specworks-build/SKILL.md.
      answer into the finding's `**Decision**:` line in review.md with
      `specworks finding decide R<n> --change "<ref>" "<decision>"`: the
      proposal as agreed (`back to <step>: ...`, where a step is specify,
-     design, implement, test or code), the user's other choice,
+     design, implement, test, code or review), the user's other choice,
      or `accepted: <reason>`, which ticks the box. Spec findings
      (`spec-gap`) get `back to specify: ...`.
    - **Then**, once every `**Decision**:` line is written, run
@@ -228,7 +231,8 @@ of <skills folder>/specworks-build/SKILL.md.
    specworks cycle --change "<ref>"
    ```
 
-   - **No open findings**: the build is done (go to step 5).
+   - **No open findings**, or only findings waiting for validate (no
+     `startAt`, `next: validate`): the build is done (go to step 5).
    - **A spec finding** (`handOver` is `/specworks-specify`): stop the build.
      Explain which requirement is missing or wrong, and offer:
      ```

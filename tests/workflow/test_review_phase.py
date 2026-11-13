@@ -9,7 +9,8 @@ import sys
 import pytest
 
 from helpers import REF, git, remove_repo, run_json, write_tests
-from specworks.workflow.review import parse_review
+from specworks.workflow.findings import parse_findings
+from support.findings import REVIEW_ARTIFACT, write_validation_md
 
 FAIL = f'"{sys.executable}" -c "import sys; print(\'2 failed\'); sys.exit(3)"'
 
@@ -175,6 +176,20 @@ def test_gate_review_needs_a_test_for_every_criterion(repo, allow_open):
     assert code == 1 and missing["blocking"] and missing["details"] == ["AC-AUTH-003.2"], data
 
 
+# @ac AC-FLOW-011.9
+@pytest.mark.parametrize("allow_open", [[], ["--allow-open"]])
+def test_ac_flow_011_9_validation_findings_do_not_block_review(repo, allow_open):
+    write_review(repo, "None.\n")
+    code, data = run_json("gate", "review", "--change", REF, "--base", "main", *allow_open)
+    assert code == 0 and data["passed"] is True, data
+    before = [(c["name"], c["ok"], c["blocking"]) for c in data["checks"]]
+    write_validation_md(repo, "- [ ] V1 **code-gap** REQ-AUTH-003 has no code\n  - **Proposal**: back to code: make the check pass")
+    code, data = run_json("gate", "review", "--change", REF, "--base", "main", *allow_open)
+    assert code == 0 and data["passed"] is True, data
+    assert [(c["name"], c["ok"], c["blocking"]) for c in data["checks"]] == before  # no check, and no warning, about V1
+    assert not any("V1" in detail or "validation.md" in c["name"] for c in data["checks"] for detail in c["details"]), data
+
+
 # @ac AC-FLOW-011.3
 def test_gate_review_requires_untagged_files_accounted_for(repo):
     (repo / "src/auth/audit.py").write_text("def audit(): ...\n")
@@ -337,19 +352,19 @@ def test_a_loose_indented_checkbox_fails_the_review_gate_even_in_a_build(repo):
 # @ac AC-FLOW-010.8
 def test_a_design_only_finding_goes_to_design_then_to_review():
     decided = "- [ ] R1 **design-gap** the Decisions say match by prefix\n  - **Decision**: back to design only: reword Decisions > Matching\n"
-    (before,) = parse_review(decided).open
+    (before,) = parse_findings(decided, REVIEW_ARTIFACT).open
     assert (before.phase, before.design_only, before.routed) == ("design", True, True)
     assert before.to_dict()["designOnly"] is True
-    (after,) = parse_review(decided + "  - done in design: reworded\n").open
+    (after,) = parse_findings(decided + "  - done in design: reworded\n", REVIEW_ARTIFACT).open
     assert (after.phase, after.done_in, after.design_only) == ("review", "design", True)
 
 
 # @ac AC-FLOW-010.8
 def test_a_plain_back_to_design_still_goes_to_implement_after_design():
     decided = "- [ ] R1 **design-gap** reset returns None\n  - **Decision**: back to design: return the token\n"
-    (before,) = parse_review(decided).open
+    (before,) = parse_findings(decided, REVIEW_ARTIFACT).open
     assert (before.phase, before.design_only) == ("design", False) and "designOnly" not in before.to_dict()
-    (after,) = parse_review(decided + "  - done in design: returns ResetToken\n").open
+    (after,) = parse_findings(decided + "  - done in design: returns ResetToken\n", REVIEW_ARTIFACT).open
     assert (after.phase, after.done_in, after.design_only) == ("implement", "design", False)
 
 
@@ -360,12 +375,12 @@ QUOTED_CONFIRMED = "  - confirmed in review: the help also reads 'done in test:'
 
 # @ac AC-FLOW-010.9
 def test_ac_flow_010_9_a_quoted_form_routes_by_the_form_a_line_starts_with():
-    (quoted,) = parse_review(QUOTED_FORM + QUOTED_PROPOSAL + QUOTED_CONFIRMED).open
+    (quoted,) = parse_findings(QUOTED_FORM + QUOTED_PROPOSAL + QUOTED_CONFIRMED, REVIEW_ARTIFACT).open
     assert (quoted.phase, quoted.routed, quoted.design_only, quoted.done_in) == ("code", True, False, "")
     assert "designOnly" not in quoted.to_dict() and "doneIn" not in quoted.to_dict()
 
 
 # @ac AC-FLOW-010.9
 def test_ac_flow_010_9_a_quoted_form_with_no_proposal_routes_by_its_type():
-    (quoted,) = parse_review(QUOTED_FORM + QUOTED_CONFIRMED).open
+    (quoted,) = parse_findings(QUOTED_FORM + QUOTED_CONFIRMED, REVIEW_ARTIFACT).open
     assert (quoted.phase, quoted.routed, quoted.design_only, quoted.done_in) == ("code", True, False, "")

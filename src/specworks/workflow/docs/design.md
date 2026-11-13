@@ -8,19 +8,24 @@ the CLI can check it. The phase skills do the work that needs judgement; this
 capability gives them facts and gates.
 - **Artifacts** (`artifacts.py`): the artifact graph from the packaged
   `schema.yaml` (what each phase writes and what it requires), each artifact's
-  state, the instructions and template for writing it, and each half's task
-  progress in implement.
+  state, the instructions and template for writing it, each half's task
+  progress in implement, and the check artifacts (review.md `R`,
+  validation.md `V`, inspection.md `I`) that hold findings.
+- **Findings** (`findings.py`): one parser and one set of writers for the
+  findings of every check artifact.
 - **Checks** (`checks.py`): every check defined once, as a function of a
-  `GateContext` that computes what it reads (analysis, review report, review.md)
-  on first use.
+  `GateContext` that computes what it reads (analysis, review report, each
+  check artifact's findings) on first use.
 - **Gates** (`gate.py`): each phase's (and each half's) list of checks, and
   `start`, which runs the gates a phase depends on before moving the change.
 - **Review** (`review.py`): the drift report (changed files against the base
-  branch, untagged code and tests), the parser for review.md, and the writers
-  that add findings and their follow-up lines to it.
+  branch, untagged code and tests).
 - **Cycles** (`cycle.py`): which steps the next build cycle runs after a
-  review.
-- **Validate** (`validate.py`): the grouped, read-only final report.
+  review, and the change's next state.
+- **Validate** (`validate.py`): the grouped final report, and, with
+  `--write`, validation.md with one finding per failed blocking check.
+
+![The workflow capability](diagrams/workflow-blocks.svg)
 - **Merge** (`merge.py`): merging a half's branch into the checkout in a
   build, resolving the change's `tasks.md` and `traceability.md`.
 
@@ -28,7 +33,7 @@ capability gives them facts and gates.
 
 ### Gates only check what the CLI can see
 
-The gates look at specs, tasks, tags, review.md, git and the project's own
+The gates look at specs, tasks, tags, the check artifacts, git and the project's own
 commands. Anything that needs judgement (whether a test fails for the right
 reason, whether the code matches the spec's intent) stays with the skills.
 (baseline-workflow)
@@ -154,7 +159,108 @@ change's own requirements: a deletion is where another requirement can silently
 lose its code. Detecting that loss automatically (reading the deleted file's
 tags at the base) was left for later. (review-deleted-files)
 
-### review.md is parsed strictly
+### The schema declares the check artifacts
+
+An artifact in `schema.yaml` that holds findings has a `findings:` entry with
+its ID `letter` and the gates its open findings `block`: review (`R`, blocks
+review and validate), the optional validation (`V`, blocks validate,
+requires review) and the optional inspection (`I`, blocks no gate, requires
+tasks). `check_artifacts()` lists them in schema order; the
+artifact's `phase` is the step that closes its findings
+(`confirmed in <phase>:`) and the skill named by its readability and
+open-findings checks. A duplicate letter fails when the schema loads. A new
+check step is a schema entry and a template. Hard-coding the files was
+rejected. (unify-check-findings)
+
+### Inspection is a check artifact that blocks nothing
+
+inspection.md holds the notes a reviewer leaves with `/specworks-inspect`, on
+an open or a closed change, as `I` findings; it is written only when there is
+a note. Its phase `inspect` is not a phase of a change (`PHASES` is
+unchanged): it only names the step that confirms its findings
+(`confirmed in inspect:`) and that they wait for. With `blocks: []`, no gate,
+the cycle or validate needs to know about it beyond `check_artifacts()`.
+Making inspection a gate, or required before close, was left out; an
+inspection without notes records nothing (the human review is its own
+record). (add-inspect-skill)
+
+### Findings have their own module, parametrised by the artifact
+
+The parser, routing and writers live in `findings.py`, parametrised by a
+`CheckArtifact`; `review.py` keeps the drift report only, with no re-export.
+`FINDING_RE` is built per letter, and a checkbox with another letter's ID is
+unreadable, like any other stray checkbox. `decide`, `done` and `close` take
+an ID only, and its letter names the artifact (`check_artifact_for`), so a
+command never names the file twice or the wrong one; only `add` takes
+`--artifact` (default `review`). (unify-check-findings)
+
+### Gates read the check artifacts that block them
+
+`artifact_readable(artifact)` and `artifact_closed(artifact)` build the
+readability and open-findings checks of one check artifact (review's keep
+their names and details). The review gate runs them for every check artifact
+whose `blocks` holds `review`, validate for every one whose `blocks` holds
+`validate`, each fixed by the artifact's phase skill; so open `V` findings
+fail validate but not the review gate. A missing validation.md is no
+failure (it is optional); `review_written` stays. `--allow-open` applies to
+every artifact the review gate reads. (unify-check-findings)
+
+### Validate keeps its own findings in step with its checks
+
+Validate writes nothing unless asked: `write_validation(ctx)` (behind
+`validate --write`) runs every `VALIDATE` row except the open-findings checks
+of every check artifact and validation.md's readability check, since a
+finding is never turned into another finding. For each failed blocking check
+with no open `V` finding carrying its `**Check**` line it adds one, typed
+from the row's fix (specify → `spec-gap`, design → `design-gap`, test →
+`test-gap`, code → `code-gap`, review → `quality`) with the Proposal
+`back to <step>: make the check pass`; each open `V` finding whose check now
+passes is closed with `confirmed in validate: the check passes`. It rewrites
+the `## Summary` (verdict, the three group counts, the warnings, which never
+become findings) and `None.` under Findings, then runs every check again and
+returns them, so the verdict printed is the one after the write. A finding
+is linked to its check by the check's key, the name of its check function
+(`Check.key`, set by validate; a check factory names the function it
+returns), never by the check's name: a name can carry the diff's base, and a
+rerun with another base would never close the old finding and add a
+duplicate. The `**Check**` line holds the key; the finding's text keeps the
+name. Findings with no `**Check**` line (added by the skill or by hand) are
+never touched; a check that fails again after its finding was closed gets a
+new one. Each write goes through the finding writers. An old `**Check**`
+line whose check function was renamed matches nothing and stays open until
+closed by hand. (unify-check-findings)
+
+### A finding waits for the step that found it
+
+Review checks the work done for every finding but closes only its own `R`
+ones; for another artifact's finding it writes `done in review:`, which
+routes it on to that artifact's phase (`_next_step` with the artifact:
+validate for `V`, inspect for `I`; an `R` finding, or none given, goes to
+validate as `NEXT_STEP["review"]` says). A finding routed to a step in
+`WAITING_STEPS` (`validate`, `inspect`) starts no build cycle, and that step
+confirms and closes it. Without this a `V` or `I` finding would bounce
+between code and review. (unify-check-findings, add-inspect-skill)
+
+### `question` is a type routed to review
+
+`TYPE_PHASE["question"] = "review"`: a doubt the reviewer cannot settle
+alone goes to review to be answered. It is valid in any check artifact; the
+inspect skill is the one that uses it. (add-inspect-skill)
+
+### Suggestions are an indented fence under the finding
+
+`add_finding(..., suggestion=..., lang=...)` writes, after the Proposal line,
+`  - **Suggestion**:` and then the text unchanged in a fence indented by four
+spaces, marked with `lang`, of `max(3, longest backtick run + 1)` backticks,
+so no line of it can close the fence. The reader already keeps an indented
+fence inside the finding's block and ignores what is in it, so a suggestion
+never routes the finding; the write is read back as every write is. `None`
+writes no suggestion; an empty one, or a `lang` that is not one word without
+backticks (it would break the fence's opening line), raises `FindingError`.
+Only `add` writes a suggestion: a later one is a new finding or a hand edit.
+(add-inspect-skill)
+
+### Findings are parsed strictly
 
 A checkbox the parser can't read, or an open finding with no known type or
 `back to <step>:`, fails the review gate and validate, even inside a build.
@@ -163,15 +269,15 @@ The same goes for any checkbox outside a finding, at the top level or indented
 under another bullet: only sub-steps inside a finding's block are allowed, so
 open work can't hide behind indentation. (baseline-workflow, review-indented-checkboxes)
 
-### review.md is written by commands that read their edit back
+### Findings are written by commands that read their edit back
 
 The `finding` writers (`add_finding`, `decide_finding`, `mark_finding_done`,
-`close_finding`) edit review.md's text in place: each finds the finding's
-block as `parse_review` sees it (its checkbox line and the indented lines
+`close_finding`) edit a check artifact's text in place: each finds the finding's
+block as `parse_findings` sees it (its checkbox line and the indented lines
 after it), adds one line at the end of the block, replaces the Decision line
 or ticks the box, then parses the new text and checks that the finding reads
 back as expected (ID, state, step). Only then is the file written; otherwise a
-`FindingError` names the problem and review.md is left as it was. The writers
+`FindingError` names the problem and the file is left as it was. The writers
 use the reader's own rules (`FINDING_RE`, `TYPE_PHASE`, `BACK_RE`, `DONE_RE`,
 `FINDING_STEPS`), so they cannot write what the gate would refuse. A
 structured data file with review.md generated from it was rejected.
@@ -184,11 +290,12 @@ structured data file with review.md generated from it was rejected.
   in that form is not refused; a form only quoted in its text or Proposal
   does not route it. (fix-route-quoted-forms)
 - With an ID repeated, the writers act on the first block with it, as
-  `parse_review` does, and a refusal is a `FindingError`, never a traceback.
-- `close_finding` adds `confirmed in review: <text>`; the parser does not
-  route on it (only the box counts).
-- A new review.md gets the template's title, `Base:` line, headings and
-  comments, without its example lines, which would read as a bad finding.
+  `parse_findings` does, and a refusal is a `FindingError`, never a traceback.
+- `close_finding` adds `confirmed in <artifact phase>: <text>`; the parser
+  does not route on it (only the box counts).
+- A new check artifact gets the template's title (the change ref), `Base:`
+  line, headings and comments, without its example lines, which would read as
+  a bad finding.
 - Replacing a Decision replaces its first line only: a hand-wrapped Decision
   keeps its continuation lines, and when they would misroute the finding the
   read-back refuses. Accepted, since the commands write one-line Decisions.
@@ -196,9 +303,14 @@ structured data file with review.md generated from it was rejected.
 ### Build cycles run only the steps the findings need
 
 A finding's route is a step: `specify, design, implement, test, code,
-review`. It is set by its type, by `back to <step>:` (`implement` means both
+review, validate`. It is set by its type, by `back to <step>:` (`implement` means both
 halves), or past a `done in <step>:` (specify → design, design → implement,
-implement, test or code → review). `next_cycle` keeps its keys; its `phases`
+implement, test or code → review, review → the finding artifact's step, as
+above). `next_cycle` reads the
+open findings of every check artifact (each with its ID) and adds `next`:
+the step its findings start at, or with none open the phase after the
+change's current one (None after close); a separate `specworks next` was
+rejected as the same computation. Its `phases`
 lists the steps to run: code half and review, test half and review, both
 halves and review, or design, both halves and review. A spec finding hands
 over to specify instead of starting a cycle. Re-running every phase after the
@@ -219,7 +331,7 @@ earliest finding was replaced: a code finding no longer re-runs the tests.
   indentation, an optional bullet (`-`, `*`, `+`, `1.`, `1)`) and an optional
   bold label with its colon, bold before or after the colon (`**Decision**:`,
   `**Decision:**`). One rule (`LINE_STARTS`, read by `_route` and `_done_in`)
-  serves `parse_review` and every writer. Anything later on a line, and the
+  serves `parse_findings` and every writer. Anything later on a line, and the
   finding's own checkbox line, is text, so a form only quoted (in a finding's
   text, a Proposal or a `confirmed in review:` line) no longer routes it.
   Any bold label is accepted, not only Decision and Proposal, so a
@@ -248,41 +360,75 @@ which close raises. (merge-halves-without-conflicts)
 
 ## Interfaces
 
+- `src/specworks/schema.yaml`: `findings: {letter, blocks}` on `review`
+  (`R`, `[review, validate]`), on the optional `validation`
+  (`validation.md`, phase validate, requires review; `V`, `[validate]`) and
+  on the optional `inspection` (`inspection.md`, phase inspect, requires
+  tasks; `I`, `[]`); `src/specworks/templates/inspection.md`.
 - `src/specworks/workflow/artifacts.py`: `load_artifacts()`,
   `artifact_states(change)`, `instructions(ws, module, change, artifact_id)`,
   `half_progress(change)` (`{"test": {"done", "total"}, "code": {...}}` in
-  implement, else None; `status` shows it as `test 3/3, code 1/4`).
-- `src/specworks/workflow/checks.py`: `Check`, `GateContext`, `passed(checks)`,
+  implement, else None; `status` shows it as `test 3/3, code 1/4`);
+  `Artifact.findings`; `CheckArtifact(id, file, letter, phase, blocks)`,
+  `check_artifacts()`, `check_artifact(artifact_id)`,
+  `check_artifact_for(finding_id)` (each unknown name or letter a
+  `WorkflowError` naming the check artifacts).
+- `src/specworks/workflow/checks.py`: `Check` (`key`: the check function's
+  name, set by validate), `GateContext`, `passed(checks)`,
   `run_checks(ctx, checks)`, and the check functions (including
   `half_tasks_done(half)`, `unmarked_tasks_done`, `review_tests_pass`,
   `TestPlan`, `test_plan(ctx) -> TestPlan`, `test_folders_exist(ctx)`,
   `code_command(key, name) -> CheckFn` (runs `commands.<key>`, blocking on
   failure, `None` when not configured), `no_code_commands(ctx)` (the `[warn]`
-  named `build, typecheck and lint` when none is configured)).
+  named `build, typecheck and lint` when none is configured),
+  `artifact_readable(artifact)`, `artifact_closed(artifact)`);
+  `GateContext.findings(artifact)` (cached per artifact) and
+  `GateContext.review` (review's).
 - `src/specworks/workflow/gate.py`: `GATE_CHECKS` (`code`: specs, code tasks, tags,
   then `code_command` for build, typecheck and lint, then
   `no_code_commands`; `review`: `test_folders_exist` before
   `review_tests_pass`), `GATES` (with `test`, `code` and `implement`), `run_gate(ctx, phase)`, `gates_to_start(current, phase)`,
-  `start_phase(ctx, phase)`.
+  `start_phase(ctx, phase)`; the review gate's findings rows come from the
+  check artifacts whose `blocks` holds `review`.
 - `src/specworks/workflow/review.py`: `review_change(analysis, base)`,
-  `changed_paths(ws, since)`, `deleted_paths(ws, since)`, `ChangedFile` (`kind`, `was`),
-  `ReviewReport`, `parse_review(text)`, `read_review(change)`, `ReviewDoc`,
-  `Finding` (`phase` holds its step; `design_only`, shown as
-  `"designOnly": true` by `to_dict()` when set), `FINDING_STEPS`; the writers, each
-  returning the finding as `read_review` reads it after the write and raising
-  `FindingError` with review.md unchanged:
-  `add_finding(change, kind, text, proposal) -> Finding` (`kind` one of
-  `TYPE_PHASE`; the next free ID, under `## Findings`),
-  `decide_finding(change, finding_id, decision)`,
+  `changed_paths(ws, since)`, `deleted_paths(ws, since)`, `detect_base`,
+  `ChangedFile` (`kind`, `was`), `ReviewReport`, `CODE_EXTENSIONS`.
+- `src/specworks/workflow/findings.py`: `TYPE_PHASE` (with `question:
+  review`), `FINDING_STEPS`,
+  `NEXT_STEP`, `Finding` (`phase` holds its step; `design_only`, shown as
+  `"designOnly": true` by `to_dict()` when set; `check`, its `**Check**`
+  line), `FindingsDoc` (`artifact`; `accounted`/`accounts_for` empty outside
+  review.md), `parse_findings(text, artifact)`, `read_findings(change,
+  artifact)`, `read_all_findings(change)` (schema order, missing files with
+  `exists=False`); the writers, each returning the finding as it reads after
+  the write and raising `FindingError` with the file unchanged:
+  `add_finding(change, kind, text, proposal, artifact="review", check="",
+  suggestion: str | None = None, lang="text")`
+  (`kind` one of `TYPE_PHASE`; the next free ID of the artifact's letter,
+  under `## Findings`), `decide_finding(change, finding_id, decision)`,
   `mark_finding_done(change, finding_id, step, text)` (`step` one of specify,
-  design, implement, test, code), `close_finding(change, finding_id, text)`.
-  Lines written: `  - **Proposal**: …`, `  - **Decision**: …`,
-  `  - done in <step>: …`, `  - confirmed in review: …`.
-- `src/specworks/workflow/cycle.py`: `next_cycle(change)` (`reviewed`, `open`,
-  `startAt`, `phases`, `handOver`; `phases` lists steps).
+  design, implement, test, code, review), `close_finding(change, finding_id,
+  text)`, the artifact found from the ID's letter. Lines written:
+  `  - **Proposal**: …`, `  - **Decision**: …`, `  - **Check**: …`,
+  `  - **Suggestion**:` (then the fence), `  - done in <step>: …`,
+  `  - confirmed in <artifact phase>: …` (`confirmed in inspect:` for `I`).
+- `src/specworks/workflow/cycle.py`: `WAITING_STEPS = ("validate",
+  "inspect")`; `next_cycle(change)` (`reviewed`, `open`
+  (each with its `id`), `startAt`, `phases`, `handOver`, `next`; `phases`
+  lists steps; findings routed to a waiting step start no cycle).
 - `src/specworks/workflow/validate.py`: `VALIDATE` (rows of group, the skill
-  that fixes a failure, check), `validate_change(ctx)`, `summary(checks)`,
-  `architecture_diagrams_current(ctx) -> Check | None`.
+  that fixes a failure, check; the findings rows built from the check
+  artifacts whose `blocks` holds `validate`), `validate_change(ctx)`,
+  `summary(checks)`, `architecture_diagrams_current(ctx) -> Check | None`,
+  `write_validation(ctx) -> tuple[list[Check], Path]` (the checks after the
+  write, validation.md's path).
+- validation.md as validate writes it: under a finding
+  `  - **Check**: <check key>` (the check function's name) and
+  `  - **Proposal**: back to <step>: make the check pass`; its close
+  `  - confirmed in validate: the check passes`; `## Summary` holds
+  `Verdict: PASS | FAIL (<n> critical, <n> warnings)`, the lines
+  `- Completeness|Correctness|Coherence <passed>/<total>`, and `Warnings:`
+  with `- <check name>: <details joined with "; ">` when there is one.
 - `src/specworks/workflow/merge.py`: `merge_branch(ws, module, change, branch)
   -> MergeResult` (raises `BranchMergeError`, and `GitError` outside a git
   repository), `MergeResult(merged, branch, resolved)` (`merged` is False only
@@ -293,9 +439,12 @@ which close raises. (merge-halves-without-conflicts)
 
 ## Constraints
 
-- Validate and the gates write nothing to the project. Only `start` writes, to
-  the change's metadata, `merge_branch`, which commits a merge or leaves
-  the checkout as it was, and the finding writers, which write only the
-  change's review.md and only when it reads back as expected.
+- Validate (without `--write`) and the gates write nothing to the project.
+  Only `start` writes, to the change's metadata, `merge_branch`, which
+  commits a merge or leaves the checkout as it was, the finding writers,
+  which write only the change's check artifacts (of a closed change, only
+  its inspection.md, as the CLI allows) and only when they read back
+  as expected, and `write_validation`, which writes validation.md through
+  them.
 - Built on `project` (config, workspace, changes, runner) and `specs` (specs,
   tags, trace).

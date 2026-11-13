@@ -12,7 +12,8 @@ Specs and traceability, in `src/specworks/specs`:
   specs, tasks and diagrams.
 - **Tasks** (`tasks.py`): reading tasks.md, each task's half, and ticking tasks.
 - **Trace** (`trace.py`): the tag scan, the trace matrix, its gaps and unknown
-  tags.
+  tags, for an active change or a closed one (with the locations changed
+  since its close).
 - **Merge** (`merge.py`): merging deltas into living specs and archiving the
   change at close.
 
@@ -152,6 +153,37 @@ with a fixed threshold. Matching `parse_spec`'s fields was rejected for the
 line numbers it would have to carry; whole-word matching, ranking and a
 configurable threshold were left out. (narrow-spec-find)
 
+### What changed since a close comes from git
+
+The trace of a closed (archived) change reads its delta specs and the current
+code's tags, like an active one; the `Change` is just in the archive folder.
+`changed_since_close` finds the close commit as the last commit that added
+the archive folder's `.change.yaml` (`git log -1 --no-renames
+--diff-filter=A`): only close adds it, while an inspection.md written later
+adds a file to the folder too, and without `--no-renames` the move would read
+as a rename. The files changed since are `git diff --name-only <commit>` plus
+the untracked ones, so uncommitted edits count. `mark_changed` sets each
+row's `changed` to its test and code locations (`file:line`) whose file is in
+that set, and the matrix marks them `(changed since close)`. Without git or
+without that commit, `ChangedSince` has no commit, marks nothing and its
+`note` says why. An active change has nothing to compare with and gets
+neither. (add-inspect-skill)
+
+### A closed change's removed criteria come from the spec before its close
+
+For an archived change, the criteria its MODIFIED and REMOVED blocks left out
+are found against the living spec as it was just before the close: at the
+parent of the close commit `changed_since_close` finds, read with
+`living_spec_at` (`git show <commit>^:<living spec>`). The close commit
+itself already holds the merged spec, so it would show nothing removed; and
+today's living spec would report every criterion a later change added as
+removed but still tagged. A criterion the change itself left out and still
+tagged is still reported. When the close commit, its parent or the spec there
+cannot be read (no git, history rewritten), no criterion is reported as
+removed rather than guessing from today's spec. Skipping the check for every
+closed change was rejected: it would hide real leftover tags.
+(add-inspect-skill)
+
 ### Close is all or nothing
 
 Close computes every living spec and index first, checks the archive folder,
@@ -184,7 +216,14 @@ was. (baseline-specs)
   `""`; in `to_dict()` too).
 - `src/specworks/specs/trace.py`: `scan_tags(ws: Workspace) -> list[Tag]`, the
   tags of the workspace with marked lines left out (REQ-SPECS-001..003, 011);
-  `build_matrix`, `gaps`, `unknown_tags`, `to_markdown`, `Analysis`.
+  `build_matrix`, `gaps`, `unknown_tags`, `to_markdown`, `Analysis`
+  (`changed_since`: a `ChangedSince` for an archived change, else None);
+  `Row.changed: list[str]`; `ChangedSince(commit: str | None, files:
+  frozenset[str], note: str = "")`, `changed_since_close(ws, change) ->
+  ChangedSince`, `mark_changed(rows, since)`, `living_spec_at(ws, change,
+  cap, commit: str | None) -> str | None` (the capability's living spec at
+  that commit by `git show`; None without the commit, without git, or when
+  the spec did not exist then; raises nothing) (REQ-SPECS-018).
 - `src/specworks/specs/merge.py`: `plan_merge(...) -> [CapabilityMerge]`,
   `close_change(merges, change, archive_root)`, `archive_change`,
   `apply_delta(living_text, delta, own=frozenset()) -> (text, added,

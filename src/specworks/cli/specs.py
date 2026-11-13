@@ -10,7 +10,7 @@ import typer
 from pyd2 import DARK_THEMES, THEMES
 
 from specworks.cli.app import app, spec_app
-from specworks.cli.output import ChangeOpt, JsonOpt, change_dict, emit, fail, require_change, workspace
+from specworks.cli.output import ChangeOpt, JsonOpt, change_dict, emit, fail, is_archived, refuse_archived, require_change, require_change_or_archived, workspace
 from specworks.core.config import theme_name
 from specworks.specs.capabilities import describe, resolve_ref, search_requirements, workspace_capabilities
 from specworks.specs.trace import Analysis, to_markdown, write_traceability
@@ -43,6 +43,7 @@ def check_cmd(
         raise typer.Exit(1)
 
 
+# @req REQ-CLI-002, REQ-SPECS-018
 @app.command()
 def trace(
     change: str = ChangeOpt,
@@ -50,22 +51,31 @@ def trace(
     as_json: bool = JsonOpt,
 ) -> None:
     """
-    Requirement -> acceptance criterion -> task -> test (@ac) -> code (@req) matrix of a change.
+    Requirement -> acceptance criterion -> task -> test (@ac) -> code (@req) matrix of a change (also a closed one, without --write).
+
+    Implements REQ-CLI-002, REQ-SPECS-018.
     """
-    ws, mod, ch = require_change(change, as_json)
+    ws, mod, ch = require_change_or_archived(change, as_json)
+    if write and is_archived(ch):
+        refuse_archived(ws, mod, ch, "`trace --write` writes only an active change's traceability.md; `trace` without --write reads it")
     analysis = Analysis(ws, ch)
     rows, found = analysis.rows, analysis.gaps
     markdown = to_markdown(mod.qualify(ch.name), rows, found)
     written = ws.rel(write_traceability(ch, markdown)) if write else None
+    since = analysis.changed_since
     data = {
         **change_dict(ws, mod, ch),
-        "rows": [vars(r) for r in rows],
+        # ``changed`` only for a closed change: an active one has nothing to compare with.
+        "rows": [{k: v for k, v in vars(r).items() if since is not None or k != "changed"} for r in rows],
         "gaps": found,
         "unknownTags": [{"id": t.id, "where": t.where, **({"hint": t.hint} if t.hint else {})} for t in analysis.unknown_tags],
         "specErrors": len(analysis.spec_errors),
         "written": written,
     }
     text = markdown + (f"\nwrote {written}" if written else "")
+    if since is not None:
+        data["changedSinceClose"] = {"commit": since.commit, "files": sorted(since.files)} if since.commit else {"note": since.note}
+        text += f"\nchanged since close: compared with {since.commit[:12]}" if since.commit else f"\n{since.note}"
     emit(data, as_json, text)
 
 

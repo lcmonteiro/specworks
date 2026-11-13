@@ -18,6 +18,7 @@ from specworks.core.files import read_text
 from specworks.specs.check import DESIGN_FILE
 from specworks.specs.specfile import H2_RE, blank_comments, fenced
 from specworks.workflow import checks as c
+from specworks.workflow.artifacts import check_artifacts
 from specworks.workflow.checks import Check, CheckFn, GateContext, passed, run_checks
 from specworks.workflow.review import CODE_EXTENSIONS
 from specworks.workflow.validate import validate_change
@@ -163,8 +164,8 @@ GATE_CHECKS: dict[str, list[CheckFn]] = {
         c.specs_warnings,
         c.specs_as_specified,
         c.review_written,
-        c.review_readable,
-        c.review_closed,
+        # The readability and open findings of each check artifact that blocks review (review.md; not validation.md).  @req REQ-FLOW-011
+        *(check for artifact in check_artifacts() if "review" in artifact.blocks for check in (c.artifact_readable(artifact), c.artifact_closed(artifact))),
         c.reqs_have_code,
         c.acs_have_tests,
         c.no_unknown_tags,

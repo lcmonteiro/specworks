@@ -67,7 +67,7 @@ def change_dict(ws: Workspace, module: Module, change: Change) -> dict:
         "phase": change.phase,
         "created": change.created,
         "skipSpecs": change.skip_specs,
-        **({"archived": True} if change.path.parent.name == ARCHIVE_DIR else {}),
+        **({"archived": True} if is_archived(change) else {}),
         **({"abandoned": change.abandoned} if change.abandoned else {}),
         **({"reopened": [{"at": r.at, "reason": r.reason, "phase": r.phase} for r in change.reopened]} if change.reopened else {}),
     }
@@ -151,3 +151,32 @@ def require_change(ref: str, as_json: bool) -> tuple[Workspace, Module, Change]:
     """
     ws = workspace(as_json)
     return (ws, *resolve_change(ws, ref))
+
+
+# @req REQ-CLI-002
+def require_change_or_archived(ref: str, as_json: bool) -> tuple[Workspace, Module, Change]:
+    """
+    The workspace and the change ``ref`` names, active or else archived (only ``trace`` and inspection's ``finding``).
+
+    Implements REQ-CLI-002.
+    """
+    ws = workspace(as_json)
+    try:
+        return (ws, *resolve_change(ws, ref))
+    except ChangeNotFound:  # not active: the archived one, or "not found, active or archived"
+        return (ws, *resolve_archived(ws, ref))
+
+
+def is_archived(change: Change) -> bool:
+    """
+    The change is in its module's archive folder (closed or abandoned).
+    """
+    return change.path.parent.name == ARCHIVE_DIR
+
+
+# @req REQ-CLI-002
+def refuse_archived(ws: Workspace, module: Module, change: Change, why: str) -> None:
+    """
+    Refuse a write to an archived change, saying where it is archived and why it is refused.
+    """
+    raise ChangeError(f"change '{module.qualify(change.name)}' is archived at {ws.rel(change.path)}: {why}")

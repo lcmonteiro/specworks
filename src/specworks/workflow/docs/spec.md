@@ -11,7 +11,7 @@ and code, build cycles, and the final validate report.
 ### Requirement: REQ-FLOW-001 Artifact states
 
 The system SHALL report each artifact of a change (refinement, proposal, specs,
-design, tasks, traceability, review) as `done` when its file exists, as
+design, tasks, traceability, review, validation, inspection) as `done` when its file exists, as
 `skipped` for the delta specs of a change marked skip-specs, and otherwise as
 `ready` when every artifact it requires is done, optional or skipped, or as
 `blocked`. For a change in implement, the status SHALL also report each half
@@ -40,6 +40,18 @@ without running any command.
 - **GIVEN** a change in implement whose tasks.md has three `[test]` tasks, all done, and four `[code]` tasks, one done
 - **WHEN** its status is read
 - **THEN** it shows the test half at 3 of 3 tasks and the code half at 1 of 4; a change in another phase shows no halves
+
+#### Scenario: AC-FLOW-001.5 Validation
+
+- **GIVEN** a change with review.md written
+- **WHEN** its status is read before and after validation.md is written
+- **THEN** validation is `ready` and optional before, and `done` after
+
+#### Scenario: AC-FLOW-001.6 Inspection
+
+- **GIVEN** a change with tasks.md written
+- **WHEN** its status is read before and after inspection.md is written
+- **THEN** inspection is `ready` and optional before, and `done` after
 
 ### Requirement: REQ-FLOW-002 Instructions for an artifact
 
@@ -325,21 +337,24 @@ saying why.
 - **WHEN** the branch deletes a source file, a test file and a doc
 - **THEN** each is listed with kind `deleted` and the kind it had (`source`, `test`, `other`); the source and test files are reported under `deletedFiles`, the doc is not
 
-### Requirement: REQ-FLOW-010 Reading review.md
+### Requirement: REQ-FLOW-010 Reading findings
 
-The system SHALL read each finding in review.md as a checkbox with its ID
-(`- [ ] R<n>`, also `*`, `1.` and a bold ID), open or done, with a type (the
-first bold word that is a known type, in any case). It SHALL route the finding
-to the step of its type (`test-gap` to the test half, `code-gap`, `tag` and
-`quality` to the code half), or to the step of a `back to <step>:` in its own
+The system SHALL read each finding in a check artifact (REQ-FLOW-018) as a
+checkbox with its ID, the artifact's letter and a number (`- [ ] R<n>` in
+review.md, `- [ ] V<n>` in validation.md, `- [ ] I<n>` in inspection.md, also `*`, `1.` and a bold ID), open
+or done, with a type (the first bold word that is a known type, in any case).
+It SHALL route the finding to the step of its type (`spec-gap` to specify,
+`design-gap` to design, `test-gap` to the test half, `code-gap`, `tag` and
+`quality` to the code half, `question` to review), or to the step of a `back to <step>:` in its own
 block, where a step is specify, design, implement (both halves), test, code
-or review. A `back to <step>:`, `back to design only:` or `done in <step>:`
+or review, and a `done in <step>:` step is one of these. A `back to <step>:`, `back to design only:` or `done in <step>:`
 SHALL count only where it starts a line's text, after the line's indentation,
 an optional bullet and an optional bold label (such as `**Decision**:` or
 `**Proposal**:`); later on a line, and on the finding's own line, it is text.
 After a `done in <step>:` it SHALL route the finding to the step
-after that one: design after specify, implement after design, and review
-after implement, test or code, except that a finding whose Decision says
+after that one: design after specify, implement after design, review
+after implement, test or code, and after review the step that confirms it:
+inspect for a finding of inspection.md, validate for any other, except that a finding whose Decision says
 `back to design only:` SHALL be routed to design, and after `done in design:`
 to review. HTML comments and code fences SHALL be ignored.
 A checkbox outside a finding's block (at the top level or indented, ticked or
@@ -393,6 +408,26 @@ unreadable.
 - **WHEN** it is read
 - **THEN** it is routed to code, not design-only, and has no `done in` step; a finding of the same type with no Proposal is routed to code by its type
 
+#### Scenario: AC-FLOW-010.10 Back to review
+
+- **WHEN** a `code-gap` finding's Decision says `back to review: account for a.py`
+- **THEN** it is routed to review; `back to review only:` is not a route
+
+#### Scenario: AC-FLOW-010.11 Done in review
+
+- **WHEN** validation.md has a `code-gap` V1 with `done in code:` and a `quality` V2 saying `back to review:`, and later `done in review:` is added under each
+- **THEN** both are routed to review before, and to validate after, still open
+
+#### Scenario: AC-FLOW-010.12 A question
+
+- **WHEN** inspection.md has `- [ ] I1 **question** why is the token not returned?`
+- **THEN** I1 is open and routed to review
+
+#### Scenario: AC-FLOW-010.13 Back to inspect
+
+- **WHEN** an inspection finding I1 of type `code-gap` gets `done in code:`, then `done in review:`
+- **THEN** it is routed to code, then review, then inspect, still open; a validation finding with the same lines is routed to validate at the end
+
 ### Requirement: REQ-FLOW-011 Gate review
 
 The review gate SHALL require review.md with no open finding (with
@@ -402,7 +437,8 @@ files without tags", `@req` code for every requirement, an `@ac` test for
 every criterion, no unknown tags, no tags left to removed requirements, and passing
 tests: the tests REQ-FLOW-017 picks. With `--allow-open` and at least one open finding,
 failing tests SHALL be a warning instead of blocking: the findings carry it to
-the next cycle. It SHALL warn about each MODIFIED requirement whose behaviour
+the next cycle. Open findings of a check artifact that does not block the
+review gate (REQ-FLOW-018) SHALL neither block it nor warn. It SHALL warn about each MODIFIED requirement whose behaviour
 changed while none of its tests changed, and about a diff that may be
 incomplete because HEAD is on the base branch.
 
@@ -447,16 +483,27 @@ incomplete because HEAD is on the base branch.
 - **WHEN** a criterion has no `@ac` test
 - **THEN** the review gate fails listing it, also with `--allow-open`
 
+#### Scenario: AC-FLOW-011.9 Validation findings do not block review
+
+- **GIVEN** a change whose review gate passes
+- **WHEN** validation.md gets an open finding V1
+- **THEN** the review gate still passes, with no check or warning about V1
+
 ### Requirement: REQ-FLOW-012 Build cycles
 
-After a review, the system SHALL say which steps the next build cycle runs,
-from the open findings: design when any finding needs design; both halves
+After a review or a validate, the system SHALL say which steps the next build cycle runs,
+from the open findings of every check artifact (REQ-FLOW-018), each listed
+with its ID: design when any finding needs design; both halves
 (test and code, in parallel) when a finding needs design without `only` or
 needs implement; otherwise only the halves the findings need; and review last. It
 SHALL say the phase the cycle starts at: design when design is in the cycle,
 implement when a half is, review otherwise. A spec finding SHALL hand over to
-`/specworks-specify` instead of starting a cycle. A change with no review.md,
-or no open finding, has no next cycle.
+`/specworks-specify` instead of starting a cycle. A finding routed to
+validate or inspect SHALL start no cycle: it waits for that step to confirm it. A change with no check
+artifact, or no open finding, has no next cycle. It SHALL also say the
+change's next state: the phase the cycle starts at, or, with no cycle to run,
+the phase after the change's current one (validate after review, close after
+validate).
 
 #### Scenario: AC-FLOW-012.1 No cycle
 
@@ -493,6 +540,29 @@ or no open finding, has no next cycle.
 - **WHEN** the only open findings say `back to design only:`, before or after their `done in design:`
 - **THEN** the cycle starts at design with the steps design, review before it, and at review with the step review after it; with a code finding as well, the steps are design, code, review; with a finding saying `back to design:` as well, they are design, test, code, review
 
+#### Scenario: AC-FLOW-012.8 Findings from validation.md
+
+- **GIVEN** review.md with every finding done, and validation.md with an open `test-gap` V1
+- **WHEN** the next cycle is read
+- **THEN** it starts at implement with the steps test, review, and lists V1
+
+#### Scenario: AC-FLOW-012.9 The next state
+
+- **WHEN** the next state is read for a change in review with an open `code-gap`, in review with no open finding, and in validate with no open finding
+- **THEN** it is implement, validate and close
+
+#### Scenario: AC-FLOW-012.10 Waiting for validate
+
+- **GIVEN** a change in review whose only open finding is a V1 with `done in review:`
+- **WHEN** the next cycle is read
+- **THEN** there is no start and no steps, V1 is listed routed to validate, and the next state is validate
+
+#### Scenario: AC-FLOW-012.11 Waiting for inspect
+
+- **GIVEN** a change in validate whose only open finding is an I1 with `done in review:`
+- **WHEN** the next cycle is read
+- **THEN** there is no start and no steps, I1 is listed routed to inspect, and the next state is close
+
 ### Requirement: REQ-FLOW-013 Validate
 
 `specworks validate` SHALL run grouped checks (completeness, correctness,
@@ -501,10 +571,14 @@ verdict when no blocking check fails. Open tasks SHALL be checked by kind,
 each kind naming its own phase skill: `[test]` tasks the test skill, `[code]`
 tasks the code skill, and tasks with neither marker the design skill. It SHALL
 run the test command (lint and typecheck when configured) and check that
-diagram SVGs are up to date. It SHALL warn, without blocking, about each
+diagram SVGs are up to date. It SHALL require every check artifact that
+blocks the validate gate (REQ-FLOW-018) to have no open finding and to be
+readable, each failure naming the phase skill of that artifact's step. It SHALL warn, without blocking, about each
 diagram in the change's module's docs folder (`docs/diagrams/`) with no SVG or
-an outdated one. It SHALL write nothing. Not having gone through
-review is a warning. `gate validate` SHALL apply the same checks.
+an outdated one. It SHALL write nothing, except validation.md when asked to
+(REQ-FLOW-019). Not having gone through
+review is a warning. `gate validate` SHALL apply the same checks and SHALL
+write nothing.
 
 #### Scenario: AC-FLOW-013.1 A finished change
 
@@ -513,7 +587,7 @@ review is a warning. `gate validate` SHALL apply the same checks.
 
 #### Scenario: AC-FLOW-013.2 Read-only
 
-- **WHEN** validate and `gate validate` run
+- **WHEN** validate runs without being asked to write, and `gate validate` runs
 - **THEN** no file of the project changes
 
 #### Scenario: AC-FLOW-013.3 Where to go back
@@ -551,6 +625,12 @@ review is a warning. `gate validate` SHALL apply the same checks.
 - **GIVEN** a module whose `docs/diagrams/architecture-blocks.d2` has no SVG, or an outdated one
 - **WHEN** a change of that module is validated
 - **THEN** a non-blocking warning names the SVG, and the verdict does not change; with the SVG up to date, or no `docs/diagrams/`, there is no such warning
+
+#### Scenario: AC-FLOW-013.10 An open validation finding
+
+- **GIVEN** a change that passes validate
+- **WHEN** a finding V1 is added to validation.md, then ticked
+- **THEN** validate fails listing V1 and naming `/specworks-validate`, then passes again; `gate validate` does the same
 
 ### Requirement: REQ-FLOW-014 Starting a phase
 
@@ -650,16 +730,24 @@ exist.
 - **WHEN** the checkout has uncommitted changes, or the branch does not exist
 - **THEN** it fails before merging, saying which, and nothing changes
 
-### Requirement: REQ-FLOW-016 Writing findings to review.md
+### Requirement: REQ-FLOW-016 Writing findings
 
-The system SHALL write a change's review findings as review.md text that
-REQ-FLOW-010 reads back: a new finding under `## Findings` with the next free
-ID, its type and its Proposal (creating review.md from its template when
-missing); a finding's Decision, replacing the one it has, which SHALL start
+The system SHALL write a change's findings as text of their check artifact
+(REQ-FLOW-018) that REQ-FLOW-010 reads back: a new finding under `## Findings`
+of the artifact asked for (review.md when none is), with that artifact's
+letter and its next free number, its type and its Proposal, and, when
+given, a suggestion (creating the artifact from its template when missing); and, for an existing finding,
+found in the artifact its ID's letter names: its Decision, replacing the one it has, which SHALL start
 with `back to <step>:`, `back to design only:` or `accepted:` and, when `accepted`, tick the finding;
-a `done in <step>:` line; and a tick with what review confirmed. It SHALL add
+a `done in <step>:` line, where the step may also be review; and a tick with what its step confirmed (`confirmed in review:`,
+`confirmed in validate:` or `confirmed in inspect:`, after the artifact's step). A suggestion SHALL be written under the
+finding as a `**Suggestion**:` line followed by the suggestion's text,
+unchanged, in an indented code fence with its language (`diff`, `markdown`,
+...), the fence longer than any run of backticks in the text; it SHALL not
+route the finding, and an empty suggestion SHALL be refused. It SHALL add
 each line at the end of the finding's block and leave every other line of
-the file as it was. It SHALL refuse an unknown finding, type or step, an
+the file as it was. It SHALL refuse an unknown finding, type, step or check
+artifact, an
 empty text, and a decision in another form, and SHALL write nothing when the
 edited text does not read back with the expected finding. A form quoted
 in a finding's text or Proposal SHALL route it only as REQ-FLOW-010 reads it:
@@ -711,6 +799,35 @@ by the form a line starts with, else by the finding's type.
 - **GIVEN** a review.md with no findings
 - **WHEN** a `quality` finding is added with the text `list 'back to design only:' in the help` and the proposal `add it after 'back to <step>:'`, and a second one with the proposal `back to test: assert 'done in code:' is read`
 - **THEN** both are added; the first is routed to code by its type and is not design-only, and the second is routed to test
+
+#### Scenario: AC-FLOW-016.9 A finding in validation.md
+
+- **GIVEN** a change with review.md holding R1 and no validation.md
+- **WHEN** a `code-gap` finding is added to validation, then marked `done in code:` by its ID
+- **THEN** validation.md is created from its template with V1 under `## Findings`, routed to code and then to review, and review.md is unchanged
+
+#### Scenario: AC-FLOW-016.10 An unknown check artifact
+
+- **WHEN** a finding is added to `tasks`, or decided as `V7` in a change whose validation.md has no V7
+- **THEN** it is refused naming the check artifacts (or V7), and no file changes
+
+#### Scenario: AC-FLOW-016.11 Done in review
+
+- **GIVEN** validation.md with an open V1 routed to review
+- **WHEN** `done in review: a.py accounted for` is recorded under it
+- **THEN** it is routed to validate and still open, and only that line is added
+
+#### Scenario: AC-FLOW-016.12 A finding in inspection.md
+
+- **GIVEN** a change with no inspection.md
+- **WHEN** a `question` finding is added to inspection, then closed
+- **THEN** inspection.md is created from its template with I1 under `## Findings`, routed to review; after the close it is ticked with `confirmed in inspect:`
+
+#### Scenario: AC-FLOW-016.13 A suggestion
+
+- **GIVEN** a suggestion in `diff` of three lines, one of them holding ```` ``` ````
+- **WHEN** a `code-gap` finding is added to inspection with it, and its proposal `back to code: revoke the old token`
+- **THEN** I1 has its Proposal line, then `**Suggestion**:` and the three lines unchanged in an indented fence of four backticks marked `diff`; I1 is routed to code, and reading it back gives the same finding; an empty suggestion is refused and no file changes
 
 ### Requirement: REQ-FLOW-017 The review gate's tests
 
@@ -772,3 +889,78 @@ missing folder. Validate SHALL keep running the full suite.
 - **GIVEN** `commands.test_scoped` set and a change that touches `auth` only
 - **WHEN** `specworks validate` runs
 - **THEN** it runs the full suite (`commands.test`), and a failing test in `tests/billing` fails it
+
+### Requirement: REQ-FLOW-018 Check artifacts
+
+The schema SHALL declare which artifacts of a change are check artifacts:
+each with the letter of its finding IDs and the gates its open findings
+block. It SHALL declare review (`review.md`, letter `R`, blocking the review
+and validate gates) and validation (`validation.md`, letter `V`, blocking the
+validate gate) and inspection (`inspection.md`, letter `I`, blocking no
+gate), the last two optional. Every check artifact SHALL be read as
+REQ-FLOW-010 says, with its own letter, and a finding whose ID has another
+letter than its artifact's SHALL be reported as unreadable.
+
+#### Scenario: AC-FLOW-018.1 The declared check artifacts
+
+- **WHEN** the check artifacts are listed
+- **THEN** they are review with letter `R`, blocking the review and validate gates, validation with letter `V`, blocking the validate gate, and inspection with letter `I`, blocking no gate
+
+#### Scenario: AC-FLOW-018.2 A finding in validation.md
+
+- **GIVEN** validation.md with `- [ ] V1 **code-gap** REQ-X-001 has no code` and `- [ ] V2 **quality** ...` whose block says `back to review: account for a.py`
+- **WHEN** it is read
+- **THEN** V1 is open and routed to code, and V2 is open and routed to review
+
+#### Scenario: AC-FLOW-018.3 A letter from another artifact
+
+- **WHEN** validation.md has a finding `- [ ] R1 **code-gap** ...`, or review.md one `- [ ] V1 **code-gap** ...`
+- **THEN** it is reported as unreadable, and the gates that artifact blocks fail on readability
+
+#### Scenario: AC-FLOW-018.4 Inspection findings block nothing
+
+- **GIVEN** a change whose review gate and validate pass
+- **WHEN** inspection.md gets an open finding I1
+- **THEN** the review gate and validate still pass, with no check or warning about I1
+
+### Requirement: REQ-FLOW-019 Writing validation.md
+
+On request, validate SHALL write validation.md (creating it from its
+template when missing): one open `V` finding for each failed blocking check
+other than the open findings of the check artifacts, naming the check and
+what failed, with the type of the phase that fixes it (`spec-gap` for
+specify, `design-gap` for design, `test-gap` for test, `code-gap` for code),
+or routed `back to review:` when review fixes it. A finding it wrote before
+whose check now passes SHALL be ticked with `confirmed in validate:`; a check
+that still fails SHALL keep its one finding; a finding validate did not write
+SHALL be left as it is. Its Summary SHALL hold the verdict, the passed and
+total checks per group, and every warning; warnings SHALL NOT be findings.
+With no finding at all, its Findings SHALL say `None.`. The verdict SHALL
+be the one validate gives after writing.
+
+#### Scenario: AC-FLOW-019.1 A failed validate
+
+- **GIVEN** a change with an open `[code]` task and a criterion without an `@ac` test, and no validation.md
+- **WHEN** validate writes validation.md
+- **THEN** it is created with V1 routed to code and V2 routed to test, each naming its check, and its Summary says FAIL
+
+#### Scenario: AC-FLOW-019.2 A passing validate
+
+- **WHEN** validate writes validation.md for a change that passes
+- **THEN** its Findings say `None.` and its Summary says PASS with the checks per group
+
+#### Scenario: AC-FLOW-019.3 Rerun after a fix
+
+- **GIVEN** validation.md with V1 (an open `[code]` task) and V2 (a missing `@ac` test) written by validate, and V3 added by hand
+- **WHEN** the task is ticked and validate writes again
+- **THEN** V1 is ticked with `confirmed in validate:`, V2 stays open and is not written twice, V3 is unchanged, and no other line changes
+
+#### Scenario: AC-FLOW-019.4 Warnings stay out of the findings
+
+- **WHEN** validate writes validation.md for a change that never reached review and has an outdated architecture diagram, and nothing blocking fails
+- **THEN** both warnings are in its Summary, its Findings say `None.`, and the verdict is PASS
+
+#### Scenario: AC-FLOW-019.5 A check review fixes
+
+- **WHEN** validate writes validation.md for a change with an untagged changed file not accounted for in review.md
+- **THEN** the finding for that check is routed to review
