@@ -169,11 +169,14 @@ class CopilotSession:
                 return None
         if not isinstance(data, list):
             return None
-        for entry in data:
-            if isinstance(entry, dict) and entry.get("is_chat_default") is True:
-                model = entry.get("id")
-                return model if isinstance(model, str) and model.strip() else None
-        return None
+        entries = [entry for entry in data if isinstance(entry, dict) and isinstance(entry.get("id"), str) and entry["id"].strip()]
+        for entry in entries:
+            if entry.get("is_chat_default") is True:
+                return str(entry["id"])
+        # Some hosts (GitHub Enterprise) mark no default: take the picker's first usable model, a versatile one first.
+        usable = [entry for entry in entries if _usable(entry)]
+        versatile = [entry for entry in usable if entry.get("model_picker_category") == "versatile"]
+        return str((versatile or usable)[0]["id"]) if usable else None
 
 
 # @req REQ-HARNESS-011
@@ -235,6 +238,15 @@ def device_login(
                 raise CopilotLoginError("could not finish the GitHub device login")
             return Login(token, ghe_host)
     raise CopilotLoginError("the GitHub login code expired")
+
+
+def _usable(entry: dict[str, Any]) -> bool:
+    """
+    Whether a model list entry is one the picker shows, with its policy enabled, and not a preview.
+    """
+    policy = entry.get("policy")
+    enabled = isinstance(policy, dict) and policy.get("state") == "enabled"
+    return entry.get("model_picker_enabled") is True and enabled and entry.get("preview") is not True
 
 
 @dataclass(frozen=True)

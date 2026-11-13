@@ -14,6 +14,7 @@ reading the diff. `- [ ] R<n>` while open, `- [x] R<n>` once resolved. Write
   - done in specify: REQ-HARNESS-013 falls back to the first usable picker model (policy enabled, not a preview), versatile first; AC-HARNESS-013.3 reworded, AC-HARNESS-013.4 and AC-HARNESS-013.5 added; tasks 5.1 and 5.2
   - done in design: no API change: default_model() keeps its signature; its Decision in design.md describes the picker fallback
   - done in test: AC-HARNESS-013.4 and AC-HARNESS-013.5 tested; AC-HARNESS-013.3 cases now lists with no usable picker model
+  - done in code: default_model() falls back to the first usable picker model, versatile first; live bmw.ghe.com check gives claude-sonnet-5.5
 
 ## Changed files without tags
 
