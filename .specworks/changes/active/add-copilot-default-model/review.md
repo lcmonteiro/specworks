@@ -12,6 +12,7 @@ reading the diff. `- [ ] R<n>` while open, `- [x] R<n>` once resolved. Write
   - **Proposal**: back to specify: when no model is marked as the default chat model, use the first model of the list that the model picker shows, whose policy is enabled and that is not a preview, in the versatile category, else the first such model of any category; fail only when there is none
   - **Decision**: back to specify: when no model is marked as the default chat model, use the first model the picker shows (model_picker_enabled), whose policy is enabled and that is not a preview, in the versatile category, else the first such model of any category; fail naming both settings only when there is none (agreed with the user)
   - done in specify: REQ-HARNESS-013 falls back to the first usable picker model (policy enabled, not a preview), versatile first; AC-HARNESS-013.3 reworded, AC-HARNESS-013.4 and AC-HARNESS-013.5 added; tasks 5.1 and 5.2
+  - done in design: no API change: default_model() keeps its signature; its Decision in design.md describes the picker fallback
 
 ## Changed files without tags
 
