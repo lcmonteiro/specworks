@@ -527,8 +527,8 @@ SHALL be an error (`{"error": …}` with exit 1 under `--json`).
 ### Requirement: REQ-CLI-013 config set
 
 `config set <key> [<value>]` SHALL set the key in the config of the current
-module, or of the module `--module` names (`branch_per_change` and
-`telemetry.*` always in the top level's config, which is the only one read for them), and print the key and the config's
+module, or of the module `--module` names (`branch_per_change`,
+`telemetry.*` and `harness.*` always in the top level's config, which is the only one read for them), and print the key and the config's
 path. The value SHALL come from the argument, or from the file `--file`
 names (`-` reads standard input); giving both, or neither, SHALL be refused
 before writing. An error SHALL leave the config unchanged.
@@ -570,6 +570,12 @@ before writing. An error SHALL leave the config unchanged.
 - **GIVEN** module `billing`
 - **WHEN** `config set telemetry.langfuse true --json` runs inside `billing`'s folder
 - **THEN** the top level's config has `telemetry.langfuse: true`, billing's config is unchanged, and the output names the top level's config
+
+#### Scenario: AC-CLI-013.8 The harness model from inside a module
+
+- **GIVEN** module `billing`
+- **WHEN** `config set harness.model gpt-4.1 --json` runs inside `billing`'s folder
+- **THEN** the top level's config has `harness.model: gpt-4.1`, billing's config is unchanged, and the output names the top level's config
 
 ### Requirement: REQ-CLI-014 Creating a capability's code folder
 
@@ -864,9 +870,9 @@ change; a change never reopened SHALL have no `reopened` in its `--json`.
 conversation, and SHALL say nothing for the user: the user starts or continues
 a change by sending a message to a peer, such as `@refine <request>`. Without the `harness` extra,
 it SHALL fail saying to install `specworks[harness]`, without naming a Python version. A
-model setting missing (REQ-HARNESS-010) SHALL fail naming the variable before
-the chat opens, and a missing key with no stored login SHALL say to run
-`specworks login copilot`. Every failure SHALL be `error: …` on stderr with exit 1. No
+model setting missing (REQ-HARNESS-010) SHALL fail before the chat opens: no
+model SHALL name `SPECWORKS_MODEL_MODEL` and `harness.model`, and a missing
+key with no stored login SHALL say to run `specworks login copilot`. Every failure SHALL be `error: …` on stderr with exit 1. No
 other command SHALL import the harness or its dependencies.
 
 #### Scenario: AC-CLI-022.1 Without the extra
@@ -880,6 +886,12 @@ other command SHALL import the harness or its dependencies.
 - **GIVEN** the extra installed, `SPECWORKS_MODEL_API_KEY` unset and no stored login
 - **WHEN** `specworks harness` runs
 - **THEN** it exits 1 naming `SPECWORKS_MODEL_API_KEY` and saying to run `specworks login copilot`, and no chat opens
+
+#### Scenario: AC-CLI-022.8 No model
+
+- **GIVEN** the extra installed, `SPECWORKS_MODEL_API_KEY` set, `SPECWORKS_MODEL_MODEL` unset and no `harness.model` in the config
+- **WHEN** `specworks harness` runs
+- **THEN** it exits 1 with `error: …` on stderr naming `SPECWORKS_MODEL_MODEL` and `harness.model`, and no chat opens
 
 #### Scenario: AC-CLI-022.5 Other commands stay light
 

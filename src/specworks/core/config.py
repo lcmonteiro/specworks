@@ -32,12 +32,14 @@ DEFAULT_TESTS_DIR = "tests"  # a module's default folder of capability test fold
 MAX_CONTEXT_BYTES = 50 * 1024
 CONFIG_KEYS = (
     "specworks", "context", "docs_dir", "tests_dir", "capabilities", "modules", "test_globs", "source_globs", "commands", "diagrams", "tools", "branch_per_change", "telemetry",
+    "harness",
 )
 CAPABILITY_KEYS = ("path", "prefix", "description", "tests")
 # The AI tool IDs `tools:` may list; the same keys, in the same order, as TOOLS in tools/skills.py (core never imports tools).
 TOOL_IDS: tuple[str, ...] = ("claude", "copilot")
 DIAGRAM_KEYS = ("theme", "dark_theme", "layout", "sketch", "pad")
 TELEMETRY_KEYS = ("langfuse", "host")
+HARNESS_KEYS = ("model",)
 
 
 @dataclass
@@ -244,6 +246,34 @@ def load_telemetry(raw: object, present: bool) -> TelemetryConfig | None:
     return TelemetryConfig(langfuse=langfuse, host=str(host).strip())
 
 
+@dataclass
+class HarnessConfig:
+    """
+    The top level's ``harness:`` block: the model the harness uses when ``SPECWORKS_MODEL_MODEL`` names none. Implements REQ-PROJ-003.
+    """
+
+    model: str = ""
+
+
+# @req REQ-PROJ-003
+def load_harness(raw: object, present: bool) -> HarnessConfig | None:
+    """
+    The ``harness:`` block; None when the key is absent.
+
+    Raises ``ConfigError`` naming ``harness`` or ``harness.model``. Implements REQ-PROJ-003.
+    """
+    if not present:
+        return None
+    if not isinstance(raw, dict):
+        raise ConfigError(f"'harness' must be a mapping ({', '.join(HARNESS_KEYS)})")
+    check_keys(raw, HARNESS_KEYS, "'harness'")
+    model = raw.get("model")
+    # An empty model would silently mean "no model"; clearing it is removing the line.
+    if not isinstance(model, str) or not model.strip():
+        raise ConfigError("'harness.model' must be a non-empty model id")
+    return HarnessConfig(model=model.strip())
+
+
 # @req REQ-PROJ-003, REQ-PROJ-032
 def check_telemetry_host(host: object) -> None:
     """
@@ -271,6 +301,7 @@ class Config:
     tools: list[str] | None = None  # the AI tools saved at the top level (TOOL_IDS); None when none is saved
     branch_per_change: bool = True  # whether `new` creates a branch per change; only the top level's is read (REQ-PROJ-026)
     telemetry: TelemetryConfig | None = None  # the top level's telemetry block; None when absent (REQ-PROJ-003)
+    harness: HarnessConfig | None = None  # the top level's harness block; None when absent (REQ-PROJ-003)
 
     @property
     def config_path(self) -> Path:
@@ -431,4 +462,5 @@ def load_config(root: Path) -> Config:
         tools=load_tools(raw.get("tools"), "tools" in raw),
         branch_per_change=load_branch_per_change(raw.get("branch_per_change"), "branch_per_change" in raw),
         telemetry=load_telemetry(raw.get("telemetry"), "telemetry" in raw),
+        harness=load_harness(raw.get("harness"), "harness" in raw),
     )

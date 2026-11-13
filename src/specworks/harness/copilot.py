@@ -151,6 +151,33 @@ class CopilotSession:
         """
         return self._api_base
 
+    # @req REQ-HARNESS-013
+    def default_model(self) -> str | None:
+        """
+        The id of the model the Copilot API marks as its default chat model, or None when it cannot tell.
+
+        Asks ``<api base>/models`` with the session token. Implements REQ-HARNESS-013.
+        """
+        token = self.token()
+        headers = {"Authorization": f"Bearer {token}", "Accept": "application/json", **EDITOR_HEADERS}
+        # The list is undocumented: any answer other than the expected shape means "no default", never an error with its text.
+        with _http(self._client) as client:
+            try:
+                response = client.get(f"{self.api_base.rstrip('/')}/models", headers=headers)
+                data = response.json().get("data") if response.status_code == 200 else None
+            except (httpx.HTTPError, ValueError, AttributeError):
+                return None
+        if not isinstance(data, list):
+            return None
+        entries = [entry for entry in data if isinstance(entry, dict) and isinstance(entry.get("id"), str) and entry["id"].strip()]
+        for entry in entries:
+            if entry.get("is_chat_default") is True:
+                return str(entry["id"])
+        # Some hosts (GitHub Enterprise) mark no default: take the picker's first usable model, a versatile one first.
+        usable = [entry for entry in entries if _usable(entry)]
+        versatile = [entry for entry in usable if entry.get("model_picker_category") == "versatile"]
+        return str((versatile or usable)[0]["id"]) if usable else None
+
 
 # @req REQ-HARNESS-011
 def device_login(
@@ -211,6 +238,15 @@ def device_login(
                 raise CopilotLoginError("could not finish the GitHub device login")
             return Login(token, ghe_host)
     raise CopilotLoginError("the GitHub login code expired")
+
+
+def _usable(entry: dict[str, Any]) -> bool:
+    """
+    Whether a model list entry is one the picker shows, with its policy enabled, and not a preview.
+    """
+    policy = entry.get("policy")
+    enabled = isinstance(policy, dict) and policy.get("state") == "enabled"
+    return entry.get("model_picker_enabled") is True and enabled and entry.get("preview") is not True
 
 
 @dataclass(frozen=True)

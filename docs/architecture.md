@@ -30,7 +30,7 @@ never import higher ones.
 - **harness** (`src/specworks/harness`, optional `harness` extra, Python 3.12+): runs the whole flow as a chatinho chat, one Deep Agent peer per
   skill, handing work over by message; the phase peers share the main
   checkout, `test` works in its own git worktree that only the user merges.
-  Uses project (changes, `.gitignore`), workflow (`merge_branch`) and
+  Uses project (changes, `.gitignore`, the `harness.model` config), workflow (`merge_branch`) and
   integrations (`read_skill`); only cli's `harness` and `login` commands import it.
 - Skills and templates (`src/specworks/skills`, `src/specworks/templates`) are
   packaged data with no capability yet; they run the CLI.
@@ -80,6 +80,10 @@ never import higher ones.
   per project, lives in the user's config dir, never in a project folder, since
   the harness agents read the checkout; a session token is never stored.
   (add-copilot-login)
+- **The harness model is named, then defaulted**: `SPECWORKS_MODEL_MODEL`, then
+  the top level's `harness.model` (project, shared through the repository),
+  then, with a Copilot login, Copilot's own default; the model never lives in
+  a login file. (add-copilot-default-model)
 - **Absolute imports only**: the package imports its own modules as
   `specworks.<...>`, never relatively; ruff's `TID252` with
   `ban-relative-imports = "all"` makes lint fail on a relative import in

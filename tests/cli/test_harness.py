@@ -73,6 +73,25 @@ def test_ac_cli_022_2_no_key(harness_project, tmp_path, monkeypatch):
     assert opened == []
 
 
+
+# @ac AC-CLI-022.8
+def test_ac_cli_022_8_no_model(harness_project, tmp_path, monkeypatch):
+    import chatinho
+
+    for variable in ("XDG_CONFIG_HOME", "APPDATA", "HOME", "USERPROFILE"):
+        monkeypatch.setenv(variable, str(tmp_path / "no-logins"))
+    monkeypatch.setenv("SPECWORKS_MODEL_API_KEY", "sk-secret")
+    monkeypatch.delenv("SPECWORKS_MODEL_MODEL", raising=False)
+    opened = []
+    monkeypatch.setattr(chatinho.ChatSession, "run", lambda self: opened.append(self))
+    monkeypatch.setattr(chatinho.ChatSession, "start", lambda self: opened.append(self))
+    result = runner.invoke(app, ["harness"])
+    assert result.exit_code == 1
+    assert result.stderr.startswith("error: ")
+    assert "SPECWORKS_MODEL_MODEL" in result.stderr and "harness.model" in result.stderr
+    assert "sk-secret" not in result.stderr
+    assert opened == []
+
 def opened_sessions(monkeypatch):
     """
     The sessions the command runs or starts, recorded instead of opening a terminal.
