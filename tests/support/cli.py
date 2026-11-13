@@ -1,4 +1,6 @@
-"""Helpers shared by the cli tests of several capabilities."""
+"""
+Helpers shared by the cli tests of several capabilities.
+"""
 
 import json
 
@@ -25,7 +27,9 @@ def run_json(*args):
 
 
 def make_new_project(tmp_path, monkeypatch):
-    """An empty folder in a git repository, before init."""
+    """
+    An empty folder in a git repository, before init.
+    """
     monkeypatch.chdir(tmp_path)
     init_repo(tmp_path)
     return tmp_path

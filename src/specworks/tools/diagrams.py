@@ -1,4 +1,5 @@
-"""Design diagrams: D2 sources rendered to SVG with one shared look.
+"""
+Design diagrams: D2 sources rendered to SVG with one shared look.
 
 A change keeps diagram sources next to its design::
 
@@ -34,7 +35,9 @@ STAMP_RE = re.compile(re.escape(STAMP).replace(r"\{\}", r"(?P<hash>[0-9a-f]{64})
 
 
 class DiagramError(SpecworksError):
-    """Raised when D2 is missing or fails to render a diagram."""
+    """
+    Raised when D2 is missing or fails to render a diagram.
+    """
 
 
 @dataclass
@@ -52,7 +55,9 @@ def env_d2() -> str | None:
 
 # @req REQ-INTEG-003
 def find_d2() -> tuple[str | None, str]:
-    """(path, where) of the d2 that renders: SPECWORKS_D2 if set, else pyd2's (None if pyd2 has none)."""
+    """
+    (path, where) of the d2 that renders: SPECWORKS_D2 if set, else pyd2's (None if pyd2 has none).
+    """
     if d2 := env_d2():
         return d2, "SPECWORKS_D2"
     try:
@@ -68,7 +73,9 @@ def diagrams_in(folder: Path) -> list[Diagram]:
 
 # @req REQ-INTEG-001
 def source_hash(diagram: Diagram, settings: DiagramSettings) -> str:
-    """Hash of the source text and the render settings: either changing makes the SVG stale."""
+    """
+    Hash of the source text and the render settings: either changing makes the SVG stale.
+    """
     digest = hashlib.sha256(diagram.source.read_bytes())
     digest.update("\0".join(settings.options().args()).encode())
     return digest.hexdigest()
@@ -76,7 +83,9 @@ def source_hash(diagram: Diagram, settings: DiagramSettings) -> str:
 
 # @req REQ-INTEG-002
 def state(diagram: Diagram, settings: DiagramSettings) -> str:
-    """``ok``, ``missing`` (no SVG) or ``stale`` (source or settings changed, or the SVG was not generated)."""
+    """
+    ``ok``, ``missing`` (no SVG) or ``stale`` (source or settings changed, or the SVG was not generated).
+    """
     if not diagram.svg.is_file():
         return "missing"
     match = STAMP_RE.search(diagram.svg.read_text(encoding="utf-8", errors="replace")[:4096])
@@ -112,5 +121,7 @@ def render(diagram: Diagram, settings: DiagramSettings) -> None:
 
 
 def referenced_images(markdown: str) -> list[str]:
-    """Relative image paths used in a markdown file (``![alt](path)``)."""
+    """
+    Relative image paths used in a markdown file (``![alt](path)``).
+    """
     return [m.group(1) for m in re.finditer(r"!\[[^\]]*\]\(\s*([^)\s]+)", markdown) if "://" not in m.group(1)]

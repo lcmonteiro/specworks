@@ -30,8 +30,8 @@ never import higher ones.
 - **harness** (`src/specworks/harness`, optional `harness` extra, Python 3.12+): runs the whole flow as a chatinho chat, one Deep Agent peer per
   skill, handing work over by message; the phase peers share the main
   checkout, `test` works in its own git worktree that only the user merges.
-  Uses project (changes, `.gitignore`), workflow (`merge_branch`) and
-  integrations (`read_skill`); only cli's `harness` command imports it.
+  Uses project (changes, `.gitignore`, the `harness.model` config), workflow (`merge_branch`) and
+  integrations (`read_skill`); only cli's `harness` and `login` commands import it.
 - Skills and templates (`src/specworks/skills`, `src/specworks/templates`) are
   packaged data with no capability yet; they run the CLI.
 
@@ -79,9 +79,18 @@ never import higher ones.
   (refine-on-main-and-compact)
 
 - **Optional capabilities are imported lazily**: a capability that needs an
-  extra (harness) is imported only inside the command that runs it, so
-  `import specworks` and every other command work without the extra, and the
-  command says which extra to install. (add-chatinho-harness)
+  extra (harness) is imported only inside the command that runs it (`harness`,
+  `login`), so `import specworks` and every other command work without the
+  extra, and the command says which extra to install. (add-chatinho-harness,
+  add-copilot-login)
+- **Logins are stored outside the project**: the Copilot OAuth token, global or
+  per project, lives in the user's config dir, never in a project folder, since
+  the harness agents read the checkout; a session token is never stored.
+  (add-copilot-login)
+- **The harness model is named, then defaulted**: `SPECWORKS_MODEL_MODEL`, then
+  the top level's `harness.model` (project, shared through the repository),
+  then, with a Copilot login, Copilot's own default; the model never lives in
+  a login file. (add-copilot-default-model)
 - **Absolute imports only**: the package imports its own modules as
   `specworks.<...>`, never relatively; ruff's `TID252` with
   `ban-relative-imports = "all"` makes lint fail on a relative import in
@@ -120,3 +129,5 @@ never import higher ones.
 - **Workspace**: where a harness peer works: the main checkout, shared by the
   phase peers, or the `test` peer's git worktree on `peer/test`, merged back
   by the user with `/merge test`.
+- **Login**: a stored GitHub OAuth token for Copilot, global (every project) or
+  local (one project), made by `specworks login copilot`.

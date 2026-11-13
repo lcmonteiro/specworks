@@ -21,6 +21,7 @@ result as text or JSON.
   `telemetry push`.
 - `harness.py`: `harness`, which imports the optional harness capability only
   when it runs.
+- `login.py`: `login`, which does the same for the Copilot login.
 - `__init__.py`: `main` and the order commands are registered in.
 
 ![cli](diagrams/cli-blocks.svg)
@@ -176,6 +177,19 @@ opens the chat empty and the user messages a peer to start or continue a
 change; a leftover argument gets the command line's own usage error.
 (harness-chat-only)
 
+### `login` stores a Copilot login for the harness
+
+`login.py` registers `specworks login copilot [--local | --global] [--force]
+[--ghe-host <host>] [--json]` and imports `specworks.harness.copilot` inside
+its body, like `harness`, saying `specworks login needs the harness extra:
+install specworks[harness]` when the import fails. The scope is global unless
+`--local`; both together is the command line's usage error; `--local` resolves
+the workspace through `workspace()`, so with no project the answer is
+`{"root": null}`. The verification address and code go to stderr, so stdout is
+only the result, `{"provider": "copilot", "scope": ..., "reused": ...}` or one
+line. Another provider fails naming `copilot`. No token appears in any output.
+(add-copilot-login)
+
 ### Findings are written through `finding`, not by hand
 
 `specworks finding add|decide|done|close` write a change's check artifacts
@@ -213,8 +227,9 @@ refused before anything is read or written. The target is `--module` when
 given, else the current module, as in `capability add`, except for
 `branch_per_change`: only the top level's value is read, so it is always
 written to the top level's config, and the output's `config` and `module`
-name the top level; `telemetry.*` is written there too. `config get` was left out: `context` already prints the
-commands and context. (add-config-set, add-branch-default)
+name the top level; `telemetry.*` and `harness.*` are written there too. `config get` was left out: `context` already prints the
+commands and context. (add-config-set, add-branch-default,
+add-copilot-default-model)
 
 ### `spec find` is the specify skill's search
 
@@ -305,9 +320,11 @@ a second config format exists. (upgrade-project, dedupe-copilot-skills)
   `abandon`, `reopen`, `phase`, `skip-specs`, `instructions`, `task list|done|undo`,
   `check`, `trace`, `spec show|list|find`, `diagrams`, `gate`, `start`, `review`,
   `finding add|decide|done|close`, `cycle`, `merge`, `commit`, `validate`,
-  `close`, `run`, `telemetry push`, `harness`.
+  close`, `run`, `telemetry push`, `harness`, `login`.
 - `harness` (no argument or option, no `--json`; needs the `harness`
   extra) (REQ-CLI-022).
+- `login` (`provider`, `--local`, `--global`, `--force`, `--ghe-host`, `--json`;
+  needs the `harness` extra) (REQ-CLI-023).
 - `src/specworks/cli/telemetry.py`: `record(ws, module, change, event,
   started, **fields)`, `telemetry_state(ws) -> {"state", "host"}`,
   `telemetry_ids(module, change) -> {"traceId", "sessionId"}`,

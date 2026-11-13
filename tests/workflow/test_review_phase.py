@@ -1,4 +1,6 @@
-"""Review phase support: drift candidates (`specworks review`) and the review gate."""
+"""
+Review phase support: drift candidates (`specworks review`) and the review gate.
+"""
 
 import json
 import re
@@ -252,7 +254,9 @@ def test_gate_review_blocks_on_an_open_finding_of_unknown_type_even_in_a_build(r
 
 @pytest.fixture
 def on_main(project, monkeypatch):
-    """The planned project as a git repo whose work is committed on main: no feature branch."""
+    """
+    The planned project as a git repo whose work is committed on main: no feature branch.
+    """
     for key, value in {"GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t", "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@t"}.items():
         monkeypatch.setenv(key, value)
     git(project, "init", "-q", "-b", "main")
@@ -301,7 +305,9 @@ def test_a_change_from_the_first_commit_has_nothing_to_start_from(project, monke
 
 
 def delete_on_the_branch(repo):
-    """main gains a test file and a doc; the feature branch then deletes them and a source file."""
+    """
+    main gains a test file and a doc; the feature branch then deletes them and a source file.
+    """
     git(repo, "checkout", "-q", "main")
     (repo / "tests").mkdir(exist_ok=True)
     (repo / "tests/test_old.py").write_text("def test_old(): ...\n")

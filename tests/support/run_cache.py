@@ -1,4 +1,6 @@
-"""Helpers shared by the run_cache tests of several capabilities."""
+"""
+Helpers shared by the run_cache tests of several capabilities.
+"""
 
 import json
 import re
@@ -10,7 +12,9 @@ TESTS = "the test suite passes (commands.test)"
 
 
 def make_counted(repo, tmp_path_factory, key="test"):
-    """The repo with a ``commands.<key>`` command that counts its runs in a file outside the repo (so counting changes nothing)."""
+    """
+    The repo with a ``commands.<key>`` command that counts its runs in a file outside the repo (so counting changes nothing).
+    """
     counter = tmp_path_factory.mktemp("runs") / "count"
     counter.write_text("")
     command = f'"{sys.executable}" -c "open(r\'{counter}\', \'a\').write(\'x\')"'

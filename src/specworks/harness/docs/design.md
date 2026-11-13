@@ -25,6 +25,8 @@ peer works in its own git worktree, which only the user merges back with
 - `confine.py`: the push refusal and the shell's environment.
 - `backend.py`: `GitBackend` (`chat.jsonl`).
 - `model.py`: `model_from_env`.
+- `logins.py`: the stored Copilot login (`Login`, `LoginStore`, `config_dir`).
+- `copilot.py`: the device-flow login, the session token and `log_in`.
 
 ![harness](diagrams/harness-blocks.svg)
 
@@ -163,12 +165,68 @@ only reads. (harness-chat-only) The folder's `.gitignore` gains `chat.jsonl`
 through `ensure_ignored` (project). A write failure is logged and ignored.
 (add-chatinho-harness)
 
-### The model comes from the environment
+### The model comes from the environment, or from a Copilot login
 
 `model_from_env` builds `ChatOpenAI` from `SPECWORKS_MODEL_API_KEY`,
 `SPECWORKS_MODEL_MODEL` and the optional `SPECWORKS_MODEL_BASE_URL`; a missing
-one raises `ModelSettingsError` naming the variable, never a value.
-(add-chatinho-harness)
+one raises `ModelSettingsError` naming the variable, never a value, and for
+the key saying to run `specworks login copilot`. (add-chatinho-harness,
+add-copilot-login) When the key is missing or empty, it uses the stored Copilot
+login of the project (local before global) instead; an explicit key makes no
+stored-login read and no request. (add-copilot-login)
+
+The model name is `SPECWORKS_MODEL_MODEL`, else `harness.model` of the top
+level's config (read from `root`; no root or no config means none), else, only
+with a stored login, `CopilotSession.default_model()` after the first token
+exchange; with none, `ModelSettingsError(MODEL_NAME)` says `SPECWORKS_MODEL_MODEL
+is not set and the config has no harness.model`. A named model is never checked
+against Copilot's list, so naming one costs no request. (add-copilot-default-model)
+
+### Copilot's default model comes from its model list
+
+`default_model()` asks `GET <api base>/models` with the session token and takes
+the entry marked `is_chat_default`; hosts that mark none (bmw.ghe.com) get the
+first usable picker model (`model_picker_enabled`, `policy.state` `enabled`,
+not `preview`), a `versatile` one first. The list is undocumented, so any other
+answer (an error, another shape, nothing usable) is None, never an error with
+its text, and the caller's error names both settings. Alternatives: a fixed
+model name (breaks when an enterprise disables it) and storing the model with
+the login (not shareable through the project). (add-copilot-default-model)
+
+### The Copilot login lives in the harness and outside the project
+
+`copilot.py` (device flow, token exchange, `log_in`) and `logins.py` (the
+stored login) sit here because only the harness uses them and they share its
+extra; `integrations` must stay free of the extra. Only the long-lived OAuth
+token is stored, in the user's config dir (`$XDG_CONFIG_HOME` or `~/.config`,
+`%APPDATA%` on Windows) under `specworks/copilot/`: `global.json`, and
+`projects/<sha256 of the project root path, 16 hex>.json` for a local login.
+Folders are 0700 and files 0600, written by rename so a failed write keeps the
+earlier login. A local login is never kept inside the project, because a
+peer's file tools read its checkout (inside `.specworks/` was rejected, and
+the OS keychain for its per-OS dependency). Moving a project loses its local
+login. (add-copilot-login)
+
+### The session token is a callable key, exchanged with sync `httpx`
+
+The key given to `ChatOpenAI` is `CopilotSession.token`, a sync callable that
+returns the cached session token and exchanges a new one 60 seconds before it
+expires (a lock keeps two threads from exchanging at once); a sync callable
+serves both of the model's clients, where the source's async provider failed
+the sync one. The first exchange runs when the model is built, giving the API
+base (`endpoints.api`, else `https://api.githubcopilot.com`) and an early
+error for a login GitHub no longer accepts. The session token is never stored,
+and no error, repr or log carries a token. (add-copilot-login)
+
+### Logging in reuses a working login
+
+`log_in` loads the scope's login and, unless forced, tries one exchange:
+success is a reuse and nothing is written; a rejected token (401/403) starts
+the device flow; a network error is an error. The device flow does not open a
+browser: it calls `prompt(uri, code)` (stderr in the CLI), polls at GitHub's
+interval (+5 s on `slow_down`) and fails on denial, expiry or its deadline,
+leaving the earlier login as it was. A login stored for one GitHub host is
+reused for another unless `--force` is given. (add-copilot-login)
 
 ## Interfaces
 
@@ -202,8 +260,19 @@ one raises `ModelSettingsError` naming the variable, never a value.
   for an empty or unreadable folder); `GitBackend(ws, module)` with `change`
   (`None` until the run's change is found), `listen`, `forget` (drops held
   lines only), `to_line(msg)`.
-- `model.py`: `MODEL_KEY`, `MODEL_NAME`, `MODEL_BASE_URL`,
-  `ModelSettingsError(variable)`, `model_from_env(env=None)`.
+- `model.py`: `MODEL_KEY`, `MODEL_NAME`, `MODEL_BASE_URL`, `MODEL_CONFIG_KEY`
+  (`harness.model`), `ModelSettingsError(variable)`,
+  `model_from_env(env=None, *, root=None, store=None, client=None)`;
+  `run_harness(ws)` passes `root=ws.root`.
+- `logins.py`: `Scope` (`"global"` or `"local"`), `Login(oauth_token, ghe_host="")`
+  (token hidden from `repr`), `config_dir(env=None) -> Path`,
+  `LoginStore(base=None)` with `save(scope, root, login)`, `load(scope, root)`
+  and `find(root)` (local, then global).
+- `copilot.py`: `EDITOR_HEADERS`, `CopilotLoginError(message, *, login_again=False)`,
+  `CopilotSession(login, *, client=None, now=time.time)` with `token()`,
+  `api_base` and `default_model() -> str | None`, `device_login(ghe_host, prompt, *, client, sleep, now) -> Login`,
+  `LoginResult(scope, reused)`, `log_in(scope, root, *, force, ghe_host, prompt,
+  store, client, sleep, now) -> LoginResult`.
 
 ## Constraints
 

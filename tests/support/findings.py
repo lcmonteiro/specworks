@@ -1,4 +1,6 @@
-"""Helpers shared by the findings tests of several capabilities."""
+"""
+Helpers shared by the findings tests of several capabilities.
+"""
 
 from helpers import REF
 from specworks.cli.output import resolve_change
@@ -48,7 +50,9 @@ def validation_path(root):
 
 
 def write_validation_md(root, findings, summary=""):
-    """validation.md with ``findings`` (lines of Markdown) under ``## Findings`` and ``summary`` under ``## Summary``."""
+    """
+    validation.md with ``findings`` (lines of Markdown) under ``## Findings`` and ``summary`` under ``## Summary``.
+    """
     validation_path(root).write_text(f"# Validation: {REF}\n\n## Findings\n\n{findings}\n\n## Summary\n\n{summary}", encoding="utf-8")
 
 
@@ -61,7 +65,9 @@ def inspection_path(root):
 
 
 def write_inspection(root, findings):
-    """inspection.md with ``findings`` (lines of Markdown) under ``## Findings``."""
+    """
+    inspection.md with ``findings`` (lines of Markdown) under ``## Findings``.
+    """
     inspection_path(root).write_text(f"# Inspection: {REF}\n\n## Findings\n\n{findings}\n\n## Summary\n\n3 of 5 blocks walked\n", encoding="utf-8")
 
 
@@ -70,6 +76,8 @@ def read_inspection(root):
 
 
 def change_files(root):
-    """Every file of the change folder and its bytes: what a refused write must leave as it was."""
+    """
+    Every file of the change folder and its bytes: what a refused write must leave as it was.
+    """
     folder = root / ".specworks/changes/active" / REF
     return {str(p.relative_to(folder)): p.read_bytes() for p in sorted(folder.rglob("*")) if p.is_file()}

@@ -1,4 +1,6 @@
-"""`specworks validate --write`: validate, then write validation.md and print its path."""
+"""
+`specworks validate --write`: validate, then write validation.md and print its path.
+"""
 
 import re
 

@@ -81,8 +81,10 @@ typecheck, build or format to a command string, a `test_scoped` command
 without the `{paths}` placeholder, diagram settings that are not a known theme, a
 known layout (elk or dagre), a true/false sketch and a non-negative pad,
 `tools` that is not a non-empty list of known tool IDs or is set in a module's
-config, and `telemetry` that is not a mapping of `langfuse` (true or false)
-and `host` (an `http://` or `https://` URL) or is set in a module's config.
+config, `telemetry` that is not a mapping of `langfuse` (true or false)
+and `host` (an `http://` or `https://` URL) or is set in a module's config,
+and `harness` that is not a mapping of `model` (a non-empty string) or is set
+in a module's config.
 
 #### Scenario: AC-PROJ-003.1 Paths stay inside the project
 
@@ -133,6 +135,16 @@ and `host` (an `http://` or `https://` URL) or is set in a module's config.
 
 - **WHEN** a module's config sets `telemetry`
 - **THEN** loading fails saying `telemetry` is set in the top level's config
+
+#### Scenario: AC-PROJ-003.11 Harness settings
+
+- **WHEN** `harness` is not a mapping, has a key other than `model`, or `harness.model` is not a string or is empty
+- **THEN** loading fails naming `harness` or `harness.model`; `{model: gpt-4.1}` loads and gives that model
+
+#### Scenario: AC-PROJ-003.12 Harness settings in a module
+
+- **WHEN** a module's config sets `harness`
+- **THEN** loading fails saying `harness` is set in the top level's config
 
 ### Requirement: REQ-PROJ-004 Capabilities in the config
 
@@ -765,7 +777,7 @@ one line under `commands:`, replacing that key's line when there is one; the
 context SHALL be a block replacing the `context:` entry there. An empty value
 SHALL clear the key. `branch_per_change` SHALL take `true` or `false` and be
 one top-level line, replacing the one there. The telemetry settings are set as
-REQ-PROJ-032 says. Any other key SHALL be refused before writing, naming the
+REQ-PROJ-032 says, and the harness model as REQ-PROJ-035 says. Any other key SHALL be refused before writing, naming the
 keys it accepts. A context larger than the config's size limit SHALL be
 refused before writing, naming the limit. A `test_scoped` command without `{paths}` SHALL be
 refused before writing, saying it must hold `{paths}`. When the edit would not load with the new value and every
@@ -815,7 +827,7 @@ say to set the key by hand.
 
 #### Scenario: AC-PROJ-025.8 An unknown key
 
-- **WHEN** `commands.unit`, `docs_dir` or `telemetry.secret_key` is set
+- **WHEN** `commands.unit`, `docs_dir`, `telemetry.secret_key` or `harness.api_key` is set
 - **THEN** it is refused naming the keys it accepts, and the config file is unchanged
 
 #### Scenario: AC-PROJ-025.9 An entry the text edit cannot change
@@ -1148,3 +1160,27 @@ SHALL be read as never reopened.
 - **GIVEN** a change whose metadata has no `reopened`
 - **WHEN** it is read
 - **THEN** it loads, with no reopen entries
+
+### Requirement: REQ-PROJ-035 Setting the harness model
+
+The system SHALL set `harness.model` (a model id) in a project's config,
+editing it as text and keeping the user's comments and other entries: one
+line under `harness:`, replacing that key's line when there is one, and a
+`harness:` entry added when there is none. An empty value SHALL clear it.
+
+#### Scenario: AC-PROJ-035.1 The model set with the comments kept
+
+- **GIVEN** the default config written by `init`
+- **WHEN** `harness.model` is set to `gpt-4.1`
+- **THEN** the config loads with that harness model, has one `harness:` entry with one `model:` line, and its comments are still there
+
+#### Scenario: AC-PROJ-035.2 Replaced and cleared
+
+- **GIVEN** a config whose `harness.model` is `gpt-4.1`
+- **WHEN** `harness.model` is set to `claude-sonnet-4`, then to an empty value
+- **THEN** the config first loads with `claude-sonnet-4` and one `model:` line, then with no harness model
+
+#### Scenario: AC-PROJ-035.3 A model id with YAML characters
+
+- **WHEN** `harness.model` is set to `org/model: v2 # beta`
+- **THEN** the config loads with exactly that harness model

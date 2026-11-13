@@ -1,4 +1,5 @@
-"""The Langfuse client: telemetry settings from the config and the environment, and sending a change's unsent events.
+"""
+The Langfuse client: telemetry settings from the config and the environment, and sending a change's unsent events.
 
 Only the ``SPECWORKS_LANGFUSE_*`` variables are read, never the plain ``LANGFUSE_*`` ones, and the keys
 are never written, printed or put in an error. Sending uses the public ingestion API with the standard library only.
@@ -32,7 +33,8 @@ ENV_HOST = "SPECWORKS_LANGFUSE_HOST"
 
 @dataclass(frozen=True)
 class LangfuseSettings:
-    """Whether telemetry is ``on``, opted in with ``keys missing`` (named in ``missing``), or ``off``; the keys stay out of ``repr``.
+    """
+    Whether telemetry is ``on``, opted in with ``keys missing`` (named in ``missing``), or ``off``; the keys stay out of ``repr``.
 
     Implements REQ-INTEG-008.
     """
@@ -46,7 +48,8 @@ class LangfuseSettings:
 
 # @req REQ-INTEG-008
 def langfuse_settings(config: TelemetryConfig | None, env: Mapping[str, str] | None = None) -> LangfuseSettings:
-    """The telemetry settings from the top level's ``telemetry`` block and ``env`` (``os.environ`` when None).
+    """
+    The telemetry settings from the top level's ``telemetry`` block and ``env`` (``os.environ`` when None).
 
     Implements REQ-INTEG-008.
     """
@@ -64,7 +67,8 @@ def langfuse_settings(config: TelemetryConfig | None, env: Mapping[str, str] | N
 
 @dataclass(frozen=True)
 class SendResult:
-    """How many events were sent, how many are still queued, and why not all were sent (None when they were).
+    """
+    How many events were sent, how many are still queued, and why not all were sent (None when they were).
 
     Implements REQ-INTEG-009.
     """
@@ -76,7 +80,8 @@ class SendResult:
 
 # @req REQ-INTEG-009
 def send_events(change: Change, settings: LangfuseSettings, trace: str, session: str, module_label: str) -> SendResult:
-    """Send the change's unsent events to Langfuse in batches, marking each accepted batch sent.
+    """
+    Send the change's unsent events to Langfuse in batches, marking each accepted batch sent.
 
     Stops at the first failed batch; never raises for a network or server failure. Implements REQ-INTEG-009.
     """
@@ -101,7 +106,9 @@ def send_events(change: Change, settings: LangfuseSettings, trace: str, session:
 
 
 def _post(url: str, token: str, body: dict) -> str | None:
-    """POST ``body`` as JSON; None when the server accepts it (2xx), else a reason that never holds the keys."""
+    """
+    POST ``body`` as JSON; None when the server accepts it (2xx), else a reason that never holds the keys.
+    """
     where = urllib.parse.urlsplit(url).netloc or url
     try:
         request = urllib.request.Request(
@@ -123,13 +130,17 @@ def _post(url: str, token: str, body: dict) -> str | None:
 
 
 def _trace_item(trace: str, session: str, module_label: str, first: dict) -> dict:
-    """The ``trace-create`` item: the change's trace, named and grouped by its ref."""
+    """
+    The ``trace-create`` item: the change's trace, named and grouped by its ref.
+    """
     body = {"id": trace, "name": session, "sessionId": session, "metadata": {"module": module_label}}
     return {"id": str(uuid.uuid4()), "type": "trace-create", "timestamp": _now(), "body": body}
 
 
 def _span_item(trace: str, event: dict) -> dict:
-    """A ``span-create`` item for one event line, its ID stable so a resend updates the same span."""
+    """
+    A ``span-create`` item for one event line, its ID stable so a resend updates the same span.
+    """
     at = str(event.get("at", ""))
     metadata = {key: value for key, value in event.items() if key not in ("at", "event", "line")}
     body = {
@@ -144,7 +155,9 @@ def _span_item(trace: str, event: dict) -> dict:
 
 
 def _start(at: str, ms: object) -> str:
-    """``at`` minus ``ms`` milliseconds, in UTC; ``at`` itself when either is not usable."""
+    """
+    ``at`` minus ``ms`` milliseconds, in UTC; ``at`` itself when either is not usable.
+    """
     try:
         end = datetime.fromisoformat(at)
     except ValueError:

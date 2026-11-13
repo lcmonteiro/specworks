@@ -1,4 +1,6 @@
-"""Validate writes validation.md (`specworks validate --write`): a finding per failed blocking check, kept in step with the checks."""
+"""
+Validate writes validation.md (`specworks validate --write`): a finding per failed blocking check, kept in step with the checks.
+"""
 
 import difflib
 import re
@@ -28,14 +30,18 @@ def reviewed(repo):
 
 
 def failing(repo):
-    """An open [code] task (1.2) and a criterion with no @ac test (AC-AUTH-003.2)."""
+    """
+    An open [code] task (1.2) and a criterion with no @ac test (AC-AUTH-003.2).
+    """
     run_json("task", "undo", "1.2", "--change", REF)
     write_tests(repo, "AC-AUTH-003.1", "AC-AUTH-002.1")
     return repo
 
 
 def write(root, base="main"):
-    """Run validate with the write, as `specworks validate --write` does: the checks after the write, and the path."""
+    """
+    Run validate with the write, as `specworks validate --write` does: the checks after the write, and the path.
+    """
     ws = load_workspace(root)
     module, change = resolve_change(ws, REF)
     return write_validation(GateContext(ws, module, change, base=base))
@@ -47,14 +53,18 @@ def findings(root):
 
 
 def section(text, title):
-    """The text under ``## <title>``, up to the next ``##`` heading, without HTML comments."""
+    """
+    The text under ``## <title>``, up to the next ``##`` heading, without HTML comments.
+    """
     found = re.search(rf"(?ms)^## {title}\s*$(.*?)(?=^## |\Z)", text)
     assert found, text
     return re.sub(r"(?s)<!--.*?-->", "", found.group(1)).strip()
 
 
 def block(text, finding_id):
-    """The lines of a finding's block: its checkbox line and the indented lines under it."""
+    """
+    The lines of a finding's block: its checkbox line and the indented lines under it.
+    """
     lines = text.splitlines()
     start = next(i for i, line in enumerate(lines) if re.match(rf"- \[[ x]\] {finding_id}\b", line))
     end = start + 1
@@ -100,7 +110,9 @@ def test_ac_flow_019_2_a_passing_validate_writes_none_and_pass(repo):
 
 
 def changed_lines(old, new):
-    """The (removed, added) lines from ``old`` to ``new``."""
+    """
+    The (removed, added) lines from ``old`` to ``new``.
+    """
     removed, added = [], []
     for line in difflib.ndiff(old.splitlines(), new.splitlines()):
         if line.startswith("- "):
@@ -131,7 +143,9 @@ def test_ac_flow_019_3_a_rerun_after_a_fix(repo):
 
 # @ac AC-FLOW-019.3
 def test_ac_flow_019_3_a_rerun_with_another_base(repo):
-    """A check whose name carries the base (files accounted for in review.md): a rerun with another base finds the same V1."""
+    """
+    A check whose name carries the base (files accounted for in review.md): a rerun with another base finds the same V1.
+    """
     reviewed(repo)
     (repo / "src/auth/audit.py").write_text("def audit(): ...\n")  # untagged, not accounted for in review.md
     write(repo)

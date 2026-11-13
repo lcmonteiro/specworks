@@ -1,4 +1,6 @@
-"""Archived changes: abandon, list --archived, status, and names an archived change keeps."""
+"""
+Archived changes: abandon, list --archived, status, and names an archived change keeps.
+"""
 
 import shutil
 
@@ -76,7 +78,9 @@ def test_a_leftover_copy_of_an_archived_change_is_flagged(project):
 
 
 def archive_files(root):
-    """Every file of the archived change and its bytes: what a refused command must leave as it was."""
+    """
+    Every file of the archived change and its bytes: what a refused command must leave as it was.
+    """
     folder = root / ARCHIVED
     return {str(p.relative_to(folder)): p.read_bytes() for p in sorted(folder.rglob("*")) if p.is_file()}
 

@@ -195,7 +195,9 @@ def test_capability_add_refuses_a_taken_path(workspace):
 
 
 def link_module(workspace, name, target):
-    """Link the folder ``target`` as module ``name`` of the top level, through a symlink called ``name``."""
+    """
+    Link the folder ``target`` as module ``name`` of the top level, through a symlink called ``name``.
+    """
     try:
         (workspace / name).symlink_to(target, target_is_directory=True)
     except OSError:  # Windows without the symlink privilege

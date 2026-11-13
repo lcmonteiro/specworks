@@ -1,4 +1,6 @@
-"""Writing review findings: the review.md writers and `specworks finding`."""
+"""
+Writing review findings: the review.md writers and `specworks finding`.
+"""
 
 import json
 
@@ -84,7 +86,9 @@ FIX = "-    return None\n+    revoke(old)\n+    return new_token\n"
 
 
 def fenced(text, lang):
-    """The lines of the fence marked ``lang`` under the ``**Suggestion**:`` line, without their indentation."""
+    """
+    The lines of the fence marked ``lang`` under the ``**Suggestion**:`` line, without their indentation.
+    """
     lines = text.splitlines()
     at = lines.index("  - **Suggestion**:")
     opener = lines[at + 1]

@@ -1,5 +1,7 @@
-"""Writing the config file: the commented default written by `specworks init`, and entries
-added by `specworks module add` / `specworks capability add` (comments and order kept)."""
+"""
+Writing the config file: the commented default written by `specworks init`, and entries
+added by `specworks module add` / `specworks capability add` (comments and order kept).
+"""
 
 from __future__ import annotations
 
@@ -27,8 +29,10 @@ from specworks.core.config import (
 from specworks.core.files import read_text
 from specworks.core.validators import validate_capability_name, validate_module_name, validate_prefix, validate_relative
 
-SETTABLE_KEYS: tuple[str, ...] = ("context", *(f"commands.{key}" for key in COMMAND_KEYS), "branch_per_change", *(f"telemetry.{key}" for key in TELEMETRY_KEYS))
-"""The keys `specworks config set` writes, in the order an error names them. Implements REQ-PROJ-025."""
+SETTABLE_KEYS: tuple[str, ...] = ("context", *(f"commands.{key}" for key in COMMAND_KEYS), "branch_per_change", *(f"telemetry.{key}" for key in TELEMETRY_KEYS), "harness.model")
+"""
+The keys `specworks config set` writes, in the order an error names them. Implements REQ-PROJ-025.
+"""
 
 # @req REQ-PROJ-026, REQ-PROJ-027
 DEFAULT_CONFIG = """\
@@ -123,7 +127,8 @@ def write_default_config(root: Path, diagram_theme: str | None = None) -> Path:
 
 # @req REQ-PROJ-008
 def add_module_entry(root: Path, name: str, path: str) -> None:
-    """Add ``name: path`` under ``modules:`` in the project's config, keeping the user's comments.
+    """
+    Add ``name: path`` under ``modules:`` in the project's config, keeping the user's comments.
 
     The file is edited as text (a YAML dump would drop comments) and re-read to
     make sure the edit produced the expected mapping.
@@ -142,7 +147,8 @@ def add_module_entry(root: Path, name: str, path: str) -> None:
 
 # @req REQ-PROJ-008
 def _insert_entry(root: Path, key: str, entry: list[str], applied) -> None:
-    """Append ``entry`` lines to the ``key:`` block of the config as text (keeping comments), then re-read to check.
+    """
+    Append ``entry`` lines to the ``key:`` block of the config as text (keeping comments), then re-read to check.
 
     The check also requires every entry already under ``key`` to survive: a block the
     text edit does not understand (e.g. ``capabilities: {auth: src/auth}``) would
@@ -183,7 +189,9 @@ def _insert_entry(root: Path, key: str, entry: list[str], applied) -> None:
 
 # @req REQ-PROJ-008
 def add_capability_entry(root: Path, name: str, path: str, prefix: str = "", description: str = "") -> None:
-    """Register a capability (name -> code path) in the config at ``root``, keeping the user's comments."""
+    """
+    Register a capability (name -> code path) in the config at ``root``, keeping the user's comments.
+    """
     validate_capability_name(name)
     path = validate_relative(path, f"capability '{name}' path")
     validate_prefix(prefix)
@@ -204,7 +212,8 @@ def add_capability_entry(root: Path, name: str, path: str, prefix: str = "", des
 
 # @req REQ-PROJ-022
 def save_tools(root: Path, ids: list[str]) -> None:
-    """Save ``tools: [<ids>]`` in the config at ``root``, replacing a ``tools:`` entry already there and keeping comments.
+    """
+    Save ``tools: [<ids>]`` in the config at ``root``, replacing a ``tools:`` entry already there and keeping comments.
 
     The file is edited as text and reloaded; when it does not load with those tools, it is
     restored and ``ConfigError`` says to set ``tools`` by hand.
@@ -234,9 +243,10 @@ def save_tools(root: Path, ids: list[str]) -> None:
         raise ConfigError(f"could not save the tools in {WORKFLOW_DIR}/{CONFIG_FILE} automatically; set them by hand:\n{entry}")
 
 
-# @req REQ-PROJ-025
+# @req REQ-PROJ-025, REQ-PROJ-035
 def set_config_value(root: Path, key: str, value: str) -> None:
-    """Set ``key`` (one of ``SETTABLE_KEYS``) to ``value`` in the config at ``root``, keeping the user's comments.
+    """
+    Set ``key`` (one of ``SETTABLE_KEYS``) to ``value`` in the config at ``root``, keeping the user's comments.
 
     An empty ``value`` clears the key (``branch_per_change`` takes only ``true`` or ``false``). The file is
     edited as text and reloaded; when it does not load with just that key changed, it is restored. Raises
@@ -271,6 +281,8 @@ def set_config_value(root: Path, key: str, value: str) -> None:
         _set_context(lines, text)
     elif key == "branch_per_change":
         _set_top_line(lines, key, value)
+    elif key == "harness.model" and not value:
+        _remove_block_entry(lines, "harness", "model")
     else:
         field, name = key.split(".")
         _set_block_line(lines, field, name, value, literal=key == "telemetry.langfuse")
@@ -279,9 +291,10 @@ def set_config_value(root: Path, key: str, value: str) -> None:
         expected = {**(block if isinstance(block, dict) else {}), name: written}
     config_file.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
+    after = {k: v for k, v in before.items() if k != "harness"} if key == "harness.model" and not value else {**before, field: expected}
     try:
         load_config(root)
-        ok = yaml.safe_load(read_text(config_file)) == {**before, field: expected}
+        ok = yaml.safe_load(read_text(config_file)) == after
     except (ConfigError, yaml.YAMLError):
         ok = False
     if not ok:
@@ -290,7 +303,9 @@ def set_config_value(root: Path, key: str, value: str) -> None:
 
 
 def _block_end(lines: list[str], start: int) -> int:
-    """The end of the block whose header is ``lines[start]``: its indented and blank lines, without the trailing blank ones."""
+    """
+    The end of the block whose header is ``lines[start]``: its indented and blank lines, without the trailing blank ones.
+    """
     end = start + 1
     while end < len(lines) and (lines[end].startswith((" ", "\t")) or not lines[end].strip()):
         end += 1
@@ -301,7 +316,8 @@ def _block_end(lines: list[str], start: int) -> int:
 
 # @req REQ-PROJ-025, REQ-PROJ-032
 def _set_block_line(lines: list[str], block: str, name: str, value: str, literal: bool = False) -> None:
-    """Write ``name: value`` as one line of the ``block:`` mapping (``commands``, ``telemetry``), replacing that key's line or adding one.
+    """
+    Write ``name: value`` as one line of the ``block:`` mapping (``commands``, ``telemetry``), replacing that key's line or adding one.
 
     ``literal`` writes ``value`` as YAML (``true``); otherwise it is written so that it loads back as that text.
     """
@@ -328,9 +344,28 @@ def _set_block_line(lines: list[str], block: str, name: str, value: str, literal
     lines += ["", f"{block}:", f"  {entry}"]
 
 
+# @req REQ-PROJ-035
+def _remove_block_entry(lines: list[str], block: str, name: str) -> None:
+    """
+    Remove ``name``'s line from the ``block:`` mapping, and the ``block:`` line too once it holds nothing else.
+    """
+    header = re.compile(rf"^{re.escape(block)}:\s*(#.*)?$")
+    for i, line in enumerate(lines):
+        if header.match(line):
+            end = _block_end(lines, i)
+            kept = [entry for entry in lines[i + 1 : end] if not re.match(rf"^[ \t]+{re.escape(name)}:(\s|$)", entry)]
+            if any(entry.strip() and not entry.lstrip().startswith("#") for entry in kept):
+                lines[i + 1 : end] = kept
+            else:
+                del lines[i:end]
+            return
+
+
 # @req REQ-PROJ-025
 def _set_top_line(lines: list[str], key: str, value: str) -> None:
-    """Write ``key: value`` as one top-level line, replacing the uncommented ``key:`` line or appending one."""
+    """
+    Write ``key: value`` as one top-level line, replacing the uncommented ``key:`` line or appending one.
+    """
     for i, line in enumerate(lines):
         if re.match(rf"^{re.escape(key)}:", line):
             lines[i] = f"{key}: {value}"
@@ -340,7 +375,9 @@ def _set_top_line(lines: list[str], key: str, value: str) -> None:
 
 # @req REQ-PROJ-025
 def _set_context(lines: list[str], text: str) -> None:
-    """Write ``text`` as the ``context: |`` block, replacing the ``context:`` entry or adding one."""
+    """
+    Write ``text`` as the ``context: |`` block, replacing the ``context:`` entry or adding one.
+    """
     body = [f"  {line}" if line else "" for line in text.split("\n")] if text else []
     # A first line that starts with a space would set the block's indent: give it explicitly.
     entry = ["context: |2" if text.lstrip("\n").startswith(" ") else "context: |", *body]

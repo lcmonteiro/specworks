@@ -1,4 +1,6 @@
-"""The harness session: the user, one skill peer per packaged skill, the git backend, the workspaces and their commands."""
+"""
+The harness session: the user, one skill peer per packaged skill, the git backend, the workspaces and their commands.
+"""
 
 from __future__ import annotations
 
@@ -19,7 +21,8 @@ from specworks.harness.workspaces import MergeCommand, SpecworksWorktrees
 # @req REQ-HARNESS-006
 # @req REQ-CLI-022
 def build_harness(ws: Workspace, model: BaseChatModel, *, frontend: Any = None) -> ChatSession:
-    """The harness session, with an empty conversation and nothing said for the user; ``frontend=None`` builds the terminal.
+    """
+    The harness session, with an empty conversation and nothing said for the user; ``frontend=None`` builds the terminal.
 
     Implements REQ-HARNESS-001, REQ-HARNESS-006, REQ-CLI-022.
     """
@@ -43,6 +46,8 @@ def build_harness(ws: Workspace, model: BaseChatModel, *, frontend: Any = None) 
 
 # @req REQ-CLI-022
 def run_harness(ws: Workspace) -> None:
-    """Read the model (``model_from_env()``, before anything opens), then build and run the harness. Implements REQ-CLI-022."""
-    model = model_from_env()
+    """
+    Read the model (``model_from_env()``, before anything opens), then build and run the harness. Implements REQ-CLI-022.
+    """
+    model = model_from_env(root=ws.root)
     build_harness(ws, model).run()

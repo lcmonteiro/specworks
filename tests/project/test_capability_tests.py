@@ -1,4 +1,6 @@
-"""A capability's test folder, the scoped test command, and the review gate running only the touched capabilities' tests."""
+"""
+A capability's test folder, the scoped test command, and the review gate running only the touched capabilities' tests.
+"""
 
 import os
 import re
@@ -14,7 +16,9 @@ from support.capability_tests import add_billing_module, commands_block, make_lo
 
 
 def quoted(path):
-    """A folder quoted for the platform's shell, as the scoped command fills it in."""
+    """
+    A folder quoted for the platform's shell, as the scoped command fills it in.
+    """
     return subprocess.list2cmdline([path]) if os.name == "nt" else shlex.quote(path)
 
 

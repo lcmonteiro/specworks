@@ -1,4 +1,5 @@
-"""Findings of a change's check artifacts (review.md, validation.md, inspection.md): reading them, routing them, and writing them.
+"""
+Findings of a change's check artifacts (review.md, validation.md, inspection.md): reading them, routing them, and writing them.
 
 A check artifact (``artifacts.CheckArtifact``) holds findings whose IDs start with its letter (``R1`` in review.md,
 ``V1`` in validation.md, ``I1`` in inspection.md). Every one is read the same way and written by the same commands, which read their edit
@@ -52,7 +53,9 @@ FINDING_RE = re.compile(FINDING_PATTERN.format(letter="R"))  # review.md's
 # @req REQ-FLOW-018
 @cache
 def _finding_re(letter: str) -> re.Pattern[str]:
-    """``FINDING_RE`` for a check artifact's letter: a checkbox with another letter's ID is not one of its findings."""
+    """
+    ``FINDING_RE`` for a check artifact's letter: a checkbox with another letter's ID is not one of its findings.
+    """
     return re.compile(FINDING_PATTERN.format(letter=re.escape(letter)))
 CHECKBOX_RE = re.compile(r"^\s*(?:[-*+]|\d+[.)])\s*\[[^\]]?\]")
 TYPE_RE = re.compile(r"\*\*([A-Za-z_-]+)\*\*")
@@ -75,7 +78,9 @@ LINE_STARTS = (re.compile(_BULLET), re.compile(_BULLET + r"\*\*[A-Za-z][\w' -]*(
 
 # @req REQ-FLOW-010
 def _line_start(line: str, form: re.Pattern[str]) -> re.Match[str] | None:
-    """``form`` where ``line``'s text starts (after the bullet, or after a bold label), else None: later on the line it is text."""
+    """
+    ``form`` where ``line``'s text starts (after the bullet, or after a bold label), else None: later on the line it is text.
+    """
     for start in LINE_STARTS:
         if (prefix := start.match(line)) and (found := form.match(line, prefix.end())):
             return found
@@ -84,8 +89,10 @@ def _line_start(line: str, form: re.Pattern[str]) -> re.Match[str] | None:
 
 # @req REQ-FLOW-010
 def _route(line: str) -> tuple[str, bool] | None:
-    """The step a ``back to <step>:`` starting ``line``'s text routes to, and whether it is ``back to design only:``;
-    None when it has none. ``only`` after any other step is not a route."""
+    """
+    The step a ``back to <step>:`` starting ``line``'s text routes to, and whether it is ``back to design only:``;
+    None when it has none. ``only`` after any other step is not a route.
+    """
     back = _line_start(line, BACK_RE)
     if back is None:
         return None
@@ -95,14 +102,17 @@ def _route(line: str) -> tuple[str, bool] | None:
 
 # @req REQ-FLOW-010
 def _done_in(line: str) -> str | None:
-    """The step of a ``done in <step>:`` starting ``line``'s text, else None."""
+    """
+    The step of a ``done in <step>:`` starting ``line``'s text, else None.
+    """
     carried = _line_start(line, DONE_RE)
     return carried.group("phase").lower() if carried else None
 
 
 # @req REQ-FLOW-010
 def _next_step(done_in: str, design_only: bool = False, artifact: CheckArtifact | None = None) -> str:
-    """The step a finding needs once ``done_in`` carried out its proposal: review after design for a design-only finding.
+    """
+    The step a finding needs once ``done_in`` carried out its proposal: review after design for a design-only finding.
     After review, the step of the finding's check ``artifact`` when that is not review (validate for V, inspect for I),
     else validate; ``None``: validate after review, as before.
 
@@ -138,7 +148,9 @@ class Finding:
 
 @dataclass
 class FindingsDoc:
-    """A check artifact's findings as read; ``accounted`` and ``accounts_for`` are review.md's only (empty elsewhere)."""
+    """
+    A check artifact's findings as read; ``accounted`` and ``accounts_for`` are review.md's only (empty elsewhere).
+    """
 
     exists: bool
     artifact: CheckArtifact
@@ -151,13 +163,16 @@ class FindingsDoc:
         return [f for f in self.findings if not f.done]
 
     def accounts_for(self, path: str) -> bool:
-        """``path`` appears as a whole path under "Changed files without tags" (``src/a.py``, not ``src/a.py.bak``)."""
+        """
+        ``path`` appears as a whole path under "Changed files without tags" (``src/a.py``, not ``src/a.py.bak``).
+        """
         return re.search(rf"(?<![\w./-]){re.escape(path)}(?![\w./-])", self.accounted) is not None
 
 
 # @req REQ-FLOW-010
 def parse_findings(text: str, artifact: CheckArtifact) -> FindingsDoc:
-    """Findings of a check artifact's text (IDs with its letter), and review.md's "Changed files without tags" section;
+    """
+    Findings of a check artifact's text (IDs with its letter), and review.md's "Changed files without tags" section;
     HTML comments and code fences are ignored.
 
     Implements REQ-FLOW-010, REQ-FLOW-018.
@@ -221,13 +236,16 @@ def parse_findings(text: str, artifact: CheckArtifact) -> FindingsDoc:
 
 
 def read_findings(change: Change, artifact: CheckArtifact) -> FindingsDoc:
-    """The check artifact's findings in the change; ``exists=False`` when its file is missing."""
+    """
+    The check artifact's findings in the change; ``exists=False`` when its file is missing.
+    """
     path = change.path / artifact.file
     return parse_findings(read_text(path), artifact) if path.is_file() else FindingsDoc(exists=False, artifact=artifact)
 
 
 def read_all_findings(change: Change) -> list[FindingsDoc]:
-    """The findings of every check artifact of the change, in schema order (a missing file reads with ``exists=False``).
+    """
+    The findings of every check artifact of the change, in schema order (a missing file reads with ``exists=False``).
 
     Implements REQ-FLOW-018, REQ-FLOW-012.
     """
@@ -251,8 +269,10 @@ CHECKBOX_MARK_RE = re.compile(r"\[[ xX]?\]")
 
 
 class FindingError(SpecworksError):
-    """A refused write to a check artifact: an unknown artifact, finding, type or step, an empty text, a decision in
-    another form, or an edit that does not read back; the file is named and left as it was."""
+    """
+    A refused write to a check artifact: an unknown artifact, finding, type or step, an empty text, a decision in
+    another form, or an edit that does not read back; the file is named and left as it was.
+    """
 
 
 @dataclass
@@ -264,7 +284,9 @@ class _Block:
 
 @dataclass
 class _Review:
-    """A check artifact split into lines (each with its own ending), where its findings and the Findings section are."""
+    """
+    A check artifact split into lines (each with its own ending), where its findings and the Findings section are.
+    """
 
     path: Path
     artifact: CheckArtifact
@@ -281,7 +303,9 @@ class _Review:
 
 # @req REQ-FLOW-016
 def _locate(path: Path, text: str, artifact: CheckArtifact) -> _Review:
-    """Where each finding's block is, read the way ``parse_findings`` reads it (comments blanked, fences ignored)."""
+    """
+    Where each finding's block is, read the way ``parse_findings`` reads it (comments blanked, fences ignored).
+    """
     review = _Review(path, artifact, text.splitlines(keepends=True), "\r\n" if "\r\n" in text else "\n")
     lines = blank_comments(text).splitlines()
     current: _Block | None = None
@@ -317,7 +341,9 @@ def _locate(path: Path, text: str, artifact: CheckArtifact) -> _Review:
 
 
 def _artifact(find: Callable[[], CheckArtifact]) -> CheckArtifact:
-    """The check artifact ``find`` names, its ``WorkflowError`` (an unknown artifact or ID, naming the check artifacts) as a ``FindingError``."""
+    """
+    The check artifact ``find`` names, its ``WorkflowError`` (an unknown artifact or ID, naming the check artifacts) as a ``FindingError``.
+    """
     try:
         return find()
     except WorkflowError as exc:
@@ -344,7 +370,9 @@ def _find(review: _Review, finding_id: str) -> tuple[str, _Block]:
 
 
 def _insert(review: _Review, at: int, new: list[str]) -> None:
-    """Insert ``new`` lines before line ``at``, each ending with the file's own newline."""
+    """
+    Insert ``new`` lines before line ``at``, each ending with the file's own newline.
+    """
     if at > 0 and not review.lines[at - 1].endswith(("\n", "\r")):
         review.lines[at - 1] += review.newline
     review.lines[at:at] = [line + review.newline for line in new]
@@ -355,7 +383,9 @@ def _tick(review: _Review, block: _Block) -> None:
 
 
 def _write(review: _Review, original: str, fid: str, expect: dict[str, object]) -> Finding:
-    """Write the edited file only when ``fid`` reads back as ``expect`` and every other finding as before."""
+    """
+    Write the edited file only when ``fid`` reads back as ``expect`` and every other finding as before.
+    """
     artifact = review.artifact
     before = parse_findings(original, artifact) if original else FindingsDoc(exists=False, artifact=artifact)
     after = parse_findings(review.text, artifact)
@@ -378,7 +408,9 @@ def _write(review: _Review, original: str, fid: str, expect: dict[str, object]) 
 
 
 def _new_artifact(change: Change, artifact: CheckArtifact) -> str:
-    """The check artifact's template with the change's name, its headings and guidance comments, without its example lines."""
+    """
+    The check artifact's template with the change's name, its headings and guidance comments, without its example lines.
+    """
     template = read_template(artifact.file).replace("<!-- change ref -->", change.name, 1)
     lines = template.splitlines(keepends=True)
     kept = [line for line, blanked in zip(lines, blank_comments(template).splitlines(), strict=True) if not LIST_ITEM_RE.match(blanked)]
@@ -387,10 +419,12 @@ def _new_artifact(change: Change, artifact: CheckArtifact) -> str:
 
 # @req REQ-FLOW-016
 def _suggestion(text: str, lang: str) -> list[str]:
-    """The lines of a suggestion under a finding: the pinned ``**Suggestion**:`` line, then ``text`` unchanged in a fence
+    """
+    The lines of a suggestion under a finding: the pinned ``**Suggestion**:`` line, then ``text`` unchanged in a fence
     indented by four spaces, marked ``lang``, longer than any run of backticks in it, so no line of it can close the
     fence (and, inside it, nothing routes the finding: REQ-FLOW-010). An empty ``text`` or a ``lang`` that is not one
-    word raises ``FindingError``."""
+    word raises ``FindingError``.
+    """
     lines = text.rstrip("\r\n").splitlines()
     if not "".join(lines).strip():
         raise FindingError("the suggestion is empty")
@@ -405,7 +439,8 @@ def _suggestion(text: str, lang: str) -> list[str]:
 def add_finding(
     change: Change, kind: str, text: str, proposal: str, artifact: str = "review", check: str = "", suggestion: str | None = None, lang: str = "text"
 ) -> Finding:
-    """Add an open finding of type ``kind`` (one of ``TYPE_PHASE``) to the check artifact ``artifact`` with its next free
+    """
+    Add an open finding of type ``kind`` (one of ``TYPE_PHASE``) to the check artifact ``artifact`` with its next free
     ID and its Proposal line (and a ``**Check**`` line when ``check`` is given) under ``## Findings``, creating the file
     from its template when missing; the finding as ``read_findings`` reads it after. An unknown ``artifact`` raises
     ``FindingError`` naming the check artifacts.
@@ -445,7 +480,8 @@ def add_finding(
 
 # @req REQ-FLOW-016
 def decide_finding(change: Change, finding_id: str, decision: str) -> Finding:
-    """Write the finding's Decision (``back to <step>: ...``, ``back to design only: ...`` or ``accepted: ...``), replacing the one it has;
+    """
+    Write the finding's Decision (``back to <step>: ...``, ``back to design only: ...`` or ``accepted: ...``), replacing the one it has;
     ``accepted`` ticks it. The check artifact is the one the ID's letter names. The finding as ``read_findings`` reads it after.
 
     Implements REQ-FLOW-016.
@@ -479,7 +515,8 @@ def decide_finding(change: Change, finding_id: str, decision: str) -> Finding:
 
 # @req REQ-FLOW-016
 def mark_finding_done(change: Change, finding_id: str, step: str, text: str) -> Finding:
-    """Add ``done in <step>: <text>`` to the finding (``step``: specify, design, implement, test, code or review) in the
+    """
+    Add ``done in <step>: <text>`` to the finding (``step``: specify, design, implement, test, code or review) in the
     check artifact its ID's letter names; the finding as ``read_findings`` reads it after.
 
     Implements REQ-FLOW-016.
@@ -499,7 +536,8 @@ def mark_finding_done(change: Change, finding_id: str, step: str, text: str) -> 
 
 # @req REQ-FLOW-016
 def close_finding(change: Change, finding_id: str, text: str) -> Finding:
-    """Tick the finding and add ``confirmed in <artifact phase>: <text>`` in the check artifact its ID's letter names;
+    """
+    Tick the finding and add ``confirmed in <artifact phase>: <text>`` in the check artifact its ID's letter names;
     the finding as ``read_findings`` reads it after.
 
     Implements REQ-FLOW-016.

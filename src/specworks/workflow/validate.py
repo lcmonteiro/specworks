@@ -1,4 +1,5 @@
-"""Validate phase (`specworks validate`): final check of a change before it is closed.
+"""
+Validate phase (`specworks validate`): final check of a change before it is closed.
 
 Every check is grouped (completeness, correctness, coherence) and names the
 phase skill that fixes it. The checks write nothing to the project: they only
@@ -46,7 +47,9 @@ def diagrams_current(ctx: GateContext) -> Check:
 
 # @req REQ-FLOW-013
 def architecture_diagrams_current(ctx: GateContext) -> Check | None:
-    """A non-blocking warning naming each missing or outdated SVG in the module's ``docs/diagrams/``; None when none is."""
+    """
+    A non-blocking warning naming each missing or outdated SVG in the module's ``docs/diagrams/``; None when none is.
+    """
     settings = ctx.ws.top.config.diagrams
     stale = [f"{ctx.ws.rel(d.svg)} ({status})" for d in diagrams_in(ctx.module.docs_path) if (status := state(d, settings)) != "ok"]
     if not stale:
@@ -134,7 +137,8 @@ NO_FINDINGS = "None."
 
 # @req REQ-FLOW-019
 def write_validation(ctx: GateContext) -> tuple[list[Check], Path]:
-    """Run validate and keep validation.md in step with its checks: a ``V`` finding (with its ``**Check**`` line) for each
+    """
+    Run validate and keep validation.md in step with its checks: a ``V`` finding (with its ``**Check**`` line) for each
     failed blocking check that has none open, the ones it wrote before ticked once their check passes, and the Summary
     rewritten; then the checks run again. The checks after the write, and validation.md's path.
 
@@ -174,20 +178,26 @@ def write_validation(ctx: GateContext) -> tuple[list[Check], Path]:
 
 
 def _edit(path: Path, change: Callable[[list[str]], list[str]]) -> None:
-    """Rewrite ``path`` line by line with ``change``, keeping its line ending."""
+    """
+    Rewrite ``path`` line by line with ``change``, keeping its line ending.
+    """
     text = read_text(path, keep_newlines=True)
     newline = "\r\n" if "\r\n" in text else "\n"
     path.write_text(newline.join(change(text.splitlines())) + newline, encoding="utf-8", newline="")
 
 
 def _sections(lines: list[str]) -> list[tuple[int, str]]:
-    """Each ``##`` heading outside comments and code fences: its line and its title in lower case."""
+    """
+    Each ``##`` heading outside comments and code fences: its line and its title in lower case.
+    """
     blanked = blank_comments("\n".join(lines)).split("\n")
     return [(i, h2.group("title").strip().lower()) for i, (line, example) in enumerate(zip(blanked, fenced(blanked), strict=True)) if not example and (h2 := H2_RE.match(line))]
 
 
 def _section(lines: list[str], title: str) -> tuple[int, int] | None:
-    """The heading of the section ``title`` and the line after its end (the next ``##`` heading, or the end)."""
+    """
+    The heading of the section ``title`` and the line after its end (the next ``##`` heading, or the end).
+    """
     headings = _sections(lines)
     for n, (at, found) in enumerate(headings):
         if found == title:
@@ -197,7 +207,9 @@ def _section(lines: list[str], title: str) -> tuple[int, int] | None:
 
 # @req REQ-FLOW-019
 def _set_none(lines: list[str], none: bool) -> list[str]:
-    """``lines`` with ``None.`` under ``## Findings`` when ``none``, else without it; untouched when it already is so."""
+    """
+    ``lines`` with ``None.`` under ``## Findings`` when ``none``, else without it; untouched when it already is so.
+    """
     found = _section(lines, "findings")
     if found is None:  # written by hand without one: before the Summary, else at the end
         if not none:
@@ -218,7 +230,9 @@ def _set_none(lines: list[str], none: bool) -> list[str]:
 
 # @req REQ-FLOW-019
 def _summary(lines: list[str], checks: list[Check]) -> list[str]:
-    """``lines`` with ``## Summary`` (to the next ``##`` heading or the end) written from ``checks``."""
+    """
+    ``lines`` with ``## Summary`` (to the next ``##`` heading or the end) written from ``checks``.
+    """
     result = summary(checks)
     written = ["## Summary", "", f"Verdict: {result['verdict']} ({result['critical']} critical, {result['warnings']} warnings)", ""]
     written += [f"- {group.capitalize()} {counts['passed']}/{counts['total']}" for group, counts in result["groups"].items()]

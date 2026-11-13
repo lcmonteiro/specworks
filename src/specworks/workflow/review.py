@@ -1,4 +1,5 @@
-"""Drift between a change's specs and its code, as far as the CLI can see it.
+"""
+Drift between a change's specs and its code, as far as the CLI can see it.
 
 Two directions:
 
@@ -65,7 +66,9 @@ class ReviewReport:
 
     @property
     def deleted_files(self) -> list[str]:
-        """Source and test files deleted on the branch: deleted code is reviewed like changed code."""
+        """
+        Source and test files deleted on the branch: deleted code is reviewed like changed code.
+        """
         return [f.path for f in self.changed or [] if f.kind == "deleted" and f.was in ("source", "test")]
 
     def findings(self) -> dict[str, list[str]]:
@@ -110,7 +113,9 @@ def detect_base(cwd: Path) -> str:
 
 # @req REQ-FLOW-009
 def change_start(ws: Workspace, change: Change) -> str | None:
-    """The parent of the newest commit that added the change's metadata (an archived change may have had its name), if any."""
+    """
+    The parent of the newest commit that added the change's metadata (an archived change may have had its name), if any.
+    """
     meta = (change.path / META_FILE).relative_to(ws.root).as_posix()
     added = git_text(ws.root, "log", "--diff-filter=A", "--format=%H", "-1", "--", meta).strip()
     if not added:
@@ -123,7 +128,9 @@ def change_start(ws: Workspace, change: Change) -> str | None:
 
 # @req REQ-FLOW-009
 def _changed_names(ws: Workspace, since: str) -> list[Path]:
-    """Every path git reports as changed since the commit ``since`` (committed, uncommitted, untracked), resolved."""
+    """
+    Every path git reports as changed since the commit ``since`` (committed, uncommitted, untracked), resolved.
+    """
     git_root = Path(git_text(ws.root, "rev-parse", "--show-toplevel").strip()).resolve()
     # -z: NUL-separated and never quoted, so names with non-ASCII characters or newlines come through as they are.
     names = set(git_text(ws.root, "diff", "--name-only", "-z", since).split("\0"))
@@ -132,18 +139,24 @@ def _changed_names(ws: Workspace, since: str) -> list[Path]:
 
 
 def changed_paths(ws: Workspace, since: str) -> list[str]:
-    """Files changed since the commit ``since`` (committed, uncommitted, untracked), relative to the workspace."""
+    """
+    Files changed since the commit ``since`` (committed, uncommitted, untracked), relative to the workspace.
+    """
     return [ws.rel(path) for path in _changed_names(ws, since) if path.is_file() and path.is_relative_to(ws.root)]
 
 
 # @req REQ-FLOW-009
 def deleted_paths(ws: Workspace, since: str) -> list[str]:
-    """Files changed since the commit ``since`` that no longer exist, relative to the workspace."""
+    """
+    Files changed since the commit ``since`` that no longer exist, relative to the workspace.
+    """
     return [ws.rel(path) for path in _changed_names(ws, since) if not path.exists() and path.is_relative_to(ws.root)]
 
 
 def changed_file_kind(ws: Workspace, rel: str) -> str | None:
-    """The ``ChangedFile.kind`` of a changed file (``source``, ``test`` or ``other``); None inside a workflow folder (specs, changes)."""
+    """
+    The ``ChangedFile.kind`` of a changed file (``source``, ``test`` or ``other``); None inside a workflow folder (specs, changes).
+    """
     path = ws.root / rel
     for module in ws.modules():
         if path.is_relative_to(module.root / module.config.dir):
@@ -156,7 +169,9 @@ def changed_file_kind(ws: Workspace, rel: str) -> str | None:
 
 # @req REQ-FLOW-009
 def review_change(analysis: Analysis, base: str | None = None) -> ReviewReport:
-    """Drift candidates of the analysed change; changed files come from git against ``base``."""
+    """
+    Drift candidates of the analysed change; changed files come from git against ``base``.
+    """
     ws = analysis.ws
     report = ReviewReport(analysis)
     try:

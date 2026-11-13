@@ -1,4 +1,5 @@
-"""Workspace: a top-level project and the modules (sub-projects) linked to it.
+"""
+Workspace: a top-level project and the modules (sub-projects) linked to it.
 
 Like git submodules, the parent lists each module explicitly in its config
 (``modules: {name: path}``) and every module is a complete project with its
@@ -30,7 +31,8 @@ ARCHITECTURE_FILE = "architecture.md"  # a module's architecture, in its docs fo
 
 # @req REQ-PROJ-004
 def capability_prefix(module_name: str, name: str, prefix: str = "") -> str:
-    """The ID prefix (REQ-<prefix>-NNN) of a capability: its own ``prefix:``, else its module path and name in upper case.
+    """
+    The ID prefix (REQ-<prefix>-NNN) of a capability: its own ``prefix:``, else its module path and name in upper case.
 
     ``billing/tax`` + ``rates`` -> ``BILLING-TAX-RATES``.
     """
@@ -51,13 +53,17 @@ class Module:
     # @req REQ-PROJ-029
     @property
     def docs_path(self) -> Path:
-        """The module's docs folder, ``<root>/<docs_dir>``, shared with a capability on ``.``."""
+        """
+        The module's docs folder, ``<root>/<docs_dir>``, shared with a capability on ``.``.
+        """
         return self.root / self.config.docs_dir
 
     # @req REQ-PROJ-029
     @property
     def architecture_path(self) -> Path:
-        """The module's architecture, ``<docs folder>/architecture.md``."""
+        """
+        The module's architecture, ``<docs folder>/architecture.md``.
+        """
         return self.docs_path / ARCHITECTURE_FILE
 
     @property
@@ -68,7 +74,9 @@ class Module:
         return f"{self.name}{SEP}{item}" if self.name else item
 
     def lineage(self) -> list[Module]:
-        """Modules from the top level down to this one."""
+        """
+        Modules from the top level down to this one.
+        """
         chain: list[Module] = []
         node: Module | None = self
         while node is not None:
@@ -84,7 +92,9 @@ class Module:
 
 @dataclass
 class MissingModule:
-    """A module listed by its parent whose folder has no config (e.g. a submodule not checked out)."""
+    """
+    A module listed by its parent whose folder has no config (e.g. a submodule not checked out).
+    """
 
     name: str
     path: Path
@@ -101,7 +111,9 @@ class Workspace:
         return self.top.root
 
     def rel(self, path: Path) -> str:
-        """Path relative to the workspace root, the base for every path the CLI prints."""
+        """
+        Path relative to the workspace root, the base for every path the CLI prints.
+        """
         return path.resolve().relative_to(self.root).as_posix() or "."
 
     def modules(self) -> list[Module]:
@@ -115,7 +127,9 @@ class Workspace:
         raise ConfigError(f"unknown module '{name}' (known modules: {known})")
 
     def split(self, ref: str) -> tuple[Module | None, str]:
-        """``billing:add-x`` -> (billing module, "add-x"); ``add-x`` -> (None, "add-x")."""
+        """
+        ``billing:add-x`` -> (billing module, "add-x"); ``add-x`` -> (None, "add-x").
+        """
         if SEP in ref:
             module_name, _, item = ref.rpartition(SEP)
             return self.module(module_name), item
@@ -123,7 +137,9 @@ class Workspace:
 
     # @req REQ-PROJ-007
     def context_chain(self, module: Module | None = None) -> list[dict]:
-        """Inherited context, top level first. A module adds to its parents' context; it cannot drop it."""
+        """
+        Inherited context, top level first. A module adds to its parents' context; it cannot drop it.
+        """
         return [
             {"module": m.label, "context": m.config.context.strip()}
             for m in (module or self.current).lineage()
@@ -138,34 +154,46 @@ class Workspace:
 
     # @req REQ-PROJ-007
     def commands(self, module: Module | None = None) -> dict[str, str]:
-        """Commands for a module: the top level's, overridden key by key down to the module."""
+        """
+        Commands for a module: the top level's, overridden key by key down to the module.
+        """
         merged: dict[str, str] = {}
         for node in (module or self.current).lineage():
             merged.update(node.config.commands)
         return merged
 
     def owner(self, path: Path) -> Module:
-        """The innermost module whose folder holds ``path`` (a path inside the workspace)."""
+        """
+        The innermost module whose folder holds ``path`` (a path inside the workspace).
+        """
         return max((m for m in self.modules() if path.is_relative_to(m.root)), key=lambda m: len(m.root.parts))
 
     def capabilities(self) -> list[tuple[Module, Capability]]:
         return [(m, cap) for m in self.modules() for cap in m.config.capabilities.values()]
 
     def prefixes(self) -> dict[str, str]:
-        """ID prefix -> the registered capability (``module:name``) that uses it."""
+        """
+        ID prefix -> the registered capability (``module:name``) that uses it.
+        """
         return {capability_prefix(m.name, cap.name, cap.prefix): m.qualify(cap.name) for m, cap in self.capabilities()}
 
     def docs_folder(self, module: Module, path: str) -> Path:
-        """The living-docs folder a capability on ``path`` (relative to ``module``) writes to, resolved."""
+        """
+        The living-docs folder a capability on ``path`` (relative to ``module``) writes to, resolved.
+        """
         return (module.root / path.strip().rstrip("/") / module.config.docs_dir).resolve()
 
     def docs_folders(self) -> dict[Path, str]:
-        """Resolved living-docs folder -> the registered capability (``module:name``) that uses it."""
+        """
+        Resolved living-docs folder -> the registered capability (``module:name``) that uses it.
+        """
         return {self.docs_folder(m, cap.path): m.qualify(cap.name) for m, cap in self.capabilities()}
 
 
 def _links_to(parent: Config, child_root: Path) -> str | None:
-    """Name under which ``parent`` lists ``child_root`` as a module, if it does."""
+    """
+    Name under which ``parent`` lists ``child_root`` as a module, if it does.
+    """
     for name, path in parent.modules.items():
         if (parent.root / path).resolve() == child_root:
             return name
@@ -173,7 +201,9 @@ def _links_to(parent: Config, child_root: Path) -> str | None:
 
 
 def _may_link(directory: Path, child_root: Path) -> bool:
-    """Whether the (invalid) config of ``directory`` may list ``child_root`` as a module; True when unreadable."""
+    """
+    Whether the (invalid) config of ``directory`` may list ``child_root`` as a module; True when unreadable.
+    """
     path = find_config(directory)
     if path is None:
         return False
@@ -187,13 +217,17 @@ def _may_link(directory: Path, child_root: Path) -> bool:
 
 # @req REQ-PROJ-003, REQ-PROJ-006, REQ-PROJ-021
 def load_module_config(root: Path, name: str) -> Config | None:
-    """Config of a module (its .specworks/config.yml); None if it has none, an error if it has the old layout."""
+    """
+    Config of a module (its .specworks/config.yml); None if it has none, an error if it has the old layout.
+    """
     if find_config(root) is not None:
         config = load_config(root)
         if config.tools is not None:  # skills are installed at the workspace root, for the top level's tools
             raise ConfigError(f"module '{name}': 'tools' is set in the top level's config, not in a module's; remove it")
         if config.telemetry is not None:  # only the top level's telemetry block is read
             raise ConfigError(f"module '{name}': 'telemetry' is set in the top level's config, not in a module's; remove it")
+        if config.harness is not None:  # only the top level's harness block is read
+            raise ConfigError(f"module '{name}': 'harness' is set in the top level's config, not in a module's; remove it")
         return config
     if (old := old_config_in(root)) is not None:
         raise old_layout_error(old, name)
@@ -202,7 +236,9 @@ def load_module_config(root: Path, name: str) -> Config | None:
 
 # @req REQ-PROJ-006
 def _load_tree(config: Config, name: str, parent: Module | None, missing: list[MissingModule], seen: dict[Path, str]) -> Module:
-    """``seen``: the resolved folder of every module loaded so far -> its label; a folder is at most one module."""
+    """
+    ``seen``: the resolved folder of every module loaded so far -> its label; a folder is at most one module.
+    """
     module = Module(name=name, config=config, parent=parent)
     seen[config.root.resolve()] = module.label
     top_root = next(iter(seen))  # the first folder loaded is the top level's
@@ -229,7 +265,9 @@ def _load_tree(config: Config, name: str, parent: Module | None, missing: list[M
 
 
 def require_workspace(start: Path) -> Workspace:
-    """The workspace containing ``start``, which must exist (e.g. right after writing its config)."""
+    """
+    The workspace containing ``start``, which must exist (e.g. right after writing its config).
+    """
     ws = load_workspace(start)
     if ws is None:
         raise ConfigError(f"no specworks config in {start} or its parents")
@@ -238,7 +276,8 @@ def require_workspace(start: Path) -> Workspace:
 
 # @req REQ-PROJ-006
 def load_workspace(start: Path | None = None) -> Workspace | None:
-    """Load the workspace containing ``start``; None when there is no specworks config above it.
+    """
+    Load the workspace containing ``start``; None when there is no specworks config above it.
 
     The nearest config is the current module. Walking up, each ancestor that
     lists the current top as a module becomes the new top; the first ancestor
@@ -274,7 +313,9 @@ def load_workspace(start: Path | None = None) -> Workspace | None:
 
 # @req REQ-PROJ-006
 def _check_nesting(ws: Workspace) -> None:
-    """Each module is listed by the innermost module holding its folder, so the workspace looks the same from any folder."""
+    """
+    Each module is listed by the innermost module holding its folder, so the workspace looks the same from any folder.
+    """
     for module in ws.modules():
         if module.parent is None:
             continue
@@ -291,7 +332,9 @@ def _check_nesting(ws: Workspace) -> None:
 
 # @req REQ-PROJ-005
 def _check_prefixes(ws: Workspace) -> None:
-    """Every capability has its own ID prefix, or two of them would hand out the same requirement IDs."""
+    """
+    Every capability has its own ID prefix, or two of them would hand out the same requirement IDs.
+    """
     owners: dict[str, str] = {}
     for module, cap in ws.capabilities():
         prefix, ref = capability_prefix(module.name, cap.name, cap.prefix), module.qualify(cap.name)
@@ -305,7 +348,9 @@ def _check_prefixes(ws: Workspace) -> None:
 
 # @req REQ-PROJ-016
 def _check_docs_folders(ws: Workspace) -> None:
-    """Every capability has its own living-docs folder, or close would write two capabilities' specs into one file."""
+    """
+    Every capability has its own living-docs folder, or close would write two capabilities' specs into one file.
+    """
     owners: dict[Path, str] = {}
     for module, cap in ws.capabilities():
         folder, ref = ws.docs_folder(module, cap.path), module.qualify(cap.name)

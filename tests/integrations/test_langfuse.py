@@ -1,4 +1,6 @@
-"""The Langfuse client: telemetry settings and sending a change's unsent events."""
+"""
+The Langfuse client: telemetry settings and sending a change's unsent events.
+"""
 
 import base64
 import json
@@ -17,7 +19,9 @@ REF = "add-login"
 
 
 def make_change(tmp_path, lines=0, sent=None):
-    """A change folder with ``lines`` events in events.jsonl and, unless None, ``sent`` in events.sent."""
+    """
+    A change folder with ``lines`` events in events.jsonl and, unless None, ``sent`` in events.sent.
+    """
     folder = tmp_path / REF
     folder.mkdir()
     change = Change(name=REF, path=folder, phase="implement", created="2026-11-03T10:00:00")

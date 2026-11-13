@@ -1,4 +1,6 @@
-"""Helpers shared by the reopen tests of several capabilities."""
+"""
+Helpers shared by the reopen tests of several capabilities.
+"""
 
 from helpers import git
 from specworks.core.changes import archived_as, create_change, load_change
@@ -10,7 +12,9 @@ EVENTS = '{"event": "phase", "at": "2026-06-01T10:00:00"}\n{"event": "gate", "at
 
 
 def make_archived(root, name, abandoned="", day=DAY):
-    """Archive the change `name` (created when it is not there) as close, or as abandon when `abandoned` has a reason."""
+    """
+    Archive the change `name` (created when it is not there) as close, or as abandon when `abandoned` has a reason.
+    """
     cfg = load_config(root)
     change = load_change(cfg, name) if (cfg.changes_path / name).is_dir() else create_change(cfg, name)
     (change.path / "proposal.md").write_text(f"# Proposal: {name}\n", encoding="utf-8")

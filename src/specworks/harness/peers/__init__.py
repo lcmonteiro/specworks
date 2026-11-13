@@ -1,4 +1,6 @@
-"""Skill peers: one ``SkillPeer`` subclass per packaged skill, each in its own module named after its peer, and their list."""
+"""
+Skill peers: one ``SkillPeer`` subclass per packaged skill, each in its own module named after its peer, and their list.
+"""
 
 from __future__ import annotations
 
@@ -46,7 +48,9 @@ PEERS: tuple[type[SkillPeer], ...] = (
 
 # @req REQ-HARNESS-006
 def worktree_peers(peers: Sequence[type[SkillPeer]] = PEERS) -> frozenset[str]:
-    """The names of ``peers`` that work in a git worktree of their own (``worktree``). Implements REQ-HARNESS-006."""
+    """
+    The names of ``peers`` that work in a git worktree of their own (``worktree``). Implements REQ-HARNESS-006.
+    """
     return frozenset(cls.name for cls in peers if cls.worktree)
 
 

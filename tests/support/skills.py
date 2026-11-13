@@ -1,4 +1,6 @@
-"""Helpers shared by the skills tests of several capabilities."""
+"""
+Helpers shared by the skills tests of several capabilities.
+"""
 
 from typer.testing import CliRunner
 
@@ -45,5 +47,7 @@ def state_of(root):
 # --- includes with parameters (REQ-INTEG-007) --------------------------------------------
 
 def fake_shared(files):
-    """A ``shared`` for ``fill_includes``: the text of each shared file by name."""
+    """
+    A ``shared`` for ``fill_includes``: the text of each shared file by name.
+    """
     return lambda name: files[name]

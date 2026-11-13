@@ -1,4 +1,5 @@
-"""Parse spec markdown: delta specs (in a change) and living specs (next to the code).
+"""
+Parse spec markdown: delta specs (in a change) and living specs (next to the code).
 
 Format (shared by both)::
 
@@ -69,7 +70,9 @@ class Requirement:
         return "\n".join(self.lines).strip()
 
     def markdown(self) -> str:
-        """The requirement block as it appears in a spec file."""
+        """
+        The requirement block as it appears in a spec file.
+        """
         out = [f"### Requirement: {self.id} {self.title}".rstrip(), *self.lines]
         for sc in self.scenarios:
             out += [f"#### Scenario: {sc.id} {sc.title}".rstrip(), *sc.lines]
@@ -90,12 +93,16 @@ class SpecDoc:
         return {r.id: r for r in self.requirements if r.id}
 
     def ids(self) -> set[str]:
-        """Every requirement and acceptance-criterion ID in the document."""
+        """
+        Every requirement and acceptance-criterion ID in the document.
+        """
         return {i for r in self.requirements for i in (r.id, *(s.id for s in r.scenarios)) if i}
 
 
 def split_id(rest: str, pattern: re.Pattern) -> tuple[str | None, str]:
-    """``"REQ-AUTH-001 Users can log in"`` -> ("REQ-AUTH-001", "Users can log in")."""
+    """
+    ``"REQ-AUTH-001 Users can log in"`` -> ("REQ-AUTH-001", "Users can log in").
+    """
     match = pattern.match(rest)
     if not match:
         return None, rest.strip()
@@ -103,7 +110,9 @@ def split_id(rest: str, pattern: re.Pattern) -> tuple[str | None, str]:
 
 
 def section_kind(title: str) -> str | None:
-    """Normalise a "## ..." heading to ADDED / MODIFIED / REMOVED / Requirements / Purpose."""
+    """
+    Normalise a "## ..." heading to ADDED / MODIFIED / REMOVED / Requirements / Purpose.
+    """
     words = title.split()
     if not words:
         return None
@@ -123,7 +132,9 @@ FENCE_RE = re.compile(r"^\s*(?P<fence>`{3,}|~{3,})(?P<info>.*)$")
 
 
 def fenced(lines: list[str]) -> list[bool]:
-    """For each line, whether it belongs to a code fence (the fence lines included): examples, not structure."""
+    """
+    For each line, whether it belongs to a code fence (the fence lines included): examples, not structure.
+    """
     flags, fence = [], ""
     for line in lines:
         match = FENCE_RE.match(line)
@@ -139,12 +150,16 @@ def fenced(lines: list[str]) -> list[bool]:
 
 
 def blank_comments(text: str) -> str:
-    """``text`` with its HTML comments (template hints) blanked out, keeping line numbers."""
+    """
+    ``text`` with its HTML comments (template hints) blanked out, keeping line numbers.
+    """
     return COMMENT_RE.sub(lambda m: "\n" * m.group(0).count("\n"), text)
 
 
 def h2_titles(text: str) -> list[str]:
-    """The level-2 (``##``) headings of a markdown text, outside code fences and HTML comments."""
+    """
+    The level-2 (``##``) headings of a markdown text, outside code fences and HTML comments.
+    """
     lines = blank_comments(text).splitlines()
     return [m.group("title") for line, example in zip(lines, fenced(lines), strict=True) if not example and (m := H2_RE.match(line))]
 
@@ -226,7 +241,8 @@ def requirement_number(req_id: str) -> int:
 
 # @req REQ-SPECS-004
 def id_prefix(any_id: str) -> str | None:
-    """``REQ-BILLING-INVOICES-001`` / ``AC-BILLING-INVOICES-001.2`` -> ``BILLING-INVOICES``; None if not an ID.
+    """
+    ``REQ-BILLING-INVOICES-001`` / ``AC-BILLING-INVOICES-001.2`` -> ``BILLING-INVOICES``; None if not an ID.
 
     The number is the last segment, so a prefix that extends another one
     (``BILLING`` / ``BILLING-INVOICES``) is never mistaken for it.
@@ -236,25 +252,33 @@ def id_prefix(any_id: str) -> str | None:
 
 
 def ac_parent(ac_id: str) -> str | None:
-    """``AC-AUTH-001.2`` -> ``REQ-AUTH-001``."""
+    """
+    ``AC-AUTH-001.2`` -> ``REQ-AUTH-001``.
+    """
     match = AC_ID_RE.fullmatch(ac_id)
     return f"REQ-{match.group('prefix')}-{match.group('num')}" if match else None
 
 
 def find_ids(text: str) -> list[str]:
-    """Every REQ-/AC- ID mentioned in ``text``, in order of appearance."""
+    """
+    Every REQ-/AC- ID mentioned in ``text``, in order of appearance.
+    """
     return [m.group(0) for m in ANY_ID_RE.finditer(text)]
 
 
 # @req REQ-SPECS-012, REQ-SPECS-013
 def table_cell(text: str) -> str:
-    """``text`` for a markdown table cell: a ``|`` escaped so it doesn't end the cell."""
+    """
+    ``text`` for a markdown table cell: a ``|`` escaped so it doesn't end the cell.
+    """
     return text.replace("|", "\\|")
 
 
 # @req REQ-SPECS-004
 def living_problems(doc: SpecDoc) -> list[tuple[int, str]]:
-    """(line, message) for each way a living spec is not one ``close`` can merge into or index."""
+    """
+    (line, message) for each way a living spec is not one ``close`` can merge into or index.
+    """
     problems = list(doc.problems)
     seen: dict[str, int] = {}
 

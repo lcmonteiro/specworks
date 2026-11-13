@@ -1,4 +1,6 @@
-"""Test phase support: commands config, task ticking and the specify/test gates."""
+"""
+Test phase support: commands config, task ticking and the specify/test gates.
+"""
 
 from helpers import REF, run_json
 

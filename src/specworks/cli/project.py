@@ -1,4 +1,6 @@
-"""Set-up and overview: init, skills, context, list, modules and capabilities."""
+"""
+Set-up and overview: init, skills, context, list, modules and capabilities.
+"""
 
 from __future__ import annotations
 
@@ -28,13 +30,17 @@ def default_module_name(path: Path) -> str:
 
 # @req REQ-CLI-003
 def is_terminal() -> bool:
-    """Whether init runs in a terminal and may ask which tools the project uses (replaced in tests)."""
+    """
+    Whether init runs in a terminal and may ask which tools the project uses (replaced in tests).
+    """
     return sys.stdin.isatty()
 
 
 # @req REQ-CLI-003
 def ask_tools(root: Path) -> str:
-    """Ask which AI tools the project uses, the detected ones as the default; checked like ``--tools``."""
+    """
+    Ask which AI tools the project uses, the detected ones as the default; checked like ``--tools``.
+    """
     detected = ",".join(t.id for t in parse_tools("auto", root))
     answer = typer.prompt(f"AI tools to install skills for ({', '.join(TOOLS)})", default=detected)
     parse_tools(answer, root)  # an unknown or empty answer fails before anything is written
@@ -43,7 +49,9 @@ def ask_tools(root: Path) -> str:
 
 # @req REQ-INTEG-004, REQ-CLI-003, REQ-CLI-009
 def chosen_tools(ws: Workspace, given: str | None) -> list[Tool]:
-    """The tools to install for (``--tools``, else the saved choice, else the inferred one), saved in the top level's config when asked."""
+    """
+    The tools to install for (``--tools``, else the saved choice, else the inferred one), saved in the top level's config when asked.
+    """
     saved = ws.top.config.tools
     selected, save = resolve_tools(ws.root, saved, given)
     ids = [t.id for t in selected]
@@ -55,7 +63,9 @@ def chosen_tools(ws: Workspace, given: str | None) -> list[Tool]:
 
 
 def write_skills(ws: Workspace, tools: str | None) -> None:
-    """Install the skills at the workspace root (shared by every module)."""
+    """
+    Install the skills at the workspace root (shared by every module).
+    """
     selected = chosen_tools(ws, tools)
     expected_skills(selected)  # fill in every skill first: one that cannot be filled in fails before anything is removed  @req REQ-INTEG-007
     for removed in remove_stale_skills(ws.root, selected):  # renamed or dropped by this version  @req REQ-INTEG-005
@@ -65,7 +75,8 @@ def write_skills(ws: Workspace, tools: str | None) -> None:
 
 
 def ensure_module_config(root: Path, name: str) -> tuple[Config, bool]:
-    """Load the module's .specworks/config.yml, creating it (and its changes folder) when missing.
+    """
+    Load the module's .specworks/config.yml, creating it (and its changes folder) when missing.
 
     Fails before writing anything if the folder still has the old layout.
     """
@@ -83,7 +94,9 @@ def make_change_dirs(cfg: Config) -> None:
 
 
 def link_to_parent(root: Path, name: str | None) -> str | None:
-    """Register ``root`` as a module of the nearest specworks project above it; return the name used."""
+    """
+    Register ``root`` as a module of the nearest specworks project above it; return the name used.
+    """
     parent = load_workspace(root.parent)
     if parent is None:
         return None
@@ -97,7 +110,8 @@ def link_to_parent(root: Path, name: str | None) -> str | None:
 
 
 def held_module(ws: Workspace, root: Path) -> Module | None:
-    """A module of ``ws`` inside the folder ``root``, unless ``root`` is a module itself.
+    """
+    A module of ``ws`` inside the folder ``root``, unless ``root`` is a module itself.
 
     Linking such a folder would leave that module listed past it, which loading refuses.
     """
@@ -110,14 +124,18 @@ def held_message(ws: Workspace, path: Path, inner: Module) -> str:
 
 
 def module_lines(ws: Workspace, indent: str = "") -> list[str]:
-    """One line per module (the current one marked *), then the missing ones."""
+    """
+    One line per module (the current one marked *), then the missing ones.
+    """
     lines = [f"{indent}{m.label:<24} {ws.rel(m.root)}{'  *' if m is ws.current else ''}" for m in ws.modules()]
     return lines + [f"{indent}{m.name:<24} MISSING ({m.path})" for m in ws.missing]
 
 
 @app.command()
 def version() -> None:
-    """Print the specworks version."""
+    """
+    Print the specworks version.
+    """
     typer.echo(__version__)
 
 
@@ -133,7 +151,9 @@ def init(
     tools: str | None = ToolsOpt,
     no_skills: bool = typer.Option(False, "--no-skills", help="Do not install agent skills."),
 ) -> None:
-    """Create .specworks/config.yml and .specworks/changes/active/ and archive/, link to a parent project, and install the agent skills."""
+    """
+    Create .specworks/config.yml and .specworks/changes/active/ and archive/, link to a parent project, and install the agent skills.
+    """
     root = path.resolve()
     if tools is not None:
         parse_tools(tools, root)  # reject a bad --tools before writing anything
@@ -172,7 +192,9 @@ def init(
 
 @app.command()
 def skills(tools: str | None = ToolsOpt) -> None:
-    """Install or refresh the agent skills (e.g. after upgrading specworks)."""
+    """
+    Install or refresh the agent skills (e.g. after upgrading specworks).
+    """
     write_skills(workspace(False), tools)
 
 
@@ -181,7 +203,9 @@ def skills(tools: str | None = ToolsOpt) -> None:
 def update(
     tools: str | None = ToolsOpt,
 ) -> None:
-    """Bring the project's agent skills up to this specworks (run after `uv tool upgrade specworks`)."""
+    """
+    Bring the project's agent skills up to this specworks (run after `uv tool upgrade specworks`).
+    """
     ws = workspace(False)
     selected = chosen_tools(ws, tools)
     updated, removed = update_skills(ws.root, selected)
@@ -196,7 +220,9 @@ def update(
 # @req REQ-CLI-004
 @app.command()
 def context(as_json: bool = JsonOpt, all_modules: bool = AllOpt) -> None:
-    """Inherited context, all capabilities of the workspace, modules and changes."""
+    """
+    Inherited context, all capabilities of the workspace, modules and changes.
+    """
     ws = workspace(as_json)
     capabilities = []
     for mod, cap in ws.capabilities():
@@ -250,7 +276,9 @@ def list_cmd(
     all_modules: bool = AllOpt,
     archived: bool = typer.Option(False, "--archived", help="List closed and abandoned changes instead of active ones."),
 ) -> None:
-    """List active changes of the current module (or all modules with --all)."""
+    """
+    List active changes of the current module (or all modules with --all).
+    """
     ws = workspace(as_json)
     modules = ws.modules() if all_modules else [ws.current]
     rows, lines = [], []
@@ -280,7 +308,8 @@ def module_add(
     name: str | None = typer.Option(None, "--name", help="Module name (default: folder name)."),
     as_json: bool = JsonOpt,
 ) -> None:
-    """Link a folder as a module of the innermost module holding it, creating its config if needed.
+    """
+    Link a folder as a module of the innermost module holding it, creating its config if needed.
 
     The module gets its own .specworks/config.yml, like every project.
     """
@@ -302,7 +331,9 @@ def module_add(
 # @req REQ-CLI-004
 @module_app.command("list")
 def module_list(as_json: bool = JsonOpt) -> None:
-    """List every module of the workspace (the current one is marked *)."""
+    """
+    List every module of the workspace (the current one is marked *).
+    """
     ws = workspace(as_json)
     data = {
         "root": str(ws.root),
@@ -323,7 +354,8 @@ def capability_add(
     create: bool = typer.Option(False, "--create", help="Create the code folder with an empty .gitkeep when it does not exist."),
     as_json: bool = JsonOpt,
 ) -> None:
-    """Register a capability in a module's config (needed before closing a change that creates it).
+    """
+    Register a capability in a module's config (needed before closing a change that creates it).
 
     With --create, also create its code folder with an empty .gitkeep. Implements REQ-CLI-014.
     """
@@ -359,21 +391,23 @@ def capability_add(
 def config_set(
     key: str = typer.Argument(
         ...,
-        help="context, commands.<test|lint|typecheck|build|format>, or branch_per_change (true|false) and telemetry.<langfuse|host> (always in the top level's config).",
+        help="context, commands.<test|lint|typecheck|build|format>, or branch_per_change (true|false), telemetry.<langfuse|host> and harness.model (always in the top level's config).",
     ),
     value: str | None = typer.Argument(None, help="The value (empty clears the key); or use --file."),
     file: str | None = typer.Option(None, "--file", help="Read the value from this file (- for standard input)."),
     module: str | None = typer.Option(None, "--module", "-m", help="Module whose config to set (default: the current one)."),
     as_json: bool = JsonOpt,
 ) -> None:
-    """Set a command or the context in a module's config, or branch_per_change or telemetry in the top level's, keeping its comments. Implements REQ-CLI-013."""
+    """
+    Set a command or the context in a module's config, or branch_per_change, telemetry or the harness model in the top level's, keeping its comments. Implements REQ-CLI-013.
+    """
     if value is not None and file is not None:
         fail("give the value as an argument or with --file, not both", as_json)
     if value is None and file is None:
         fail("give a value, or --file <path> (- for standard input)", as_json)
     ws = workspace(as_json)
     target = ws.module(module) if module is not None else ws.current
-    if key == "branch_per_change" or key.startswith("telemetry."):  # only the top level's value is read (REQ-PROJ-026, REQ-PROJ-003), so it is written there whatever the module
+    if key == "branch_per_change" or key.startswith(("telemetry.", "harness.")):  # only the top level's value is read (REQ-PROJ-026, REQ-PROJ-003), so it is written there whatever the module
         target = ws.top
     if file is None:
         text = value or ""

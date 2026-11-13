@@ -1,4 +1,6 @@
-"""The peer ``code``: the ``specworks-code`` skill, the code half of implement."""
+"""
+The peer ``code``: the ``specworks-code`` skill, the code half of implement.
+"""
 
 from __future__ import annotations
 
@@ -9,4 +11,6 @@ from specworks.harness.peers.base import SkillPeer
 
 @connector("code")
 class CodePeer(SkillPeer):
-    """The ``specworks-code`` skill as a chat peer. Implements REQ-HARNESS-001."""
+    """
+    The ``specworks-code`` skill as a chat peer. Implements REQ-HARNESS-001.
+    """

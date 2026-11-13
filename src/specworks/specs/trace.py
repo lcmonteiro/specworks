@@ -1,5 +1,6 @@
 # specworks: ignore-tags-start
-"""Traceability: requirement -> acceptance criteria -> tasks -> tests -> code.
+"""
+Traceability: requirement -> acceptance criteria -> tasks -> tests -> code.
 
 Tests and code link back to the specs with comment tags, in any language::
 
@@ -95,7 +96,8 @@ class Row:
 
 @dataclass(frozen=True)
 class ChangedSince:
-    """What changed since a closed change's close: the close ``commit`` and the ``files`` changed since (committed or
+    """
+    What changed since a closed change's close: the close ``commit`` and the ``files`` changed since (committed or
     not, relative to the workspace root); without git or without that commit, ``commit`` is None, ``files`` is empty
     and ``note`` says why.
 
@@ -109,7 +111,8 @@ class ChangedSince:
 
 # @req REQ-SPECS-018
 def changed_since_close(ws: Workspace, change: Change) -> ChangedSince:
-    """The files changed since the close of the archived ``change``: the close commit is the last commit that added its
+    """
+    The files changed since the close of the archived ``change``: the close commit is the last commit that added its
     archive folder (its ``.change.yaml``, which only the close adds: an inspection.md written later adds a file to the
     folder too), and the files are those ``git diff --name-only <commit>`` lists, with the untracked ones.
 
@@ -131,14 +134,17 @@ def changed_since_close(ws: Workspace, change: Change) -> ChangedSince:
 
 # @req REQ-SPECS-018
 def mark_changed(rows: list[Row], since: ChangedSince) -> None:
-    """Set each row's ``changed``: its test and code locations (``file:line``) whose file is in ``since.files``."""
+    """
+    Set each row's ``changed``: its test and code locations (``file:line``) whose file is in ``since.files``.
+    """
     for row in rows:
         row.changed = [where for where in row.tests + row.code if where.rsplit(":", 1)[0] in since.files]
 
 
 # @req REQ-SPECS-018
 def living_spec_at(ws: Workspace, change: Change, cap: CapabilityRef, commit: str | None) -> str | None:
-    """The text of ``cap``'s living spec as it was at ``commit``, read with ``git show <commit>:<living spec>``; None
+    """
+    The text of ``cap``'s living spec as it was at ``commit``, read with ``git show <commit>:<living spec>``; None
     without the commit, without git, or when the spec did not exist then. The trace of a closed change compares its
     MODIFIED and REMOVED blocks with it, so a criterion a later change added is never reported as removed.
 
@@ -157,7 +163,9 @@ def living_spec_at(ws: Workspace, change: Change, cap: CapabilityRef, commit: st
 
 # @req REQ-SPECS-011
 def glob_match(rel: str, pattern: str) -> bool:
-    """``rel`` (a posix path) matches ``pattern``: ``*``/``?`` within one folder, ``**`` across folders."""
+    """
+    ``rel`` (a posix path) matches ``pattern``: ``*``/``?`` within one folder, ``**`` across folders.
+    """
     regex = re.escape(pattern).replace(r"\*\*/", "(?:.*/)?").replace(r"\*\*", ".*").replace(r"\*", "[^/]*").replace(r"\?", "[^/]")
     return re.fullmatch(regex, rel) is not None
 
@@ -171,8 +179,10 @@ def is_test_file(rel: str, test_globs: list[str]) -> bool:
 
 # @req REQ-SPECS-011
 def scan_rule(module: Module, path: Path) -> tuple[bool, bool]:
-    """(scanned, is_test) for a file of ``module``: its tests (by test_globs, or by name outside docs) are always
-    scanned; source_globs, when set, limit the other files; otherwise everything but documentation is scanned."""
+    """
+    (scanned, is_test) for a file of ``module``: its tests (by test_globs, or by name outside docs) are always
+    scanned; source_globs, when set, limit the other files; otherwise everything but documentation is scanned.
+    """
     cfg = module.config
     rel = path.relative_to(module.root).as_posix()
     is_doc = path.suffix.lower() in DOC_EXTENSIONS
@@ -184,14 +194,18 @@ def scan_rule(module: Module, path: Path) -> tuple[bool, bool]:
 
 
 def _is_marker(line: str, marker: str) -> bool:
-    """``marker`` alone on the line, around comment punctuation only: a doc that quotes it in prose is not one."""
+    """
+    ``marker`` alone on the line, around comment punctuation only: a doc that quotes it in prose is not one.
+    """
     return marker in line and not any(ch.isalnum() for ch in line.replace(marker, "", 1))
 
 
 # @req REQ-SPECS-001, REQ-SPECS-002
 def _tag_lines(text: str) -> list[tuple[int, str]]:
-    """(number, line) of the lines whose tags count: not marked ``specworks: ignore-tags`` and not inside an
-    ignore block (``ignore-tags-start`` .. ``ignore-tags-end``, or the end of the file)."""
+    """
+    (number, line) of the lines whose tags count: not marked ``specworks: ignore-tags`` and not inside an
+    ignore block (``ignore-tags-start`` .. ``ignore-tags-end``, or the end of the file).
+    """
     lines, ignoring = [], False
     for number, line in enumerate(text.splitlines(), start=1):
         if _is_marker(line, IGNORE_START):
@@ -205,7 +219,9 @@ def _tag_lines(text: str) -> list[tuple[int, str]]:
 
 # @req REQ-SPECS-003, REQ-SPECS-011
 def scan_tags(ws: Workspace) -> list[Tag]:
-    """Every @req / @ac tag in the workspace, skipping hidden, vendored and workflow folders."""
+    """
+    Every @req / @ac tag in the workspace, skipping hidden, vendored and workflow folders.
+    """
     skip_roots = {(m.root / m.config.dir).resolve() for m in ws.modules()}
     tags: list[Tag] = []
     for dirpath, dirnames, filenames in os.walk(ws.root):
@@ -310,8 +326,10 @@ def gaps(rows: list[Row]) -> dict[str, list[str]]:
 
 # @req REQ-SPECS-012
 def unknown_tags(specs: ChangeSpecs, tags: list[Tag], others: set[str], prefixes: set[str]) -> list[Tag]:
-    """Tags to an ID of this change's capabilities that no spec has (``others``: other active changes' IDs), or with a
-    prefix no capability uses."""
+    """
+    Tags to an ID of this change's capabilities that no spec has (``others``: other active changes' IDs), or with a
+    prefix no capability uses.
+    """
     mine = {d.cap.prefix for d in specs.deltas}
     known = specs.known_ids() | others
     found = []
@@ -329,7 +347,9 @@ def unknown_tags(specs: ChangeSpecs, tags: list[Tag], others: set[str], prefixes
 
 # @req REQ-SPECS-012
 def to_markdown(change_ref: str, rows: list[Row], found: dict[str, list[str]]) -> str:
-    """The matrix as markdown; a location in its row's ``changed`` (a closed change's, REQ-SPECS-018) is marked ``(changed since close)``."""
+    """
+    The matrix as markdown; a location in its row's ``changed`` (a closed change's, REQ-SPECS-018) is marked ``(changed since close)``.
+    """
     changed = {where for r in rows for where in r.changed}
 
     def cell(items: list[str]) -> str:
@@ -369,7 +389,8 @@ def write_traceability(change: Change, text: str) -> Path:
 
 
 class Analysis:
-    """What the CLI knows about a change: its parsed specs and their issues, the workspace's tags and the gaps.
+    """
+    What the CLI knows about a change: its parsed specs and their issues, the workspace's tags and the gaps.
 
     Each part is computed on first use, so a caller that needs only the specs never scans the workspace.
     """
@@ -403,20 +424,26 @@ class Analysis:
 
     @property
     def archived(self) -> bool:
-        """The change is in its module's archive folder (closed or abandoned): its trace marks what changed since."""
+        """
+        The change is in its module's archive folder (closed or abandoned): its trace marks what changed since.
+        """
         return self.change.path.parent.name == ARCHIVE_DIR
 
     # @req REQ-SPECS-018
     @cached_property
     def changed_since(self) -> ChangedSince | None:
-        """What changed since an archived change's close; None for an active change."""
+        """
+        What changed since an archived change's close; None for an active change.
+        """
         return changed_since_close(self.ws, self.change) if self.archived else None
 
     # @req REQ-SPECS-018
     def _specs_at_close(self) -> ChangeSpecs:
-        """The specs with each delta's living spec as it was before the close (at the close commit's parent): the close
+        """
+        The specs with each delta's living spec as it was before the close (at the close commit's parent): the close
         commit already holds the merged spec, without the criteria the change left out. None without that commit, so no
-        criterion is reported as removed rather than one guessed from today's spec."""
+        criterion is reported as removed rather than one guessed from today's spec.
+        """
         commit = self.changed_since.commit if self.changed_since else None
         parent = f"{commit}^" if commit else None
         deltas = []

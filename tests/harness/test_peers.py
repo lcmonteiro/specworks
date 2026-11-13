@@ -1,4 +1,6 @@
-"""Skill peers: one Deep Agent peer per packaged skill, handing work over by message (REQ-HARNESS-001 to REQ-HARNESS-005)."""
+"""
+Skill peers: one Deep Agent peer per packaged skill, handing work over by message (REQ-HARNESS-001 to REQ-HARNESS-005).
+"""
 
 import openai
 import pytest
@@ -30,7 +32,9 @@ def roster(user):
 
 
 def skill_peers(user):
-    """The peers that answer, other than the user, by name."""
+    """
+    The peers that answer, other than the user, by name.
+    """
     return {name_of(who): who for at, who in roster(user).items() if at != LOCAL and declares(who, HookAnswer)}
 
 
@@ -42,7 +46,9 @@ def ask(name, text):
 
 
 def preamble_lines(peer):
-    """The lines of ``peer``'s preamble: its instructions up to the first blank line."""
+    """
+    The lines of ``peer``'s preamble: its instructions up to the first blank line.
+    """
     return peer.options["system_prompt"].split("\n\n", 1)[0].splitlines()
 
 

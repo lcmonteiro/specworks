@@ -1,4 +1,6 @@
-"""Artifact graph of a change: what exists, what is ready, and how to write each artifact."""
+"""
+Artifact graph of a change: what exists, what is ready, and how to write each artifact.
+"""
 
 from __future__ import annotations
 
@@ -30,7 +32,9 @@ class Artifact:
     findings: dict | None = None  # a check artifact's ``{letter, blocks}`` (REQ-FLOW-018); None for the others
 
     def skipped(self, change: Change) -> bool:
-        """Delta specs of a change with no behaviour change (``skip_specs``) are not written."""
+        """
+        Delta specs of a change with no behaviour change (``skip_specs``) are not written.
+        """
         return self.id == "specs" and change.skip_specs
 
     def exists(self, change: Change) -> bool:
@@ -40,12 +44,15 @@ class Artifact:
 
 
 class WorkflowError(SpecworksError):
-    """Raised for unknown artifacts."""
+    """
+    Raised for unknown artifacts.
+    """
 
 
 @dataclass(frozen=True)
 class CheckArtifact:
-    """An artifact that holds findings (review.md, validation.md, inspection.md), as the schema declares it.
+    """
+    An artifact that holds findings (review.md, validation.md, inspection.md), as the schema declares it.
 
     ``letter`` starts its finding IDs (``R1``, ``V1``, ``I1``), ``phase`` is the step that closes its findings and names
     the skill of its checks (``/specworks-<phase>``), and ``blocks`` are the gates its open findings fail (none for
@@ -62,7 +69,9 @@ class CheckArtifact:
 
 # @req REQ-FLOW-018
 def _declared(artifacts: dict[str, Artifact]) -> list[CheckArtifact]:
-    """The artifacts with a ``findings`` entry, as check artifacts in schema order; a letter used twice raises ``WorkflowError``."""
+    """
+    The artifacts with a ``findings`` entry, as check artifacts in schema order; a letter used twice raises ``WorkflowError``.
+    """
     found: list[CheckArtifact] = []
     for art in artifacts.values():
         if art.findings is None:
@@ -76,7 +85,8 @@ def _declared(artifacts: dict[str, Artifact]) -> list[CheckArtifact]:
 
 # @req REQ-FLOW-018
 def check_artifacts() -> list[CheckArtifact]:
-    """The check artifacts of the schema, in schema order; a letter used twice raises ``WorkflowError`` when the schema loads.
+    """
+    The check artifacts of the schema, in schema order; a letter used twice raises ``WorkflowError`` when the schema loads.
 
     Implements REQ-FLOW-018.
     """
@@ -85,7 +95,8 @@ def check_artifacts() -> list[CheckArtifact]:
 
 # @req REQ-FLOW-018
 def check_artifact(artifact_id: str) -> CheckArtifact:
-    """The check artifact with this id; ``WorkflowError`` naming the check artifacts for any other.
+    """
+    The check artifact with this id; ``WorkflowError`` naming the check artifacts for any other.
 
     Implements REQ-FLOW-018, REQ-FLOW-016.
     """
@@ -98,7 +109,8 @@ def check_artifact(artifact_id: str) -> CheckArtifact:
 
 # @req REQ-FLOW-018
 def check_artifact_for(finding_id: str) -> CheckArtifact:
-    """The check artifact a finding ID belongs to, by its letter (``V3`` -> validation); ``WorkflowError`` for an ID whose
+    """
+    The check artifact a finding ID belongs to, by its letter (``V3`` -> validation); ``WorkflowError`` for an ID whose
     letter is no check artifact's.
 
     Implements REQ-FLOW-016, REQ-FLOW-018.
@@ -129,7 +141,9 @@ def read_template(name: str) -> str:
 
 # @req REQ-FLOW-001
 def artifact_states(change: Change) -> list[dict]:
-    """Each artifact as done, ready (all requirements exist), blocked, or skipped (specs of a skip_specs change)."""
+    """
+    Each artifact as done, ready (all requirements exist), blocked, or skipped (specs of a skip_specs change).
+    """
     artifacts = load_artifacts()
     states = []
     for art in artifacts.values():
@@ -155,7 +169,8 @@ def artifact_states(change: Change) -> list[dict]:
 
 # @req REQ-FLOW-001
 def half_progress(change: Change) -> dict[str, dict[str, int]] | None:
-    """Each half's tasks done and in total (``{"test": {"done": 3, "total": 3}, "code": {...}}``) for a change in implement, else None.
+    """
+    Each half's tasks done and in total (``{"test": {"done": 3, "total": 3}, "code": {...}}``) for a change in implement, else None.
 
     Read from tasks.md only, without running any command.
     """

@@ -1,4 +1,6 @@
-"""`specworks start`: a change moves to a phase only once the gates it depends on pass."""
+"""
+`specworks start`: a change moves to a phase only once the gates it depends on pass.
+"""
 
 import pytest
 

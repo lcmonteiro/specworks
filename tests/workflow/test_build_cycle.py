@@ -1,4 +1,6 @@
-"""Build cycles: `specworks cycle` picks where the next design → test → code → review cycle starts."""
+"""
+Build cycles: `specworks cycle` picks where the next design → test → code → review cycle starts.
+"""
 
 import pytest
 

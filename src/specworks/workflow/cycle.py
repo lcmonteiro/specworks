@@ -1,4 +1,5 @@
-"""Build cycles: after a review or a validate, the steps the next cycle runs, and the change's next state.
+"""
+Build cycles: after a review or a validate, the steps the next cycle runs, and the change's next state.
 
 Each open finding of a check artifact (``- [ ] R<n> **<type>** ...`` in review.md,
 ``V<n>`` in validation.md, ``I<n>`` in inspection.md) needs work in
@@ -24,7 +25,8 @@ WAITING_STEPS = ("validate", "inspect")
 
 # @req REQ-FLOW-012
 def next_cycle(change: Change) -> dict:
-    """The next build cycle for a reviewed change: the phase it starts at and the steps it runs, from the open findings
+    """
+    The next build cycle for a reviewed change: the phase it starts at and the steps it runs, from the open findings
     of every check artifact, and ``next``, the change's next state (the phase the cycle starts at; with no cycle, validate
     while a finding waits for it, else the phase after the change's current one; None after close). A finding waiting
     for inspect starts no cycle and leaves the next state as it is: inspection is not a phase.

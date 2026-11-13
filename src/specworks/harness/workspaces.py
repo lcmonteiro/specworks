@@ -1,4 +1,6 @@
-"""Workspaces: the main checkout the phase peers share, a git worktree for ``test``, a ``run`` operation, and ``/merge``."""
+"""
+Workspaces: the main checkout the phase peers share, a git worktree for ``test``, a ``run`` operation, and ``/merge``.
+"""
 
 from __future__ import annotations
 
@@ -32,7 +34,8 @@ RUN_TIMEOUT: float = 600.0
 # @req REQ-HARNESS-006
 # @req REQ-HARNESS-007
 class WorkspaceError(SpecworksError):
-    """A workspace refused: a merge aborted on a conflict (``files``).
+    """
+    A workspace refused: a merge aborted on a conflict (``files``).
 
     Implements REQ-HARNESS-006, REQ-HARNESS-007.
     """
@@ -44,11 +47,14 @@ class WorkspaceError(SpecworksError):
 
 # @req REQ-HARNESS-008
 class SpecworksWorkspace(Workspace):
-    """chatinho's ``Workspace`` with a ``run`` operation, which agents get as ``ws_run``. Implements REQ-HARNESS-008."""
+    """
+    chatinho's ``Workspace`` with a ``run`` operation, which agents get as ``ws_run``. Implements REQ-HARNESS-008.
+    """
 
     @operation("Run a shell command in the workspace and return its output and exit code", writes=True)
     async def run(self, command: str) -> str:
-        """Run ``command`` through the platform shell in the workspace's folder, with ``shell_env()``.
+        """
+        Run ``command`` through the platform shell in the workspace's folder, with ``shell_env()``.
 
         Returns ``"exit code <n>\\n<output>"`` (stderr merged into stdout). Raises ``PermissionError`` for a ``git push``
         (nothing runs) and ``TimeoutError`` once it has run past ``RUN_TIMEOUT`` (it is killed). Implements REQ-HARNESS-008.
@@ -76,7 +82,9 @@ class SpecworksWorkspace(Workspace):
 
 
 async def _kill(process: asyncio.subprocess.Process) -> None:
-    """Stop ``process`` and every process it started: its process group on POSIX, its process tree on Windows."""
+    """
+    Stop ``process`` and every process it started: its process group on POSIX, its process tree on Windows.
+    """
     if sys.platform != "win32":
         try:
             os.killpg(process.pid, signal.SIGKILL)
@@ -94,13 +102,15 @@ async def _kill(process: asyncio.subprocess.Process) -> None:
 
 # @req REQ-HARNESS-006
 class SpecworksWorktrees(GitWorktrees):
-    """The provider: one main checkout every phase peer shares, and a worktree for each of ``worktrees``.
+    """
+    The provider: one main checkout every phase peer shares, and a worktree for each of ``worktrees``.
 
     Implements REQ-HARNESS-006.
     """
 
     def __init__(self, ws: SpecworksProject, worktrees: AbstractSet[str] | None = None) -> None:
-        """Over the repository of ``ws`` (``repo=ws.root``), with ``SpecworksWorkspace`` as the owner's workspace.
+        """
+        Over the repository of ``ws`` (``repo=ws.root``), with ``SpecworksWorkspace`` as the owner's workspace.
 
         ``worktrees`` names the peers that get a worktree of their own; ``None`` means ``worktree_peers()``. Implements REQ-HARNESS-006.
         """
@@ -112,7 +122,8 @@ class SpecworksWorktrees(GitWorktrees):
         self._checkout: Tree | None = None
 
     async def provision(self, owner: str | None, name: str, create: bool = True) -> WorkspaceView:
-        """``name``'s workspace for ``owner``: the main checkout for a name not in ``self.worktrees``, else its worktree.
+        """
+        ``name``'s workspace for ``owner``: the main checkout for a name not in ``self.worktrees``, else its worktree.
 
         The main checkout is a ``SpecworksWorkspace`` when ``owner`` is a checkout peer too, a ``WorkspaceView`` otherwise.
         A worktree created now starts from the branch the checkout has now. Implements REQ-HARNESS-006.
@@ -127,7 +138,9 @@ class SpecworksWorktrees(GitWorktrees):
         return (self.workspace if writes else self.view)(tree)
 
     async def _checkout_tree(self) -> Tree:
-        """The main checkout's tree; its base is ``HEAD``, so its diff is the uncommitted work on whatever branch it is on."""
+        """
+        The main checkout's tree; its base is ``HEAD``, so its diff is the uncommitted work on whatever branch it is on.
+        """
         top = await self._started()
         async with self._opening:
             if self._checkout is None:
@@ -135,7 +148,9 @@ class SpecworksWorktrees(GitWorktrees):
             return self._checkout
 
     async def current_branch(self) -> str:
-        """The branch the main checkout has checked out, else its ``HEAD`` commit. Implements REQ-HARNESS-006."""
+        """
+        The branch the main checkout has checked out, else its ``HEAD`` commit. Implements REQ-HARNESS-006.
+        """
         top = await self._started()
         branch = (await run_git(top, "symbolic-ref", "--quiet", "--short", "HEAD", check=False)).strip()
         return branch or (await run_git(top, "rev-parse", "HEAD")).strip()
@@ -145,7 +160,8 @@ class SpecworksWorktrees(GitWorktrees):
 @tool("merge", "Merge a workspace into the main checkout: /merge <name>")
 @require(HookExecute)
 class MergeCommand:
-    """``/merge <name>``: the user merges a worktree into the main checkout for the run's change, then removes it.
+    """
+    ``/merge <name>``: the user merges a worktree into the main checkout for the run's change, then removes it.
 
     Implements REQ-HARNESS-007.
     """
@@ -155,7 +171,9 @@ class MergeCommand:
         self.backend = backend
 
     async def execute(self, args: str = "", by: int = LOCAL, **kwargs: Any) -> Reply:
-        """Merge the workspace named in ``args``; every refusal is an error reply and changes nothing. Implements REQ-HARNESS-007."""
+        """
+        Merge the workspace named in ``args``; every refusal is an error reply and changes nothing. Implements REQ-HARNESS-007.
+        """
         name = args.strip()
         if by != LOCAL:
             return _error(f"only the user can merge: ask the user to run /merge {name or '<name>'}")
@@ -182,12 +200,16 @@ class MergeCommand:
 
 
 def _error(text: str) -> Reply:
-    """A refusal, as the error reply to whoever ran the command."""
+    """
+    A refusal, as the error reply to whoever ran the command.
+    """
     return Reply(text, status=ReplyStatus.ERROR)
 
 
 def _rel(ws: SpecworksProject, path: Path) -> str:
-    """``path`` relative to the workspace root, or as it is when it lies outside it."""
+    """
+    ``path`` relative to the workspace root, or as it is when it lies outside it.
+    """
     try:
         return ws.rel(path)
     except ValueError:

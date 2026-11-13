@@ -1,4 +1,5 @@
-"""specworks command line interface.
+"""
+specworks command line interface.
 
 Every command that agents read supports ``--json``. When no project is found the
 JSON answer is ``{"root": null, ...}`` with exit code 1, so a skill can tell
@@ -26,6 +27,7 @@ from specworks.cli import specs  # noqa: E402, F401
 from specworks.cli import workflow  # noqa: E402, F401
 from specworks.cli import telemetry  # noqa: E402, F401
 from specworks.cli import harness  # noqa: E402, F401
+from specworks.cli import login  # noqa: E402, F401
 # isort: on
 
 __all__ = ["app", "main"]
@@ -33,7 +35,9 @@ __all__ = ["app", "main"]
 
 # @req REQ-CLI-001
 def main() -> None:
-    """Run the CLI; a broken config or change file anywhere in the workspace is an error message, not a traceback."""
+    """
+    Run the CLI; a broken config or change file anywhere in the workspace is an error message, not a traceback.
+    """
     try:
         app()
     except SpecworksError as exc:  # raised outside a command (each command reports its own)

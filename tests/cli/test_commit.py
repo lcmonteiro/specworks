@@ -1,4 +1,6 @@
-"""Committing a phase: the files dirty when the phase started, and `specworks commit`, which commits only the phase's own."""
+"""
+Committing a phase: the files dirty when the phase started, and `specworks commit`, which commits only the phase's own.
+"""
 
 import pytest
 

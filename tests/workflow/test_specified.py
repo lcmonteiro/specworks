@@ -1,4 +1,6 @@
-"""The specs a change was agreed with: later edits are warned about, and MODIFIED behaviour needs changed tests."""
+"""
+The specs a change was agreed with: later edits are warned about, and MODIFIED behaviour needs changed tests.
+"""
 
 from helpers import REF, git, remove_repo, run_json
 

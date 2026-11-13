@@ -1,4 +1,6 @@
-"""Check artifacts: the schema's review.md, validation.md and inspection.md, and the findings of each read with its own letter."""
+"""
+Check artifacts: the schema's review.md, validation.md and inspection.md, and the findings of each read with its own letter.
+"""
 
 import json
 
@@ -55,7 +57,9 @@ def checks(data):
 
 
 def readability(data, file):
-    """The readability check of the check artifact ``file``."""
+    """
+    The readability check of the check artifact ``file``.
+    """
     return [c for name, c in checks(data).items() if "readable" in name and file in name]
 
 
@@ -135,7 +139,9 @@ def test_ac_flow_018_4_inspection_findings_block_nothing(repo):
 
 
 def not_ok(data):
-    """The checks that failed or warned, by name."""
+    """
+    The checks that failed or warned, by name.
+    """
     return sorted(c["name"].split(" (base")[0] for c in data["checks"] if not c["ok"])
 
 

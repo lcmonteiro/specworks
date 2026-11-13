@@ -12,32 +12,46 @@ harness: harness (src/specworks/harness) {
   workspaces: "workspaces.py (SpecworksWorktrees, SpecworksWorkspace.run, /merge)"
   confine: "confine.py (push refused, shell environment)"
   backend: "backend.py (GitBackend)"
-  model: "model.py (model_from_env)"
+  model: "model.py (model_from_env, model order)"
+  copilot: "copilot.py (log_in, device flow, CopilotSession, default_model)"
+  logins: "logins.py (Login, LoginStore)"
 
   session -> peers.list: one peer per class
   session -> workspaces: "provider (worktree peers), /merge"
   session -> backend: run's change
-  session -> model: chat model
+  session -> model: "chat model, project root"
   workspaces -> confine: refuses, shell_env
+  model -> logins: "find login (local, then global)"
+  model -> copilot: "OAuth token in, session token, API base and default model out"
+  copilot -> logins: "save, load login"
 }
 
 chatinho: "chatinho (ChatSession, DeepAgentConnector, GitWorktrees, /ws, terminal)"
 integrations: "integrations (read_skill)"
 workflow: "workflow (merge_branch)"
-project: "project (Workspace, Change, ensure_ignored)"
+project: "project (Workspace, Change, ensure_ignored, load_config)"
 repo: git repository {
   shape: cylinder
 }
 env: "SPECWORKS_MODEL_* environment" {
   shape: page
 }
+login_files: "user config dir (login files, owner only)" {
+  shape: page
+}
+github: "GitHub (device flow, Copilot token exchange, Copilot models list)" {
+  shape: cloud
+}
 
 harness.session -> chatinho: session, /ws, terminal
 harness.peers.base -> chatinho: DeepAgentConnector
-harness.workspaces -> chatinho: GitWorktrees, Workspace
 harness.peers.base -> integrations: skill text
+harness.workspaces -> chatinho: GitWorktrees, Workspace
 harness.workspaces -> workflow: merge peer/test
 harness.workspaces -> repo: "checkout, peer/test worktree"
 harness.backend -> project: change folder, .gitignore
 harness.backend -> repo: chat.jsonl
 harness.model -> env: key, model, base URL
+harness.model -> project: "harness.model from the top level's config"
+harness.logins -> login_files: OAuth token
+harness.copilot -> github: "device code, OAuth token, session token, models"

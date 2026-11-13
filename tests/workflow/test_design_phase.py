@@ -1,4 +1,6 @@
-"""Design phase: the design gate (API recorded in design.md, stubs exist, build and typecheck pass, no test run)."""
+"""
+Design phase: the design gate (API recorded in design.md, stubs exist, build and typecheck pass, no test run).
+"""
 
 import sys
 

@@ -1,4 +1,6 @@
-"""The trace of a closed change: its matrix from the current tags, and the locations changed since its close."""
+"""
+The trace of a closed change: its matrix from the current tags, and the locations changed since its close.
+"""
 
 import pytest
 
@@ -17,7 +19,9 @@ from support.reopen import commit_all
 
 @pytest.fixture
 def closed(tmp_path, monkeypatch):
-    """The planned project's change, closed with `specworks close` and the close committed; the close commit's hash."""
+    """
+    The planned project's change, closed with `specworks close` and the close committed; the close commit's hash.
+    """
     root, _ = make_closed(tmp_path, monkeypatch)
     commit_all(root, "close")
     return root, git_text(root, "rev-parse", "HEAD").strip()
@@ -117,7 +121,9 @@ LATER_002_3 = """
 
 @pytest.fixture
 def left_out(tmp_path, monkeypatch):
-    """A closed change whose MODIFIED REQ-AUTH-002 leaves out AC-AUTH-002.2, still tagged in a test; the close committed."""
+    """
+    A closed change whose MODIFIED REQ-AUTH-002 leaves out AC-AUTH-002.2, still tagged in a test; the close committed.
+    """
     monkeypatch.setattr(helpers, "LIVING", LIVING_WITH_002_2)
     root, _ = make_closed(tmp_path, monkeypatch)
     (root / "tests/test_left_out.py").write_text("# @ac AC-AUTH-002.2\ndef test_left_out(): ...\n", encoding="utf-8")  # specworks: ignore-tags
@@ -126,7 +132,9 @@ def left_out(tmp_path, monkeypatch):
 
 
 def add_later_criterion(root):
-    """A later change adds AC-AUTH-002.3 to the living spec and tags a test with it (not committed)."""
+    """
+    A later change adds AC-AUTH-002.3 to the living spec and tags a test with it (not committed).
+    """
     spec = root / "src/auth/docs/spec.md"
     living = spec.read_text(encoding="utf-8")
     assert "AC-AUTH-002.2" not in living  # the close took it out with the MODIFIED block

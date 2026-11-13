@@ -1,4 +1,6 @@
-"""The peer ``test``: the ``specworks-test`` skill, the test half of implement."""
+"""
+The peer ``test``: the ``specworks-test`` skill, the test half of implement.
+"""
 
 from __future__ import annotations
 
@@ -10,7 +12,9 @@ from specworks.harness.peers.base import SkillPeer
 # @req REQ-HARNESS-006
 @connector("test")
 class TestPeer(SkillPeer):
-    """The ``specworks-test`` skill as a chat peer; it works in a git worktree of its own. Implements REQ-HARNESS-001, REQ-HARNESS-006."""
+    """
+    The ``specworks-test`` skill as a chat peer; it works in a git worktree of its own. Implements REQ-HARNESS-001, REQ-HARNESS-006.
+    """
 
     worktree = True
 

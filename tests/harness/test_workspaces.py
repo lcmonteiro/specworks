@@ -1,4 +1,6 @@
-"""Workspaces: the main checkout the phase peers share, a git worktree for `test`, chatinho's /ws, and /merge (REQ-HARNESS-006, REQ-HARNESS-007)."""
+"""
+Workspaces: the main checkout the phase peers share, a git worktree for `test`, chatinho's /ws, and /merge (REQ-HARNESS-006, REQ-HARNESS-007).
+"""
 
 import asyncio
 from pathlib import Path
@@ -15,7 +17,9 @@ TEST_BRANCH = "peer/test"
 
 
 def worktrees(root):
-    """The worktree folders git knows, the main checkout first, by branch (None for a detached one)."""
+    """
+    The worktree folders git knows, the main checkout first, by branch (None for a detached one).
+    """
     found, folder = {}, None
     for line in git_out(root, "worktree", "list", "--porcelain").splitlines():
         if line.startswith("worktree "):
@@ -27,7 +31,9 @@ def worktrees(root):
 
 
 def worktree_of(root, branch=TEST_BRANCH):
-    """The folder of the worktree on ``branch``, or None."""
+    """
+    The folder of the worktree on ``branch``, or None.
+    """
     return next((folder for folder, on in worktrees(root).items() if on == branch), None)
 
 
@@ -47,13 +53,17 @@ def ask(name, text):
 
 
 async def provision_test(ws):
-    """`test`'s worktree, made by a provider of its own (as an earlier run would have), and its folder."""
+    """
+    `test`'s worktree, made by a provider of its own (as an earlier run would have), and its folder.
+    """
     view = await SpecworksWorktrees(ws).provision("test", "test")
     return view.tree.root
 
 
 def committed_test_file(ws, root):
-    """`test`'s worktree with `tests/test_x.py` committed in it; its folder."""
+    """
+    `test`'s worktree with `tests/test_x.py` committed in it; its folder.
+    """
     path = asyncio.run(provision_test(ws))
     (path / "tests").mkdir(exist_ok=True)
     (path / "tests/test_x.py").write_text("def test_x():\n    assert True\n", encoding="utf-8")

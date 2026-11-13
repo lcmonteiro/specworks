@@ -1,4 +1,6 @@
-"""`specworks harness`: the harness chat in the terminal, imported only by this command (REQ-CLI-022)."""
+"""
+`specworks harness`: the harness chat in the terminal, imported only by this command (REQ-CLI-022).
+"""
 
 import re
 import subprocess
@@ -28,7 +30,9 @@ def harness_project(tmp_path, monkeypatch):
 
 
 def forget_harness(monkeypatch):
-    """Take the harness out of the imported modules, so the command imports it again."""
+    """
+    Take the harness out of the imported modules, so the command imports it again.
+    """
     for name in list(sys.modules):
         if name == "specworks.harness" or name.startswith("specworks.harness."):
             monkeypatch.delitem(sys.modules, name)
@@ -51,9 +55,11 @@ def test_ac_cli_022_1_without_the_extra(tmp_path, monkeypatch):
 
 
 # @ac AC-CLI-022.2
-def test_ac_cli_022_2_no_key(harness_project, monkeypatch):
+def test_ac_cli_022_2_no_key(harness_project, tmp_path, monkeypatch):
     import chatinho
 
+    for variable in ("XDG_CONFIG_HOME", "APPDATA", "HOME", "USERPROFILE"):
+        monkeypatch.setenv(variable, str(tmp_path / "no-logins"))  # no stored login
     monkeypatch.delenv("SPECWORKS_MODEL_API_KEY", raising=False)
     monkeypatch.setenv("SPECWORKS_MODEL_MODEL", "gpt-test")
     opened = []
@@ -62,12 +68,34 @@ def test_ac_cli_022_2_no_key(harness_project, monkeypatch):
     result = runner.invoke(app, ["harness"])
     assert result.exit_code == 1
     assert "SPECWORKS_MODEL_API_KEY" in result.stderr
+    assert "specworks login copilot" in result.stderr
     assert result.stderr.startswith("error: ")
     assert opened == []
 
 
+
+# @ac AC-CLI-022.8
+def test_ac_cli_022_8_no_model(harness_project, tmp_path, monkeypatch):
+    import chatinho
+
+    for variable in ("XDG_CONFIG_HOME", "APPDATA", "HOME", "USERPROFILE"):
+        monkeypatch.setenv(variable, str(tmp_path / "no-logins"))
+    monkeypatch.setenv("SPECWORKS_MODEL_API_KEY", "sk-secret")
+    monkeypatch.delenv("SPECWORKS_MODEL_MODEL", raising=False)
+    opened = []
+    monkeypatch.setattr(chatinho.ChatSession, "run", lambda self: opened.append(self))
+    monkeypatch.setattr(chatinho.ChatSession, "start", lambda self: opened.append(self))
+    result = runner.invoke(app, ["harness"])
+    assert result.exit_code == 1
+    assert result.stderr.startswith("error: ")
+    assert "SPECWORKS_MODEL_MODEL" in result.stderr and "harness.model" in result.stderr
+    assert "sk-secret" not in result.stderr
+    assert opened == []
+
 def opened_sessions(monkeypatch):
-    """The sessions the command runs or starts, recorded instead of opening a terminal."""
+    """
+    The sessions the command runs or starts, recorded instead of opening a terminal.
+    """
     import chatinho
 
     opened = []
@@ -97,7 +125,7 @@ def test_ac_cli_022_6_the_command_says_nothing(harness_project, monkeypatch):
     import specworks.harness.session as session_module
     from harness.scripted import ScriptedModel
 
-    monkeypatch.setattr(session_module, "model_from_env", lambda: ScriptedModel())
+    monkeypatch.setattr(session_module, "model_from_env", lambda **_: ScriptedModel())
     opened = opened_sessions(monkeypatch)
     result = runner.invoke(app, ["harness"])
     assert result.exit_code == 0, result.output

@@ -1,4 +1,6 @@
-"""Changes and their artifacts: new, status, phase, commit, instructions and tasks."""
+"""
+Changes and their artifacts: new, status, phase, commit, instructions and tasks.
+"""
 
 from __future__ import annotations
 
@@ -28,7 +30,9 @@ def new(
     ),
     as_json: bool = JsonOpt,
 ) -> None:
-    """Create a new change folder (phase: refine) in the current module, on its own branch unless branch_per_change is false."""
+    """
+    Create a new change folder (phase: refine) in the current module, on its own branch unless branch_per_change is false.
+    """
     ws = workspace(as_json)
     started = time.monotonic()
     target = ws.module(module) if module is not None else ws.current
@@ -65,7 +69,9 @@ def new(
 # @req REQ-CLI-021
 @app.command()
 def status(change: str = ChangeOpt, as_json: bool = JsonOpt) -> None:
-    """Phase and artifact states (done / ready / blocked) of a change, active or archived."""
+    """
+    Phase and artifact states (done / ready / blocked) of a change, active or archived.
+    """
     ws = workspace(as_json)
     try:
         mod, ch = resolve_change(ws, change)
@@ -93,7 +99,9 @@ def abandon(
     reason: str = typer.Option(..., "--reason", help="Why the change is dropped; kept in its archived metadata."),
     as_json: bool = JsonOpt,
 ) -> None:
-    """Archive a change without merging its specs: it will not be built. Its name stays taken."""
+    """
+    Archive a change without merging its specs: it will not be built. Its name stays taken.
+    """
     ws, mod, ch = require_change(change, as_json)
     started = time.monotonic()
     if not reason.strip():
@@ -113,7 +121,8 @@ def reopen(
     phase: str = typer.Option("review", "--phase", help="The phase it starts in (any but done)."),
     as_json: bool = JsonOpt,
 ) -> None:
-    """Move a closed change back to the active changes in a phase, recording why. Changes no branch and makes no commit.
+    """
+    Move a closed change back to the active changes in a phase, recording why. Changes no branch and makes no commit.
 
     Implements REQ-CLI-020.
     """
@@ -136,7 +145,9 @@ def phase(
     change: str | None = typer.Option(None, "--change", "-c", help="Change name or module:name."),
     as_json: bool = JsonOpt,
 ) -> None:
-    """Move a change to another phase, unchecked (`specworks start` checks the gates first)."""
+    """
+    Move a change to another phase, unchecked (`specworks start` checks the gates first).
+    """
     if old_to is not None or change is None:
         # `phase <ref> <phase>` was the order before `start` and `gate` set `<phase> --change <ref>`.
         hint = f"specworks phase {old_to} --change {to}" if old_to is not None else f"specworks phase {to} --change <ref>"
@@ -157,7 +168,8 @@ def commit(
     trailer: list[str] | None = typer.Option(None, "--trailer", help="A trailer line, e.g. 'Co-Authored-By: A <a@x>'; repeat it for more, kept in order."),
     as_json: bool = JsonOpt,
 ) -> None:
-    """Commit the change's phase: its folder and the files changed since the phase started. Never pushes.
+    """
+    Commit the change's phase: its folder and the files changed since the phase started. Never pushes.
 
     With no active change of that name, it commits the newest archived one (after `specworks close`), subject
     `<ref>: close`. `--json` returns ref, commit (null when nothing was committed), subject, committed, leftOut and
@@ -203,7 +215,9 @@ def skip_specs(
     off: bool = typer.Option(False, "--off", help="The change does change behaviour after all: delta specs are required again."),
     as_json: bool = JsonOpt,
 ) -> None:
-    """Mark a change with no behaviour change (refactor, tooling, docs): it has no delta specs."""
+    """
+    Mark a change with no behaviour change (refactor, tooling, docs): it has no delta specs.
+    """
     ws, mod, ch = require_change(change, as_json)
     ch.skip_specs = not off
     ch.save()
@@ -217,7 +231,9 @@ def instructions_cmd(
     change: str = ChangeOpt,
     as_json: bool = JsonOpt,
 ) -> None:
-    """Template, rules and output path for writing one artifact of a change."""
+    """
+    Template, rules and output path for writing one artifact of a change.
+    """
     ws, mod, ch = require_change(change, as_json)
     data = instructions(ws, mod, ch, artifact)
     text = f"# {data['artifact']} → {data['outputPath']}\n\n{data['instruction']}\n---\n{data['template']}"
@@ -237,7 +253,9 @@ def task_list(
     pending: bool = typer.Option(False, "--pending", help="Only tasks not done yet."),
     as_json: bool = JsonOpt,
 ) -> None:
-    """List the tasks of a change with their IDs and state."""
+    """
+    List the tasks of a change with their IDs and state.
+    """
     ws, mod, ch = require_change(change, as_json)
     tasks = read_tasks(ch.path)
     _emit_tasks(ws, mod, ch, [t for t in tasks if not (pending and t.done)], as_json)
@@ -256,7 +274,9 @@ def task_done(
     change: str = ChangeOpt,
     as_json: bool = JsonOpt,
 ) -> None:
-    """Tick tasks as done (- [x])."""
+    """
+    Tick tasks as done (- [x]).
+    """
     _set(change, nums, True, as_json)
 
 
@@ -266,5 +286,7 @@ def task_undo(
     change: str = ChangeOpt,
     as_json: bool = JsonOpt,
 ) -> None:
-    """Mark tasks as not done (- [ ])."""
+    """
+    Mark tasks as not done (- [ ]).
+    """
     _set(change, nums, False, as_json)
