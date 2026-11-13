@@ -25,7 +25,7 @@
 
 ## 5. The picker fallback (review R1)
 
-- [ ] 5.1 [test] Write failing tests in `tests/harness/test_model.py` for AC-HARNESS-013.4 and AC-HARNESS-013.5, and update AC-HARNESS-013.3's cases to lists with no usable picker model, tagged `@ac <AC-ID>`; verify the new ones fail on today's `default_model()`
+- [x] 5.1 [test] Write failing tests in `tests/harness/test_model.py` for AC-HARNESS-013.4 and AC-HARNESS-013.5, and update AC-HARNESS-013.3's cases to lists with no usable picker model, tagged `@ac <AC-ID>`; verify the new ones fail on today's `default_model()`
 - [ ] 5.2 [code] When no entry is marked default, return the first usable picker model (picker enabled, policy enabled, not a preview), `versatile` first (REQ-HARNESS-013) tagged `@req REQ-HARNESS-013`; verify with a live bmw.ghe.com login that `model_from_env()` with no model named gives a model, and `uv run mypy` passes
 
 ## Workflow follow-up

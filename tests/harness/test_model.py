@@ -277,6 +277,16 @@ def test_ac_harness_010_4_a_logins_tokens_never_shown(project, ws, login, caplog
         assert token not in (change.path / "chat.jsonl").read_text(encoding="utf-8")
 
 
+def picker(model_id, category="versatile", shown=True, policy="enabled", preview=False):
+    """
+    A model list entry the picker shows (or not), with its category, policy state and preview flag; no ``is_chat_default``.
+    """
+    entry = {"id": model_id, "model_picker_enabled": shown, "model_picker_category": category, "preview": preview}
+    if policy is not None:
+        entry["policy"] = {"state": policy}
+    return entry
+
+
 MODELS = {
     "object": "list",
     "data": [
@@ -328,6 +338,8 @@ def test_ac_harness_013_2_no_request_when_a_model_is_named(tmp_path, named):
     "models, status",
     [
         ({"data": [{"id": "gpt-4.1", "is_chat_default": False}]}, 200),
+        ({"data": [picker("beta", preview=True), picker("blocked", policy="disabled"), picker("hidden", shown=False), picker("bare", policy=None)]}, 200),
+        ({"data": [picker("", category="versatile"), picker(7, category="versatile")]}, 200),
         ({"data": []}, 200),
         ({"models": [{"id": "gpt-4.1", "is_chat_default": True}]}, 200),
         ({"data": [{"id": "", "is_chat_default": True}]}, 200),
@@ -338,7 +350,7 @@ def test_ac_harness_013_2_no_request_when_a_model_is_named(tmp_path, named):
         (MODELS, 401),
         ("network", 200),
     ],
-    ids=["none marked", "empty", "no data", "empty id", "id not text", "not json", "a bare list", "server error", "rejected", "network error"],
+    ids=["none marked", "none usable", "no usable id", "empty", "no data", "empty id", "id not text", "not json", "a bare list", "server error", "rejected", "network error"],
 )
 def test_ac_harness_013_3_no_default_to_use(tmp_path, models, status):
     import httpx
@@ -351,3 +363,28 @@ def test_ac_harness_013_3_no_default_to_use(tmp_path, models, status):
     assert NO_MODEL in message
     assert OAUTH not in message and login.github.last_session(OAUTH) not in message
     assert len(login.github.model_requests()) == 1
+
+
+# @ac AC-HARNESS-013.4
+def test_ac_harness_013_4_a_versatile_picker_model_when_none_is_marked(tmp_path):
+    models = {
+        "data": [
+            picker("haiku", category="lightweight"),
+            picker("beta", preview=True),
+            picker("blocked", policy="disabled"),
+            picker("hidden", shown=False),
+            picker("sonnet"),
+            picker("gpt"),
+        ]
+    }
+    login = StoredLogin(tmp_path, models=models)
+    login.stored()
+    assert login.model({}).model_name == "sonnet"
+
+
+# @ac AC-HARNESS-013.5
+def test_ac_harness_013_5_any_category_when_none_is_versatile(tmp_path):
+    models = {"data": [picker("lite-beta", category="versatile", preview=True), picker("haiku", category="lightweight"), picker("opus", category="powerful")]}
+    login = StoredLogin(tmp_path, models=models)
+    login.stored()
+    assert login.model({}).model_name == "haiku"
