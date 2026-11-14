@@ -147,7 +147,9 @@ Read the module's `<docsPath>/architecture.md` first (`docsPath` of the module i
      IDs from `nextId` upwards, MODIFIED with the whole existing block, REMOVED
      with Reason and Migration. Every requirement uses SHALL/MUST and has
      acceptance criteria `#### Scenario: AC-<prefix>-NNN.<n> <title>` with
-     WHEN/THEN.
+     WHEN/THEN. Every requirement that takes input, does I/O or holds state
+     has at least one error or limit scenario; when it has none, the
+     requirement says why.
 
    Then validate and fix every error before going on:
    ```bash
