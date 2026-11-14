@@ -910,3 +910,18 @@ def test_review_marks_the_inspection_findings_it_checked_done_in_review():
     # Without the mark an I finding never reaches inspect, and review must never tick it: inspect confirms it.
     text = flat(read_skill("specworks-review"))
     assert 'specworks finding done I<n> --in review --change "<ref>"' in text
+
+
+# --- test rules: risk, negative cases, quality, integration; specify asks for error scenarios (improve-test-phase) ---------
+# The skills have no capability, so these tests are untagged and assert only the pinned phrases of design.md, verbatim.
+@pytest.mark.parametrize(
+    ("name", "phrase"),
+    [
+        ("specworks-test", "Rank the criteria by risk first"),
+        ("specworks-test", "write no untagged test: name it in the report as a missing scenario"),
+        ("specworks-test", "would it fail if the THEN broke?"),
+        ("specworks-specify", "at least one error or limit scenario"),
+    ],
+)
+def test_the_test_and_specify_skills_carry_the_test_rules(name, phrase):
+    assert phrase in flat(read_skill(name))

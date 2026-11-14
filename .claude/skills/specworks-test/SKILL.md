@@ -121,10 +121,19 @@ next step the same way: the next skill (recommended), any alternative, and
 
 4. **Write the tests, one acceptance criterion at a time**
 
+   Rank the criteria by risk first: data loss, security, user-visible
+   errors and behaviour many callers rely on are high risk. A high-risk
+   criterion gets more than one case (its limits, invalid inputs and
+   failures); a trivial one gets a single test.
+
    For each ADDED or MODIFIED acceptance criterion:
    - Write at least one test that checks exactly what its WHEN/THEN says,
      through the public interface (black box): GIVEN → arrange, WHEN → act,
      THEN → assert. Cover error scenarios with the real error type or status.
+   - Look for the negative cases: for each criterion, ask which invalid
+     input, limit or I/O failure applies. Test it when the criterion
+     describes it. When it does not, write no untagged test: name it in the
+     report as a missing scenario and suggest `/specworks-specify <ref>`.
    - Put the tag in a comment right above the test, in the language's comment
      syntax, and name the test after the criterion:
      ```python
@@ -139,9 +148,12 @@ next step the same way: the next skill (recommended), any alternative, and
      when it truly checks all of them.
    - Pick the level the criterion needs: unit for logic, integration for
      storage, APIs and wiring, end-to-end only when the criterion is about the
-     whole flow.
-   - Keep tests deterministic: control time, randomness, network and
-     filesystem the way the project already does.
+     whole flow. A criterion that spans capabilities is tested through the
+     public interface of the higher one, without mocking the lower ones.
+   - Keep each test isolated, deterministic and meaningful: no shared
+     state and no dependence on the order tests run in; control time,
+     randomness, network and filesystem the way the project already does.
+     Ask of every test: would it fail if the THEN broke? If not, strengthen it.
    - Wording checks (tests that check text: skill wording, templates,
      instructions): Assert only the pinned phrases of design.md, verbatim
      (its **Pinned wording**); never phrases picked from the proposal.
@@ -221,8 +233,9 @@ artifact is written), and before the closing question, commit with specworks com
    AC-AUTH-003.2   tests/test_reset.py::test_ac_auth_003_2_expired   fails: NotImplementedError
    ```
 
-   plus tests updated or deleted for MODIFIED/REMOVED criteria, and anything
-   you had to decide. Mention that the
+   plus tests updated or deleted for MODIFIED/REMOVED criteria, the missing
+   scenarios (negative cases no criterion describes, with
+   `/specworks-specify <ref>` suggested), and anything you had to decide. Mention that the
    test suite is red on purpose until the code half is done. End with:
    ```
    1. /specworks-code <ref> (recommended): the code half, from the specs and design
