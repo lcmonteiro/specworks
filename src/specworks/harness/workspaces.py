@@ -13,9 +13,10 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from chatinho import LOCAL, HookExecute, Reply, ReplyStatus, require, tool
-from chatinho.workspaces import GitWorktrees, Tree, Workspace, WorkspaceView, operation
+from chatinho.support.parts.workspace import Tree, Workspace, WorkspaceView, operation
+from chatinho.support.parts.workspace.tree import run_git
+from chatinho.workspaces import GitWorktrees
 from chatinho.workspaces.git import BRANCH_PREFIX, WORKTREES
-from chatinho.workspaces.tree import run_git
 
 from specworks.core.errors import SpecworksError
 from specworks.core.git import git_text
