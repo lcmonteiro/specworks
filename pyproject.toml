@@ -19,7 +19,7 @@ dependencies = [
 # `specworks harness`: the specworks flow as a chatinho chat of Deep Agent peers. chatinho is pinned to a commit
 # because SpecworksWorktrees builds on GitWorktrees internals. Imported only by that command.
 harness = [
-    "chatinho[tui,deepagents] @ git+https://github.com/lcmonteiro/chatinho@8df635e9f44b3a797e1e408be2a870ffc727f117",
+    "chatinho[tui,deepagents] @ git+https://github.com/lcmonteiro/chatinho@ff18f15bbbc21e40a7ad90130789bdb90be42684",
     "deepagents>=0.7.34,<0.8",
 ]
 
@@ -48,7 +48,7 @@ dev = [
     "ruff>=0.17.0",
     "types-pyyaml>=6.0.12.20260906",
     # The harness extra, so `uv sync` installs what tests/harness needs.
-    "chatinho[tui,deepagents] @ git+https://github.com/lcmonteiro/chatinho@8df635e9f44b3a797e1e408be2a870ffc727f117",
+    "chatinho[tui,deepagents] @ git+https://github.com/lcmonteiro/chatinho@ff18f15bbbc21e40a7ad90130789bdb90be42684",
     "deepagents>=0.7.34,<0.8",
 ]
 
