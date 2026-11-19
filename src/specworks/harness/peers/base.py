@@ -11,7 +11,7 @@ from collections.abc import Sequence
 from typing import ClassVar
 
 from chatinho import ChatMessage, Query, Reply, ReplyStatus, name_of
-from chatinho.connectors.deep import DeepAgentConnector
+from chatinho.connectors import DeepAgentConnector
 from langchain_core.language_models import BaseChatModel
 from langchain_core.tools import StructuredTool
 
