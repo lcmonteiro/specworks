@@ -203,7 +203,7 @@ A closed change is picked the same way, from
    With notes, commit inspection.md:
    ```bash
    git status --short
-   specworks commit --change "<ref>" --message "<ref>: inspect"
+   specworks commit --change "<ref>" --message "inspect"
    ```
    `specworks commit` stages every file changed since the change's phase
    started: when `git status` shows other changed files besides

@@ -155,7 +155,8 @@ of <skills folder>/specworks-build/SKILL.md.
    - the **test** half in a subagent with its own git worktree (Claude Code:
      `Agent` with `isolation: "worktree"`); add to its prompt nothing but the
      fixed text. When it is done, its changes are on the worktree's branch:
-     commit them there if the subagent did not;
+     commit them there with `specworks commit --change "<ref>" --half test`
+     if the subagent did not;
    - the **code** half in a subagent in the main checkout, at the same time.
 
    Wait for both. Then merge the worktree's branch into the main checkout

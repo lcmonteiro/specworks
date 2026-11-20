@@ -126,6 +126,7 @@ change's tests. When the code gate passes, stop and suggest
 <!-- specworks:include back-from-review phases="`code` or `implement`" note="" in="<code, or implement for a finding routed to both halves>" -->
 
 <!-- specworks:include committing -->
+This half commits with `specworks commit --change "<ref>" --half code`.
 
 6. **Report and stop**
 

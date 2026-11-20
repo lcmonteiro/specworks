@@ -99,7 +99,7 @@ def merge_branch(ws: Workspace, module: Module, change: Change, branch: str) -> 
 
     Refuses a checkout with uncommitted changes or an unknown branch before merging; aborts the merge on any other
     conflict, or on a ``tasks.md`` line that differs in more than its box. ``module`` gives the change's ref for the
-    regenerated trace. Raises ``BranchMergeError``, and ``GitError`` outside a git repository. Implements REQ-FLOW-015.
+    regenerated trace and the merge commit's subject, ``<ref>: <phase> (merge <branch>)``. Raises ``BranchMergeError``, and ``GitError`` outside a git repository. Implements REQ-FLOW-015.
     """
     cwd = ws.root
     require_repo(cwd)
@@ -111,8 +111,9 @@ def merge_branch(ws: Workspace, module: Module, change: Change, branch: str) -> 
         raise BranchMergeError(f"branch '{branch}' does not exist") from None
     top = Path(git_text(cwd, "rev-parse", "--show-toplevel").strip())
     head = git_text(cwd, "rev-parse", "HEAD").strip()
+    subject = f"{module.qualify(change.name)}: {change.phase} (merge {branch})"
     try:
-        git(cwd, "merge", "--no-ff", "--no-edit", branch)
+        git(cwd, "merge", "--no-ff", "-m", subject, branch)
     except GitError as exc:
         conflicts = [top / p for p in git_text(cwd, "diff", "--name-only", "--diff-filter=U", "-z").split("\0") if p]
         if not conflicts:
@@ -121,7 +122,7 @@ def merge_branch(ws: Workspace, module: Module, change: Change, branch: str) -> 
         try:
             resolved = _resolve(ws, module, change, top, conflicts)
             git(cwd, "add", "--", *(str(p) for p in resolved))
-            git(cwd, "commit", "--no-edit")
+            git(cwd, "commit", "-m", subject)
         except BaseException:
             _abort(cwd)
             raise
