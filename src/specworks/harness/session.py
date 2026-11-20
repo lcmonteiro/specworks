@@ -36,7 +36,7 @@ def build_harness(ws: Workspace, model: BaseChatModel, *, frontend: Any = None) 
     if frontend is None:
         from chatinho.frontends.chat import ChatFrontend  # the terminal: only when one is opened
 
-        frontend = ChatFrontend(title="specworks harness", name="me", welcome_message=f"Peers: {', '.join(names)}. Ask one with @<peer> <text>.")
+        frontend = ChatFrontend(title="specworks harness", name="me", welcome_message=f"Peers: {', '.join(names)}. Ask one with @<peer> <text>, or just type and the best-fitting peer answers.")
     return ChatSession(
         connectors=[cls(model, names) for cls in PEERS],
         commands=[WorkspaceCommand(provider), MergeCommand(provider, backend)],

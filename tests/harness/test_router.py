@@ -322,3 +322,16 @@ def test_ac_harness_016_2_given_to_the_model(project, ws, routing):
         name = skill.removeprefix("specworks-")
         assert f"- {name}: {front_matter_description(skill)}" in prompt, name
     assert "let users reset passwords" in prompt
+
+
+# @ac AC-HARNESS-015.1
+def test_ac_harness_015_1_a_key_the_router_cannot_read_falls_back():
+    async def key():
+        return KEY
+
+    model = ChatOpenAI(model="gpt-test", api_key=key, base_url="http://127.0.0.1:9/v1")
+    endpoint, headers = router_endpoint(model)
+    assert endpoint.key is None
+    assert endpoint.model == "gpt-test"
+    assert headers == {}
+    assert router_endpoint(ScriptedModel())[0].key is None
