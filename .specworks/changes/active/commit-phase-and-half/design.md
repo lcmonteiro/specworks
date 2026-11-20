@@ -71,12 +71,16 @@ test and code skills add one line after the include. Pinned wording (verbatim, c
 
 ## Interfaces
 
+Proposed: waiting for the user's agreement
+
 - `src/specworks/core/changes.py`: `phase_subject(ref: str, change: Change, half: str | None = None, message: str | None = None) -> str`;
   raises `ChangeError` (REQ-PROJ-036).
 - `src/specworks/core/changes.py`: `commit_phase(root: Path, ref: str, change: Change, message: str | None = None, trailers: Sequence[str] = (), half: str | None = None) -> CommitResult`
   (was `subject=`; REQ-PROJ-024).
 - `src/specworks/cli/changes.py`: `specworks commit --change <ref> [--half test|code] [--message <text>] [--trailer …] [--json]`;
-  `--json` keeps `subject` (REQ-CLI-012).
+  `--json` keeps `subject` (REQ-CLI-012); `--half` is a plain `str` option (not a typer choice), so `phase_subject`
+  validates it and an unknown half is the CLI's `{"error": …}` with exit 1, like every other refusal; `--message`'s
+  help becomes "text after the subject's prefix" (REQ-CLI-012).
 - `src/specworks/workflow/merge.py`: `merge_branch(ws, module, change, branch)` unchanged in signature;
   its merge commit's subject is `<ref>: <phase> (merge <branch>)` (REQ-FLOW-015).
 
