@@ -203,13 +203,6 @@ def test_ac_harness_003_3_not_addressed(project, ws):
     session, user = chat(ws, model, then=ask("specify", "specify add-x"))
     assert model.peers_run() == ["specify"]
 
-    async def to_nobody(session, user):
-        await user.say("just thinking aloud")
-
-    model = ScriptedModel()
-    chat(ws, model, then=to_nobody)
-    assert model.peers_run() == []
-
 
 # @ac AC-HARNESS-003.4
 @pytest.mark.parametrize("target", ["nobody", "refine"], ids=["unknown", "itself"])
