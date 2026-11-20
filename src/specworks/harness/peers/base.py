@@ -58,6 +58,13 @@ def preamble(name: str, peers: Sequence[str], rules: Sequence[str] = ()) -> str:
     return "\n".join([PREAMBLE.format(name=name, peers=", ".join(peers)), *rules])
 
 
+def skill_description(skill: str) -> str:
+    """
+    The ``description`` of the packaged skill's front matter. Implements REQ-HARNESS-016.
+    """
+    raise NotImplementedError
+
+
 # @req REQ-HARNESS-001
 # @req REQ-HARNESS-004
 def skill_instructions(skill: str, peers: Sequence[str], rules: Sequence[str] = ()) -> str:
@@ -88,6 +95,8 @@ class SkillPeer(DeepAgentConnector):
     worktree: ClassVar[bool] = False
     #: Preamble lines this step gets after the common ones. Implements REQ-HARNESS-004.
     rules: ClassVar[tuple[str, ...]] = ()
+    #: What the peer is for, read by the router: its skill's front matter description. Implements REQ-HARNESS-016.
+    description: str = ""
 
     @classmethod
     def skill_name(cls) -> str:

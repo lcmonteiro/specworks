@@ -76,7 +76,7 @@ REQ-HARNESS-016.
 
 ## Interfaces
 
-Proposed: waiting for the user's agreement
+Agreed with the user
 
 - `src/specworks/harness/router.py`: `class HarnessRouter(LLMRouter)`,
   `HarnessRouter(endpoint: Endpoint, *, headers: Mapping[str, str] | None = None, fallback: str = FALLBACK)`,
