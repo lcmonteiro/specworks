@@ -358,12 +358,15 @@ wheels = [
 [[package]]
 name = "chatinho"
 version = "0.1.0"
-source = { git = "https://github.com/lcmonteiro/chatinho?rev=ff18f15bbbc21e40a7ad90130789bdb90be42684#ff18f15bbbc21e40a7ad90130789bdb90be42684" }
+source = { git = "https://github.com/lcmonteiro/chatinho?rev=d783cc565cf4f5ab2c67385e41bd0d70a1ff0e6b#d783cc565cf4f5ab2c67385e41bd0d70a1ff0e6b" }
 
 [package.optional-dependencies]
 deepagents = [
     { name = "deepagents" },
     { name = "langchain-openai" },
+]
+openai = [
+    { name = "openai" },
 ]
 tui = [
     { name = "markdown-it-py" },
@@ -1815,13 +1818,13 @@ dependencies = [
 
 [package.optional-dependencies]
 harness = [
-    { name = "chatinho", extra = ["deepagents", "tui"] },
+    { name = "chatinho", extra = ["deepagents", "openai", "tui"] },
     { name = "deepagents" },
 ]
 
 [package.dev-dependencies]
 dev = [
-    { name = "chatinho", extra = ["deepagents", "tui"] },
+    { name = "chatinho", extra = ["deepagents", "openai", "tui"] },
     { name = "coverage" },
     { name = "deepagents" },
     { name = "mypy" },
@@ -1832,7 +1835,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "chatinho", extras = ["tui", "deepagents"], marker = "extra == 'harness'", git = "https://github.com/lcmonteiro/chatinho?rev=ff18f15bbbc21e40a7ad90130789bdb90be42684" },
+    { name = "chatinho", extras = ["tui", "deepagents", "openai"], marker = "extra == 'harness'", git = "https://github.com/lcmonteiro/chatinho?rev=d783cc565cf4f5ab2c67385e41bd0d70a1ff0e6b" },
     { name = "deepagents", marker = "extra == 'harness'", specifier = ">=0.7.34,<0.8" },
     { name = "pyd2", git = "https://github.com/lcmonteiro/pyd2?rev=265f8b97abbc4e5da483cf4ca27d622164216e19" },
     { name = "pyyaml", specifier = ">=6.0.3" },
@@ -1842,7 +1845,7 @@ provides-extras = ["harness"]
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "chatinho", extras = ["tui", "deepagents"], git = "https://github.com/lcmonteiro/chatinho?rev=ff18f15bbbc21e40a7ad90130789bdb90be42684" },
+    { name = "chatinho", extras = ["tui", "deepagents", "openai"], git = "https://github.com/lcmonteiro/chatinho?rev=d783cc565cf4f5ab2c67385e41bd0d70a1ff0e6b" },
     { name = "coverage", specifier = ">=7.16.2" },
     { name = "deepagents", specifier = ">=0.7.34,<0.8" },
     { name = "mypy", specifier = ">=2.4.0" },

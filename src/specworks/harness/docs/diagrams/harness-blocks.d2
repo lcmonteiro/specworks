@@ -2,9 +2,10 @@ direction: right
 
 harness: harness (src/specworks/harness) {
   session: "session.py (build_harness, run_harness)"
+  router: "router.py (HarnessRouter: LLMRouter, onboard fallback; router_endpoint)"
   peers: "peers/ package" {
     list: "__init__.py (PEERS, worktree_peers)"
-    base: "base.py (SkillPeer, PREAMBLE, MERGE_RULE, hand_over)"
+    base: "base.py (SkillPeer, PREAMBLE, MERGE_RULE, hand_over, skill_description)"
     kinds: "<name>.py x 15 (RefinePeer, TestPeer, BuildPeer, ...)"
     list -> kinds: one class each
     kinds -> base: subclass, worktree, rules
@@ -20,6 +21,7 @@ harness: harness (src/specworks/harness) {
   session -> workspaces: "provider (worktree peers), /merge"
   session -> backend: run's change
   session -> model: "chat model, project root"
+  session -> router: "chat model, peer names"
   workspaces -> confine: refuses, shell_env
   model -> logins: "find login (local, then global)"
   model -> copilot: "OAuth token in, session token, API base and default model out"
@@ -44,8 +46,9 @@ github: "GitHub (device flow, Copilot token exchange, Copilot models list)" {
 }
 
 harness.session -> chatinho: session, /ws, terminal
+harness.router -> chatinho: "LLMRouter (routing call with headers)"
 harness.peers.base -> chatinho: DeepAgentConnector
-harness.peers.base -> integrations: skill text
+harness.peers.base -> integrations: "skill text, front matter description"
 harness.workspaces -> chatinho: GitWorktrees, Workspace
 harness.workspaces -> workflow: merge peer/test
 harness.workspaces -> repo: "checkout, peer/test worktree"

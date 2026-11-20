@@ -10,12 +10,13 @@ import logging
 from collections.abc import Sequence
 from typing import ClassVar
 
+import yaml
 from chatinho import ChatMessage, Query, Reply, ReplyStatus, name_of
 from chatinho.connectors import DeepAgentConnector
 from langchain_core.language_models import BaseChatModel
 from langchain_core.tools import StructuredTool
 
-from specworks.tools.skills import read_skill
+from specworks.tools.skills import read_skill, split_frontmatter
 
 logger = logging.getLogger(__name__)
 
@@ -58,6 +59,17 @@ def preamble(name: str, peers: Sequence[str], rules: Sequence[str] = ()) -> str:
     return "\n".join([PREAMBLE.format(name=name, peers=", ".join(peers)), *rules])
 
 
+# @req REQ-HARNESS-016
+def skill_description(skill: str) -> str:
+    """
+    The ``description`` of the packaged skill's front matter. Implements REQ-HARNESS-016.
+    """
+    pairs, _ = split_frontmatter(read_skill(skill))
+    lines = dict(pairs).get("description", "")
+    value = yaml.safe_load(lines) if lines else None
+    return value["description"] if isinstance(value, dict) and isinstance(value.get("description"), str) else ""
+
+
 # @req REQ-HARNESS-001
 # @req REQ-HARNESS-004
 def skill_instructions(skill: str, peers: Sequence[str], rules: Sequence[str] = ()) -> str:
@@ -88,6 +100,8 @@ class SkillPeer(DeepAgentConnector):
     worktree: ClassVar[bool] = False
     #: Preamble lines this step gets after the common ones. Implements REQ-HARNESS-004.
     rules: ClassVar[tuple[str, ...]] = ()
+    #: What the peer is for, read by the router: its skill's front matter description. Implements REQ-HARNESS-016.
+    description: str = ""
 
     @classmethod
     def skill_name(cls) -> str:
@@ -109,6 +123,8 @@ class SkillPeer(DeepAgentConnector):
         #: Hand-overs being said; kept so they are not collected before they run.
         self._handing: set[asyncio.Task[None]] = set()
         super().__init__(peer_name(skill), model, [self.hand_over_tool()], memory=MEMORY, ask_user=True, system_prompt=skill_instructions(skill, peers, self.rules))
+        #: Set here, not on the class: ``@connector`` gives every peer class an empty description. Implements REQ-HARNESS-016.
+        self.description = skill_description(skill)
 
     async def answer(self, msg: ChatMessage) -> Reply:
         """
