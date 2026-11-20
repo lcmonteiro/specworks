@@ -30,12 +30,12 @@ are readable attributes.
 ### Precondition: headers in chatinho's LLMRouter
 
 `LLMRouter` builds `AsyncOpenAI(api_key=..., base_url=...)` with no headers;
-the Copilot API needs `EDITOR_HEADERS`. chatinho gains a keyword
+the Copilot API needs `EDITOR_HEADERS`. chatinho gained a keyword
 `headers: Mapping[str, str] | None = None` on `LLMRouter.__init__`, sent as
-`default_headers` on every client it builds (its own and one for a lent key).
-The chatinho pin moves to that commit, and `chatinho[openai]` joins the
-`harness` extra and the dev group. If chatinho lands the headers on `Endpoint`
-instead, `router_endpoint` passes them there; nothing else here changes.
+`default_headers` on every client it builds (its own and one for a lent key),
+refusing `Authorization` (chatinho `add-router-headers`, REQ-ROUTE-012,
+merged as `d783cc5`). The chatinho pin moves to that commit, and
+`chatinho[openai]` joins the `harness` extra and the dev group.
 Alternatives: subclassing `LLMRouter` to replace its private client methods
 (fragile on bumps), or a specworks router (duplicates chatinho), both turned
 down in refinement. Serves: REQ-HARNESS-015.
@@ -76,6 +76,8 @@ REQ-HARNESS-016.
 
 ## Interfaces
 
+Proposed: waiting for the user's agreement
+
 - `src/specworks/harness/router.py`: `class HarnessRouter(LLMRouter)`,
   `HarnessRouter(endpoint: Endpoint, *, headers: Mapping[str, str] | None = None, fallback: str = FALLBACK)`,
   `async route(msg: ChatMessage) -> int | None` (REQ-HARNESS-014)
@@ -83,7 +85,8 @@ REQ-HARNESS-016.
 - `src/specworks/harness/router.py`: `router_endpoint(model: BaseChatModel) -> tuple[Endpoint, dict[str, str]]`,
   the endpoint and the headers for the router (REQ-HARNESS-015)
 - `src/specworks/harness/session.py`: `build_harness` passes
-  `router=HarnessRouter(*router_endpoint(model))` instead of `SimpleRouter()` (REQ-HARNESS-014, REQ-HARNESS-015)
+  `router=HarnessRouter(endpoint, headers=headers)`, with `endpoint, headers = router_endpoint(model)`,
+  instead of `SimpleRouter()`; the headers are empty when the model sends none (REQ-HARNESS-014, REQ-HARNESS-015)
 - `src/specworks/harness/peers/base.py`: `skill_description(skill: str) -> str`;
   `SkillPeer.description: str`, set in `__init__` (REQ-HARNESS-016)
 
