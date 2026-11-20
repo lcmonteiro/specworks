@@ -1,6 +1,6 @@
 name: add-llm-router
 created: '2026-11-19T16:31:01'
-phase: close
+phase: done
 specified:
   REQ-HARNESS-014: 6048a2d9124d
   REQ-HARNESS-015: 521cf372613b

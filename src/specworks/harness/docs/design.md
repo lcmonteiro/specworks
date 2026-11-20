@@ -4,7 +4,9 @@
 
 `specworks harness` (no argument, no option) opens the whole specworks flow as
 an empty chatinho chat in the terminal; a change starts or continues when the
-user messages a peer (`@refine <request>`, `@build go on with <change>`). The user is peer zero; every packaged skill is a
+user messages a peer (`@refine <request>`, `@build go on with <change>`), or
+types with no peer, and the peer a model picks from the skills' descriptions
+answers (`onboard` when it picks none). The user is peer zero; every packaged skill is a
 peer named after it without the `specworks-` prefix (`refine`, `specify`,
 `build`, `test`, ...), each a chatinho `DeepAgentConnector` whose instructions
 are a short harness preamble followed by the skill unchanged. Peers hand work
@@ -12,13 +14,15 @@ to each other by message. The phase peers share the main checkout; the `test`
 peer works in its own git worktree, which only the user merges back with
 `/merge test`. A run's conversation is kept in the folder of the change it works on. The package
 `src/specworks/harness` needs the optional `harness` extra (chatinho with its
-`tui` and `deepagents` extras) and is imported only by the
+`tui`, `deepagents` and `openai` extras) and is imported only by the
 `harness` command.
 
-- `session.py`: `build_harness` (the session: user, peers, workspace
+- `session.py`: `build_harness` (the session: user, peers, router, workspace
   provider, backend, `/ws` and `/merge`), `run_harness`.
+- `router.py`: `HarnessRouter` (chatinho's `LLMRouter`, `onboard` as the
+  fallback), `router_endpoint` (the router's endpoint off the peers' model).
 - `peers/`: `base.py` (`SkillPeer`, the pinned preamble, `MERGE_RULE`,
-  `hand_over`), one module per skill (`<Name>Peer`), and `__init__.py`
+  `hand_over`, `skill_description`), one module per skill (`<Name>Peer`), and `__init__.py`
   (`PEERS`, `worktree_peers`).
 - `workspaces.py`: `SpecworksWorktrees` (the provider), `SpecworksWorkspace`
   (its `run` operation), `MergeCommand` (`/merge`).
@@ -228,17 +232,51 @@ interval (+5 s on `slow_down`) and fails on denial, expiry or its deadline,
 leaving the earlier login as it was. A login stored for one GitHub host is
 reused for another unless `--force` is given. (add-copilot-login)
 
+### A message naming no peer is routed by chatinho's LLMRouter
+
+`build_harness` routes with `HarnessRouter`, a subclass of chatinho's
+`LLMRouter` that overrides only `route`: the parent's choice, else the peer
+`onboard` (unless it is the speaker), so a message that names no peer is never
+left unanswered; `everyone`, an unknown name, a failed or slow request and no
+key all come back from `LLMRouter` as None. `@<peer>`, replies and hand-overs
+never reach the router. Alternatives: a router of our own on the peers'
+LangChain model (duplicates chatinho's prompt and parsing) and subclassing
+`LLMRouter`'s private client methods (breaks on pin bumps). (add-llm-router)
+
+### The router asks the peers' own model, read off it
+
+`router_endpoint(model)` reads `model_name`, `openai_api_base`,
+`default_headers` and `openai_api_key` off the peers' `ChatOpenAI`, so the
+router cannot disagree with the peers and needs no setting: a `SecretStr`
+becomes a function of its value, and the Copilot session's `token` function is
+passed as it is, so each routing call uses the renewed token; Copilot's
+`EDITOR_HEADERS` go to chatinho's `LLMRouter(headers=...)` (chatinho
+add-router-headers). A model that is not a `ChatOpenAI`, or an async key
+function, gives an endpoint with no key, and every message falls back to
+`onboard`. (add-llm-router)
+
+### A peer's description is its skill's front matter
+
+`SkillPeer.__init__` sets `description` to its skill's front matter
+`description` (`skill_description`), which the router gives the model. It is
+set on the instance: `@connector(name)` gives each peer class an empty one.
+(add-llm-router)
+
 ## Interfaces
 
 - `specworks.harness`: `build_harness`, `run_harness`, `model_from_env`,
   `ModelSettingsError`.
 - `session.py`: `build_harness(ws, model, *, frontend=None) -> ChatSession`
   (`workspaces=SpecworksWorktrees(ws, worktree_peers(PEERS))`, commands `/ws` and `/merge`;
-  `frontend=None` builds the terminal); `run_harness(ws)`.
+  `frontend=None` builds the terminal; `router=HarnessRouter(endpoint,
+  headers=headers)` from `router_endpoint(model)`); `run_harness(ws)`.
+- `router.py`: `FALLBACK = "onboard"`; `HarnessRouter(endpoint, *,
+  headers=None, fallback=FALLBACK)` (an `LLMRouter`) with `async route(msg) ->
+  int | None`; `router_endpoint(model) -> tuple[Endpoint, dict[str, str]]`.
 - `peers/base.py` (re-exported by `peers`): `PREFIX`, `PREAMBLE`,
-  `MERGE_RULE`, `MEMORY`, `peer_name(skill)`, `preamble(name, peers,
+  `MERGE_RULE`, `MEMORY`, `peer_name(skill)`, `skill_description(skill)`, `preamble(name, peers,
   rules=())`, `skill_instructions(skill, peers, rules=())`;
-  `SkillPeer(model, peers)` with class attributes `name`,
+  `SkillPeer(model, peers)` with `description` (its skill's), class attributes `name`,
   `worktree: ClassVar[bool] = False`, `rules: ClassVar[tuple[str, ...]] = ()`,
   classmethod `skill_name()`, `skill`, `answer()`, `listen()`,
   `hand_over_tool()` (agent tool `hand_over(peer, text)` -> `handed over to
@@ -279,7 +317,7 @@ reused for another unless `--force` is given. (add-copilot-login)
 - Imported only from the `harness` command's body; `import specworks` and
   every other command never load chatinho or deepagents.
 - The `harness` extra (specworks requires Python 3.12+; chatinho pinned to a commit with its
-  `tui` and `deepagents` extras, `deepagents>=0.7.34,<0.8`); tests in
+  `tui`, `deepagents` and `openai` extras, `deepagents>=0.7.34,<0.8`); tests in
   `tests/harness/` skip without it and use a scripted chat model (no network);
   every CI job installs it and covers the package. (require-python-3-12)
 - No peer pushes or merges a worktree; refusals are errors the agent sees,

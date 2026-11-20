@@ -28,7 +28,8 @@ never import higher ones.
   and the change, calls the capability that does the work, prints text or
   JSON, and records each change command's event. Uses all of the above.
 - **harness** (`src/specworks/harness`, optional `harness` extra, Python 3.12+): runs the whole flow as a chatinho chat, one Deep Agent peer per
-  skill, handing work over by message; the phase peers share the main
+  skill, handing work over by message, and a message naming no peer goes to
+  the peer a model picks (else `onboard`); the phase peers share the main
   checkout, `test` works in its own git worktree that only the user merges.
   Uses project (changes, `.gitignore`, the `harness.model` config), workflow (`merge_branch`) and
   integrations (`read_skill`); only cli's `harness` and `login` commands import it.
@@ -124,6 +125,9 @@ never import higher ones.
   creation time); its session ID is its ref.
 - **Peer**: a participant in a harness chat: the user, or one skill as a Deep
   Agent named after it without `specworks-`.
+- **Router**: what picks the peer that answers a harness message naming no
+  peer: chatinho's `LLMRouter` on the peers' own model, `onboard` when it picks
+  none.
 - **Hand-over**: a peer saying its next step to the next peer after its own
   run, so stages follow each other without nesting.
 - **Workspace**: where a harness peer works: the main checkout, shared by the
