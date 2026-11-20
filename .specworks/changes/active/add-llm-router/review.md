@@ -13,6 +13,7 @@ reading the diff. `- [ ] R<n>` while open, `- [x] R<n>` once resolved. Write
   - **Decision**: back to test: add a test that router_endpoint of a ChatOpenAI whose api_key is an async function gives an endpoint with no key, so routing falls back to onboard
 - [ ] R2 **quality** the terminal's welcome still says 'Ask one with @<peer> <text>.', which now reads as if a peer must be named (src/specworks/harness/session.py:39; REQ-HARNESS-014)
   - **Proposal**: back to code: welcome 'Peers: ... Ask one with @<peer> <text>, or just type and the best-fitting peer answers.'
+  - **Decision**: back to code: welcome 'Peers: ... Ask one with @<peer> <text>, or just type and the best-fitting peer answers.'
 - [ ] R3 **test-gap** the test half removed the second half of the AC-HARNESS-003.3 test, which asserted that a message the user says to nobody runs no peer; REQ-HARNESS-014 now routes it, and AC-HARNESS-003.3's own WHEN/THEN covers only a say addressed to a peer (tests/harness/test_peers.py:201)
   - **Proposal**: accepted: the removed assertion tested the behaviour REQ-HARNESS-014 replaces; AC-HARNESS-014.2/.3 now cover a message to nobody
 
