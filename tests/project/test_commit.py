@@ -8,7 +8,7 @@ import yaml
 from helpers import REF as CLOSED_REF
 from helpers import git, init_repo, on_a_branch, remove_repo
 from specworks.cli import app
-from specworks.core.changes import META_FILE, archived_as, commit_phase, set_phase
+from specworks.core.changes import META_FILE, ChangeError, archived_as, commit_phase, phase_subject, set_phase
 from specworks.core.config import load_config
 from specworks.core.git import GitError, git_text
 from support.commit import CHANGE, REF, change, head, make_closed, make_project, message, record, run_json, runner, sha
@@ -168,13 +168,13 @@ def test_the_message_is_the_ref_and_phase_then_the_trailers_in_order(project):
 
 
 # @ac AC-PROJ-024.3
-def test_a_given_subject_replaces_the_ref_and_phase(project):
+def test_a_given_message_follows_the_ref_and_phase_then_the_trailers(project):
     set_phase(change(project), "design")
     ch = record(project)
     (project / "src/a.py").write_bytes(b"A = 2\n")
-    result = commit_phase(project, REF, ch, subject="Add the login form", trailers=["Session: s1"])
-    assert result.subject == "Add the login form"
-    assert message(project) == "Add the login form\n\nSession: s1"
+    result = commit_phase(project, REF, ch, message="stubs", trailers=["Co-Authored-By: A <a@x>", "Session: s1"])
+    assert result.subject == "add-login: design - stubs"
+    assert message(project) == "add-login: design - stubs\n\nCo-Authored-By: A <a@x>\nSession: s1"
 
 
 # @ac AC-PROJ-024.4
@@ -248,3 +248,144 @@ def test_the_change_s_own_files_are_committed_and_not_flagged_as_already_dirty(p
     result = commit_phase(project, REF, change(project))
     assert own in result.committed and own in files_in_head(project)
     assert own not in result.already_dirty and result.already_dirty == []
+
+
+# --- the subject of a phase commit (REQ-PROJ-036) -------------------------------------------------------------------
+
+
+def in_phase(root, phase):
+    """
+    The change moved to `phase` with its record committed, and `src/a.py` changed since: a phase with something to commit.
+    """
+    set_phase(change(root), phase)
+    ch = record(root)
+    (root / "src/a.py").write_bytes(f"A = '{phase}'\n".encode())
+    return ch
+
+
+def subject_in_head(root):
+    return git_text(root, "log", "-1", "--format=%s").strip()
+
+
+def refused(root, ref, ch, **kwargs):
+    """
+    Commit with `kwargs`, expecting a refusal that stages and commits nothing; returns the error's text.
+    """
+    before = head(root)
+    with pytest.raises(ChangeError) as error:
+        commit_phase(root, ref, ch, **kwargs)
+    assert staged(root) == [] and head(root) == before
+    return str(error.value)
+
+
+# @ac AC-PROJ-036.1
+def test_ac_proj_036_1_the_subject_is_the_ref_and_the_phase(project):
+    ch = in_phase(project, "review")
+    result = commit_phase(project, REF, ch)
+    assert result.subject == "add-login: review"
+    assert subject_in_head(project) == "add-login: review"
+
+
+# @ac AC-PROJ-036.1
+def test_ac_proj_036_1_phase_subject_with_no_message_is_the_ref_and_the_phase(project):
+    set_phase(change(project), "review")
+    assert phase_subject(REF, change(project)) == "add-login: review"
+
+
+# @ac AC-PROJ-036.2
+def test_ac_proj_036_2_in_implement_the_subject_names_the_half(project):
+    ch = in_phase(project, "implement")
+    first = commit_phase(project, REF, ch, half="test")
+    assert first.subject == "add-login: implement (test)" and subject_in_head(project) == "add-login: implement (test)"
+    (project / "src/a.py").write_bytes(b"A = 3\n")
+    second = commit_phase(project, REF, change(project), half="code")
+    assert second.subject == "add-login: implement (code)" and subject_in_head(project) == "add-login: implement (code)"
+    assert second.commit is not None and first.commit != second.commit
+
+
+# @ac AC-PROJ-036.3
+def test_ac_proj_036_3_a_message_follows_the_prefix(project):
+    ch = in_phase(project, "implement")
+    result = commit_phase(project, REF, ch, message="cycle 2", half="test")
+    assert result.subject == "add-login: implement (test) - cycle 2"
+    assert subject_in_head(project) == "add-login: implement (test) - cycle 2"
+
+
+# @ac AC-PROJ-036.4
+def test_ac_proj_036_4_a_message_that_already_has_the_prefix_is_the_subject(project):
+    ch = in_phase(project, "review")
+    result = commit_phase(project, REF, ch, message="add-login: review (R1 decided)")
+    assert result.subject == "add-login: review (R1 decided)"
+    assert subject_in_head(project) == "add-login: review (R1 decided)"
+
+
+# @ac AC-PROJ-036.4
+def test_ac_proj_036_4_a_message_with_the_half_s_prefix_is_not_doubled(project):
+    set_phase(change(project), "implement")
+    assert phase_subject(REF, change(project), "code", "add-login: implement (code) - cycle 2") == "add-login: implement (code) - cycle 2"
+
+
+# @ac AC-PROJ-036.5
+@pytest.mark.parametrize("blank", ["  ", ""])
+def test_ac_proj_036_5_a_blank_message_leaves_the_prefix_alone(project, blank):
+    ch = in_phase(project, "design")
+    result = commit_phase(project, REF, ch, message=blank)
+    assert result.subject == "add-login: design"
+    assert message(project) == "add-login: design"
+
+
+# @ac AC-PROJ-036.6
+def test_ac_proj_036_6_no_half_in_implement_is_refused_before_staging(project):
+    ch = in_phase(project, "implement")
+    (project / "draft.md").write_bytes(b"# draft\n")
+    text = refused(project, REF, ch)
+    assert "--half test" in text and "--half code" in text
+    assert dirty_now(project) == {" M src/a.py", "?? draft.md"}
+
+
+# @ac AC-PROJ-036.6
+def test_ac_proj_036_6_phase_subject_refuses_no_half_in_implement(project):
+    set_phase(change(project), "implement")
+    with pytest.raises(ChangeError) as error:
+        phase_subject(REF, change(project), None, "cycle 2")
+    assert "--half test" in str(error.value) and "--half code" in str(error.value)
+
+
+# @ac AC-PROJ-036.7
+def test_ac_proj_036_7_a_half_in_review_is_refused(project):
+    ch = in_phase(project, "review")
+    text = refused(project, REF, ch, half="test")
+    assert "only for implement" in text
+
+
+# @ac AC-PROJ-036.7
+def test_ac_proj_036_7_a_half_after_close_is_refused(closed):
+    root, _ = closed
+    ch = archived_as(load_config(root), CLOSED_REF)
+    assert ch is not None and ch.phase == "done"
+    text = refused(root, CLOSED_REF, ch, half="test")
+    assert "only for implement" in text
+
+
+# @ac AC-PROJ-036.8
+def test_ac_proj_036_8_an_unknown_half_is_refused_naming_test_and_code(project):
+    ch = in_phase(project, "implement")
+    text = refused(project, REF, ch, half="docs")
+    assert "docs" in text and "test" in text and "code" in text
+
+
+# @ac AC-PROJ-036.9
+@pytest.mark.parametrize("two_lines", ["one\ntwo", "one\r\ntwo", "one\rtwo"])
+def test_ac_proj_036_9_a_message_on_two_lines_is_refused(project, two_lines):
+    ch = in_phase(project, "design")
+    text = refused(project, REF, ch, message=two_lines)
+    assert "one line" in text and "--trailer" in text
+
+
+# @ac AC-PROJ-036.10
+def test_ac_proj_036_10_after_close_a_message_follows_close(closed):
+    root, _ = closed
+    ch = archived_as(load_config(root), CLOSED_REF)
+    result = commit_phase(root, CLOSED_REF, ch, message="inspect")
+    assert result.subject == f"{CLOSED_REF}: close - inspect"
+    assert result.commit is not None and subject_in_head(root) == f"{CLOSED_REF}: close - inspect"

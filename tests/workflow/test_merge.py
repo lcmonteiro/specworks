@@ -4,7 +4,7 @@ Merging a half's branch: `specworks merge <branch>` resolves the change's tasks.
 
 import pytest
 
-from helpers import REF, git
+from helpers import REF, git, run_json
 from specworks.cli.output import resolve_change
 from specworks.core.git import git_text
 from specworks.core.workspace import load_workspace
@@ -124,6 +124,40 @@ def test_ac_flow_015_6_an_unknown_branch_is_refused_before_merging(halves):
         merge(halves, "no-such-branch")
     assert "no-such-branch" in str(exc.value) and exc.value.files == []
     assert snapshot(halves) == before and status(halves) == "" and not merging(halves)
+
+
+
+@pytest.fixture
+def implementing(project, monkeypatch):
+    """
+    The halves, with the change in implement (committed in the baseline) and a second branch `wt-test` from the baseline.
+    """
+    assert run_json("phase", "implement", "--change", REF)[0] == 0
+    root = make_halves(project, monkeypatch)
+    git(root, "branch", "wt-test")
+    return root
+
+
+def subject(root):
+    return git_text(root, "log", "-1", "--format=%s").strip()
+
+
+# @ac AC-FLOW-015.7
+def test_ac_flow_015_7_a_clean_merge_is_named_after_the_change_the_phase_and_the_branch(implementing):
+    commit_on(implementing, "wt-test", {"tests/test_reset.py": "def test_reset():\n    assert False\n"}, "tests")
+    commit_on(implementing, "main", {"src/auth/reset.py": "def reset(): ...\n"}, "code")
+    _, result = merge(implementing, "wt-test")
+    assert result.merged is True and result.resolved == [] and len(parents(implementing)) == 2
+    assert subject(implementing) == f"{REF}: implement (merge wt-test)"
+
+
+# @ac AC-FLOW-015.7
+def test_ac_flow_015_7_a_resolved_merge_is_named_the_same_way(implementing):
+    commit_on(implementing, BRANCH, {TASKS_MD: tick(implementing, "1.1")}, "test half")
+    commit_on(implementing, "main", {TASKS_MD: tick(implementing, "1.2")}, "code half")
+    ws, result = merge(implementing)
+    assert result.merged is True and [ws.rel(p) for p in result.resolved] == [TASKS_MD] and len(parents(implementing)) == 2
+    assert subject(implementing) == f"{REF}: implement (merge {BRANCH})"
 
 
 # @ac AC-FLOW-015.2
