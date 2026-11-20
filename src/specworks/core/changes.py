@@ -282,19 +282,35 @@ class CommitResult:
     already_dirty: list[str]  # committed, but already dirty when the phase started
 
 
+def phase_subject(ref: str, change: Change, half: str | None = None, message: str | None = None) -> str:
+    """
+    The subject of a phase commit: `<ref>: <phase>` (`close` once archived), `<ref>: implement (<half>)` in implement.
+
+    A message follows the prefix as `<prefix> - <message>`; one that already starts with the prefix is the subject as
+    it is, and a blank one leaves the prefix alone. Raises `ChangeError` for no half in implement, a half in any other
+    phase, a half other than `test` or `code`, and a message of more than one line.
+    Implements REQ-PROJ-036.
+    """
+    raise NotImplementedError("phase_subject")
+
+
 # @req REQ-PROJ-024
-def commit_phase(root: Path, ref: str, change: Change, subject: str | None = None, trailers: Sequence[str] = ()) -> CommitResult:
+def commit_phase(
+    root: Path, ref: str, change: Change, message: str | None = None, trailers: Sequence[str] = (), half: str | None = None
+) -> CommitResult:
     """
     Commit the change folder and every file dirty now that is not in its record or whose content differs.
 
-    `root` is the workspace root and `ref` the change's ref, for the default subject `<ref>: <phase>` (`<ref>: close`
-    for a change close has archived, phase `done`); the trailers follow a blank line, in order. Files of the change's
+    `root` is the workspace root and `ref` the change's ref; the subject is `phase_subject(ref, change, half, message)`
+    (REQ-PROJ-036), and the trailers follow a blank line, in order. Files of the change's
     own folder (and, once archived, of its former active folder) are never reported as already dirty. Nothing to
     commit returns `commit=None`. Raises `GitError` on a detached HEAD before staging anything. Never pushes.
     Implements REQ-PROJ-024.
     """
+    if half is not None:
+        raise NotImplementedError("commit_phase(half=...)")
     archived = change.phase == "done"
-    subject = subject if subject is not None else f"{ref}: {'close' if archived else change.phase}"
+    subject = message if message is not None else f"{ref}: {'close' if archived else change.phase}"
     def rel(path: Path) -> str:
         return path.resolve().relative_to(root.resolve()).as_posix() + "/"
 
@@ -306,6 +322,6 @@ def commit_phase(root: Path, ref: str, change: Change, subject: str | None = Non
     left_out = [p for p in now if p not in committed]
     if not committed:
         return CommitResult(None, subject, [], left_out, [])
-    message = subject + ("\n\n" + "\n".join(trailers) if trailers else "") + "\n"
-    short = commit(root, committed, message)
+    text = subject + ("\n\n" + "\n".join(trailers) if trailers else "") + "\n"
+    short = commit(root, committed, text)
     return CommitResult(short, subject, committed, left_out, [p for p in committed if p in change.dirty and not p.startswith(own)])

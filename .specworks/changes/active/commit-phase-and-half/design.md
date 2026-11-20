@@ -71,7 +71,7 @@ test and code skills add one line after the include. Pinned wording (verbatim, c
 
 ## Interfaces
 
-Proposed: waiting for the user's agreement
+Agreed with the user
 
 - `src/specworks/core/changes.py`: `phase_subject(ref: str, change: Change, half: str | None = None, message: str | None = None) -> str`;
   raises `ChangeError` (REQ-PROJ-036).

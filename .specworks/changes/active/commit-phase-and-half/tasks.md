@@ -2,7 +2,7 @@
 
 ## 1. The subject of a phase commit (project)
 
-- [ ] 1.1 Add `phase_subject(ref, change, half=None, message=None) -> str` as a stub in `src/specworks/core/changes.py`, and rename `commit_phase`'s `subject` to `message` and add `half=None` (REQ-PROJ-036, REQ-PROJ-024); update the CLI call in `src/specworks/cli/changes.py` to the new keyword; verify `specworks run lint`
+- [x] 1.1 Add `phase_subject(ref, change, half=None, message=None) -> str` as a stub in `src/specworks/core/changes.py`, and rename `commit_phase`'s `subject` to `message` and add `half=None` (REQ-PROJ-036, REQ-PROJ-024); update the CLI call in `src/specworks/cli/changes.py` to the new keyword; verify `specworks run lint`
 - [ ] 1.2 [test] In `tests/project/test_commit.py`, write failing tests tagged `@ac AC-PROJ-036.1` … `@ac AC-PROJ-036.10`: the subjects `add-login: review`, `add-login: implement (test)` / `(code)`, `add-login: implement (test) - cycle 2`, a message with the prefix kept, a blank message giving the prefix; the refusals (no half in implement, a half in review and after close, `docs`, a two-line message) leave the index empty and no new commit; `add-login: close - inspect` after close; verify they fail on the stub
 - [ ] 1.3 [test] Update the AC-PROJ-024.3 test: with the message `stubs` in design the subject is `add-login: design - stubs`, the trailers after a blank line (`@ac AC-PROJ-024.3`); give `half` wherever an existing commit test runs in implement; verify it fails on the stub
 - [ ] 1.4 [code] Implement `phase_subject` as design.md's "The rule, in order" (REQ-PROJ-036) tagged `@req REQ-PROJ-036`; verify `specworks run lint`
@@ -10,7 +10,7 @@
 
 ## 2. `specworks commit --half` (cli)
 
-- [ ] 2.1 Add `--half` (`test` or `code`) to `specworks commit` as a stub option passed to `commit_phase`, and reword `--message`'s help to "text after the subject's prefix" (REQ-CLI-012); verify `uv run specworks commit --help` lists `--half`
+- [x] 2.1 Add `--half` (`test` or `code`) to `specworks commit` as a stub option passed to `commit_phase`, and reword `--message`'s help to "text after the subject's prefix" (REQ-CLI-012); verify `uv run specworks commit --help` lists `--half`
 - [ ] 2.2 [test] In `tests/cli/`, write failing tests tagged `@ac AC-CLI-012.8` and `@ac AC-CLI-012.9`: `--half code --message "cycle 2"` in implement returns `subject` `add-login: implement (code) - cycle 2` and `git log -1 --format=%s` agrees; no `--half` in implement prints `{"error": …}` naming `--half test` and `--half code`, exits 1 and makes no commit; give `--half` wherever an existing CLI commit test runs in implement; verify they fail on the stub
 - [ ] 2.3 [code] Wire `--half` through and turn `ChangeError` from `commit_phase` into the CLI's error value (REQ-CLI-012) tagged `@req REQ-CLI-012`; verify `specworks run lint` and that `uv run specworks commit --change nope --half test --json` still names `nope`
 
