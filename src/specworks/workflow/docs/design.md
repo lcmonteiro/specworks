@@ -346,17 +346,25 @@ earliest finding was replaced: a code finding no longer re-runs the tests.
 
 Both implement halves tick `tasks.md` and rewrite `traceability.md`, so the
 test half's worktree branch conflicts there on every build. `merge_branch`
-refuses a dirty checkout or an unknown branch, runs `git merge --no-ff
---no-edit`, and on conflicts resolves only those two files of the change:
+refuses a dirty checkout or an unknown branch, runs `git merge --no-ff -m
+<subject>`, and on conflicts resolves only those two files of the change:
 `tasks.md` keeps a line ticked when either side ticked it (`merge_ticks`,
 reading both sides from the index), and the trace is regenerated for the
 merged checkout. Any other conflicting file, or a `tasks.md` line that
 differs in more than its box, runs `git merge --abort`, so the checkout is
 never left half-merged. git's `union` strategy was rejected: it keeps both
 versions of a line, so a task would appear twice. Two task files and a git
-merge driver were rejected too. The merge commit keeps git's default message.
-Its error, `BranchMergeError`, is named apart from `specs.merge.MergeError`,
+merge driver were rejected too. Its error, `BranchMergeError`, is named apart from `specs.merge.MergeError`,
 which close raises. (merge-halves-without-conflicts)
+
+### The merge commit names the change
+
+The merge commit's subject is `<ref>: <phase> (merge <branch>)`, computed
+before merging and given with `-m` on both paths: the clean merge and the
+`git commit` after resolving conflicts. git's own `Merge branch '<branch>'`
+said nothing of the change or phase. The branch is named rather than the half
+guessed from it, so `merge` takes no new option, and the harness's `/merge`
+gets the same subject through `merge_branch`. (commit-phase-and-half)
 
 ## Interfaces
 
@@ -430,7 +438,8 @@ which close raises. (merge-halves-without-conflicts)
   `- Completeness|Correctness|Coherence <passed>/<total>`, and `Warnings:`
   with `- <check name>: <details joined with "; ">` when there is one.
 - `src/specworks/workflow/merge.py`: `merge_branch(ws, module, change, branch)
-  -> MergeResult` (raises `BranchMergeError`, and `GitError` outside a git
+  -> MergeResult` (its commit's subject is `<ref>: <phase> (merge <branch>)`;
+  raises `BranchMergeError`, and `GitError` outside a git
   repository), `MergeResult(merged, branch, resolved)` (`merged` is False only
   when there was nothing to merge; `to_dict(ws)` gives workspace-relative
   paths), `BranchMergeError` (`files`: the conflicting files, empty when

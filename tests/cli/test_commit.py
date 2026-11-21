@@ -40,10 +40,10 @@ def test_the_command_prints_the_commit_and_the_files_left_out(project):
     result = runner.invoke(app, ["commit", "--change", REF, "--message", "Add the login form"])
     assert result.exit_code == 0, result.output
     short = git_text(project, "rev-parse", "--short", "HEAD").strip()
-    assert f"{short} Add the login form" in result.output
+    assert f"{short} add-login: design - Add the login form" in result.output
     assert "src/a.py" in result.output
     assert "left out (unchanged since the phase started): notes.txt" in result.output
-    assert message(project) == "Add the login form"
+    assert message(project) == "add-login: design - Add the login form"
 
 
 # @ac AC-CLI-012.1, AC-PROJ-024.2
@@ -99,3 +99,26 @@ def test_the_command_commits_a_change_that_close_has_just_archived(closed):
     for path in [*data["committed"], *data["leftOut"]]:
         assert not path.startswith("/") and str(root) not in path and "\\" not in path
     assert message(root) == f"{CLOSED_REF}: close"
+
+
+# @ac AC-CLI-012.8
+def test_ac_cli_012_8_the_half_and_a_message_make_the_subject(project):
+    assert run_json("phase", "implement", "--change", REF)[0] == 0
+    (project / "src/a.py").write_bytes(b"A = 2\n")
+    code, data = run_json("commit", "--change", REF, "--half", "code", "--message", "cycle 2")
+    assert code == 0, data
+    assert data["subject"] == "add-login: implement (code) - cycle 2"
+    assert isinstance(data["commit"], str) and head(project).startswith(data["commit"])
+    assert git_text(project, "log", "-1", "--format=%s").strip() == "add-login: implement (code) - cycle 2"
+
+
+# @ac AC-CLI-012.9
+def test_ac_cli_012_9_no_half_in_implement_is_an_error_and_commits_nothing(project):
+    assert run_json("phase", "implement", "--change", REF)[0] == 0
+    (project / "src/a.py").write_bytes(b"A = 2\n")
+    before = head(project)
+    code, data = run_json("commit", "--change", REF)
+    assert code == 1 and "--half test" in data["error"] and "--half code" in data["error"]
+    assert head(project) == before
+    assert git_text(project, "diff", "--cached", "--name-only").split() == []
+

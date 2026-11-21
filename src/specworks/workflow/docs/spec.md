@@ -686,7 +686,8 @@ check, and SHALL refuse `done`, and `test` or `code`, naming `implement`.
 ### Requirement: REQ-FLOW-015 Merging a half's branch
 
 The system SHALL merge a branch into the current checkout with git, for a
-change. When the merge conflicts only in that change's `tasks.md` and
+change, committing the merge with the subject `<ref>: <phase> (merge <branch>)`.
+When the merge conflicts only in that change's `tasks.md` and
 `traceability.md`, it SHALL resolve them and commit the merge: in `tasks.md`
 a task SHALL be done when either side ticked it, and `traceability.md` SHALL be
 regenerated. A `tasks.md` line that differs between the sides in more than its
@@ -729,6 +730,12 @@ exist.
 
 - **WHEN** the checkout has uncommitted changes, or the branch does not exist
 - **THEN** it fails before merging, saying which, and nothing changes
+
+#### Scenario: AC-FLOW-015.7 The merge commit's subject
+
+- **GIVEN** a change `add-login` in implement and a branch `wt-test` that changed only test files, and another whose merge resolves `tasks.md`
+- **WHEN** each is merged for the change
+- **THEN** each merge commit's subject is `add-login: implement (merge <branch>)`, e.g. `add-login: implement (merge wt-test)`
 
 ### Requirement: REQ-FLOW-016 Writing findings
 

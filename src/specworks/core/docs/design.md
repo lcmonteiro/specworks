@@ -294,6 +294,23 @@ names the active `.change.yaml`, which the archive then deletes. Committing an
 older archived change on purpose is out of scope; the newest one with the name
 is the one close just archived. (fix-commit-after-close)
 
+### One function owns a phase commit's subject
+
+`phase_subject(ref, change, half, message)` is the subject rule, pure, and
+`commit_phase` calls it before `dirty_files` or staging, so every refusal
+leaves the index untouched. The phase is `close` once archived, else the
+change's phase. In `implement` the half (`test` or `code`, `HALVES`) is
+required and the subject is `<ref>: implement (<half>)`; outside implement a
+half is refused, and an unknown half is refused first, naming both. A message
+follows the prefix as `<prefix> - <message>`; blank means the prefix alone, a
+message already starting with the prefix is kept as is (callers that wrote a
+full subject keep working), and one with a newline is refused (trailers go in
+`--trailer`). The half is passed, never recorded on the change or inferred
+from gates or files; a phase trailer was rejected because the subject is what
+`git log --oneline` shows. Validating in the CLI was rejected so every caller
+(the harness too) gets the same rule. `commit_phase`'s `subject=` became
+`message=`, since it is no longer the subject. (commit-phase-and-half)
+
 ### Reopening is a move plus a record, all or nothing
 
 `reopen_change` finds the archived change by name or folder (`archived_as`),
@@ -387,8 +404,10 @@ where to configure one. (baseline-project, run-unknown-key)
   `set_phase(change, phase, root=None)`, `create_change(cfg, name, root=None)`
   (with `root`, both record `Change.dirty`), `CommitResult` (`commit`,
   `subject`, `committed`, `left_out`, `already_dirty`),
-  `commit_phase(root, ref, change, subject=None, trailers=()) -> CommitResult`
-  (an archived change, phase `done`, defaults to `<ref>: close`).
+  `phase_subject(ref, change, half=None, message=None) -> str` (raises
+  `ChangeError`),
+  `commit_phase(root, ref, change, message=None, trailers=(), half=None) -> CommitResult`
+  (an archived change, phase `done`, commits as `<ref>: close`).
 - `src/specworks/core/changes.py`: `Reopened` (frozen: `at`, `reason`,
   `phase`), `Change.reopened: list[Reopened]`,
   `reopen_change(cfg, name, reason, phase="review", root=None) -> Change`

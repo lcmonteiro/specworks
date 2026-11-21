@@ -134,8 +134,10 @@ hand. `new` and `phase` pass the workspace root so the change records its
 dirty files. `commit` looks up the active change first and, only when there is
 none, the newest archived one in the same module, because close archives the
 change before the skills commit it; neither found is the unknown change error.
-(git-workflow, merge-halves-without-conflicts, commit-command, fix-commit-after-close,
-add-branch-default)
+`commit --half` is a plain string option, not a typer choice, so core's
+`phase_subject` validates it and an unknown half is the usual `{"error": ...}`
+with exit 1. (git-workflow, merge-halves-without-conflicts, commit-command, fix-commit-after-close,
+add-branch-default, commit-phase-and-half)
 
 ### Commands record telemetry explicitly
 
@@ -368,8 +370,10 @@ a second config format exists. (upgrade-project, dedupe-copilot-skills)
   empty when no term is broad) (REQ-CLI-016).
 - `merge <branch> --change <ref> [--json]`: `--json` prints the change's
   fields plus `merged`, `branch` and `resolved` (workspace-relative paths).
-- `commit --change <ref> [--message TEXT] [--trailer TEXT]... [--json]`
-  (the active change, else the newest archived one, subject `<ref>: close`):
+- `commit --change <ref> [--half test|code] [--message TEXT] [--trailer TEXT]... [--json]`
+  (the active change, else the newest archived one, subject `<ref>: close`;
+  `<ref>: <phase>`, `<ref>: implement (<half>)` in implement, and
+  `<prefix> - <message>` with a message, which is the text after the prefix):
   `--json` prints `ref`, `commit` (short hash or `null`), `subject`,
   `committed`, `leftOut` and `alreadyDirty` (workspace-relative paths); text
   prints `<hash> <subject>`, one line per committed file, then

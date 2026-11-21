@@ -600,6 +600,38 @@ def test_the_shared_committing_text_commits_with_specworks_commit():
     assert 'commit with specworks commit --change "<ref>"' in shared
 
 
+# --- the subject of a phase commit names the half (commit-phase-and-half) ---------
+# The skills have no capability, so these tests are untagged and assert only the pinned phrases of design.md, verbatim.
+COMMITTING_SKILLS = [
+    name
+    for name in packaged_skills()
+    if "<!-- specworks:include committing -->" in resources.files("specworks").joinpath("skills", name, "SKILL.md").read_text(encoding="utf-8")
+]
+COMMIT_SUBJECT_WORDING = [
+    "the subject is `<ref>: <phase>`, and `<ref>: implement (<half>)` in implement",
+    'a message given with `--message "<text>"` follows it: `<ref>: <phase> - <text>`',
+]
+
+
+def test_the_committing_skills_are_found():
+    assert {"specworks-test", "specworks-code", "specworks-design", "specworks-review"} <= set(COMMITTING_SKILLS)
+
+
+@pytest.mark.parametrize("name", COMMITTING_SKILLS)
+@pytest.mark.parametrize("phrase", COMMIT_SUBJECT_WORDING)
+def test_the_shared_committing_text_names_the_half_and_the_message(name, phrase):
+    assert phrase in flat(read_skill(name))
+
+
+@pytest.mark.parametrize(("name", "half"), [("specworks-test", "test"), ("specworks-code", "code")])
+def test_each_half_commits_with_its_half(name, half):
+    assert f'specworks commit --change "<ref>" --half {half}' in flat(read_skill(name))
+
+
+def test_build_commits_the_test_half_s_worktree_with_its_half():
+    assert "--half test" in flat(read_skill("specworks-build"))
+
+
 # --- the skills write the config with `specworks config set` ---------------------
 
 
@@ -857,12 +889,17 @@ def test_reopen_is_a_packaged_skill_scoped_to_specworks():
         "The reason comes from the user; never invent it.",
         "the earliest phase any of them needs",
         "specworks finding add",
-        '--message "<ref>: reopen"',
+        '--message "reopen"',
         "does not switch branches, rebase or push",
     ],
 )
 def test_the_reopen_skill_carries_its_pinned_wording(phrase):
     assert phrase in flat(read_skill(REOPEN))
+
+
+def test_reopen_commits_with_a_message_not_a_whole_subject():
+    # --message is the text after the subject's prefix now: "<ref>: reopen" would give "<ref>: <phase> - <ref>: reopen".
+    assert '--message "<ref>: reopen"' not in flat(read_skill(REOPEN))
 
 
 @pytest.mark.parametrize("name", ["specworks-refine", "specworks-specify"])
@@ -896,7 +933,8 @@ def test_inspect_writes_only_through_specworks_finding_and_commit():
     assert not tools & {"Write", "Edit"}
     text = flat(read_skill(INSPECT))
     assert "--artifact inspection" in text and "specworks finding close I<n>" in text
-    assert 'specworks commit --change "<ref>" --message "<ref>: inspect"' in text
+    assert 'specworks commit --change "<ref>" --message "inspect"' in text
+    assert '--message "<ref>: inspect"' not in text
     assert "trace --write" in text and "Never run `trace --write`" in text
 
 

@@ -164,7 +164,8 @@ def phase(
 @app.command()
 def commit(
     change: str = ChangeOpt,
-    message: str | None = typer.Option(None, "--message", help="The commit subject (default: `<ref>: <phase>`)."),
+    half: str | None = typer.Option(None, "--half", help="The half of implement being committed: test or code (required in implement only)."),
+    message: str | None = typer.Option(None, "--message", help="Text after the subject's prefix: `<ref>: <phase> - <text>`."),
     trailer: list[str] | None = typer.Option(None, "--trailer", help="A trailer line, e.g. 'Co-Authored-By: A <a@x>'; repeat it for more, kept in order."),
     as_json: bool = JsonOpt,
 ) -> None:
@@ -182,7 +183,7 @@ def commit(
         mod, ch = resolve_archived(ws, change)
     started = time.monotonic()
     ref = mod.qualify(ch.name)
-    result = commit_phase(ws.root, ref, ch, message, trailer or ())
+    result = commit_phase(ws.root, ref, ch, message, trailer or (), half=half)
     record(ws, mod, ch, "commit", started, committed=len(result.committed), made=result.commit is not None)
     sent = send_after_commit(ws, mod, ch)  # never changes the exit code
     data = {

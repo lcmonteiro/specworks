@@ -97,7 +97,7 @@ again only when the change closes.
    `specify` no finding is added: that phase's skill reads the reason from
    `specworks status`.
 
-   Commit the move with `--message "<ref>: reopen"`, so the history shows
+   Commit the move with `--message "reopen"`, so the history shows
    why the change came back.
 
 <!-- specworks:include committing -->
