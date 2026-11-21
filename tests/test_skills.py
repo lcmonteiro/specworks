@@ -889,12 +889,17 @@ def test_reopen_is_a_packaged_skill_scoped_to_specworks():
         "The reason comes from the user; never invent it.",
         "the earliest phase any of them needs",
         "specworks finding add",
-        '--message "<ref>: reopen"',
+        '--message "reopen"',
         "does not switch branches, rebase or push",
     ],
 )
 def test_the_reopen_skill_carries_its_pinned_wording(phrase):
     assert phrase in flat(read_skill(REOPEN))
+
+
+def test_reopen_commits_with_a_message_not_a_whole_subject():
+    # --message is the text after the subject's prefix now: "<ref>: reopen" would give "<ref>: <phase> - <ref>: reopen".
+    assert '--message "<ref>: reopen"' not in flat(read_skill(REOPEN))
 
 
 @pytest.mark.parametrize("name", ["specworks-refine", "specworks-specify"])
