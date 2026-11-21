@@ -1,6 +1,6 @@
 name: commit-phase-and-half
 created: '2026-11-20T16:23:59'
-phase: design
+phase: implement
 specified:
   REQ-CLI-012: 385dd0571617
   REQ-PROJ-036: 9e6474b3bec5
