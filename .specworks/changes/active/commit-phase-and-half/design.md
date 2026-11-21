@@ -68,6 +68,9 @@ test and code skills add one line after the include. Pinned wording (verbatim, c
 - `specworks-code/SKILL.md`: `specworks commit --change "<ref>" --half code`
 - `specworks-build/SKILL.md` (the worktree's commit): `--half test`
 - `specworks-inspect/SKILL.md`: `specworks commit --change "<ref>" --message "inspect"`
+- `specworks-reopen/SKILL.md` (the move's commit): `--message "reopen"`, and no `--message "<ref>: reopen"`
+  (the old whole subject would give `<ref>: <phase> - <ref>: reopen`); reopen moves the change to
+  refine, specify or review, never implement, so it needs no half (review R1)
 
 ## Interfaces
 
