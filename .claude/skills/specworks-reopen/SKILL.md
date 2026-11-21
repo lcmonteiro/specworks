@@ -117,7 +117,7 @@ next step the same way: the next skill (recommended), any alternative, and
    `specify` no finding is added: that phase's skill reads the reason from
    `specworks status`.
 
-   Commit the move with `--message "<ref>: reopen"`, so the history shows
+   Commit the move with `--message "reopen"`, so the history shows
    why the change came back.
 
 **Committing**: once this phase's gate has passed (a phase with no gate: once its
