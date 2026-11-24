@@ -36,7 +36,9 @@ artifacts:
         it is a real option. Weigh each option against the outcomes: say which
         outcomes it meets and which it fails.
       - **Recommendation**: The option you recommend and why, in a few lines.
-        Leave it as "Pending" if the user has not agreed yet.
+        Leave it as "Pending" if the user has not agreed yet. When the request
+        itself is not a good idea, write `Not recommended: <why>` and the
+        user's decision (went on anyway, reshaped, or abandoned).
       - **Open Questions**: Questions that must be answered before proposing.
         Each one says who can answer it. Remove questions once answered and
         record the answer in the relevant section.

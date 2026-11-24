@@ -963,3 +963,36 @@ def test_review_marks_the_inspection_findings_it_checked_done_in_review():
 )
 def test_the_test_and_specify_skills_carry_the_test_rules(name, phrase):
     assert phrase in flat(read_skill(name))
+
+
+# --- refine says when a request is not a good idea, and the user decides (refine-says-when-not-worth-it) ---------------
+# The skills have no capability, so these tests are untagged and assert only the pinned phrases of design.md, verbatim.
+ABANDON = 'specworks abandon --change "<ref>" --reason "<why>"'
+
+
+def test_refine_stance_is_candid_after_honest_about_evidence():
+    stance = flat(read_skill("specworks-refine").split("## The stance", 1)[1].split("\n## ", 1)[0])
+    candid = "**Candid**: when the evidence says the request is not a good idea, say so plainly"
+    assert candid in stance
+    assert stance.index("**Honest about evidence**") < stance.index(candid)
+
+
+def test_refine_explore_stops_to_say_a_request_is_not_a_good_idea_and_offers_abandoning():
+    explore = flat(step(read_skill("specworks-refine"), 3))
+    assert "\"I don't think this is a good idea: <why>\"" in explore
+    assert ABANDON in explore
+
+
+def test_refine_never_abandons_on_its_own():
+    explore = flat(step(read_skill("specworks-refine"), 3))
+    assert "Never abandon on your own: run `specworks abandon` only when the user chooses it" in explore
+
+
+def test_refine_offers_abandoning_at_the_end_while_the_objection_stands():
+    assert ABANDON in flat(step(read_skill("specworks-refine"), 5))
+
+
+def test_the_refinement_instruction_records_a_request_that_is_not_recommended():
+    text = flat(load_artifacts()["refinement"].instruction)
+    recommendation = text.split("**Recommendation**", 1)[1].split("- **", 1)[0]
+    assert "Not recommended: <why>" in recommendation

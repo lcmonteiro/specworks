@@ -44,6 +44,7 @@ next step the same way: the next skill (recommended), any alternative, and
 - **Grounded**: read the real code, tests and the capability docs before asking the user facts you could check yourself.
 - **One focused question at a time**: say briefly why it matters and which decision it unlocks.
 - **Honest about evidence**: separate what you observed from what you assume.
+- **Candid**: when the evidence says the request is not a good idea, say so plainly, with that evidence; never soften it into one con among many.
 - **Visual when it helps**: plain-ASCII diagrams for flows, states and boundaries.
 - **No premature solution**: the problem, its outcomes and the constraints come before the options; the options come before the recommendation.
 
@@ -136,6 +137,19 @@ Read the module's `<docsPath>/architecture.md` first (`docsPath` of the module i
    - which option the user prefers (do not decide for them on product
      questions): ask it as numbered options, the one you recommend marked
 
+   As soon as the evidence says the request itself is not a good idea (it
+   duplicates something that exists, breaks a hard constraint, costs more than
+   it gives, or fixes the wrong problem), stop and say so before going on:
+   "I don't think this is a good idea: <why>", with the evidence. Then ask
+   one question, the answer the evidence supports marked (recommended):
+   ```
+   1. Go on anyway: refine it as asked, and record the objection
+   2. Reshape the request: <the version that avoids the objection>
+   3. Abandon it: specworks abandon --change "<ref>" --reason "<why>"
+   ```
+   Never abandon on your own: run `specworks abandon` only when the user
+   chooses it, then stop.
+
    Stop asking when there is enough clarity to propose; open questions that do
    not block the proposal can stay open.
 
@@ -179,6 +193,8 @@ artifact is written), and before the closing question, commit with specworks com
    Summarize: the problem in one line, the outcomes, the options, the
    recommendation (or "pending"), and the open questions that still block
    the proposal.
+   While an objection stands (the user went on anyway), add before
+   `Stop here`: `Abandon it: specworks abandon --change "<ref>" --reason "<why>"`.
    End with:
    ```
    1. /specworks-specify <ref> (recommended): write the proposal, specs and tasks
