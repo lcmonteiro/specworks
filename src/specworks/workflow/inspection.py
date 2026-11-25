@@ -10,6 +10,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from specworks.core.changes import Change
+from specworks.workflow.artifacts import check_artifact
+from specworks.workflow.findings import read_findings
+
+# The step of a note that waits for the reviewer: routed to inspect after ``done in review:`` (REQ-FLOW-010).
+REVIEWER_STEP = "inspect"
 
 
 @dataclass(frozen=True)
@@ -39,19 +44,26 @@ class InspectionTurns:
         """
         Any note, for either turn.
         """
-        raise NotImplementedError
+        return bool(self.author or self.reviewer)
 
     def to_dict(self) -> dict:
         """
         ``{"author": [{"id", "step"}], "reviewer": [...]}``, each key only when its list has a note.
         """
-        raise NotImplementedError
+        turns = {"author": self.author, "reviewer": self.reviewer}
+        return {turn: [{"id": note.id, "step": note.step} for note in notes] for turn, notes in turns.items() if notes}
 
 
+# @req REQ-FLOW-020
 def inspection_turns(change: Change) -> InspectionTurns:
     """
     The change's open, readable inspection notes by turn (active or archived); none when it has no inspection.md.
 
     Implements REQ-FLOW-020.
     """
-    raise NotImplementedError
+    doc = read_findings(change, check_artifact("inspection"))  # unreadable checkboxes are problems, never findings
+    notes = [InspectionNote(id=f.id, step=f.phase) for f in doc.open]
+    return InspectionTurns(
+        author=[note for note in notes if note.step != REVIEWER_STEP],
+        reviewer=[note for note in notes if note.step == REVIEWER_STEP],
+    )

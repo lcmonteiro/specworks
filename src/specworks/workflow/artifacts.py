@@ -142,13 +142,17 @@ def read_template(name: str) -> str:
 # @req REQ-FLOW-001
 def artifact_states(change: Change) -> list[dict]:
     """
-    Each artifact as done, ready (all requirements exist), blocked, or skipped (specs of a skip_specs change).
+    Each artifact as done, ready (all requirements exist), blocked, or skipped (specs of a skip_specs change); inspection
+    as open instead of done while it has an open note.
     """
+    # A local import: inspection reads findings, and findings imports this module (findings -> artifacts).
+    from specworks.workflow.inspection import inspection_turns
+
     artifacts = load_artifacts()
     states = []
     for art in artifacts.values():
         if art.exists(change):
-            status = "done"
+            status = "open" if art.id == "inspection" and inspection_turns(change) else "done"
         elif art.skipped(change):
             status = "skipped"
         else:

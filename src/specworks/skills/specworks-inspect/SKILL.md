@@ -14,10 +14,27 @@ It sits beside the flow `refine → specify → design → implement (test | cod
 not in it: no gate reads inspection.md, and validate and close behave as
 before.
 
+**Reviewing a pull request**: the pull request of a change opens after its
+close, so the reviewer inspects a closed change, and is not its author:
+1. the author closes the change and pushes its branch (`/specworks-done`);
+2. the reviewer checks out that branch, runs `/specworks-inspect <ref>`, and
+   with notes commits inspection.md (in the archive folder), pushes it to the
+   branch and requests changes on the pull request;
+3. the author pulls; `specworks status`, `list --archived` and `context`
+   show the notes waiting for the author, and the author runs
+   `/specworks-reopen <ref>`, then review, build and done, and pushes;
+4. the reviewer pulls; the same commands show the notes waiting for the
+   reviewer, and the reviewer runs `/specworks-inspect <ref>` again,
+   confirms each worked note (or adds a new one), and approves the pull
+   request when none is left open.
+Only the author reopens; only the reviewer confirms a note. Pull requests
+from forks, where the reviewer cannot push the branch, are not covered.
+
 **Phase boundary**: this skill is read-only but for two commands:
 `specworks finding add` with `--artifact inspection` (and `specworks finding
 close` on an `I<n>` ID), which writes the reviewer's notes to inspection.md,
-and `specworks commit`, which commits them. It reads with `specworks status`, `specworks trace` (without
+and `specworks commit`, which commits them (and, on a closed change, the
+push of its branch, which the user is asked for). It reads with `specworks status`, `specworks trace` (without
 `--write`), `specworks cycle` (an open change only), `specworks list --archived`, read-only git
 (`git diff`, `git log`, `git status`) and the files. It never fixes what it
 finds and never decides a note: deciding is for `/specworks-review` (open
@@ -53,9 +70,12 @@ A closed change is picked the same way, from
 
    The open findings, `I<n>` among them:
    - an open change: `specworks cycle --change "<ref>" --json` lists them;
-   - a closed change: `cycle` refuses an archived change, so read the open
-     `- [ ] I<n>` lines of `inspection.md` in its archive folder (`path`),
-     when there is one.
+   - a closed change: `cycle` refuses an archived change; `status --json`
+     gives its open notes as `inspection`: `inspection.reviewer` the ones
+     waiting for this inspection to confirm them, `inspection.author` the
+     ones still waiting for the author (no `inspection`: none is open). Read
+     each one's text by its ID in `inspection.md` in its archive folder
+     (`path`).
 
    Never run `trace --write`: inspection writes nothing but inspection.md.
 
@@ -178,17 +198,24 @@ A closed change is picked the same way, from
    `specworks commit` stages every file changed since the change's phase
    started: when `git status` shows other changed files besides
    inspection.md, name them and ask before committing. Follow the project's
-   commit convention (`--message`, `--trailer`) and never push. Then hand
-   over:
-   - an open change:
+   commit convention (`--message`, `--trailer`). Then:
+   - an open change: never push; hand over:
      ```
      1. /specworks-review <ref> (recommended): review decides each note and routes it
      2. Stop here
      ```
-   - a closed change: inspection.md is the problem to reopen it with.
+   - a closed change: the notes go to its author through the pull request's
+     branch. Offer the push:
+
+<!-- specworks:include pushing -->
+
+     Then say:
+     Request changes on the pull request: the author runs /specworks-reopen <ref>.
+     Never offer the reopen to the reviewer: only the author reopens. End
+     with:
      ```
-     1. /specworks-reopen <ref> (recommended): with inspection.md as the problem
-     2. Stop here
+     1. Stop here (recommended): the notes wait for the author
+     2. Inspect another change
      ```
 
 ---
@@ -197,6 +224,7 @@ A closed change is picked the same way, from
 
 - Read-only but for inspection.md: no fix, no spec, test or code edit, no
   `trace --write`, no Decision on a note.
+- The reviewer never moves the change: no reopen, offered or run.
 - Every excerpt names its `file:line`; on a closed change it says when the
   file changed since the close.
 - Hints only when there is something to say, and at most three a step.
