@@ -1,6 +1,6 @@
 name: pr-review-with-inspect
 created: '2026-11-25T11:50:01'
-phase: implement
+phase: review
 specified:
   REQ-CLI-025: 68f13ac296f1
   REQ-CLI-026: 7c16b7750604
