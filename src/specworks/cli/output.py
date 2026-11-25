@@ -13,6 +13,7 @@ from specworks.core.changes import ARCHIVE_DIR, Change, ChangeError, ChangeNotFo
 from specworks.core.config import CONFIG_FILE, WORKFLOW_DIR
 from specworks.core.workspace import Module, Workspace, load_workspace
 from specworks.tools.skills import TOOLS
+from specworks.workflow.inspection import InspectionTurns
 
 JsonOpt = typer.Option(False, "--json", help="Machine-readable output.")
 
@@ -71,6 +72,24 @@ def change_dict(ws: Workspace, module: Module, change: Change) -> dict:
         **({"abandoned": change.abandoned} if change.abandoned else {}),
         **({"reopened": [{"at": r.at, "reason": r.reason, "phase": r.phase} for r in change.reopened]} if change.reopened else {}),
     }
+
+
+def inspection_dict(change: Change) -> dict:
+    """
+    ``{"inspection": {...}}`` (``InspectionTurns.to_dict``) for an archived change with open inspection notes, else ``{}``.
+
+    Implements REQ-CLI-025.
+    """
+    raise NotImplementedError
+
+
+def inspection_hint(ref: str, turns: InspectionTurns) -> str:
+    """
+    The skill a change's inspection notes wait for: ``/specworks-reopen <ref>`` when the author has one, else ``/specworks-inspect <ref>``.
+
+    Implements REQ-CLI-025, REQ-CLI-027.
+    """
+    raise NotImplementedError
 
 
 # @req REQ-CLI-004

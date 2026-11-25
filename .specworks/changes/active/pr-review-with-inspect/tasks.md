@@ -2,7 +2,7 @@
 
 ## 1. Inspection notes by turn (workflow)
 
-- [ ] 1.1 Add `src/specworks/workflow/inspection.py` with `InspectionNote`, `InspectionTurns` (`__bool__`, `to_dict`) and `inspection_turns(change)` as stubs (REQ-FLOW-020); verify `uv run mypy` passes
+- [x] 1.1 Add `src/specworks/workflow/inspection.py` with `InspectionNote`, `InspectionTurns` (`__bool__`, `to_dict`) and `inspection_turns(change)` as stubs (REQ-FLOW-020); verify `uv run mypy` passes
 - [ ] 1.2 [test] Write failing tests in `tests/workflow/` for AC-FLOW-020.1, AC-FLOW-020.2, AC-FLOW-020.3, AC-FLOW-020.4, each tagged `@ac`; verify they fail on the stub, not on setup
 - [ ] 1.3 [code] Implement `inspection_turns` from `read_findings` of the inspection artifact: open readable findings, `inspect` route to the reviewer, any other to the author, in file order (REQ-FLOW-020) tagged `@req REQ-FLOW-020`; verify `uv run ruff check src && uv run mypy`, and `inspection_turns` on the archived `unify-check-findings` gives no note
 
@@ -13,7 +13,7 @@
 
 ## 3. status, list --archived and context (cli)
 
-- [ ] 3.1 Add `inspection_dict(change)` and `inspection_hint(ref, turns)` in `src/specworks/cli/output.py` as stubs, and `inspected` in `context`'s data (REQ-CLI-025, REQ-CLI-027); verify `uv run mypy` passes
+- [x] 3.1 Add `inspection_dict(change)` and `inspection_hint(ref, turns)` in `src/specworks/cli/output.py` as stubs, and `inspected` in `context`'s data (REQ-CLI-025, REQ-CLI-027); verify `uv run mypy` passes
 - [ ] 3.2 [test] Write failing tests in `tests/cli/` for AC-CLI-025.1, AC-CLI-025.2, AC-CLI-025.3, with the pinned status lines of design.md, tagged `@ac`; verify they fail on the missing `inspection`
 - [ ] 3.3 [test] Write failing tests in `tests/cli/` for AC-CLI-026.1 (pinned list suffix) and AC-CLI-027.1, AC-CLI-027.2, AC-CLI-027.3 (pinned `inspected:` lines), tagged `@ac`; verify they fail on the missing keys
 - [ ] 3.4 [code] Implement `inspection_dict` and `inspection_hint`, and add `inspection` to `status` of an archived change with the pinned lines (REQ-CLI-025) tagged `@req REQ-CLI-025`; verify `uv run specworks status --change unify-check-findings --json` has no `inspection`

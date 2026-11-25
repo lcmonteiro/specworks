@@ -255,6 +255,7 @@ def context(as_json: bool = JsonOpt, all_modules: bool = AllOpt) -> None:
         "missingModules": missing_dicts(ws),
         "capabilities": capabilities,
         "changes": [change_dict(ws, m, c) for m, c in changes],
+        "inspected": [],  # REQ-CLI-027: archived changes with open inspection notes, filled in by the code half
         "skills": {"state": skills.state, "files": [{"path": f.path, "reason": f.reason} for f in skills.files]},
         "telemetry": (telemetry := telemetry_state(ws)),
     }

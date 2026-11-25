@@ -82,7 +82,7 @@ Skill text — asserted by `tests/test_skills.py`:
 
 ## Interfaces
 
-Proposed: waiting for the user's agreement
+Agreed with the user
 
 - `src/specworks/workflow/inspection.py`:
   - `@dataclass(frozen=True) InspectionNote(id: str, step: str)` (REQ-FLOW-020)
