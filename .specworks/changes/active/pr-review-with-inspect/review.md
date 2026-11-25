@@ -10,6 +10,7 @@ reading the diff. `- [ ] R<n>` while open, `- [x] R<n>` once resolved. Write
 
 - [ ] R1 **code-gap** Inspect's end (step 7) has no path for a closed change whose second inspection only confirms notes: 'No notes: nothing is written' skips the commit and push of the ticks, while 'With notes' always says to request changes, although the PR review process (step 4 of 'Reviewing a pull request') says the reviewer approves when none is left open; the author's status would keep showing the notes waiting for the reviewer (src/specworks/skills/specworks-inspect/SKILL.md:185-219; reads REQ-CLI-025)
   - **Proposal**: back to code: in step 7, on a closed change, commit and offer the push whenever inspection.md changed (a note added or confirmed); then read status --json: with inspection.author, say to request changes (the pinned line); with no inspection left open, say to approve the pull request; with only inspection.reviewer, say which notes are still to confirm; refresh .claude/skills with uv run specworks skills
+  - **Decision**: back to code: on a closed change, commit and offer the push whenever inspection.md changed (a note added or confirmed), then read status --json: author notes -> request changes on the pull request; nothing open -> approve the pull request; only reviewer notes -> name the notes still to confirm; run uv run specworks skills
 
 ## Changed files without tags
 
