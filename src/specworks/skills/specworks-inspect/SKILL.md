@@ -180,17 +180,18 @@ A closed change is picked the same way, from
 
 7. **End**
 
-   Say how many blocks were walked out of how many, and the notes written
-   (their IDs).
+   Say how many blocks were walked out of how many, the notes written and
+   the notes confirmed (their IDs).
 
-   **No notes: nothing is written.** The human review is its own record
-   (e.g. the pull request's approval). End with:
+   **inspection.md unchanged (no note added or confirmed): nothing is
+   written.** The human review is its own record (e.g. the pull request's
+   approval). End with:
    ```
    1. Stop here (recommended): nothing to act on
    2. Inspect another change
    ```
 
-   With notes, commit inspection.md:
+   When inspection.md changed (a note added or confirmed), commit it:
    ```bash
    git status --short
    specworks commit --change "<ref>" --message "inspect"
@@ -204,19 +205,34 @@ A closed change is picked the same way, from
      1. /specworks-review <ref> (recommended): review decides each note and routes it
      2. Stop here
      ```
-   - a closed change: the notes go to its author through the pull request's
-     branch. Offer the push:
+   - a closed change: the notes, and the confirmations, go to its author
+     through the pull request's branch. Offer the push:
 
 <!-- specworks:include pushing -->
 
-     Then say:
-     Request changes on the pull request: the author runs /specworks-reopen <ref>.
-     Never offer the reopen to the reviewer: only the author reopens. End
-     with:
-     ```
-     1. Stop here (recommended): the notes wait for the author
-     2. Inspect another change
-     ```
+     Then read whose turn it is now from
+     `specworks status --change "<ref>" --json`:
+     - `inspection.author` present: say:
+       Request changes on the pull request: the author runs /specworks-reopen <ref>.
+       Never offer the reopen to the reviewer: only the author reopens. End
+       with:
+       ```
+       1. Stop here (recommended): the notes wait for the author
+       2. Inspect another change
+       ```
+     - no `inspection` (every note confirmed): say to approve the pull
+       request, as no note is left open. End with:
+       ```
+       1. Stop here (recommended): nothing is left open
+       2. Inspect another change
+       ```
+     - only `inspection.reviewer`: name the notes still to confirm (their
+       IDs); the pull request is not approved while they are open. End
+       with:
+       ```
+       1. Stop here (recommended): the notes left wait for the next inspection
+       2. Inspect another change
+       ```
 
 ---
 
