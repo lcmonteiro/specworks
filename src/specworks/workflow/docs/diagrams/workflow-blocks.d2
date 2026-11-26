@@ -3,11 +3,13 @@ direction: right
 schema: "schema.yaml" {
   review: "review (R, blocks review + validate)"
   validation: "validation (V, blocks validate)"
+  inspection: "inspection (I, blocks nothing)"
 }
 
 workflow: "workflow" {
   artifacts: "Artifacts (artifacts.py)"
   findings: "Findings (findings.py)"
+  inspection: "Inspection turns (inspection.py)"
   review: "Review drift (review.py)"
   checks: "Checks (checks.py)"
   gate: "Gates (gate.py)"
@@ -16,17 +18,22 @@ workflow: "workflow" {
   merge: "Merge (merge.py)"
 }
 
-files: "change folder" {
+files: "change folder, active or archived" {
   reviewmd: "review.md"
   validationmd: "validation.md"
+  inspectionmd: "inspection.md"
 }
 
 cli: "cli (finding, cycle, validate --write)"
+overview: "cli (status, list --archived, context)"
 
 schema -> workflow.artifacts: "check artifacts"
 workflow.artifacts -> workflow.findings: "CheckArtifact"
 workflow.findings -> files.reviewmd: "read / write R"
 workflow.findings -> files.validationmd: "read / write V"
+workflow.findings -> files.inspectionmd: "read / write I"
+workflow.inspection -> workflow.findings: "open I, routed"
+workflow.artifacts -> workflow.inspection: "inspection open?"
 workflow.checks -> workflow.findings: "readable, closed"
 workflow.checks -> workflow.review: "drift report"
 workflow.gate -> workflow.checks: "rows"
@@ -36,3 +43,5 @@ workflow.cycle -> workflow.findings: "open findings"
 cli -> workflow.findings: "finding add / decide / done / close"
 cli -> workflow.cycle: "next cycle, next state"
 cli -> workflow.validate: "validate --write"
+overview -> workflow.inspection: "notes by turn"
+overview -> workflow.artifacts: "artifact states"

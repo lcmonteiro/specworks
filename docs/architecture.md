@@ -52,7 +52,11 @@ never import higher ones.
   same `finding` commands write them, `cycle` reads them all, and the step
   that found a finding closes it. (unify-check-findings) Inspection blocks no
   gate and may be written on a closed change, the one write the CLI allows
-  into the archive. (add-inspect-skill)
+  into the archive. (add-inspect-skill) A closed change's open notes are
+  split by turn from their routing (workflow), shown by `status`, `list
+  --archived` and `context` with the skill to run (cli), so a pull request is
+  reviewed by pushing notes and reopening, with no GitHub API call.
+  (pr-review-with-inspect)
 - **Errors are values**: every expected failure is a `SpecworksError`; under
   `--json` it is `{"error": ...}` with exit 1, and every printed path is
   relative to the workspace root. (baseline-cli)
@@ -115,6 +119,9 @@ never import higher ones.
 - **Inspection**: a human walk through a change, open or closed, scenario by
   scenario (`/specworks-inspect`); its notes, when there are any, become `I`
   findings.
+- **Turn**: whose move an open inspection note waits for: the author's (to
+  work it, `/specworks-reopen`) or, once `done in review:`, the reviewer's (to
+  confirm it, `/specworks-inspect`).
 - **Finding**: one problem recorded in a check artifact, routed back to the
   step that fixes it and closed by the step that found it.
 - **Living docs**: a capability's spec, requirements index and design, plus a

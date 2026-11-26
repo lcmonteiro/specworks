@@ -13,6 +13,8 @@ capability gives them facts and gates.
   validation.md `V`, inspection.md `I`) that hold findings.
 - **Findings** (`findings.py`): one parser and one set of writers for the
   findings of every check artifact.
+- **Inspection turns** (`inspection.py`): a change's open inspection notes,
+  split by whose turn they are (the author's or the reviewer's).
 - **Checks** (`checks.py`): every check defined once, as a function of a
   `GateContext` that computes what it reads (analysis, review report, each
   check artifact's findings) on first use.
@@ -24,10 +26,10 @@ capability gives them facts and gates.
   review, and the change's next state.
 - **Validate** (`validate.py`): the grouped final report, and, with
   `--write`, validation.md with one finding per failed blocking check.
-
-![The workflow capability](diagrams/workflow-blocks.svg)
 - **Merge** (`merge.py`): merging a half's branch into the checkout in a
   build, resolving the change's `tasks.md` and `traceability.md`.
+
+![The workflow capability](diagrams/workflow-blocks.svg)
 
 ## Decisions
 
@@ -183,6 +185,25 @@ the cycle or validate needs to know about it beyond `check_artifacts()`.
 Making inspection a gate, or required before close, was left out; an
 inspection without notes records nothing (the human review is its own
 record). (add-inspect-skill)
+
+Its artifact state is `open` while it has an open note and `done` once every
+note is confirmed, so `status` tells a worked inspection from a waiting one.
+(pr-review-with-inspect)
+
+### An inspection note's turn is its route
+
+`inspection_turns(change)` splits a change's open, readable `I` findings by
+whose turn they are: a note routed to `inspect` (`Finding.phase`, after
+`done in review:`) waits for the reviewer to confirm it; every other open
+note waits for the author, at the step it is routed to. The turn is read
+from the routing rules, never from a `done in review:` line looked up
+directly, which would duplicate them (quoted forms, fences). Nothing new is
+stored: archived inspection.md files are read as they are. It lives in its
+own module, `inspection.py`, which imports `findings.py`; `artifact_states`
+imports it locally, since `findings.py` already imports `artifacts.py`.
+Computing the `open` state in the CLI was rejected: the state is the
+workflow's, and every reader of `artifact_states` sees it. Gates, cycles and
+validate do not read the turns. (pr-review-with-inspect)
 
 ### Findings have their own module, parametrised by the artifact
 
@@ -381,6 +402,12 @@ gets the same subject through `merge_branch`. (commit-phase-and-half)
   `check_artifacts()`, `check_artifact(artifact_id)`,
   `check_artifact_for(finding_id)` (each unknown name or letter a
   `WorkflowError` naming the check artifacts).
+- `src/specworks/workflow/inspection.py`: `InspectionNote(id, step)`,
+  `InspectionTurns(author, reviewer)` (truthy when either has a note;
+  `to_dict()` gives `{"author": [{"id", "step"}], "reviewer": [...]}`, each
+  key only when its list has a note), `inspection_turns(change)` (active or
+  archived; none without inspection.md); `artifact_states` gives inspection
+  `status: "open"` while it has an open note.
 - `src/specworks/workflow/checks.py`: `Check` (`key`: the check function's
   name, set by validate), `GateContext`, `passed(checks)`,
   `run_checks(ctx, checks)`, and the check functions (including
