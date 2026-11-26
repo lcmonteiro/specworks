@@ -15,6 +15,7 @@ reading the diff. `- [ ] R<n>` while open, `- [x] R<n>` once resolved. Write
   - confirmed in review: inspect step 7 now commits and offers the push whenever inspection.md changed (note added or confirmed) and reads status --json: author notes -> request changes (pinned line), nothing open -> approve, only reviewer notes -> names them; .claude/skills copy refreshed
 - [ ] R2 **code-gap** R1's fix reworded inspect step 7's '**No notes: nothing is written.**' to '**inspection.md unchanged (no note added or confirmed): nothing is written.**', dropping wording pinned by the earlier change add-inspect-skill; tests/test_skills.py:923 test_the_inspect_skill_carries_its_pinned_wording[No notes: nothing is written] now fails (1 failed, 1368 passed) (src/specworks/skills/specworks-inspect/SKILL.md:186)
   - **Proposal**: back to code: keep the pinned phrase and add the new condition after it, e.g. '**No notes: nothing is written.** When no note was added or confirmed, inspection.md is unchanged; the human review is its own record ...'; leave the test as it is; run uv run specworks skills to refresh .claude/skills
+  - **Decision**: back to code: put the pinned phrase 'No notes: nothing is written.' back in step 7 of src/specworks/skills/specworks-inspect/SKILL.md, with the new condition (only when inspection.md did not change) after it; leave tests/test_skills.py as it is; run uv run specworks skills
 
 ## Changed files without tags
 
