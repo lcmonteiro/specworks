@@ -183,9 +183,9 @@ A closed change is picked the same way, from
    Say how many blocks were walked out of how many, the notes written and
    the notes confirmed (their IDs).
 
-   **inspection.md unchanged (no note added or confirmed): nothing is
-   written.** The human review is its own record (e.g. the pull request's
-   approval). End with:
+   **No notes: nothing is written.** This holds only while inspection.md
+   is unchanged (no note added or confirmed). The human review is its own
+   record (e.g. the pull request's approval). End with:
    ```
    1. Stop here (recommended): nothing to act on
    2. Inspect another change
