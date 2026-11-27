@@ -1,6 +1,6 @@
 name: skip-abandoned-inspections
 created: '2026-11-27T14:54:18'
-phase: review
+phase: validate
 specified:
   REQ-CLI-025: df31088a86e4
   REQ-CLI-026: 5b79b7e293cf
