@@ -37,6 +37,17 @@ def closed(root, name, findings=None):
     return archived
 
 
+def abandoned(root, name, findings):
+    """
+    Abandon the change ``name`` with ``specworks abandon``; its archived inspection.md holds ``findings`` (lines of Markdown).
+    """
+    code, data = run_json("new", name, "--no-branch")
+    assert code == 0, data
+    code, data = run_json("abandon", "--change", name, "--reason", "not needed")
+    assert code == 0, data
+    (root / data["path"] / "inspection.md").write_text(f"# Inspection: {name}\n\n## Findings\n\n{findings}\n", encoding="utf-8")
+
+
 def text_of(*args):
     result = runner.invoke(app, list(args))
     assert result.exit_code == 0, result.output
@@ -94,6 +105,17 @@ def test_ac_cli_025_3_no_open_note_or_an_active_change_has_no_inspection(project
         assert "inspection notes for" not in text_of("status", "--change", ref), ref
 
 
+# @ac AC-CLI-025.4
+def test_ac_cli_025_4_an_abandoned_change_has_no_inspection(project):
+    abandoned(project, "dropped", "- [ ] I1 **code-gap** the old token is not revoked\n")
+    code, data = run_json("status", "--change", "dropped")
+    assert code == 0, data
+    assert "inspection" not in data, data
+    text = text_of("status", "--change", "dropped")
+    assert "inspection notes for" not in text
+    assert "/specworks-reopen" not in text
+
+
 # --- list --archived (REQ-CLI-026) ----------------------------------------------
 
 
@@ -119,6 +141,18 @@ def test_ac_cli_026_1_a_turn_with_no_note_is_left_out_of_the_line(project):
     closed(project, "xpto", FOR_THE_REVIEWER)
     lines = text_of("list", "--archived").splitlines()
     assert f"{'xpto':<32} {DAY}  closed  inspection: 1 for the reviewer" in lines
+
+
+# @ac AC-CLI-026.2
+def test_ac_cli_026_2_an_abandoned_row_has_no_inspection(project):
+    abandoned(project, "dropped", "- [ ] I1 **code-gap** the old token is not revoked\n")
+    code, data = run_json("list", "--archived")
+    assert code == 0, data
+    rows = {row["ref"]: row for row in data["changes"]}
+    assert "dropped" in rows and "inspection" not in rows["dropped"], rows
+    lines = [line for line in text_of("list", "--archived").splitlines() if line.startswith("dropped ")]
+    assert len(lines) == 1, lines
+    assert "inspection:" not in lines[0], lines
 
 
 # --- context (REQ-CLI-027) ------------------------------------------------------
@@ -165,3 +199,13 @@ def test_ac_cli_027_3_other_modules_are_listed_with_all(tmp_path, monkeypatch):
     assert code == 0, data
     assert [row["ref"] for row in data["inspected"]] == ["billing:inv"], data["inspected"]
     assert data["inspected"][0]["inspection"] == {"author": [{"id": "I1", "step": "code"}]}
+
+
+# @ac AC-CLI-027.4
+def test_ac_cli_027_4_an_abandoned_change_is_never_inspected(project):
+    abandoned(project, "dropped", "- [ ] I1 **code-gap** the old token is not revoked\n")
+    closed(project, "xpto", "- [ ] I1 **code-gap** the total is rounded twice\n")
+    code, data = run_json("context")
+    assert code == 0, data
+    assert [row["ref"] for row in data["inspected"]] == ["xpto"], data["inspected"]
+    assert "dropped" not in text_of("context")
