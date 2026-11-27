@@ -7,6 +7,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 
 from specworks.harness.peers.adopt import AdoptPeer
+from specworks.harness.peers.autopilot import AutopilotPeer
 from specworks.harness.peers.base import MEMORY, MERGE_RULE, PREAMBLE, PREFIX, SkillPeer, peer_name, preamble, skill_instructions
 from specworks.harness.peers.baseline import BaselinePeer
 from specworks.harness.peers.build import BuildPeer
@@ -28,6 +29,7 @@ from specworks.harness.peers.validate import ValidatePeer
 #: The peer classes, one per packaged skill, in alphabetical order of name. Implements REQ-HARNESS-001.
 PEERS: tuple[type[SkillPeer], ...] = (
     AdoptPeer,
+    AutopilotPeer,
     BaselinePeer,
     BuildPeer,
     ClosePeer,
@@ -66,6 +68,7 @@ __all__ = [
     "skill_instructions",
     "worktree_peers",
     "AdoptPeer",
+    "AutopilotPeer",
     "BaselinePeer",
     "BuildPeer",
     "ClosePeer",

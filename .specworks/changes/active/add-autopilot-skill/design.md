@@ -137,13 +137,21 @@ The existing `test_only_build_and_done_run_their_phases_in_subagents`
 
 ## Interfaces
 
-- `src/specworks/harness/peers/autopilot.py`: `AutopilotPeer(SkillPeer)`,
-  `@connector("autopilot")`, `rules = (MERGE_RULE,)` (REQ-HARNESS-001,
+Agreed with the user
+
+- `src/specworks/harness/peers/autopilot.py`: `AutopilotPeer(SkillPeer)`
+  (new), `@connector("autopilot")`, `rules = (MERGE_RULE,)`, written in full
+  like `BuildPeer` since it is data with no behaviour (REQ-HARNESS-001,
   REQ-HARNESS-004).
 - `src/specworks/harness/peers/__init__.py`: `PEERS` gains `AutopilotPeer`,
-  after `AdoptPeer` (alphabetical order of name).
+  after `AdoptPeer` (alphabetical order of name), and `__all__` exports it
+  (extended, not breaking: one more peer in the chat).
 - `src/specworks/skills/specworks-autopilot/SKILL.md`: the skill
-  (`/specworks-autopilot <ref>`).
+  (`/specworks-autopilot <ref>`, new); the stub is its frontmatter (`name`,
+  `description`, `allowed-tools`) with a body saying it is not written yet,
+  so the peer has a skill to read; the code half writes the body.
+- `MERGE_RULE` and `preamble()` in `src/specworks/harness/peers/base.py`
+  keep their signatures and text; no new error and no breaking change.
 
 ## Diagrams
 

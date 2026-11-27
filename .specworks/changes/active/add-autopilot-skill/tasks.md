@@ -2,7 +2,7 @@
 
 ## 1. The harness peer
 
-- [ ] 1.1 Add `AutopilotPeer` in `src/specworks/harness/peers/autopilot.py` with `rules = (MERGE_RULE,)`, and add it to `PEERS` after `AdoptPeer`, with a stub `src/specworks/skills/specworks-autopilot/SKILL.md` (frontmatter only) so the peer has its skill (REQ-HARNESS-004, REQ-HARNESS-001); verify `uv run specworks run lint` passes
+- [x] 1.1 Add `AutopilotPeer` in `src/specworks/harness/peers/autopilot.py` with `rules = (MERGE_RULE,)`, and add it to `PEERS` after `AdoptPeer`, with a stub `src/specworks/skills/specworks-autopilot/SKILL.md` (frontmatter only) so the peer has its skill (REQ-HARNESS-004, REQ-HARNESS-001); verify `uv run specworks run lint` passes
 - [ ] 1.2 [test] Update `test_ac_harness_004_3_the_merge_rule` in `tests/harness/test_peers.py`, tagged `@ac AC-HARNESS-004.3`: `build` and `autopilot` get `MERGE_RULE`, no other peer mentions `/merge`; verify it fails before 1.3
 - [ ] 1.3 [code] Tag `AutopilotPeer` with `@req REQ-HARNESS-004` and `REQ-HARNESS-001` in its docstring as `BuildPeer` does (REQ-HARNESS-004); verify `uv run specworks run lint` passes
 

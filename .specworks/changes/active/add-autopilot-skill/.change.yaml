@@ -1,3 +1,5 @@
 name: add-autopilot-skill
 created: '2026-11-27T16:33:29'
-phase: specify
+phase: design
+specified:
+  REQ-HARNESS-004: c10efe6ef2ee
