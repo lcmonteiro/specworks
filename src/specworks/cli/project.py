@@ -244,9 +244,10 @@ def context(as_json: bool = JsonOpt, all_modules: bool = AllOpt) -> None:
             }
         )
     changes = changes_of(ws, all_modules)
-    # Archived changes whose inspection notes wait for someone, of the same modules as `changes` (REQ-CLI-027).
-    waiting = [(m, c, turns) for m in (ws.modules() if all_modules else [ws.current]) for c in list_archived(m.config) if (turns := inspection_turns(c))]
-    inspected = [{**change_dict(ws, m, c), "inspection": turns.to_dict()} for m, c, turns in waiting]
+    # Closed changes whose inspection notes wait for someone, of the same modules as `changes`: inspection_dict decides,
+    # as for status and list --archived, so an abandoned change is never listed (REQ-CLI-027).
+    waiting = [(m, c, shown) for m in (ws.modules() if all_modules else [ws.current]) for c in list_archived(m.config) if (shown := inspection_dict(c))]
+    inspected = [{**change_dict(ws, m, c), **shown} for m, c, shown in waiting]
     skills = skills_state(ws.root, ws.top.config.tools)
     data = {
         "root": str(ws.root),
@@ -268,7 +269,7 @@ def context(as_json: bool = JsonOpt, all_modules: bool = AllOpt) -> None:
     lines += ["capabilities:"] + ([f"  {c['name']:<24} {c['path']}" for c in capabilities] or ["  (none)"])
     lines += ["changes:"] + ([f"  {m.qualify(c.name):<24} {c.phase}" for m, c in changes] or ["  (none)"])
     if inspected:
-        lines += ["inspected:"] + [f"  {m.qualify(c.name):<24} {inspection_hint(m.qualify(c.name), turns)}" for m, c, turns in waiting]
+        lines += ["inspected:"] + [f"  {m.qualify(c.name):<24} {inspection_hint(m.qualify(c.name), inspection_turns(c))}" for m, c, _ in waiting]
     if skills.state == "outdated":
         lines += [f"skills:  outdated ({len(skills.files)} files)", "skills out of date: run specworks update"]
     else:

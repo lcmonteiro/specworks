@@ -75,13 +75,15 @@ def change_dict(ws: Workspace, module: Module, change: Change) -> dict:
 
 
 # @req REQ-CLI-025
+# @req REQ-CLI-026
 def inspection_dict(change: Change) -> dict:
     """
-    ``{"inspection": {...}}`` (``InspectionTurns.to_dict``) for an archived change with open inspection notes, else ``{}``.
+    ``{"inspection": {...}}`` (``InspectionTurns.to_dict``) for a closed change with open inspection notes, else ``{}``.
 
-    Implements REQ-CLI-025.
+    An active or abandoned change gets ``{}``: nobody can act on an abandoned change's notes (reopen refuses it).
+    Implements REQ-CLI-025, REQ-CLI-026.
     """
-    if not is_archived(change) or not (turns := inspection_turns(change)):
+    if not is_archived(change) or change.abandoned or not (turns := inspection_turns(change)):
         return {}
     return {"inspection": turns.to_dict()}
 
