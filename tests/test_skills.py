@@ -46,7 +46,7 @@ def test_specify_marks_the_review_findings_it_carried_out():
 def test_only_build_and_done_run_their_phases_in_subagents(name):
     # A phase run by build or done sees the project and the artifacts, never the chat; a hand-run phase still talks to the user.
     text = read_skill(name)
-    chains = name in ("specworks-build", "specworks-done")
+    chains = name in ("specworks-build", "specworks-done", "specworks-autopilot")
     assert ("**Phases in subagents**" in text) is chains
     if chains:
         assert all(f"Result: {kind} <" in text for kind in ("done", "question", "blocked"))
@@ -1019,3 +1019,82 @@ def test_the_refinement_instruction_records_a_request_that_is_not_recommended():
     text = flat(load_artifacts()["refinement"].instruction)
     recommendation = text.split("**Recommendation**", 1)[1].split("- **", 1)[0]
     assert "Not recommended: <why>" in recommendation
+
+
+# --- autopilot: specify, build and validate on their own, stopping before close (add-autopilot-skill) ---------------
+# The skills have no capability, so these tests are untagged and assert only the pinned phrases of design.md, verbatim.
+AUTOPILOT = "specworks-autopilot"
+
+
+def allowed_tools(name):
+    return re.search(r"^allowed-tools: (.*)$", raw_skill(name), re.MULTILINE).group(1).strip()
+
+
+def test_autopilot_is_a_packaged_skill_scoped_to_specworks():
+    assert AUTOPILOT in packaged_skills()
+    meta = raw_skill(AUTOPILOT).split("---\n")[1]
+    assert f"name: {AUTOPILOT}\n" in meta
+    description = flat(meta.split("description:", 1)[1].split("allowed-tools:", 1)[0])
+    for phrase in ("autopilot", "(recommended)", "before close", '"specworks autopilot"'):
+        assert phrase in description, phrase
+
+
+def test_autopilot_pre_approves_exactly_the_tools_of_build():
+    # It coordinates the build itself, subagents included, so it needs build's tools and nothing more.
+    assert allowed_tools(AUTOPILOT) == allowed_tools("specworks-build")
+    assert "Agent" in {tool.strip() for tool in allowed_tools(AUTOPILOT).split(",")}
+
+
+@pytest.mark.parametrize("include", ["running-cli", "asking-the-user", "picking-the-change", "phase-subagents"])
+def test_autopilot_includes_the_shared_coordinator_text(include):
+    assert f"<!-- specworks:include {include} -->\n" in raw_skill(AUTOPILOT)
+
+
+@pytest.mark.parametrize(
+    "phrase",
+    [
+        "**Phases in subagents**",
+        "Result: done <",
+        "Result: question <",
+        "Result: blocked <",
+        "Autopilot never runs in refine: refinement stays with the user.",
+        "Autopilot never runs close and never pushes.",
+        "follow ../specworks-build/SKILL.md as its coordinator",
+        "take the option marked (recommended)",
+        "A yes/no question that continues the flow is answered yes.",
+        "A question that needs free text, or has no option to take, stops autopilot.",
+        "When the review of cycle 3 still has open findings, stop instead of starting cycle 4.",
+        "A decision is hard when its options were close, when it settles product intent or an API, or when it is costly to undo.",
+        "## D<n> <phase>: <the question, one line>",
+        "- **Hard**: yes - <why> | no",
+        "Decisions to validate",
+        "Also taken",
+        "1. /specworks-done <ref> (recommended): validate passed; close it once you agree with the decisions",
+        "End with the report of step 4 of the skill before the Result line: PASS is Result: done, FAIL is Result: blocked.",
+    ],
+)
+def test_the_autopilot_skill_carries_its_pinned_wording(phrase):
+    assert phrase in flat(read_skill(AUTOPILOT))
+
+
+AUTOPILOT_REFINE_OPTIONS = [
+    "1. /specworks-specify <ref> (recommended): write the proposal, specs and tasks",
+    "2. /specworks-autopilot <ref>: specify, build and validate on their own, stopping before close",
+    "3. Stop here",
+]
+
+
+def test_refine_offers_autopilot_after_specify_and_before_stop_here():
+    closing = flat(step(read_skill("specworks-refine"), 5))
+    assert all(option in closing for option in AUTOPILOT_REFINE_OPTIONS), closing
+    positions = [closing.index(option) for option in AUTOPILOT_REFINE_OPTIONS]
+    assert positions == sorted(positions)
+
+
+def test_onboard_names_autopilot_in_the_primers_flow():
+    line = (
+        "`/specworks-autopilot` runs from specify to validate on its own, taking the recommended option at each stop, "
+        "and stops before close with the hard decisions to validate."
+    )
+    flow = flat(read_skill(ONBOARD)).split("**The flow**", 1)[1].split("- **What each step writes**", 1)[0]
+    assert line in flow
