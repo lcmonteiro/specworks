@@ -6,11 +6,11 @@
 
 ## 2. The router tests
 
-- [ ] 2.1 [test] In `tests/harness/test_router.py`, patch `AsyncOpenAI` in `chatinho.support.kits.model.endpoint` instead of `chatinho.routers.llm`; verify `uv run pytest tests/harness` passes against the new pin
+- [x] 2.1 [test] In `tests/harness/test_router.py`, patch `AsyncOpenAI` in `chatinho.support.kits.model.endpoint` instead of `chatinho.routers.llm`; verify `uv run pytest tests/harness` passes against the new pin
 
 ## 3. Checks
 
-- [ ] 3.1 [test] Run `uv run pytest -q`, `uv run ruff check src tests` and `uv run mypy`; verify all pass
+- [x] 3.1 [test] Run `uv run pytest -q`, `uv run ruff check src tests` and `uv run mypy`; verify all pass
 
 ## Workflow follow-up
 
