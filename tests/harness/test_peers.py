@@ -23,7 +23,7 @@ PINNED = (
     "When the recommended option is `stop here`, end without calling hand_over."
 )
 
-#: The pinned merge rule of design.md, verbatim: only `build` gets it.
+#: The pinned merge rule of design.md, verbatim: only `build` and `autopilot` get it.
 PINNED_MERGE = "When your skill merges a worktree's branch, do not merge it yourself: call ask_user asking the user to run `/merge <name>`, and wait."
 
 
@@ -244,10 +244,11 @@ def test_ac_harness_004_3_the_merge_rule(project, ws):
     assert skill_instructions("specworks-build", peers, [MERGE_RULE]) == preamble("build", peers, [MERGE_RULE]) + "\n\n" + read_skill("specworks-build")
     user = User()
     chat(ws, ScriptedModel(), user=user)
+    assert {"build", "autopilot"} <= set(skill_peers(user)), "both peers that merge are in the chat"
     for name, peer in skill_peers(user).items():
         lines = preamble_lines(peer)
-        if name == "build":
-            assert lines == preamble("build", NAMES, [MERGE_RULE]).splitlines()
+        if name in ("build", "autopilot"):
+            assert lines == preamble(name, NAMES, [MERGE_RULE]).splitlines()
             assert lines[-1] == PINNED_MERGE
         else:
             assert lines == PINNED.format(name=name, peers=", ".join(NAMES)).splitlines()
