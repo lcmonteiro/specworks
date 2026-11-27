@@ -1,0 +1,9 @@
+name: pr-review-with-inspect
+created: '2026-11-25T11:50:01'
+phase: done
+specified:
+  REQ-CLI-025: 68f13ac296f1
+  REQ-CLI-026: 7c16b7750604
+  REQ-CLI-027: 89556b92c1d9
+  REQ-FLOW-020: 625ebb0b707f
+  REQ-FLOW-001: 314b6ae77417

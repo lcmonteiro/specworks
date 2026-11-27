@@ -938,10 +938,33 @@ def test_inspect_writes_only_through_specworks_finding_and_commit():
     assert "trace --write" in text and "Never run `trace --write`" in text
 
 
-def test_inspect_hands_its_notes_to_review_or_reopen():
+def test_inspect_hands_its_notes_to_review_or_to_the_author():
+    # On a closed change the reviewer does not reopen: the author does, after a pull (pr-review-with-inspect).
     text = flat(read_skill(INSPECT))
     assert "1. /specworks-review <ref> (recommended)" in text
-    assert "1. /specworks-reopen <ref> (recommended): with inspection.md as the problem" in text
+    assert "1. /specworks-reopen <ref> (recommended): with inspection.md as the problem" not in text
+
+
+# --- the PR review process: inspection notes by turn (pr-review-with-inspect) ----------------
+# The skills have no capability, so these tests are untagged and assert only the pinned phrases of design.md, verbatim.
+# They read the turns status and context give (REQ-CLI-025, REQ-CLI-027).
+@pytest.mark.parametrize(
+    ("name", "phrase"),
+    [
+        (INSPECT, "Request changes on the pull request: the author runs /specworks-reopen <ref>."),
+        (INSPECT, "Never offer the reopen to the reviewer: only the author reopens."),
+        ("specworks-reopen", "Notes for the author in inspection.md are the problem: do not ask why."),
+        ("specworks-reopen", "inspection notes <IDs>"),
+        ("specworks-reopen", "Add no R finding for them: the I findings are already the findings review decides."),
+        ("specworks-onboard", "A change in inspected waits for its notes before any new work."),
+    ],
+)
+def test_the_pr_review_skills_carry_their_pinned_wording(name, phrase):
+    assert phrase in flat(read_skill(name)).replace("**", "").replace("`", "")
+
+
+def test_refine_step_1_points_an_inspected_change_to_its_notes():
+    assert "inspected lists a closed change whose inspection notes wait" in flat(step(read_skill("specworks-refine"), 1)).replace("**", "").replace("`", "")
 
 
 def test_review_marks_the_inspection_findings_it_checked_done_in_review():

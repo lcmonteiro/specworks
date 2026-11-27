@@ -12,7 +12,7 @@ import typer
 
 from specworks import __version__
 from specworks.cli.app import app, capability_app, config_app, module_app
-from specworks.cli.output import AllOpt, JsonOpt, ToolsOpt, change_dict, changes_of, emit, fail, missing_dicts, module_dict, workspace
+from specworks.cli.output import AllOpt, JsonOpt, ToolsOpt, change_dict, changes_of, emit, fail, inspection_dict, inspection_hint, missing_dicts, module_dict, workspace
 from specworks.cli.telemetry import telemetry_state
 from specworks.core.changes import archived_as, list_archived
 from specworks.core.config import Config, ConfigError, find_config, load_config, old_config_in, old_layout_error
@@ -22,6 +22,7 @@ from specworks.core.validators import validate_relative
 from specworks.core.workspace import Module, Workspace, capability_prefix, load_module_config, load_workspace, require_workspace
 from specworks.specs.capabilities import capability_ref, describe
 from specworks.tools.skills import TOOLS, Tool, expected_skills, install_skills, parse_tools, remove_stale_skills, resolve_tools, skills_state, update_skills
+from specworks.workflow.inspection import inspection_turns
 
 
 def default_module_name(path: Path) -> str:
@@ -218,6 +219,7 @@ def update(
 
 
 # @req REQ-CLI-004
+# @req REQ-CLI-027
 @app.command()
 def context(as_json: bool = JsonOpt, all_modules: bool = AllOpt) -> None:
     """
@@ -242,6 +244,10 @@ def context(as_json: bool = JsonOpt, all_modules: bool = AllOpt) -> None:
             }
         )
     changes = changes_of(ws, all_modules)
+    # Closed changes whose inspection notes wait for someone, of the same modules as `changes`: inspection_dict decides,
+    # as for status and list --archived, so an abandoned change is never listed (REQ-CLI-027).
+    waiting = [(m, c, shown) for m in (ws.modules() if all_modules else [ws.current]) for c in list_archived(m.config) if (shown := inspection_dict(c))]
+    inspected = [{**change_dict(ws, m, c), **shown} for m, c, shown in waiting]
     skills = skills_state(ws.root, ws.top.config.tools)
     data = {
         "root": str(ws.root),
@@ -255,12 +261,15 @@ def context(as_json: bool = JsonOpt, all_modules: bool = AllOpt) -> None:
         "missingModules": missing_dicts(ws),
         "capabilities": capabilities,
         "changes": [change_dict(ws, m, c) for m, c in changes],
+        "inspected": inspected,
         "skills": {"state": skills.state, "files": [{"path": f.path, "reason": f.reason} for f in skills.files]},
         "telemetry": (telemetry := telemetry_state(ws)),
     }
     lines = [f"root:    {ws.root}", f"module:  {ws.current.label}", "modules:", *module_lines(ws, "  ")]
     lines += ["capabilities:"] + ([f"  {c['name']:<24} {c['path']}" for c in capabilities] or ["  (none)"])
     lines += ["changes:"] + ([f"  {m.qualify(c.name):<24} {c.phase}" for m, c in changes] or ["  (none)"])
+    if inspected:
+        lines += ["inspected:"] + [f"  {m.qualify(c.name):<24} {inspection_hint(m.qualify(c.name), inspection_turns(c))}" for m, c, _ in waiting]
     if skills.state == "outdated":
         lines += [f"skills:  outdated ({len(skills.files)} files)", "skills out of date: run specworks update"]
     else:
@@ -269,7 +278,17 @@ def context(as_json: bool = JsonOpt, all_modules: bool = AllOpt) -> None:
     emit(data, as_json, "\n".join(lines))
 
 
+# @req REQ-CLI-026
+def _inspection_suffix(row: dict) -> str:
+    """
+    ``  inspection: 2 for the author, 1 for the reviewer`` for a row with open inspection notes (a turn with none left out), else "".
+    """
+    counts = [f"{len(notes)} for the {turn}" for turn, notes in row.get("inspection", {}).items()]
+    return f"  inspection: {', '.join(counts)}" if counts else ""
+
+
 # @req REQ-CLI-004
+# @req REQ-CLI-026
 @app.command("list")
 def list_cmd(
     as_json: bool = JsonOpt,
@@ -285,9 +304,10 @@ def list_cmd(
     if archived:
         for m in modules:
             for c in list_archived(m.config):
-                rows.append(change_dict(ws, m, c))
+                row = {**change_dict(ws, m, c), **inspection_dict(c)}
+                rows.append(row)
                 state = f"abandoned in {c.phase}: {c.abandoned}" if c.abandoned else "closed"
-                lines.append(f"{m.qualify(c.name):<32} {c.path.name[:10]}  {state}")
+                lines.append(f"{m.qualify(c.name):<32} {c.path.name[:10]}  {state}{_inspection_suffix(row)}")
     else:
         for m, c in changes_of(ws, all_modules):
             row = change_dict(ws, m, c)

@@ -77,6 +77,12 @@ the skill then goes on.
      every module). If one already covers this request, offer:
      1. continue `<ref>` (recommended): it already covers this request;
      2. start a new change.
+   - inspected lists a closed change whose inspection notes wait for
+     someone, each with `inspection` (`author` and `reviewer` notes). Before
+     new work, say so and offer the skill its notes wait for:
+     1. `/specworks-reopen <ref>` when it has `author` notes, else
+        `/specworks-inspect <ref>` (recommended): the notes come before new work;
+     2. go on with the new change.
    - Every path in the output is relative to `root`, the workspace root.
 
 <!-- specworks:include reading-architecture -->

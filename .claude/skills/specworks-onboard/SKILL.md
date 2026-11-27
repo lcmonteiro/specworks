@@ -66,8 +66,15 @@ next step the same way: the next skill (recommended), any alternative, and
    | `capabilities` and `changes` are empty, and so are `context` and `commands` | set up, nothing mapped | `/specworks-start` when the repository has no code, `/specworks-adopt` when it has |
    | `capabilities` and `changes` are empty, and `context` or `commands` is set | started, no capability yet | `/specworks-refine <first change>` when the repository has no code, `/specworks-adopt` when it has |
    | a capability with `"hasSpec": false` | not baselined | `/specworks-baseline <capability>` |
+   | `inspected` is not empty | inspection notes waiting | per change: `/specworks-reopen <ref>` when its `inspection` has `author` notes, else `/specworks-inspect <ref>` |
    | `changes` is not empty | work in flight | per change, from its phase (below) |
    | otherwise | ready | `/specworks-refine <what you want>` |
+
+   A change in inspected waits for its notes before any new work. It is a
+   closed change whose inspection.md has open notes: `inspection.author`
+   are the reviewer's notes waiting for the author (`/specworks-reopen <ref>`),
+   `inspection.reviewer` the worked ones waiting for the reviewer to confirm
+   them (`/specworks-inspect <ref>`).
 
    For each change in flight, from its `phase` (run
    `specworks status --change "<ref>"`, and `specworks gate <phase> --change "<ref>"`

@@ -9,7 +9,7 @@ import time
 import typer
 
 from specworks.cli.app import app, task_app
-from specworks.cli.output import ChangeOpt, JsonOpt, change_dict, emit, require_change, resolve_archived, resolve_change, workspace
+from specworks.cli.output import ChangeOpt, JsonOpt, change_dict, emit, inspection_dict, require_change, resolve_archived, resolve_change, workspace
 from specworks.cli.telemetry import record, send_after_commit, telemetry_ids
 from specworks.core.changes import PHASES, ChangeError, ChangeNotFound, commit_phase, create_change, reopen_change, set_phase
 from specworks.core.git import GitError, branch_name, create_branch, current_branch, plan_branch, require_repo
@@ -67,6 +67,7 @@ def new(
 # @req REQ-CLI-002
 # @req REQ-CLI-019
 # @req REQ-CLI-021
+# @req REQ-CLI-025
 @app.command()
 def status(change: str = ChangeOpt, as_json: bool = JsonOpt) -> None:
     """
@@ -88,8 +89,13 @@ def status(change: str = ChangeOpt, as_json: bool = JsonOpt) -> None:
         head += f", archived at {ws.rel(ch.path)}"
     if ch.reopened:
         head += f", reopened {len(ch.reopened)}x, latest: {ch.reopened[-1].reason}"
-    text = "\n".join([head] + [f"  [{s['status']:^7}] {s['generates']}" for s in states])
-    emit(data, as_json, text)
+    lines = [head] + [f"  [{s['status']:^7}] {s['generates']}" for s in states]
+    data.update(inspection_dict(ch))  # an archived change's open notes, by turn (REQ-CLI-025)
+    ref = mod.qualify(ch.name)
+    for turn, skill in (("author", "reopen"), ("reviewer", "inspect")):
+        if notes := data.get("inspection", {}).get(turn):
+            lines.append(f"inspection notes for the {turn}: {', '.join(n['id'] for n in notes)} → /specworks-{skill} {ref}")
+    emit(data, as_json, "\n".join(lines))
 
 
 # @req REQ-CLI-006

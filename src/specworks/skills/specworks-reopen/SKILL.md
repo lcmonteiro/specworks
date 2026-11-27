@@ -48,14 +48,31 @@ again only when the change closes.
 
 2. **Take the problem**
 
-   Ask what went wrong, unless the user already said it: what they saw, and
-   where. The reason comes from the user; never invent it. When it is not
-   clear, ask one focused question, and write the reason as one line in the
-   user's own words.
+   ```bash
+   specworks status --change "<ref>" --json
+   ```
+
+   - **Notes from an inspection**: when `status` has `inspection.author`
+     (the open notes a reviewer left in the archived inspection.md, waiting
+     for the author, each `{id, step}`):
+     Notes for the author in inspection.md are the problem: do not ask why.
+     The reason is `inspection notes <IDs>` (e.g. `inspection notes I1, I2`),
+     and the phase is `specify` when one of their steps is `specify`, else
+     `review`; step 3's table is not needed. Notes in
+     `inspection.reviewer` are not the author's: they wait for the
+     reviewer's `/specworks-inspect <ref>`.
+   - **Otherwise** ask what went wrong, unless the user already said it:
+     what they saw, and where. The reason comes from the user; never invent
+     it. When it is not clear, ask one focused question, and write the
+     reason as one line in the user's own words.
 
 3. **Decide the phase**
 
-   Read the problem against the change's artifacts (`specworks status
+   With notes from an inspection, the phase is already decided (step 2):
+   say it in one line with the steps it comes from, and ask
+   `Reopen <ref> at <phase>? (yes/no)` as below.
+
+   Otherwise read the problem against the change's artifacts (`specworks status
    --change "<ref>" --json`, and the files it names), then route it with this
    table:
 
@@ -82,8 +99,12 @@ again only when the change closes.
    the reason. A refusal (not closed, abandoned, name in use, blank reason)
    is reported as it is: nothing moved, nothing to undo.
 
-   When the phase is `review`, add the problem as a finding, one per
-   problem, so the review gate and `/specworks-build` act on it:
+   With notes from an inspection, the notes are the findings:
+   Add no R finding for them: the I findings are already the findings review decides.
+   `specworks cycle --change "<ref>"` then names the cycle they need.
+
+   Otherwise, when the phase is `review`, add the problem as a finding, one
+   per problem, so the review gate and `/specworks-build` act on it:
 
    ```bash
    specworks finding add <type> "<what the finding is>" --proposal "back to <step>: <the change it proposes>" --change "<ref>"
@@ -112,6 +133,9 @@ again only when the change closes.
    Finding   R1 code-gap -> code        (only when it starts at review)
    ```
 
+   With notes from an inspection, the `Finding` line names the `I<n>`
+   notes and their steps instead.
+
    Then offer the next step as numbered options, from the table: the phase's
    skill (recommended), and `stop here`. This skill does not switch
    branches, rebase or push: say so when the change's branch is not the one
@@ -121,7 +145,8 @@ again only when the change closes.
 
 ## Guardrails
 
-- The reason comes from the user; never invent it.
+- The reason comes from the user, or from the notes waiting for the author
+  in inspection.md; never invent it.
 - Never reopen a change by moving folders or editing its metadata by hand:
   `specworks reopen` is the only way.
 - Never change the phase the user confirmed, and never reopen without the
