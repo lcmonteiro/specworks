@@ -98,7 +98,10 @@ that owns it, never run here.
 
    - **The flow**: `refine → specify → build → done`. `/specworks-build`
      runs `design → implement (test | code) → review` in cycles, and
-     `/specworks-done` runs `validate → close`. A project starts with
+     `/specworks-done` runs `validate → close`.
+     `/specworks-autopilot` runs from specify to validate on its own, taking
+     the recommended option at each stop, and stops before close with the
+     hard decisions to validate. A project starts with
      `/specworks-start` (no code) or `/specworks-adopt` (existing code, then
      `/specworks-baseline` per capability).
    - **What each step writes** (in `.specworks/changes/active/<change>/`):

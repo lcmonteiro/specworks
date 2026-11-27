@@ -168,7 +168,8 @@ the skill then goes on.
    End with:
    ```
    1. /specworks-specify <ref> (recommended): write the proposal, specs and tasks
-   2. Stop here
+   2. /specworks-autopilot <ref>: specify, build and validate on their own, stopping before close
+   3. Stop here
    ```
 
 ---

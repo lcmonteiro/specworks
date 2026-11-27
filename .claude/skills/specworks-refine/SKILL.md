@@ -204,7 +204,8 @@ artifact is written), and before the closing question, commit with specworks com
    End with:
    ```
    1. /specworks-specify <ref> (recommended): write the proposal, specs and tasks
-   2. Stop here
+   2. /specworks-autopilot <ref>: specify, build and validate on their own, stopping before close
+   3. Stop here
    ```
 
 ---
