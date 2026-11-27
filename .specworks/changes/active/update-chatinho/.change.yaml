@@ -1,4 +1,6 @@
 name: update-chatinho
 created: '2026-11-27T19:05:29'
-phase: design
+phase: implement
 skip_specs: true
+dirty:
+  .specworks/changes/active/update-chatinho/autopilot.md: d4f1a5ae5723f788338c54ba3441aa8fe211aab2abe70a5be5590317d4045c7b

@@ -2,7 +2,7 @@
 
 ## 1. The pin
 
-- [ ] 1.1 [code] In `pyproject.toml`, replace `d783cc565cf4f5ab2c67385e41bd0d70a1ff0e6b` with `57a1b980b075458218b80484b7015ec774224d67` in the `harness` extra and the `dev` group, then run `uv lock` and `uv sync`; verify `uv.lock` names chatinho at `57a1b980` and `uv run specworks run lint` passes
+- [x] 1.1 [code] In `pyproject.toml`, replace `d783cc565cf4f5ab2c67385e41bd0d70a1ff0e6b` with `57a1b980b075458218b80484b7015ec774224d67` in the `harness` extra and the `dev` group, then run `uv lock` and `uv sync`; verify `uv.lock` names chatinho at `57a1b980` and `uv run specworks run lint` passes
 
 ## 2. The router tests
 
