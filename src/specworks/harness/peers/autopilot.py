@@ -9,6 +9,7 @@ from chatinho import connector
 from specworks.harness.peers.base import MERGE_RULE, SkillPeer
 
 
+# @req REQ-HARNESS-004
 @connector("autopilot")
 class AutopilotPeer(SkillPeer):
     """
