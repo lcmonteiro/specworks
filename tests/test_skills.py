@@ -43,8 +43,8 @@ def test_specify_marks_the_review_findings_it_carried_out():
 
 
 @pytest.mark.parametrize("name", packaged_skills())
-def test_only_build_and_done_run_their_phases_in_subagents(name):
-    # A phase run by build or done sees the project and the artifacts, never the chat; a hand-run phase still talks to the user.
+def test_only_the_coordinators_run_their_phases_in_subagents(name):
+    # A phase run by build, done or autopilot sees the project and the artifacts, never the chat; a hand-run phase still talks to the user.
     text = read_skill(name)
     chains = name in ("specworks-build", "specworks-done", "specworks-autopilot")
     assert ("**Phases in subagents**" in text) is chains

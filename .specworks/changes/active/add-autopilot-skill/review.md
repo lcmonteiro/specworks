@@ -11,6 +11,7 @@ reading the diff. `- [ ] R<n>` while open, `- [x] R<n>` once resolved. Write
 - [ ] R1 **quality** The test `test_only_build_and_done_run_their_phases_in_subagents` and its comment ("A phase run by build or done") still say only build and done are coordinators, while it now asserts autopilot is one too (AC-HARNESS-004.3, task 2.1) (`tests/test_skills.py:46`)
   - **Proposal**: back to test: rename it to test_only_the_coordinators_run_their_phases_in_subagents and make its comment name build, done and autopilot; the assertions stay as they are
   - **Decision**: back to test: rename it to test_only_the_coordinators_run_their_phases_in_subagents and name build, done and autopilot in its comment
+  - done in test: renamed the test to test_only_the_coordinators_run_their_phases_in_subagents; its comment names build, done and autopilot; assertions unchanged
 
 ## Changed files without tags
 
