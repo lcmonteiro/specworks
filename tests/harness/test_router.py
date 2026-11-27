@@ -7,7 +7,7 @@ import asyncio
 import logging
 from types import SimpleNamespace
 
-import chatinho.routers.llm as llm_module
+import chatinho.support.kits.model.endpoint as endpoint_module
 import openai
 import pytest
 import yaml
@@ -78,7 +78,7 @@ def fake_openai(monkeypatch):
     FakeOpenAI.reply = "everyone"
     FakeOpenAI.error = None
     FakeOpenAI.gate = None
-    monkeypatch.setattr(llm_module, "AsyncOpenAI", FakeOpenAI)
+    monkeypatch.setattr(endpoint_module, "AsyncOpenAI", FakeOpenAI)
     return FakeOpenAI
 
 
