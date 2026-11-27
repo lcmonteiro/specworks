@@ -84,19 +84,27 @@ decides. No CLI flag was added for it. (pr-review-with-inspect)
 
 ### The overview commands show whose turn an inspection is
 
-`status`, `list --archived` and `context` show an archived change's open
+`status`, `list --archived` and `context` show a closed change's open
 inspection notes by turn (`inspection_turns` in workflow), so after a pull the
 author sees notes to work and the reviewer notes to confirm, each with its
 skill (`inspection_hint`: `/specworks-reopen <ref>` when the author has a
 note, else `/specworks-inspect <ref>`). These commands add `inspection`
 (`inspection_dict`) to the rows they build, for archived changes only;
 `change_dict` is unchanged, so `finding`, `commit` and the rest never parse
-inspection.md. `context`'s `inspected` lists the archived changes with a note
-of the modules `changes` covers (the current one, every one with `--all`),
-abandoned ones included; `changes` keeps listing active changes only. The PR
-review process (author closes and pushes, reviewer inspects and pushes,
-author reopens and pushes, reviewer confirms) is the skills'; the CLI makes
-no GitHub or GitLab call. (pr-review-with-inspect)
+inspection.md. `context`'s `inspected` lists the closed changes with a note
+of the modules `changes` covers (the current one, every one with `--all`);
+`changes` keeps listing active changes only. The PR review process (author
+closes and pushes, reviewer inspects and pushes, author reopens and pushes,
+reviewer confirms) is the skills'; the CLI makes no GitHub or GitLab call.
+(pr-review-with-inspect)
+
+An abandoned change is archived too, but its notes are never shown: reopen
+refuses it, so the hint would point nowhere. `inspection_dict` is the one
+rule, returning `{}` for an abandoned change as for an active one, and
+`context` builds `inspected` from it rather than reading the turns itself, so
+the three commands cannot disagree; its text line reads the turns again for
+the kept changes only. Rejected: a `not abandoned` check in each place, two
+conditions to keep in step. (skip-abandoned-inspections)
 
 ### The CLI checks what its own options combine into
 
@@ -320,15 +328,15 @@ a second config format exists. (upgrade-project, dedupe-copilot-skills)
   `resolve_change`, `resolve_archived`, `require_change`,
   `require_change_or_archived(ref, as_json) -> tuple[Workspace, Module,
   Change]`, `is_archived(change)`, `refuse_archived(ws, module, change, why)`,
-  `inspection_dict(change) -> dict` (`{"inspection": {...}}` for an archived
-  change with open notes, else `{}`), `inspection_hint(ref, turns) -> str`,
+  `inspection_dict(change) -> dict` (`{"inspection": {...}}` for a closed,
+  not abandoned, change with open notes, else `{}`), `inspection_hint(ref, turns) -> str`,
   `ToolsOpt`
   (`--tools`, default `None`: the saved choice).
 - `src/specworks/cli/project.py`: `is_terminal() -> bool`.
 - `context --json`: each capability entry holds `docsPath` and `testsPath`
   (its test folder), both workspace-relative; each module entry holds
   `docsPath` (workspace-relative) and `hasArchitecture`.
-- `status --change <ref>`: for an archived change with open notes, `--json`
+- `status --change <ref>`: for a closed change with open notes, `--json`
   adds `inspection` (`author` and `reviewer` lists of `{id, step}`, each only
   when non-empty) and text adds
   `inspection notes for the author: I1, I2 → /specworks-reopen <ref>` and

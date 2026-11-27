@@ -1058,13 +1058,13 @@ Without `--write`, `specworks validate` SHALL write no file.
 
 ### Requirement: REQ-CLI-025 status shows inspection notes
 
-`status` of an archived change with open inspection notes (REQ-FLOW-020)
+`status` of a closed change with open inspection notes (REQ-FLOW-020)
 SHALL show them by turn, each turn with its IDs and the skill to run:
 `/specworks-reopen <ref>` for the author's, `/specworks-inspect <ref>` for the
 reviewer's. `--json` SHALL carry them in the change as `inspection`, with
 `author` and `reviewer` lists of `{id, step}`, each list present only when it
-has a note. An active change, and an archived change with no open note,
-SHALL have no `inspection`.
+has a note. An active change, an abandoned change, and a closed change with
+no open note, SHALL have no `inspection`.
 
 #### Scenario: AC-CLI-025.1 Notes for the author
 
@@ -1084,12 +1084,18 @@ SHALL have no `inspection`.
 - **WHEN** `status --change <ref> --json` runs for each
 - **THEN** none has `inspection`, and the text of none names an inspection turn
 
+#### Scenario: AC-CLI-025.4 An abandoned change
+
+- **GIVEN** an abandoned change `dropped` whose archived inspection.md has an open I1 (code-gap)
+- **WHEN** `status --change dropped` runs, with and without `--json`
+- **THEN** the JSON has no `inspection`, and the text names no inspection turn and no `/specworks-reopen`
+
 ### Requirement: REQ-CLI-026 list --archived shows inspection notes
 
-`list --archived` SHALL give each archived change with open inspection notes
+`list --archived` SHALL give each closed change with open inspection notes
 the same `inspection` as `status` (REQ-CLI-025) in `--json`, and in its text
-line the number of notes for each turn that has any; other rows SHALL be
-unchanged.
+line the number of notes for each turn that has any; other rows, abandoned
+changes' included, SHALL be unchanged.
 
 #### Scenario: AC-CLI-026.1 A row with notes
 
@@ -1097,13 +1103,20 @@ unchanged.
 - **WHEN** `list --archived` runs, with and without `--json`
 - **THEN** `xpto`'s row has `inspection` with two author notes and one reviewer note, and its line says 2 for the author and 1 for the reviewer; `other`'s row has no `inspection` and its line is as before
 
+#### Scenario: AC-CLI-026.2 An abandoned row
+
+- **GIVEN** an abandoned change `dropped` whose archived inspection.md has an open I1
+- **WHEN** `list --archived` runs, with and without `--json`
+- **THEN** `dropped`'s row has no `inspection`, and its line has no `inspection:` suffix
+
 ### Requirement: REQ-CLI-027 context lists inspected changes
 
-`context` SHALL show `inspected`: the archived changes of the current module
+`context` SHALL show `inspected`: the closed changes of the current module
 (every module with `--all`) that have open inspection notes, each as its
 change row with `inspection` (REQ-CLI-025); an empty list when there is none.
-`changes` SHALL keep listing active changes only. The text output SHALL list
-each inspected change with the skill its notes wait for.
+An abandoned change SHALL never be listed. `changes` SHALL keep listing
+active changes only. The text output SHALL list each inspected change with
+the skill its notes wait for.
 
 #### Scenario: AC-CLI-027.1 An inspected change
 
@@ -1122,3 +1135,9 @@ each inspected change with the skill its notes wait for.
 - **GIVEN** a module `billing` with a closed change `inv` that has an open I1, and the current module is the top level
 - **WHEN** `context --json` runs without and with `--all`
 - **THEN** `inspected` is empty without `--all`, and holds `billing:inv` with `--all`
+
+#### Scenario: AC-CLI-027.4 An abandoned change
+
+- **GIVEN** an abandoned change `dropped` with an open I1 for the author, and a closed change `xpto` with an open I1
+- **WHEN** `context --json` runs
+- **THEN** `inspected` holds `xpto` only, and the text output does not name `dropped`
