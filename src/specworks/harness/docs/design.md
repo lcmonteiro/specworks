@@ -72,7 +72,8 @@ A class states its name once: its skill is `skill_name()` = `PREFIX + name`.
 `build_harness` builds `cls(model, names)` for each of `PEERS`. A step's
 specifics live on its class: `worktree` (only `TestPeer`, which also sets
 `__test__ = False` so pytest does not collect it) and `rules`, preamble lines
-after the common ones (only `BuildPeer`, `(MERGE_RULE,)`). Auto-discovery (a
+after the common ones (only `BuildPeer` and `AutopilotPeer`, `(MERGE_RULE,)`).
+Auto-discovery (a
 registry plus `pkgutil`) was rejected as implicit and import-order dependent;
 a settings table was rejected as not a class per step. That `PEERS` matches
 `packaged_skills()` one to one is checked by a test, not at run time, so a
@@ -89,8 +90,12 @@ any other question goes to `ask_user`, and that `stop here` ends without a
 hand-over; each of the peer's `rules` follows on its own line. No skill text
 changes for the harness. (add-chatinho-harness) `MERGE_RULE` (a skill that
 merges a worktree's branch asks the user to run `/merge <name>` instead of
-merging) goes only to `build`, the one skill that merges a worktree's branch;
-`done` merges specs at close, never a branch. (split-harness-peers)
+merging) goes only to the skills that merge a worktree's branch: `build`
+(split-harness-peers) and `autopilot`, which follows build as its coordinator
+and so merges the test half's worktree too (add-autopilot-skill); `done`
+merges specs at close, never a branch. Giving `autopilot` no rule (it would
+merge behind the user) or making it hand over to `build` (it would do nothing
+in the harness) was rejected. (add-autopilot-skill)
 
 ### One shared checkout, one test worktree
 
@@ -282,8 +287,9 @@ set on the instance: `@connector(name)` gives each peer class an empty one.
   `hand_over_tool()` (agent tool `hand_over(peer, text)` -> `handed over to
   <peer>` or `error: unknown peer '<peer>'` / `error: cannot hand over to
   yourself`).
-- `peers/<name>.py`: `<Name>Peer(SkillPeer)` for each of the 15 skills
-  (`BuildPeer.rules = (MERGE_RULE,)`, `TestPeer.worktree = True`).
+- `peers/<name>.py`: `<Name>Peer(SkillPeer)` for each of the 16 skills
+  (`BuildPeer.rules = AutopilotPeer.rules = (MERGE_RULE,)`,
+  `TestPeer.worktree = True`).
 - `peers/__init__.py`: `PEERS: tuple[type[SkillPeer], ...]`,
   `worktree_peers(peers=PEERS) -> frozenset[str]`.
 - `workspaces.py`: `RUN_TIMEOUT`, `WorkspaceError`

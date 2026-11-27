@@ -108,9 +108,9 @@ the recommended option and hands over to the peer of that skill with the change
 ref; at any other question its skill asks, it asks the user with `ask_user` and
 waits; and `stop here` ends the run without handing over. The preamble SHALL
 name the peers and say that `/specworks-<name>` in its skill means the peer
-`<name>`. Only the peer whose skill merges a worktree's branch (`build`) SHALL also be
-told that, where its skill merges, it asks the user to run `/merge <name>` and
-waits, because only the user merges.
+`<name>`. Only the peers whose skill merges a worktree's branch (`build` and
+`autopilot`) SHALL also be told that, where their skill merges, they ask the
+user to run `/merge <name>` and wait, because only the user merges.
 
 #### Scenario: AC-HARNESS-004.1 The preamble
 
@@ -126,7 +126,7 @@ waits, because only the user merges.
 #### Scenario: AC-HARNESS-004.3 The merge rule
 
 - **WHEN** the skill peers are built
-- **THEN** the preamble of `build` tells it to ask the user to run `/merge <name>` and wait, and no other peer's preamble mentions `/merge`
+- **THEN** the preambles of `build` and `autopilot` tell them to ask the user to run `/merge <name>` and wait, and no other peer's preamble mentions `/merge`
 
 ### Requirement: REQ-HARNESS-005 Talking to a peer
 
